@@ -25,6 +25,7 @@ import {
   ExportButtonComponent,
   DateRangeFilterComponent,
   type DateRangeValue,
+  PageHeaderComponent,
 } from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
@@ -62,6 +63,7 @@ function istDate(offsetDays = 0): string {
     DataGridComponent,
     EmptyStateComponent,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './cash-handover-register.html',

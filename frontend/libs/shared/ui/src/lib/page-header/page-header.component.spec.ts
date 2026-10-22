@@ -11,17 +11,18 @@ describe('PageHeaderComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('renders the title as an h1 and an optional subtitle', () => {
+  it('renders the title as an h1 and an info icon with tooltip for subtitle', () => {
     const el = render({ title: 'Agency Overview', subtitle: "Today's operational data" });
     expect(el.querySelector('h1.page-header__title')?.textContent).toContain('Agency Overview');
-    expect(el.querySelector('.page-header__subtitle')?.textContent).toContain(
-      "Today's operational data",
-    );
+    const infoIcon = el.querySelector('.page-header__info');
+    expect(infoIcon).not.toBeNull();
+    expect(infoIcon?.getAttribute('aria-label')).toBe("Today's operational data");
+    expect(el.querySelector('.page-header__subtitle')).toBeNull();
   });
 
-  it('omits the subtitle and the back link when not provided', () => {
+  it('omits the info icon and the back link when not provided', () => {
     const el = render({ title: 'Orders' });
-    expect(el.querySelector('.page-header__subtitle')).toBeNull();
+    expect(el.querySelector('.page-header__info')).toBeNull();
     expect(el.querySelector('.page-header__back')).toBeNull();
   });
 

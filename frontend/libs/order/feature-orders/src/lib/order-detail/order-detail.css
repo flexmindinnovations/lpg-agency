@@ -237,7 +237,7 @@
 
 .progress__note {
   margin-block-start: var(--spacing-xs);
-  max-inline-size: 48rem;
+  max-inline-size: 100%;
 }
 
 .load-sheet {

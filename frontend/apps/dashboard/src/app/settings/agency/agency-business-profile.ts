@@ -154,7 +154,8 @@ const GSTIN_PATTERN = /^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][Zz][0-9A-
   styles: [
     `
       .profile-card {
-        max-inline-size: 640px;
+        inline-size: 100%;
+        max-inline-size: none;
       }
       .profile-lede {
         margin: 0 0 var(--spacing-md);

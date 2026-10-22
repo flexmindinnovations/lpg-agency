@@ -522,8 +522,8 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        min-block-size: 72px;
-        padding: 8px var(--spacing-xl);
+        min-block-size: 64px;
+        padding: var(--spacing-xs) var(--spacing-xl);
         border-block-end: var(--border-width) solid var(--surface-mica-border);
         background: var(--surface-mica);
         flex-shrink: 0;
@@ -535,7 +535,7 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       .shell__breadcrumb-wrapper {
         display: flex;
         align-items: center;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         gap: var(--spacing-sm) var(--spacing-md);
         min-block-size: calc(var(--component-action-height) + 2 * var(--spacing-sm));
         padding: var(--spacing-sm) var(--spacing-xl);
@@ -551,9 +551,17 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        flex-wrap: wrap;
-        gap: var(--spacing-sm);
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        gap: var(--spacing-xs);
         margin-inline-start: auto;
+        min-inline-size: 0;
+        flex: 1 1 auto;
+      }
+
+      .shell__page-actions::-webkit-scrollbar {
+        display: none;
       }
 
       .shell__page-actions:empty {
@@ -562,10 +570,11 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
 
       :host ::ng-deep .shell__page-actions .p-button {
         white-space: nowrap;
+        flex-shrink: 0;
       }
 
       :host ::ng-deep .shell__breadcrumb {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         min-inline-size: 0;
         padding: 0;
         background: transparent;

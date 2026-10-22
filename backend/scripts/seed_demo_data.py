@@ -275,14 +275,14 @@ CUSTOMERS = [
 
 # Login accounts, one per role worth exercising in the UI. `admin` is listed
 # first because it also anchors tenant resolution — see `main`.
-# (email, role, branch or None)
+# (email, role, branch or None, display_name)
 LOGIN_USERS = [
-    ("admin@example.com", "agency_admin", "Hyderabad Central"),
-    ("manager@example.com", "manager", "Hyderabad Central"),
-    ("dispatcher@example.com", "dispatcher", "Hyderabad Central"),
-    ("accountant@example.com", "accountant", "Hyderabad Central"),
-    ("warehouse@example.com", "warehouse_staff", "Secunderabad North"),
-    ("driver@example.com", "driver", "Hyderabad Central"),
+    ("admin@example.com", "agency_admin", "Hyderabad Central", "Rajesh Sharma"),
+    ("manager@example.com", "manager", "Hyderabad Central", "Ravi Kumar"),
+    ("dispatcher@example.com", "dispatcher", "Hyderabad Central", "Sunita Reddy"),
+    ("accountant@example.com", "accountant", "Hyderabad Central", "Lakshmi Rao"),
+    ("warehouse@example.com", "warehouse_staff", "Secunderabad North", "Prakash Menon"),
+    ("driver@example.com", "driver", "Hyderabad Central", "Imran Shaikh"),
 ]
 
 # (customer phone, cylinder, qty, status, days_offset)
@@ -585,14 +585,14 @@ async def main() -> None:
         # --- Login users ---------------------------------------------------
         # Hashing is the slow part of this script; five accounts keeps it brief.
         pw_hash = hasher.hash(DEMO_PASSWORD)
-        for email, role, branch in LOGIN_USERS:
+        for email, role, branch, display_name in LOGIN_USERS:
             user_id = await ensure(
                 "identity.identity_user",
                 match="email = :em",
-                columns="tenant_id, email, password_hash, role",
-                values=":t, :em, :pw, :role",
+                columns="tenant_id, email, password_hash, role, display_name",
+                values=":t, :em, :pw, :role, :dn",
                 new_id=sid("user", email),
-                params={**p, "em": email, "pw": pw_hash, "role": role},
+                params={**p, "em": email, "pw": pw_hash, "role": role, "dn": display_name},
             )
             # `identity_user.email` is globally unique, not unique per tenant,
             # so a demo account stranded in some other tenant cannot simply be
@@ -603,10 +603,10 @@ async def main() -> None:
             # to the fixed `LOGIN_USERS` list — this never touches a real one.
             await conn.execute(
                 text(
-                    "UPDATE identity.identity_user SET tenant_id = :t, role = :role "
-                    "WHERE id = :u AND tenant_id <> :t"
+                    "UPDATE identity.identity_user SET tenant_id = :t, role = :role, display_name = :dn "
+                    "WHERE id = :u AND (tenant_id <> :t OR display_name IS NULL OR display_name <> :dn)"
                 ),
-                {**p, "u": user_id, "role": role},
+                {**p, "u": user_id, "role": role, "dn": display_name},
             )
             role_id = (
                 await conn.execute(
@@ -1058,12 +1058,13 @@ async def main() -> None:
             route_key = f"{emp_code}:{offset}"
             route_id = await ensure(
                 "delivery.route",
-                match="tenant_id = :t AND driver_id = :d AND route_date = :rd",
+                match="id = :rid",
                 columns="tenant_id, branch_id, driver_id, vehicle_id, route_date, status",
                 values=":t, :b, :d, :v, :rd, :st",
                 new_id=sid("route", route_key),
                 params={
                     **p,
+                    "rid": sid("route", route_key),
                     "b": branch_ids[next(b for c, *_, b in EMPLOYEES if c == emp_code)],
                     "d": driver_ids[emp_code],
                     "v": vehicle_ids[reg],
@@ -1072,13 +1073,15 @@ async def main() -> None:
                 },
             )
             for seq, (order_key, stop_status) in enumerate(stops, start=1):
+                stop_id = sid("route_stop", f"{route_key}:{order_key}")
                 await ensure(
                     "delivery.route_stop",
-                    match="route_id = :r AND order_id = :o",
+                    match="id = :sid OR (route_id = :r AND order_id = :o)",
                     columns="route_id, order_id, sequence_number, status",
                     values=":r, :o, :seq, :st",
-                    new_id=sid("route_stop", f"{route_key}:{order_key}"),
+                    new_id=stop_id,
                     params={
+                        "sid": stop_id,
                         "r": route_id,
                         "o": order_ids[order_key],
                         "seq": seq,
@@ -1110,17 +1113,19 @@ async def main() -> None:
                 params={**p, "c": customer_ids[phone]},
             )
             for offset in offsets:
+                txn_id = sid("ledger_txn", f"{phone}:{offset}")
                 await ensure(
                     "cylinder_ledger.ledger_transaction",
-                    match="cylinder_ledger_id = :l AND performed_at = :at",
+                    match="id = :sid OR (cylinder_ledger_id = :l AND performed_at = :at)",
                     columns=(
                         "tenant_id, cylinder_ledger_id, cylinder_type_id, "
                         "transaction_type, quantity, reason, performed_by, performed_at"
                     ),
                     values=":t, :l, :cyl, 'delivery', 1, 'Refill delivery', :by, :at",
-                    new_id=sid("ledger_txn", f"{phone}:{offset}"),
+                    new_id=txn_id,
                     params={
                         **p,
+                        "sid": txn_id,
                         "l": ledger_id,
                         "cyl": cylinder_ids[cyl],
                         "by": admin_id,
@@ -1164,7 +1169,7 @@ async def main() -> None:
     for key, value in row.items():
         print(f"         {key:<16} {value}")
     print(f"\n[seed] demo logins (password: {DEMO_PASSWORD}):")
-    for email, role, _ in LOGIN_USERS:
+    for email, role, _, _ in LOGIN_USERS:
         print(f"         {email:<28} {role}")
 
 

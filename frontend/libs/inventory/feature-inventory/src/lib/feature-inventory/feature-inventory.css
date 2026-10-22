@@ -6,14 +6,20 @@
 .inventory-container {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  block-size: 100%;
+  gap: var(--spacing-xl);
+  padding-block-end: var(--spacing-2xl);
+  min-block-size: 100%;
+}
+
+.inventory-container .data-toolbar {
+  margin-block-end: var(--spacing-xs);
 }
 
 .section-title {
   font-size: var(--typography-heading3-font-size);
   font-weight: var(--typography-heading3-font-weight);
   margin: 0;
+  margin-block-end: var(--spacing-xs);
 }
 
 .empty-hint {

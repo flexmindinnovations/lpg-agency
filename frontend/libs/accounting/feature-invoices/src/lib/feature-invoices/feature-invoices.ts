@@ -17,6 +17,7 @@ import {
   DateRangeFilterComponent,
   ExportButtonComponent,
   type DateRangeValue,
+  PageHeaderComponent,
 } from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
 import { ButtonDirective } from 'primeng/button';
@@ -48,6 +49,7 @@ import {
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     Dialog,
     InputIcon,
     InputText,

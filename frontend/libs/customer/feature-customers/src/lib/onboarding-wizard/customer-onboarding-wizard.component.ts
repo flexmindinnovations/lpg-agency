@@ -14,7 +14,7 @@ import { Dialog } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { DocumentUploadComponent, FormFieldComponent } from '@lpg/shared/ui';
+import { DocumentUploadComponent, FormFieldComponent, PageHeaderComponent } from '@lpg/shared/ui';
 import {
   CustomerService,
   AdminBranchService,
@@ -61,6 +61,7 @@ const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
     Dialog,
     ToastModule,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     FormFieldComponent,
     DocumentUploadComponent,
   ],

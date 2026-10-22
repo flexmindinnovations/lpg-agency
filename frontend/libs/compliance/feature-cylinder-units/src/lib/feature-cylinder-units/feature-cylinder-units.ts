@@ -23,6 +23,7 @@ import {
   StatusChipCell,
   type ChipSeverity,
   FormFieldComponent,
+  PageHeaderComponent,
   formatReportDate,
   toSentenceCase,
 } from '@lpg/shared/ui';
@@ -116,6 +117,7 @@ export function testDueLabel(
   imports: [
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,

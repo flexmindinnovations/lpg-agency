@@ -92,7 +92,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
               @for (group of groupedPermissions(); track group.module) {
                 <p-fieldset
                   [legend]="group.module.replace('_', ' ') | titlecase"
-                  [toggleable]="true"
+                  [toggleable]="false"
                 >
                   <div class="permissions-grid">
                     @for (perm of group.permissions; track perm) {
@@ -118,26 +118,33 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
                 </p-fieldset>
               }
             </div>
-
-            <div class="modal-actions mt-6">
-              <button
-                pButton
-                type="button"
-                severity="secondary"
-                (click)="visibleChange.emit(false)"
-              >
-                Cancel
-              </button>
-              <button pButton type="submit" [disabled]="submitting()">
-                @if (submitting()) {
-                  <i class="pi pi-spin pi-spinner"></i>
-                }
-                Save Permissions
-              </button>
-            </div>
           </form>
         }
       </div>
+
+      <ng-template #footer>
+        <div class="modal-actions">
+          <button
+            pButton
+            type="button"
+            severity="secondary"
+            (click)="visibleChange.emit(false)"
+          >
+            Cancel
+          </button>
+          <button
+            pButton
+            type="button"
+            (click)="submit()"
+            [disabled]="submitting() || loading()"
+          >
+            @if (submitting()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            }
+            Save Permissions
+          </button>
+        </div>
+      </ng-template>
     </p-dialog>
   `,
   styles: [
@@ -146,9 +153,6 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-lg);
-        max-height: 50vh;
-        overflow-y: auto;
-        padding-right: var(--spacing-sm);
       }
       .permissions-grid {
         display: grid;

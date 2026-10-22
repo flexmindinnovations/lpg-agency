@@ -18,6 +18,7 @@ import {
   type ComplianceDocumentItem,
   type ReplaceComplianceDocumentCmd,
   type VerifyComplianceDocumentCmd,
+  PageHeaderComponent,
 } from '@lpg/shared/ui';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
@@ -99,6 +100,7 @@ export function expiryUrgency(isoDate: string, today: Date = new Date()): Expiry
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     FormsModule,
     Message,
     Select,

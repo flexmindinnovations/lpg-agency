@@ -15,7 +15,7 @@ import { InputNumber } from 'primeng/inputnumber';
 import { Select } from 'primeng/select';
 import { Message } from 'primeng/message';
 import { AdminTenantConfigurationService, NotifyService } from '@lpg/shared/data-access';
-import { FormFieldComponent } from '@lpg/shared/ui';
+import { FormFieldComponent, PageHeaderComponent } from '@lpg/shared/ui';
 
 type BandGroup = FormGroup<{
   stars: FormControl<number>;
@@ -72,6 +72,7 @@ interface RawFineRule {
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     ButtonDirective,
     InputText,

@@ -30,6 +30,7 @@ import {
   HasPermissionDirective,
   StatusChipCell,
   type ChipSeverity,
+  PageHeaderComponent,
   toSentenceCase,
 } from '@lpg/shared/ui';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
@@ -70,6 +71,7 @@ function formatDateForApi(value: unknown): string | undefined {
   imports: [
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,

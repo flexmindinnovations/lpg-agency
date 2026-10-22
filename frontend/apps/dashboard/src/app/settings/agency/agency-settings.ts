@@ -4,7 +4,7 @@ import { AgencyBusinessProfile } from './agency-business-profile';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { DetailItemComponent, DetailListComponent, SectionCardComponent } from '@lpg/shared/ui';
+import { DetailItemComponent, DetailListComponent, PageHeaderComponent, SectionCardComponent } from '@lpg/shared/ui';
 import { AdminTenantService } from '@lpg/shared/data-access';
 
 /**
@@ -18,6 +18,7 @@ import { AdminTenantService } from '@lpg/shared/data-access';
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     SectionCardComponent,
     DetailListComponent,
     DetailItemComponent,
@@ -27,10 +28,10 @@ import { AdminTenantService } from '@lpg/shared/data-access';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-        <h1 class="page-title">Agency</h1>
-        <p class="page-subtitle">Your agency’s identity, GST details and subscription.</p>
-      </div>
+      <lpg-page-header
+        title="Agency"
+        subtitle="Your agency’s identity, GST details and subscription."
+      />
     </ng-template>
 
     @if (tenant(); as agency) {
@@ -77,7 +78,8 @@ import { AdminTenantService } from '@lpg/shared/data-access';
       }
 
       .detail-view {
-        max-inline-size: 480px;
+        inline-size: 100%;
+        max-inline-size: none;
       }
 
       .agency-code {

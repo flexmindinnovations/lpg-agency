@@ -32,6 +32,7 @@ import {
   DataGridComponent,
   type DataGridColumn,
   FormFieldComponent,
+  PageHeaderComponent,
   SectionCardComponent,
   StatusChipCell,
   toSentenceCase,
@@ -60,6 +61,7 @@ type PriceRow = PriceListEntryResponse & {
     ExportButtonComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     ButtonDirective,
     InputText,
@@ -77,10 +79,10 @@ type PriceRow = PriceListEntryResponse & {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Pricing</h1>
-            <p class="page-subtitle">Cylinder prices by branch and customer type.</p>
-          </div>
+          <lpg-page-header
+            title="Pricing"
+            subtitle="Cylinder prices by branch and customer type."
+          />
         </ng-template>
       </div>
 

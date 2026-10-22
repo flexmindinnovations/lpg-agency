@@ -19,6 +19,7 @@ import {
   DetailListComponent,
   type DataGridColumn,
   FormFieldComponent,
+  PageHeaderComponent,
   formatTimestamp,
 } from '@lpg/shared/ui';
 
@@ -72,6 +73,7 @@ class FlagDefaultCell {
   imports: [
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     ButtonDirective,
     InputText,
@@ -89,10 +91,10 @@ class FlagDefaultCell {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Platform Feature Flags</h1>
-            <p class="page-subtitle">Manage platform-wide feature flags and rollout percentages.</p>
-          </div>
+          <lpg-page-header
+            title="Platform Feature Flags"
+            subtitle="Manage platform-wide feature flags and rollout percentages."
+          />
         </ng-template>
       </div>
 

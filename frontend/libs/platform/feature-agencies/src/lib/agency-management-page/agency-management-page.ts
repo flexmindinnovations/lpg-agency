@@ -23,6 +23,7 @@ import {
 import {
   DataGridComponent,
   FormFieldComponent,
+  PageHeaderComponent,
   StatusChipCell,
   type ChipSeverity,
   type DataGridColumn,
@@ -79,6 +80,7 @@ interface SetupLinkView {
     ReactiveFormsModule,
     InputText,
     FormFieldComponent,
+    PageHeaderComponent,
     RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,10 +88,7 @@ interface SetupLinkView {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Agencies</h1>
-            <p class="page-subtitle">Every agency on the platform.</p>
-          </div>
+          <lpg-page-header title="Agencies" subtitle="Every agency on the platform." />
         </ng-template>
       </div>
 

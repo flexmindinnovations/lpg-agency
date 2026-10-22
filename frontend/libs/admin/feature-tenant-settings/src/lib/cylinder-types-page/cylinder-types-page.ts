@@ -22,7 +22,7 @@ import {
   type CylinderTypeResponse,
   errorMessageFor,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent, PageHeaderComponent } from '@lpg/shared/ui';
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
  * default, ignoring `valueFormatter` (same issue fixed for Platform
@@ -59,6 +59,7 @@ class CylinderTypeStatusCell {
     ExportButtonComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     ButtonDirective,
     InputText,
@@ -74,10 +75,10 @@ class CylinderTypeStatusCell {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Cylinder Types</h1>
-            <p class="page-subtitle">Define LPG cylinder sizes, weights and GST.</p>
-          </div>
+          <lpg-page-header
+            title="Cylinder Types"
+            subtitle="Define LPG cylinder sizes, weights and GST."
+          />
         </ng-template>
       </div>
 

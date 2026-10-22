@@ -32,6 +32,7 @@ import {
   DrawerA11yDirective,
   type DataGridColumn,
   ExportButtonComponent,
+  PageHeaderComponent,
 } from '@lpg/shared/ui';
 import { DATE_INPUT_PLACEHOLDER, formatDisplayDateTime } from '@lpg/shared/util';
 import {
@@ -72,6 +73,7 @@ interface Option<T> {
     ExportButtonComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     FormsModule,
     ButtonDirective,
     InputText,
@@ -91,10 +93,7 @@ interface Option<T> {
     <div class="audit-log-container">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Audit Log</h1>
-            <p class="page-subtitle">Who changed what, and when.</p>
-          </div>
+          <lpg-page-header title="Audit Log" subtitle="Who changed what, and when." />
         </ng-template>
       </div>
 

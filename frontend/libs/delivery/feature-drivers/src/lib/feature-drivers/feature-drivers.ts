@@ -32,6 +32,7 @@ import {
   HasPermissionDirective,
   StatusChipCell,
   type ChipSeverity,
+  PageHeaderComponent,
   toSentenceCase,
 } from '@lpg/shared/ui';
 import { ButtonDirective } from 'primeng/button';
@@ -100,6 +101,7 @@ type DriverRow = DriverResponse & {
   imports: [
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,

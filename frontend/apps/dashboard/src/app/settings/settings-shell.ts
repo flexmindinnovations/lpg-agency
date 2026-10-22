@@ -48,17 +48,30 @@ import { visibleSettingsGroups } from './settings-sections';
   `,
   styles: [
     `
+      :host {
+        display: block;
+        flex: 1 1 0;
+        min-block-size: 0;
+        block-size: 100%;
+        inline-size: 100%;
+      }
+
       .settings {
         display: grid;
         grid-template-columns: 14rem minmax(0, 1fr);
         gap: var(--spacing-lg);
-        align-items: start;
+        align-items: stretch;
+        block-size: 100%;
+        min-block-size: 0;
       }
 
       .settings__nav {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
+        flex-shrink: 0;
+        overflow-y: auto;
+        min-block-size: 0;
       }
 
       .settings__group {
@@ -118,11 +131,35 @@ import { visibleSettingsGroups } from './settings-sections';
       }
 
       /* Settings sections sit flat on the page: drop the border and shadow of
-         every card inside (hooks documented on SectionCardComponent). */
+         every card inside (hooks documented on SectionCardComponent).
+         Only content scrolls inside settings, and content stretches to full width.
+         The scrollbar sits flush at the extreme right edge (right: 0). */
       .settings__content {
         min-inline-size: 0;
+        inline-size: 100%;
+        block-size: 100%;
+        min-block-size: 0;
+        overflow-y: auto;
+        padding-inline-start: var(--spacing-sm);
+        padding-inline-end: var(--spacing-xl);
+        padding-block-end: var(--spacing-xl);
         --card-border: none;
         --card-shadow: none;
+      }
+
+      .settings__content ::ng-deep > * {
+        inline-size: 100%;
+      }
+
+      .settings__content ::ng-deep .admin-form-section,
+      .settings__content ::ng-deep .admin-form-section form,
+      .settings__content ::ng-deep .profile-card,
+      .settings__content ::ng-deep .detail-view,
+      .settings__content ::ng-deep .profile-page,
+      .settings__content ::ng-deep .admin-page,
+      .settings__content ::ng-deep .lpg-section-card {
+        max-inline-size: none !important;
+        inline-size: 100% !important;
       }
 
       /* Narrow screens: the nav becomes one horizontally scrolling row of

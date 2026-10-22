@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Tooltip } from 'primeng/tooltip';
 
 /**
- * The title block for a page — heading, optional subtitle, optional
+ * The title block for a page — heading, info-circle tooltip for subtitle, optional
  * back-link, and an `actions` slot.
  *
  * The dashboard shell portals page titles into its own fixed top bar via
@@ -18,7 +19,7 @@ import { RouterLink } from '@angular/router';
 @Component({
   selector: 'lpg-page-header',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, Tooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-header">
@@ -29,10 +30,19 @@ import { RouterLink } from '@angular/router';
             <span>{{ backLabel() }}</span>
           </a>
         }
-        <h1 class="page-header__title" [attr.title]="title()">{{ title() }}</h1>
-        @if (subtitle()) {
-          <p class="page-header__subtitle" [attr.title]="subtitle()">{{ subtitle() }}</p>
-        }
+        <div class="page-header__title-row">
+          <h1 class="page-header__title">{{ title() }}</h1>
+          @if (subtitle()) {
+            <i
+              class="pi pi-info-circle page-header__info"
+              [pTooltip]="subtitle()"
+              tooltipPosition="bottom"
+              [attr.aria-label]="subtitle()"
+              tabindex="0"
+              role="button"
+            ></i>
+          }
+        </div>
       </div>
       <div class="page-header__actions">
         <ng-content select="[actions]" />
@@ -47,7 +57,7 @@ import { RouterLink } from '@angular/router';
 
       .page-header {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
         gap: var(--spacing-md);
         flex-wrap: wrap;
@@ -56,32 +66,25 @@ import { RouterLink } from '@angular/router';
       .page-header__text {
         flex: 1 1 auto;
         min-inline-size: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .page-header__title-row {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        max-inline-size: 100%;
+        min-inline-size: 0;
       }
 
       /* One line each, ellipsis when narrow — never wraps into the header
          search beside it (QA UR-03). */
-      .page-header__title,
-      .page-header__subtitle {
+      .page-header__title {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-      }
-
-      .page-header__back {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-block-end: var(--spacing-xs);
-        font-size: var(--typography-caption-font-size);
-        color: var(--color-text-secondary);
-        text-decoration: none;
-      }
-
-      .page-header__back:hover {
-        color: var(--color-action-primary);
-      }
-
-      .page-header__title {
         margin: 0;
         font-size: var(--typography-heading1-font-size);
         font-weight: var(--typography-heading1-font-weight);
@@ -90,10 +93,37 @@ import { RouterLink } from '@angular/router';
         color: var(--color-text-primary);
       }
 
-      .page-header__subtitle {
-        margin: var(--spacing-xs) 0 0;
-        font-size: var(--typography-secondary-font-size);
+      .page-header__info {
+        font-size: 0.95rem;
         color: var(--color-text-secondary);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: color var(--motion-duration-fast) var(--motion-easing-standard);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px;
+        border-radius: var(--radius-sm);
+      }
+
+      .page-header__info:hover,
+      .page-header__info:focus-visible {
+        color: var(--color-action-primary);
+        outline: none;
+      }
+
+      .page-header__back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-block-end: 2px;
+        font-size: var(--typography-caption-font-size);
+        color: var(--color-text-secondary);
+        text-decoration: none;
+      }
+
+      .page-header__back:hover {
+        color: var(--color-action-primary);
       }
 
       .page-header__actions {

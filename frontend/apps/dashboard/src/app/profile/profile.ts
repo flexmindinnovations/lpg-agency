@@ -3,6 +3,7 @@ import {
   DetailItemComponent,
   DetailListComponent,
   FormFieldComponent,
+  PageHeaderComponent,
   SectionCardComponent,
 } from '@lpg/shared/ui';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
@@ -49,6 +50,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
     InputText,
     Message,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     SectionCardComponent,
     DetailListComponent,
     DetailItemComponent,
@@ -59,12 +61,10 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
     <div class="profile-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">My Profile</h1>
-            <p class="page-subtitle">
-              Your account details. Ask an administrator to change your email or role.
-            </p>
-          </div>
+          <lpg-page-header
+            title="My Profile"
+            subtitle="Your account details. Ask an administrator to change your email or role."
+          />
         </ng-template>
       </div>
 
@@ -108,7 +108,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
               [fluid]="true"
             />
           </lpg-form-field>
-          <div class="profile-form__actions">
+          <div class="modal-actions profile-form__actions">
             <button pButton type="submit" [disabled]="savingDetails() || detailsForm.pristine">
               {{ savingDetails() ? 'Saving…' : 'Save details' }}
             </button>
@@ -178,7 +178,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
           @if (passwordMismatch()) {
             <p class="profile-form__error" role="alert">Passwords do not match.</p>
           }
-          <div class="profile-form__actions">
+          <div class="modal-actions profile-form__actions">
             <button pButton type="submit" [disabled]="changingPassword()">
               {{ changingPassword() ? 'Updating…' : 'Update password' }}
             </button>
@@ -198,7 +198,8 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
       }
 
       .profile-card {
-        max-inline-size: 520px;
+        inline-size: 100%;
+        max-inline-size: none;
       }
 
       .profile-form {
@@ -210,6 +211,14 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
       .profile-form__actions {
         display: flex;
         justify-content: flex-end;
+        gap: var(--spacing-sm);
+        margin-inline: calc(-1 * var(--component-card-padding));
+        margin-block-end: calc(-1 * var(--component-card-padding));
+        padding-inline: var(--component-card-padding);
+        padding-block: var(--spacing-md);
+        border-block-start: var(--border-width) solid var(--color-border-default);
+        border-bottom-left-radius: var(--radius-card);
+        border-bottom-right-radius: var(--radius-card);
       }
 
       .profile-form__error {

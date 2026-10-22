@@ -26,7 +26,7 @@ import {
   type WarehouseResponse,
   errorMessageFor,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent, PageHeaderComponent } from '@lpg/shared/ui';
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
  * default, ignoring `valueFormatter` (same fix as Cylinder Types' own
@@ -63,6 +63,7 @@ class WarehouseStatusCell {
     InputText,
     DataGridComponent,
     FormFieldComponent,
+    PageHeaderComponent,
     Select,
     Drawer,
     DrawerA11yDirective,
@@ -74,10 +75,10 @@ class WarehouseStatusCell {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Warehouses</h1>
-            <p class="page-subtitle">Manage warehouse locations and branch assignments.</p>
-          </div>
+          <lpg-page-header
+            title="Warehouses"
+            subtitle="Manage warehouse locations and branch assignments."
+          />
         </ng-template>
       </div>
 

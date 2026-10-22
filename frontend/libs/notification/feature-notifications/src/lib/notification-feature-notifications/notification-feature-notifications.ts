@@ -13,7 +13,7 @@ import { ButtonDirective } from 'primeng/button';
 import { SelectButton } from 'primeng/selectbutton';
 import { FormsModule } from '@angular/forms';
 import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
-import { EmptyStateComponent, SkeletonComponent } from '@lpg/shared/ui';
+import { EmptyStateComponent, PageHeaderComponent, SkeletonComponent } from '@lpg/shared/ui';
 import {
   NotificationService,
   NotifyService,
@@ -35,6 +35,7 @@ type InboxFilter = 'all' | 'unread';
     DatePipe,
     FormsModule,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ButtonDirective,
     SelectButton,
     EmptyStateComponent,

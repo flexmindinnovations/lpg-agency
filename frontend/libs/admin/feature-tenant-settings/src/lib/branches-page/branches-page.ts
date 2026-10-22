@@ -22,7 +22,7 @@ import {
   type BranchResponse,
   errorMessageFor,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent, PageHeaderComponent } from '@lpg/shared/ui';
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
  * default, ignoring `valueFormatter` (same fix as Cylinder Types' own
@@ -54,6 +54,7 @@ class BranchStatusCell {
     ExportButtonComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     ButtonDirective,
     InputText,
@@ -69,10 +70,10 @@ class BranchStatusCell {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Branches</h1>
-            <p class="page-subtitle">Manage branch locations and regional assignments.</p>
-          </div>
+          <lpg-page-header
+            title="Branches"
+            subtitle="Manage branch locations and regional assignments."
+          />
         </ng-template>
       </div>
 

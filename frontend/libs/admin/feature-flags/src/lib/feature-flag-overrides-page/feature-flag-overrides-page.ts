@@ -1,5 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { FormFieldComponent } from '@lpg/shared/ui';
+import { FormFieldComponent, PageHeaderComponent } from '@lpg/shared/ui';
 
 import {
   ChangeDetectionStrategy,
@@ -40,6 +40,7 @@ function errorMessageFor(error: unknown): string {
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     ButtonDirective,
     Select,
@@ -51,10 +52,10 @@ function errorMessageFor(error: unknown): string {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Feature Flags</h1>
-            <p class="page-subtitle">Turn features on or off for your agency.</p>
-          </div>
+          <lpg-page-header
+            title="Feature Flags"
+            subtitle="Turn features on or off for your agency."
+          />
         </ng-template>
       </div>
       <p>Override a platform setting for your agency only.</p>
@@ -130,7 +131,8 @@ function errorMessageFor(error: unknown): string {
       }
 
       .admin-form-section {
-        max-inline-size: 480px;
+        inline-size: 100%;
+        max-inline-size: none;
       }
 
       .admin-form-section form {
