@@ -171,6 +171,36 @@
   font-size: var(--typography-body-small-font-size);
 }
 
+.order-item {
+  cursor: pointer;
+  transition:
+    border-color var(--motion-duration-small, 150ms),
+    background-color var(--motion-duration-small, 150ms);
+}
+
+.order-item:hover {
+  border-color: var(--color-action-primary, #0284c7);
+  background: var(--color-surface-overlay);
+}
+
+.order-number-link {
+  color: var(--color-action-primary, #0284c7);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+}
+
+.order-number-link:hover {
+  color: var(--color-action-primary-hover, #0369a1);
+}
+
+.order-link__icon {
+  font-size: 0.75rem;
+}
+
 .kyc-doc-info {
   display: flex;
   flex-direction: column;

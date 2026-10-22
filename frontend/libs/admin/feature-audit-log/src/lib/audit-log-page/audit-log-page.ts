@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -42,7 +43,9 @@ import {
   auditChanges,
   auditLogCsv,
   entityTypeLabel,
+  orderIdForEntry,
   recordLabel,
+  technicalIdentifiersOf,
 } from './audit-log-format';
 
 type ActionSeverity = 'success' | 'info' | 'danger' | 'secondary';
@@ -75,6 +78,7 @@ interface Option<T> {
     HeaderTitlePortalDirective,
     PageHeaderComponent,
     FormsModule,
+    RouterLink,
     ButtonDirective,
     InputText,
     IconFieldModule,
@@ -221,7 +225,19 @@ interface Option<T> {
           <div class="dialog-form__fields">
             <div class="audit-detail-header">
               <div class="audit-detail-header__title">
-                <span class="entity-name">{{ recordLabel(entry) }}</span>
+                @if (orderIdFor(entry); as orderId) {
+                  <a
+                    [routerLink]="['/orders', orderId]"
+                    (click)="drawerVisible = false"
+                    class="entity-name entity-link"
+                    title="View order details"
+                  >
+                    <span>{{ recordLabel(entry) }}</span>
+                    <i class="pi pi-external-link entity-link__icon" aria-hidden="true"></i>
+                  </a>
+                } @else {
+                  <span class="entity-name">{{ recordLabel(entry) }}</span>
+                }
                 <p-tag
                   [value]="actionLabel(entry.action)"
                   [severity]="actionSeverity(entry.action)"
@@ -271,25 +287,63 @@ interface Option<T> {
               }
             </section>
 
-            <details class="detail-section ids">
-              <summary class="section-label">Technical identifiers</summary>
+            <details class="detail-section ids" open>
+              <summary class="section-label-row">
+                <span class="section-label">Technical identifiers</span>
+                <button
+                  pButton
+                  type="button"
+                  severity="secondary"
+                  size="small"
+                  class="copy-json-btn"
+                  (click)="copyTechnicalIdentifiersAsJson(entry); $event.stopPropagation()"
+                  title="Copy all technical identifiers as JSON"
+                >
+                  <i
+                    class="pi"
+                    [class.pi-copy]="!copiedJson()"
+                    [class.pi-check]="copiedJson()"
+                    aria-hidden="true"
+                  ></i>
+                  <span>{{ copiedJson() ? 'Copied JSON!' : 'Copy as JSON' }}</span>
+                </button>
+              </summary>
               <dl class="info-grid">
-                <div class="info-item">
-                  <dt class="info-label">Record ID</dt>
-                  <dd class="info-value mono">{{ entry.entity_id || '—' }}</dd>
-                </div>
-                <div class="info-item">
-                  <dt class="info-label">User ID</dt>
-                  <dd class="info-value mono">{{ entry.actor_id || 'System' }}</dd>
-                </div>
-                <div class="info-item">
-                  <dt class="info-label">Correlation ID</dt>
-                  <dd class="info-value mono">{{ entry.correlation_id || '—' }}</dd>
-                </div>
-                <div class="info-item">
-                  <dt class="info-label">Log ID</dt>
-                  <dd class="info-value mono">{{ entry.id }}</dd>
-                </div>
+                @for (item of technicalIdentifiers(entry); track item.key) {
+                  <div class="info-item">
+                    <dt class="info-label">{{ item.label }}</dt>
+                    <dd class="info-value">
+                      <span class="mono">{{ item.value }}</span>
+                      <div class="info-actions">
+                        <button
+                          type="button"
+                          class="copy-icon-btn"
+                          (click)="copyValue(item.value, item.key)"
+                          [title]="copiedKey() === item.key ? 'Copied!' : 'Copy ' + item.label"
+                          [attr.aria-label]="'Copy ' + item.label"
+                        >
+                          <i
+                            class="pi"
+                            [class.pi-copy]="copiedKey() !== item.key"
+                            [class.pi-check]="copiedKey() === item.key"
+                            aria-hidden="true"
+                          ></i>
+                        </button>
+                        @if (item.isOrderId) {
+                          <a
+                            [routerLink]="['/orders', item.value]"
+                            (click)="drawerVisible = false"
+                            class="copy-icon-btn"
+                            title="View order details"
+                            aria-label="View order details"
+                          >
+                            <i class="pi pi-external-link" aria-hidden="true"></i>
+                          </a>
+                        }
+                      </div>
+                    </dd>
+                  </div>
+                }
               </dl>
             </details>
           </div>
@@ -342,6 +396,38 @@ interface Option<T> {
         font-size: var(--typography-heading3-font-size);
         font-weight: var(--typography-heading3-font-weight);
         color: var(--color-text-primary);
+      }
+
+      .entity-link {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        color: var(--color-action-primary, #0284c7);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        cursor: pointer;
+      }
+
+      .entity-link:hover {
+        color: var(--color-action-primary-hover, #0369a1);
+      }
+
+      .entity-link__icon {
+        font-size: 0.75rem;
+      }
+
+      .section-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        padding-block-end: var(--spacing-xs);
+      }
+
+      .copy-json-btn {
+        font-size: var(--typography-caption-font-size);
+        padding: 2px 8px;
+        height: auto;
       }
 
       .audit-detail-header__meta,
@@ -419,6 +505,38 @@ interface Option<T> {
         font-size: var(--typography-body-small-font-size);
         color: var(--color-text-primary);
         overflow-wrap: anywhere;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-xs);
+      }
+
+      .info-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        flex-shrink: 0;
+      }
+
+      .copy-icon-btn {
+        background: transparent;
+        border: none;
+        padding: 4px;
+        border-radius: var(--radius-xs, 4px);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background-color 0.15s,
+          color 0.15s;
+        font-size: 0.75rem;
+      }
+
+      .copy-icon-btn:hover {
+        background: var(--color-surface-overlay);
+        color: var(--color-text-primary);
       }
 
       .mono {
@@ -503,12 +621,38 @@ export class AuditLogPage implements OnInit {
     this.showDrawer.set(value);
   }
 
+  protected readonly copiedKey = signal<string | null>(null);
+  protected readonly copiedJson = signal(false);
+
   protected readonly formatTime = formatDisplayDateTime;
   protected readonly recordLabel = recordLabel;
   protected readonly actorLabel = actorLabel;
   protected readonly actionLabel = actionLabel;
   protected readonly entityTypeLabel = entityTypeLabel;
   protected readonly changesOf = auditChanges;
+  protected readonly technicalIdentifiers = technicalIdentifiersOf;
+  protected readonly orderIdFor = orderIdForEntry;
+
+  protected copyValue(val: string, key: string): void {
+    if (!val || val === '—') return;
+    navigator.clipboard?.writeText(val);
+    this.copiedKey.set(key);
+    setTimeout(() => {
+      if (this.copiedKey() === key) this.copiedKey.set(null);
+    }, 2000);
+  }
+
+  protected copyTechnicalIdentifiersAsJson(entry: AuditLogEntryResponse): void {
+    const ids = technicalIdentifiersOf(entry);
+    const obj: Record<string, string> = {};
+    for (const item of ids) {
+      obj[item.key] = item.value;
+    }
+    const jsonStr = JSON.stringify(obj, null, 2);
+    navigator.clipboard?.writeText(jsonStr);
+    this.copiedJson.set(true);
+    setTimeout(() => this.copiedJson.set(false), 2000);
+  }
 
   protected actionSeverity(action: string): ActionSeverity {
     return ACTION_SEVERITY[action] ?? 'secondary';

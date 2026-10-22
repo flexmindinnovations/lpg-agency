@@ -43,56 +43,150 @@
         (ngModelChange)="onFilterDateChange($event)"
       />
     </div>
+
+    <div class="toolbar-actions">
+      <!-- View mode switcher: Kanban vs Table -->
+      <div class="view-mode-toggle" role="group" aria-label="View format">
+        <button
+          pButton
+          type="button"
+          size="small"
+          [severity]="viewMode() === 'kanban' ? 'primary' : 'secondary'"
+          (click)="viewMode.set('kanban')"
+          title="Kanban board view"
+          aria-label="Kanban board view"
+        >
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+          <span class="hidden sm:inline">Kanban</span>
+        </button>
+        <button
+          pButton
+          type="button"
+          size="small"
+          [severity]="viewMode() === 'table' ? 'primary' : 'secondary'"
+          (click)="viewMode.set('table')"
+          title="Tabular table view"
+          aria-label="Tabular table view"
+        >
+          <i class="pi pi-table" aria-hidden="true"></i>
+          <span class="hidden sm:inline">Table</span>
+        </button>
+      </div>
+
+      <!-- Toggle orders waiting for a trip -->
+      <button
+        pButton
+        type="button"
+        size="small"
+        [severity]="showUnassignedPanel() ? 'primary' : 'secondary'"
+        (click)="showUnassignedPanel.set(!showUnassignedPanel())"
+        title="Toggle orders waiting for a trip"
+      >
+        <i class="pi pi-inbox" aria-hidden="true"></i>
+        <span>Waiting ({{ unassignedOrders().length }})</span>
+      </button>
+    </div>
   </div>
 
   <div class="dispatch-layout">
-    <div class="route-board">
+    @if (viewMode() === 'kanban') {
+    <div class="jira-kanban-board">
       @for (status of statusColumns; track status) {
-      <div class="route-column">
-        <div class="route-column__header">
-          <span>{{ statusLabel(status) }}</span>
-          <span class="route-column__count">{{ (routesByStatus().get(status) ?? []).length }}</span>
+      <div class="jira-column" [attr.data-status]="status">
+        <div class="jira-column__header">
+          <div class="jira-column__header-indicator"></div>
+          <div class="jira-column__header-content">
+            <span class="jira-column__title">{{ statusLabel(status) }}</span>
+            <span class="jira-column__count-badge"
+              >{{ (routesByStatus().get(status) ?? []).length }}</span
+            >
+          </div>
         </div>
-        <div class="route-column__cards">
+        <div class="jira-column__cards">
           @for (route of routesByStatus().get(status); track route.id) {
-          <button type="button" class="route-card" (click)="openRouteDetail(route)">
-            <div class="route-card__row">
-              <span class="route-card__date">{{ route.date | date: 'mediumDate' }}</span>
+          <div
+            class="jira-card"
+            (click)="openRouteDetail(route)"
+            tabindex="0"
+            role="button"
+            (keydown.enter)="openRouteDetail(route)"
+            (keydown.space)="openRouteDetail(route)"
+          >
+            <div class="jira-card__header">
+              <span class="jira-card__date">
+                <i class="pi pi-calendar" aria-hidden="true"></i>
+                {{ route.date | date: 'mediumDate' }}
+              </span>
               <p-tag
                 [severity]="statusSeverity(route.status)"
                 [value]="statusLabel(route.status)"
               />
             </div>
-            <div class="route-card__row">
-              <i class="pi pi-id-card"></i>
-              <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+            <div class="jira-card__body">
+              <div class="jira-card__row">
+                <i class="pi pi-id-card jira-card__icon" aria-hidden="true"></i>
+                <span class="jira-card__text"
+                  >{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span
+                >
+              </div>
+              <div class="jira-card__row">
+                <i class="pi pi-truck jira-card__icon" aria-hidden="true"></i>
+                <span class="jira-card__text"
+                  >{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span
+                >
+              </div>
             </div>
-            <div class="route-card__row">
-              <i class="pi pi-truck"></i>
-              <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+            <div class="jira-card__footer">
+              <span class="jira-card__stops">
+                <i class="pi pi-map-marker" aria-hidden="true"></i>
+                <strong>{{ route.stops?.length ?? 0 }}</strong> order(s)
+              </span>
+              <span class="jira-card__action-hint">
+                <span>View</span>
+                <i class="pi pi-arrow-right" aria-hidden="true"></i>
+              </span>
             </div>
-            <div class="route-card__row">
-              <i class="pi pi-map-marker"></i>
-              <span>{{ route.stops?.length ?? 0 }} order(s)</span>
-            </div>
-          </button>
+          </div>
           } @empty {
-          <p class="empty-hint">No trips.</p>
+          <div class="jira-column__empty">
+            <i class="pi pi-inbox jira-column__empty-icon" aria-hidden="true"></i>
+            <span>No trips</span>
+          </div>
           }
         </div>
       </div>
       }
     </div>
-
+    } @else {
+    <div class="dispatch-table-view">
+      <lpg-data-grid
+        [rows]="routes()"
+        [columns]="routeColumns"
+        [loading]="loading()"
+        ariaLabel="Dispatch routes list"
+        emptyMessage="No trips found for the selected branch and date."
+      />
+    </div>
+    } @if (showUnassignedPanel()) {
     <aside class="unassigned-panel">
-      <h2 class="section-title">Orders waiting for a trip</h2>
+      <div class="unassigned-panel__header">
+        <h2 class="section-title">Orders waiting for a trip</h2>
+        <button
+          type="button"
+          class="unassigned-panel__close-btn"
+          (click)="showUnassignedPanel.set(false)"
+          aria-label="Close waiting orders panel"
+        >
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      </div>
       <div class="unassigned-list">
         @for (order of unassignedOrders(); track order.id) {
         <div class="unassigned-card">
           <div class="unassigned-card__info">
-            <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top"
-              >{{ order.order_number ?? shortId(order.id) }}</span
-            >
+            <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top">
+              {{ order.order_number ?? shortId(order.id) }}
+            </span>
             <span class="unassigned-card__addr">{{ order.delivery_address.address_line }}</span>
             <span class="unassigned-card__addr">{{ orderCylinders(order) }}</span>
           </div>
@@ -111,6 +205,7 @@
         }
       </div>
     </aside>
+    }
   </div>
 </div>
 

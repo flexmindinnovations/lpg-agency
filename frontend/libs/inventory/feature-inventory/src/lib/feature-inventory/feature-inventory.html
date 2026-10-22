@@ -257,6 +257,7 @@
     [rows]="transactions()"
     [columns]="transactionColumns"
     [loading]="loading()"
+    emptyMessage="No inventory transactions recorded yet."
     ariaLabel="Inventory transaction history"
   />
   @if (transactionsCursor()) {

@@ -396,13 +396,18 @@
               @for (order of customerOrders(); track order.id) {
               <div class="kyc-doc-item">
                 <div class="kyc-doc-info">
-                  <a class="text-sm" [routerLink]="['/orders', order.id]"
-                    ><strong>{{ order.order_number }}</strong></a
+                  <a
+                    class="order-number-link text-sm"
+                    [routerLink]="['/orders', order.id]"
+                    (click)="navigateToOrder(order.id); $event.stopPropagation()"
                   >
-                  <span class="text-sm">{{ formatDate(order.requested_date) }}</span>
+                    <strong>{{ order.order_number }}</strong>
+                    <i class="pi pi-external-link order-link__icon" aria-hidden="true"></i>
+                  </a>
+                  <span class="text-sm text-secondary">{{ formatDate(order.requested_date) }}</span>
                 </div>
                 <div class="flex gap-2 items-center">
-                  <span class="text-sm">{{ formatAmount(order.total_amount) }}</span>
+                  <span class="text-sm font-semibold">{{ formatAmount(order.total_amount) }}</span>
                   <p-tag severity="secondary" [value]="orderStatusLabel(order.status)" />
                 </div>
               </div>
