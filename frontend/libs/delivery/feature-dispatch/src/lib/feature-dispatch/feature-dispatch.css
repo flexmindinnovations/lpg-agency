@@ -58,11 +58,115 @@
   border: none !important;
 }
 
+/* -----------------------------------------------------------------------------
+ * Atlassian Workflow Stage Tab Bar
+ * -------------------------------------------------------------------------- */
+.atlassian-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 2px solid var(--color-border-default, #e2e8f0);
+  padding-block-end: 2px;
+  background: var(--color-surface-base, #ffffff);
+  border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+  padding-inline: 4px;
+}
+
+.atlassian-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary, #64748b);
+  font-size: var(--typography-body-small-font-size, 13px);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.atlassian-tab:hover {
+  color: var(--color-text-primary, #0f172a);
+  background: var(--color-surface-overlay, #f8fafc);
+}
+
+.atlassian-tab--active {
+  color: var(--color-action-primary, #0284c7) !important;
+  background: var(--color-surface-overlay, #f0f9ff);
+  font-weight: 700;
+}
+
+.atlassian-tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-action-primary, #0284c7);
+  border-radius: 2px 2px 0 0;
+}
+
+.atlassian-tab__icon {
+  font-size: 0.9rem;
+}
+
+.atlassian-tab__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.atlassian-tab__dot--waiting {
+  background: #f59e0b;
+}
+.atlassian-tab__dot--planned {
+  background: #64748b;
+}
+.atlassian-tab__dot--loaded {
+  background: #0284c7;
+}
+.atlassian-tab__dot--in_progress {
+  background: #d97706;
+}
+.atlassian-tab__dot--completed {
+  background: #7c3aed;
+}
+.atlassian-tab__dot--reconciled {
+  background: #059669;
+}
+.atlassian-tab__dot--cancelled {
+  background: #e11d48;
+}
+
+.atlassian-tab__badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--color-surface-overlay, #f1f5f9);
+  color: var(--color-text-secondary, #475569);
+}
+
+.atlassian-tab__badge--waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* -----------------------------------------------------------------------------
+ * Layout & Table View
+ * -------------------------------------------------------------------------- */
 .dispatch-layout {
   display: flex;
   gap: var(--spacing-md);
   align-items: stretch;
-  min-block-size: calc(100vh - 230px);
+  min-block-size: calc(100vh - 250px);
   inline-size: 100%;
 }
 
@@ -72,90 +176,168 @@
   block-size: 100%;
 }
 
-/* Jira Kanban Board */
-.jira-kanban-board {
+/* -----------------------------------------------------------------------------
+ * Atlassian Tabular Kanban Board
+ * -------------------------------------------------------------------------- */
+.atlassian-board {
   display: flex;
-  gap: var(--spacing-md, 16px);
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-block-end: var(--spacing-md);
+  flex-direction: column;
   flex: 1 1 auto;
   min-inline-size: 0;
+  border: 1px solid var(--color-border-default, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--color-surface-base, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Top Workflow Category Header Bar (mimicking reference image) */
+.atlassian-board__category-bar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(230px, 1fr));
+  min-inline-size: 1610px;
+  border-bottom: 2px solid var(--color-border-default, #cbd5e1);
+  background: var(--color-surface-base, #ffffff);
+}
+
+.atlassian-board__category {
+  padding: 7px 12px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.atlassian-board__category--backlog {
+  grid-column: span 1;
+  background: #475569;
+}
+
+.atlassian-board__category--prep {
+  grid-column: span 2;
+  background: #0284c7;
+}
+
+.atlassian-board__category--in-progress {
+  grid-column: span 2;
+  background: #f59e0b;
+  color: #78350f;
+  font-weight: 900;
+}
+
+.atlassian-board__category--completed {
+  grid-column: span 1;
+  background: #10b981;
+}
+
+.atlassian-board__category--cancelled {
+  grid-column: span 1;
+  background: #ef4444;
+}
+
+/* Columns Grid */
+.atlassian-board__columns-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(230px, 1fr));
+  min-inline-size: 1610px;
+  flex: 1 1 auto;
   align-items: stretch;
 }
 
-.jira-column {
-  flex: 1 1 270px;
-  min-inline-size: 260px;
-  max-inline-size: 340px;
-  background: var(--color-surface-overlay, #f8fafc);
-  border: 1px solid var(--color-border-default, #e2e8f0);
-  border-radius: var(--radius-lg, 10px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+.atlassian-board__columns-grid--single {
+  grid-template-columns: 1fr !important;
+  min-inline-size: 100% !important;
 }
 
-.jira-column__header {
+/* Board Column */
+.atlassian-col {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface-overlay, #f8fafc);
+  border-right: 1px solid var(--color-border-default, #e2e8f0);
+  min-block-size: 450px;
+}
+
+.atlassian-col:last-child {
+  border-right: none;
+}
+
+.atlassian-col--expanded {
+  border-right: none !important;
+}
+
+.atlassian-col__header {
   display: flex;
   flex-direction: column;
   background: var(--color-surface-base, #ffffff);
-  border-block-end: 1px solid var(--color-border-default, #e2e8f0);
-  padding: var(--spacing-sm) var(--spacing-md);
-  gap: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border-default, #e2e8f0);
+  padding: var(--spacing-sm, 10px) var(--spacing-md, 14px);
+  gap: 8px;
 }
 
-.jira-column__header-indicator {
+.atlassian-col__indicator {
   inline-size: 100%;
   block-size: 3px;
   border-radius: 2px;
   background: var(--column-indicator-color, #64748b);
 }
 
-.jira-column[data-status='planned'] {
-  --column-indicator-color: #64748b;
-}
-.jira-column[data-status='loaded'] {
-  --column-indicator-color: #0284c7;
-}
-.jira-column[data-status='in_progress'] {
-  --column-indicator-color: #d97706;
-}
-.jira-column[data-status='completed'] {
-  --column-indicator-color: #7c3aed;
-}
-.jira-column[data-status='reconciled'] {
-  --column-indicator-color: #059669;
-}
-.jira-column[data-status='cancelled'] {
-  --column-indicator-color: #e11d48;
+.atlassian-col__indicator--waiting {
+  background: #f59e0b;
 }
 
-.jira-column__header-content {
+.atlassian-col__indicator[data-status='planned'] {
+  background: #64748b;
+}
+.atlassian-col__indicator[data-status='loaded'] {
+  background: #0284c7;
+}
+.atlassian-col__indicator[data-status='in_progress'] {
+  background: #d97706;
+}
+.atlassian-col__indicator[data-status='completed'] {
+  background: #7c3aed;
+}
+.atlassian-col__indicator[data-status='reconciled'] {
+  background: #059669;
+}
+.atlassian-col__indicator[data-status='cancelled'] {
+  background: #e11d48;
+}
+
+.atlassian-col__header-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.jira-column__title {
-  font-size: var(--typography-body-small-font-size, 13px);
+.atlassian-col__title {
+  font-size: var(--typography-body-small-font-size, 12px);
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--color-text-primary, #1e293b);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
-.jira-column__count-badge {
-  font-size: var(--typography-caption-font-size, 12px);
-  font-weight: 600;
+.atlassian-col__badge {
+  font-size: var(--typography-caption-font-size, 11px);
+  font-weight: 700;
   padding: 1px 7px;
   border-radius: var(--radius-full, 9999px);
   background: var(--color-surface-overlay, #f1f5f9);
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary, #475569);
 }
 
-.jira-column__cards {
+.atlassian-col__badge--waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Cards Area inside Column */
+.atlassian-col__cards {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm, 10px);
@@ -165,13 +347,16 @@
   max-block-size: calc(100vh - 290px);
 }
 
+/* -----------------------------------------------------------------------------
+ * Jira Card Design
+ * -------------------------------------------------------------------------- */
 .jira-card {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs, 6px);
   padding: var(--spacing-sm, 12px);
   border: 1px solid var(--color-border-default, #e2e8f0);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md, 10px);
   background: var(--color-surface-base, #ffffff);
   cursor: pointer;
   text-align: left;
@@ -179,15 +364,54 @@
     transform 0.15s ease,
     box-shadow 0.15s ease,
     border-color 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .jira-card:hover,
 .jira-card:focus-visible {
   border-color: var(--color-action-primary, #0284c7);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
   outline: none;
+}
+
+/* Status-specific left border indicator (mimicking Atlassian issue card tags) */
+.jira-card[data-status='planned'] {
+  border-left: 4px solid #64748b;
+}
+.jira-card[data-status='loaded'] {
+  border-left: 4px solid #0284c7;
+}
+.jira-card[data-status='in_progress'] {
+  border-left: 4px solid #d97706;
+}
+.jira-card[data-status='completed'] {
+  border-left: 4px solid #7c3aed;
+}
+.jira-card[data-status='reconciled'] {
+  border-left: 4px solid #059669;
+}
+.jira-card[data-status='cancelled'] {
+  border-left: 4px solid #e11d48;
+}
+
+/* Waiting Order Card */
+.jira-card--waiting {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-left: 4px solid #f59e0b;
+}
+
+.jira-card--waiting:hover {
+  border-color: #f59e0b;
+}
+
+.jira-card__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--typography-caption-font-size, 12px);
+  color: #92400e;
 }
 
 .jira-card__header {
@@ -201,9 +425,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--typography-caption-font-size, 12px);
+  font-size: var(--typography-caption-font-size, 11px);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary, #64748b);
 }
 
 .jira-card__body {
@@ -226,6 +450,7 @@
   color: var(--color-text-secondary);
   inline-size: 1rem;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .jira-card__text {
@@ -258,21 +483,27 @@
   font-weight: 600;
 }
 
-.jira-column__empty {
+.jira-card__action-btn {
+  padding: 2px 10px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+}
+
+/* Empty Column State */
+.atlassian-col__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-lg) var(--spacing-sm);
+  padding: 36px var(--spacing-sm);
   border: 1px dashed var(--color-border-default, #cbd5e1);
   border-radius: var(--radius-md, 8px);
   color: var(--color-text-secondary, #94a3b8);
   font-size: var(--typography-caption-font-size, 12px);
-  gap: 4px;
-}
-
-.jira-column__empty-icon {
-  font-size: 1.25rem;
+  text-align: center;
+  gap: 6px;
+  margin: var(--spacing-xs);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 /* Unassigned Panel */
