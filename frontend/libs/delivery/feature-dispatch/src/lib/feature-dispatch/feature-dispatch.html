@@ -234,7 +234,7 @@
             <div class="jira-card jira-card--waiting">
               <div class="jira-card__header">
                 <span class="jira-card__key" [title]="order.id">
-                  <i class="pi pi-tag text-xs text-amber-600" aria-hidden="true"></i>
+                  <i class="pi pi-tag jira-card__key-icon" aria-hidden="true"></i>
                   <strong>{{ order.order_number ?? shortId(order.id) }}</strong>
                 </span>
                 <span class="jira-card__date">
@@ -245,23 +245,19 @@
               <div class="jira-card__body">
                 <div class="jira-card__row">
                   <i class="pi pi-user jira-card__icon" aria-hidden="true"></i>
-                  <span class="jira-card__text font-medium">{{ orderCustomerName(order) }}</span>
+                  <span class="jira-card__customer">{{ orderCustomerName(order) }}</span>
                 </div>
                 <div class="jira-card__row">
                   <i class="pi pi-map-marker jira-card__icon" aria-hidden="true"></i>
-                  <span class="jira-card__text text-xs text-slate-500 line-clamp-1"
-                    >{{ order.delivery_address.address_line }}</span
-                  >
+                  <span class="jira-card__addr">{{ order.delivery_address.address_line }}</span>
                 </div>
                 <div class="jira-card__row">
-                  <i class="pi pi-box jira-card__icon text-amber-700" aria-hidden="true"></i>
-                  <span class="jira-card__text text-xs text-amber-800 font-medium"
-                    >{{ orderCylinders(order) }}</span
-                  >
+                  <i class="pi pi-box jira-card__icon" aria-hidden="true"></i>
+                  <span class="jira-card__cylinders">{{ orderCylinders(order) }}</span>
                 </div>
               </div>
               <div class="jira-card__footer">
-                <span class="jira-card__amount text-xs text-slate-600">
+                <span class="jira-card__amount">
                   @if (order.total_amount) { ₹{{ order.total_amount }} }
                 </span>
                 <button
@@ -272,16 +268,19 @@
                   class="jira-card__action-btn"
                   (click)="openNewTrip(order)"
                 >
-                  <i class="pi pi-plus text-xs" aria-hidden="true"></i>
+                  <i class="pi pi-plus" aria-hidden="true"></i>
                   <span>Plan Trip</span>
                 </button>
               </div>
             </div>
             } @empty {
             <div class="atlassian-col__empty">
-              <i class="pi pi-check-circle text-emerald-500 text-2xl" aria-hidden="true"></i>
-              <span class="font-medium text-slate-700">All orders dispatched</span>
-              <p class="text-xs text-slate-400">No confirmed orders waiting for a trip</p>
+              <i
+                class="pi pi-check-circle atlassian-col__empty-icon--success"
+                aria-hidden="true"
+              ></i>
+              <span class="atlassian-col__empty-title">All orders dispatched</span>
+              <p class="atlassian-col__empty-subtitle">No confirmed orders waiting for a trip</p>
             </div>
             }
           </div>
@@ -342,19 +341,19 @@
               </div>
               <div class="jira-card__footer">
                 <span class="jira-card__stops">
-                  <i class="pi pi-map-marker text-xs" aria-hidden="true"></i>
+                  <i class="pi pi-map-marker" aria-hidden="true"></i>
                   <strong>{{ route.stops?.length ?? 0 }}</strong> order(s)
                 </span>
                 <span class="jira-card__action-hint">
                   <span>View</span>
-                  <i class="pi pi-arrow-right text-xs" aria-hidden="true"></i>
+                  <i class="pi pi-arrow-right" aria-hidden="true"></i>
                 </span>
               </div>
             </div>
             } @empty {
             <div class="atlassian-col__empty">
-              <i class="pi pi-inbox text-slate-300 text-2xl" aria-hidden="true"></i>
-              <span class="font-medium text-slate-600">No trips</span>
+              <i class="pi pi-inbox atlassian-col__empty-icon" aria-hidden="true"></i>
+              <span class="atlassian-col__empty-title">No trips</span>
             </div>
             }
           </div>
