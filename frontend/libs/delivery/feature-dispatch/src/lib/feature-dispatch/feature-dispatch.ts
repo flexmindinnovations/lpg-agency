@@ -1,5 +1,5 @@
 import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
-import { HasPermissionDirective, shortId } from '@lpg/shared/ui';
+import { HasPermissionDirective, PageHeaderComponent, shortId } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -140,6 +140,7 @@ function toDateOnlyString(date: Date): string {
   imports: [
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     DatePipe,
     FormsModule,
     ReactiveFormsModule,

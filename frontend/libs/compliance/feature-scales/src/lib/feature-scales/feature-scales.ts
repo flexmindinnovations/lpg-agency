@@ -22,6 +22,7 @@ import {
   DocumentUploadComponent,
   FormFieldComponent,
   HasPermissionDirective,
+  PageHeaderComponent,
   StatusChipCell,
   type ChipSeverity,
   toSentenceCase,
@@ -80,6 +81,7 @@ const MAX_LEAST_COUNT_GRAMS = 10;
   imports: [
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,

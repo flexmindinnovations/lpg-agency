@@ -5,6 +5,7 @@ import {
   SectionCardComponent,
   formatTimestamp,
   FormFieldComponent,
+  PageHeaderComponent,
 } from '@lpg/shared/ui';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -46,6 +47,7 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     ButtonDirective,
     InputText,
@@ -60,10 +62,7 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">License</h1>
-            <p class="page-subtitle">Your product licence.</p>
-          </div>
+          <lpg-page-header title="License" subtitle="Your product licence." />
         </ng-template>
       </div>
 
@@ -127,7 +126,8 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
       }
 
       .admin-form-section {
-        max-inline-size: 480px;
+        inline-size: 100%;
+        max-inline-size: none;
       }
 
       .admin-form-section form {
@@ -145,7 +145,8 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
       /* No top margin — first block in the Settings content column, level
          with the Settings nav (see profile.ts). */
       .detail-view {
-        max-inline-size: 480px;
+        inline-size: 100%;
+        max-inline-size: none;
       }
     `,
   ],

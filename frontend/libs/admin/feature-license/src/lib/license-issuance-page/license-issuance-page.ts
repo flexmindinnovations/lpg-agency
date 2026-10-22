@@ -22,6 +22,7 @@ import {
   DetailItemComponent,
   DetailListComponent,
   FormFieldComponent,
+  PageHeaderComponent,
   StatusChipCell,
   type ChipSeverity,
   type DataGridColumn,
@@ -61,16 +62,14 @@ const VALIDITY_OPTIONS = [
     FormFieldComponent,
     DetailListComponent,
     DetailItemComponent,
+    PageHeaderComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">License Issuance</h1>
-            <p class="page-subtitle">Issue and manage agency licences.</p>
-          </div>
+          <lpg-page-header title="License Issuance" subtitle="Issue and manage agency licences." />
         </ng-template>
       </div>
 

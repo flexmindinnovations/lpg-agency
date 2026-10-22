@@ -40,6 +40,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         border-radius: var(--radius-card);
         padding: var(--component-card-padding);
         box-shadow: var(--card-shadow, var(--elevation-1));
+        overflow: hidden;
       }
 
       .section-card__header {

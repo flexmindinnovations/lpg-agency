@@ -248,22 +248,18 @@ body {
   color: var(--color-text-primary);
 }
 
-/* Title and subtitle each stay on one line in the shell's top bar and end
-   in an ellipsis when the bar is narrow, so they never push into the header
-   search (QA UR-02/UR-03). Keep subtitles short — a few plain words. */
-.page-title,
-.page-subtitle {
+/* Title stays on one line in the shell's top bar and ends
+   in an ellipsis when the bar is narrow, so it never pushes into the header
+   search (QA UR-02/UR-03). Descriptions are accessible via the info icon
+   tooltip on hover/focus to keep the header compact. */
+.page-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .page-subtitle {
-  font-size: var(--typography-body-small-font-size);
-  color: var(--color-text-secondary);
-  margin: var(--spacing-xs) 0 0 0;
-  max-inline-size: 90ch;
-  line-height: var(--typography-body-line-height);
+  display: none !important;
 }
 
 .page-lede {
@@ -640,7 +636,8 @@ body {
   line-height: var(--typography-caption-line-height);
 }
 
-.modal-actions {
+.modal-actions,
+.card-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-sm);
@@ -651,6 +648,19 @@ body {
   flex: 0 0 auto;
   padding-block-start: var(--spacing-md);
   border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+/* Card action footers: full-bleed divider spanning end to end of the card width */
+lpg-section-card .modal-actions,
+lpg-section-card .card-actions,
+lpg-section-card .profile-form__actions {
+  margin-inline: calc(-1 * var(--component-card-padding));
+  margin-block-end: calc(-1 * var(--component-card-padding));
+  padding-inline: var(--component-card-padding);
+  padding-block: var(--spacing-md);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+  border-bottom-left-radius: var(--radius-card);
+  border-bottom-right-radius: var(--radius-card);
 }
 
 /* ========================================================================
@@ -707,29 +717,6 @@ p-dialog,
 p-confirmdialog,
 p-confirmpopup {
   display: contents;
-}
-
-/* Dialog panel — solid elevated surface. */
-.p-dialog {
-  border-radius: var(--radius-dialog) !important;
-  background: var(--surface-acrylic) !important;
-  box-shadow: var(--surface-acrylic-shadow) !important;
-  border: var(--border-width) solid var(--surface-acrylic-border) !important;
-}
-
-.p-dialog .p-dialog-header {
-  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm) !important;
-  border-bottom: none !important;
-}
-
-.p-dialog .p-dialog-header .p-dialog-title {
-  font-size: var(--typography-heading2-font-size) !important;
-  font-weight: var(--typography-heading2-font-weight) !important;
-  letter-spacing: -0.01em;
-}
-
-.p-dialog .p-dialog-content {
-  padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg) !important;
 }
 
 /* Drawer panel — solid elevated surface. The slide-in is PrimeNG's own
@@ -859,18 +846,27 @@ p-confirmpopup {
 }
 
 .p-dialog .p-dialog-content {
-  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) !important;
+  padding: var(--spacing-md) var(--spacing-lg) !important;
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
+  overscroll-behavior: contain;
 }
 
-.p-dialog:has(.p-dialog-footer) .p-dialog-content {
-  padding-block-end: var(--spacing-md) !important;
+/* Ensure inner containers do not trap their own scrollbars or indent them away from right: 0.
+   The dialog content container itself provides the scrollbar at extreme right: 0. */
+.p-dialog .dialog-form__fields,
+.p-dialog .permissions-container {
+  overflow-y: visible !important;
+  max-height: none !important;
+  padding-right: 0 !important;
 }
 
+/* Dialog footer pinned at the bottom — never scrollable.
+   Equal top and bottom padding ensures action buttons are vertically centered at the bottom. */
 .p-dialog .p-dialog-footer {
-  padding: var(--spacing-md) var(--spacing-lg) !important;
+  padding-block: var(--spacing-md) !important;
+  padding-inline: var(--spacing-lg) !important;
   border-top: var(--border-width) solid var(--color-border-default) !important;
   flex-shrink: 0 !important;
   display: flex !important;
@@ -880,9 +876,35 @@ p-confirmpopup {
 }
 
 .p-dialog .p-dialog-footer .modal-actions {
-  padding-block-start: 0 !important;
-  border-block-start: none !important;
-  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: var(--spacing-sm) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  width: auto !important;
+}
+
+/* Inline modal actions (fallback when placed inside dialog content without a footer template):
+   pinned sticky at the bottom with full-bleed divider and equal top and bottom padding,
+   so buttons stay fixed at the bottom while content scrolls independently above them. */
+.p-dialog .p-dialog-content .modal-actions {
+  position: sticky !important;
+  bottom: 0 !important;
+  background-color: var(--color-surface-raised) !important;
+  border-top: var(--border-width) solid var(--color-border-default) !important;
+  margin-inline: calc(-1 * var(--spacing-lg)) !important;
+  padding-inline: var(--spacing-lg) !important;
+  padding-block: var(--spacing-md) !important;
+  margin-block-end: calc(-1 * var(--spacing-md)) !important;
+  margin-block-start: var(--spacing-md) !important;
+  flex-shrink: 0 !important;
+  z-index: 10 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
 }
 
 /* Notification drawer: the content is a flex column with its own padding
@@ -924,13 +946,56 @@ p-confirmpopup {
 /* Compact action buttons (ADR-064): page actions in the breadcrumb row, and
    every button inside a drawer or dialog (footers, action rows). Same
    specificity chain as the control-height rule above, later in the file. */
+.shell__breadcrumb-wrapper {
+  flex-wrap: nowrap !important;
+}
+
+.shell__breadcrumb-wrapper .shell__breadcrumb {
+  flex: 0 0 auto !important;
+}
+
+.shell__page-actions {
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  gap: var(--spacing-xs) !important;
+  flex: 0 1 auto !important;
+  margin-inline-start: auto !important;
+  justify-content: flex-start !important;
+  min-inline-size: 0 !important;
+}
+
+.shell__page-actions::-webkit-scrollbar {
+  display: none !important;
+}
+
+.shell__page-actions .p-button {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  font-size: 12px !important;
+  padding-block: 0.25rem !important;
+  padding-inline: 0.5rem !important;
+  gap: 0.25rem !important;
+}
+
 .shell__page-actions .p-button:not(.p-button-sm):not(.p-button-lg):not(.p-button-link),
 .p-drawer .p-button:not(.p-button-sm):not(.p-button-lg):not(.p-button-link),
 .p-dialog .p-button:not(.p-button-sm):not(.p-button-lg):not(.p-button-link) {
   min-block-size: var(--component-action-height);
   padding-block: 0.25rem;
-  padding-inline: 0.75rem;
+  padding-inline: 0.625rem;
   gap: 0.375rem;
+}
+
+/* Settings shell layout: pinned nav options, scrollable stretched content,
+   scrollbar flush at the extreme right edge of the screen (right: 0). */
+.shell__main:has(lpg-settings-shell) {
+  overflow-y: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  block-size: 100% !important;
+  padding-inline-end: 0 !important;
+  padding-block-end: 0 !important;
 }
 
 .shell__page-actions .p-button.p-button-icon-only:not(.p-button-sm):not(.p-button-lg),
@@ -1045,12 +1110,40 @@ p-confirmpopup {
   flex-shrink: 0;
 }
 
-/* Fieldset legend: drawn as a tab sitting on the fieldset's top border,
-   outlined in the same border colour, so the title reads as part of the
-   box rather than a label floating over a gap in the line. */
+/* Fieldset legend: an outlined chip centred on the fieldset's top border.
+   The native <legend> already interrupts the fieldset border behind it, so
+   giving the legend its own full outline (all four sides, same border
+   colour) reads as one continuous frame: the fieldset border runs
+   unbroken to either side and nothing is drawn above or inside it. */
+.p-fieldset {
+  border-radius: var(--radius-md) !important;
+}
+
 .p-fieldset .p-fieldset-legend {
-  border: var(--border-width) solid var(--color-border-default) !important;
-  background: var(--color-surface-raised) !important;
+  border: var(--border-width, 1px) solid var(--color-border-default) !important;
+  border-radius: var(--radius-md) !important;
+  background: var(--p-fieldset-background, var(--color-surface-base)) !important;
+  padding: 0 var(--spacing-sm);
+  margin-inline-start: var(--spacing-md);
+}
+
+.p-fieldset .p-fieldset-legend-label {
+  display: inline-block;
+  padding-block: var(--spacing-xs);
+}
+
+.p-fieldset .p-fieldset-toggle-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  min-height: 2rem !important;
+  padding-block: var(--spacing-xs) !important;
+  padding-inline: var(--spacing-sm) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.p-fieldset .p-fieldset-content {
+  padding-block-start: var(--spacing-md) !important;
 }
 
 /* Danger Button refinements — high-contrast solid fill with white text */

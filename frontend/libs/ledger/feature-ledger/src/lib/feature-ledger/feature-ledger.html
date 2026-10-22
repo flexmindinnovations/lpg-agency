@@ -1,13 +1,7 @@
 <div class="ledger-container">
   <div class="page-header">
     <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-        <h1 class="page-title">Cylinder balances</h1>
-        <p class="page-subtitle">
-          @if (ledger()?.customer_name; as name) { {{ name }}@if (ledger()?.consumer_number; as
-          consumer) { · {{ consumer }} } } @else { Cylinders the customer holds, by type. }
-        </p>
-      </div>
+      <lpg-page-header title="Cylinder balances" [subtitle]="ledgerSubtitle()" />
     </ng-template>
   </div>
 

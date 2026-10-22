@@ -1,9 +1,9 @@
 <div class="tdt-config-page">
   <ng-template lpgHeaderTitlePortal>
-    <div class="page-header__text">
-      <h1 class="page-title">TDT Rating Configuration</h1>
-      <p class="page-subtitle">Delivery-time star bands and fines.</p>
-    </div>
+    <lpg-page-header
+      title="TDT Rating Configuration"
+      subtitle="Delivery-time star bands and fines."
+    />
   </ng-template>
 
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="tdt-config-form">

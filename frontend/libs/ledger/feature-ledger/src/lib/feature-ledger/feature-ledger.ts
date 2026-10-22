@@ -15,7 +15,12 @@ import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 
-import { EmptyStateComponent, FormFieldComponent, HasPermissionDirective } from '@lpg/shared/ui';
+import {
+  EmptyStateComponent,
+  FormFieldComponent,
+  HasPermissionDirective,
+  PageHeaderComponent,
+} from '@lpg/shared/ui';
 import { RouterLink } from '@angular/router';
 
 import {
@@ -40,6 +45,7 @@ interface EnrichedBalance {
   imports: [
     PageActionsDirective,
     HeaderTitlePortalDirective,
+    PageHeaderComponent,
     ReactiveFormsModule,
     ButtonDirective,
     Select,
@@ -65,6 +71,13 @@ export class FeatureLedger implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
 
   ledger = signal<CylinderLedgerResponse | null>(null);
+  readonly ledgerSubtitle = computed(() => {
+    const l = this.ledger();
+    if (l?.customer_name) {
+      return l.consumer_number ? `${l.customer_name} · ${l.consumer_number}` : l.customer_name;
+    }
+    return 'Cylinders the customer holds, by type.';
+  });
   cylinderTypes = signal<CylinderTypeResponse[]>([]);
   loading = signal(false);
   /** Why the ledger could not be shown, e.g. an unknown customer (DO-22). */

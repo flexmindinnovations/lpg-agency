@@ -26,6 +26,7 @@ import {
   DataGridComponent,
   type DataGridColumn,
   FormFieldComponent,
+  PageHeaderComponent,
   formatTimestamp,
 } from '@lpg/shared/ui';
 
@@ -213,6 +214,7 @@ class ConfigKeyCell {
     InputText,
     DataGridComponent,
     FormFieldComponent,
+    PageHeaderComponent,
     Select,
     Drawer,
     DrawerA11yDirective,
@@ -224,10 +226,10 @@ class ConfigKeyCell {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Tenant Configuration</h1>
-            <p class="page-subtitle">GST rates, credit limits and other settings.</p>
-          </div>
+          <lpg-page-header
+            title="Tenant Configuration"
+            subtitle="GST rates, credit limits and other settings."
+          />
         </ng-template>
       </div>
       <p class="page-note">

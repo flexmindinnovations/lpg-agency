@@ -29,6 +29,7 @@ import {
   DataGridComponent,
   type DataGridColumn,
   FormFieldComponent,
+  PageHeaderComponent,
   StatusChipCell,
 } from '@lpg/shared/ui';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
@@ -64,6 +65,7 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
     InputText,
     DataGridComponent,
     FormFieldComponent,
+    PageHeaderComponent,
     Select,
     Drawer,
     DrawerA11yDirective,
@@ -76,10 +78,10 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <div class="page-header__text">
-            <h1 class="page-title">Staff Users</h1>
-            <p class="page-subtitle">Who can sign in to the dashboard, and what they can do.</p>
-          </div>
+          <lpg-page-header
+            title="Staff Users"
+            subtitle="Who can sign in to the dashboard, and what they can do."
+          />
         </ng-template>
       </div>
 
