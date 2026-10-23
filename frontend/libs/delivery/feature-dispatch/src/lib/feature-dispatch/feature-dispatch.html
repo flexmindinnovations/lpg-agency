@@ -75,121 +75,10 @@
     </div>
   </div>
 
-  <!-- Atlassian-style Workflow Stage Tabs -->
-  <div class="atlassian-tab-bar" role="tablist" aria-label="Dispatch workflow stages">
-    <button
-      type="button"
-      role="tab"
-      class="atlassian-tab"
-      [class.atlassian-tab--active]="activeTab() === 'all'"
-      (click)="activeTab.set('all')"
-      aria-label="All stages board view"
-    >
-      <i class="pi pi-th-large atlassian-tab__icon" aria-hidden="true"></i>
-      <span>All Board</span>
-      <span class="atlassian-tab__badge">{{ totalItemsCount() }}</span>
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="atlassian-tab"
-      [class.atlassian-tab--active]="activeTab() === 'waiting'"
-      (click)="activeTab.set('waiting')"
-      aria-label="Waiting orders tab"
-    >
-      <span class="atlassian-tab__dot atlassian-tab__dot--waiting"></span>
-      <span>Waiting</span>
-      <span class="atlassian-tab__badge atlassian-tab__badge--waiting"
-        >{{ unassignedOrders().length }}</span
-      >
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="atlassian-tab"
-      [class.atlassian-tab--active]="activeTab() === 'planned'"
-      (click)="activeTab.set('planned')"
-      aria-label="Not loaded trips tab"
-    >
-      <span class="atlassian-tab__dot atlassian-tab__dot--planned"></span>
-      <span>Not loaded</span>
-      <span class="atlassian-tab__badge">{{ (routesByStatus().get('planned') ?? []).length }}</span>
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="atlassian-tab"
-      [class.atlassian-tab--active]="activeTab() === 'loaded'"
-      (click)="activeTab.set('loaded')"
-      aria-label="Ready to leave trips tab"
-    >
-      <span class="atlassian-tab__dot atlassian-tab__dot--loaded"></span>
-      <span>Ready to leave</span>
-      <span class="atlassian-tab__badge">{{ (routesByStatus().get('loaded') ?? []).length }}</span>
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="atlassian-tab"
-      [class.atlassian-tab--active]="activeTab() === 'in_progress'"
-      (click)="activeTab.set('in_progress')"
-      aria-label="On the road trips tab"
-    >
-      <span class="atlassian-tab__dot atlassian-tab__dot--in_progress"></span>
-      <span>On the road</span>
-      <span class="atlassian-tab__badge"
-        >{{ (routesByStatus().get('in_progress') ?? []).length }}</span
-      >
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="atlassian-tab"
-      [class.atlassian-tab--active]="activeTab() === 'completed'"
-      (click)="activeTab.set('completed')"
-      aria-label="Back to settle trips tab"
-    >
-      <span class="atlassian-tab__dot atlassian-tab__dot--completed"></span>
-      <span>Back, to settle</span>
-      <span class="atlassian-tab__badge"
-        >{{ (routesByStatus().get('completed') ?? []).length }}</span
-      >
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="atlassian-tab"
-      [class.atlassian-tab--active]="activeTab() === 'reconciled'"
-      (click)="activeTab.set('reconciled')"
-      aria-label="Settled trips tab"
-    >
-      <span class="atlassian-tab__dot atlassian-tab__dot--reconciled"></span>
-      <span>Settled</span>
-      <span class="atlassian-tab__badge"
-        >{{ (routesByStatus().get('reconciled') ?? []).length }}</span
-      >
-    </button>
-    <button
-      type="button"
-      role="tab"
-      class="atlassian-tab"
-      [class.atlassian-tab--active]="activeTab() === 'cancelled'"
-      (click)="activeTab.set('cancelled')"
-      aria-label="Cancelled trips tab"
-    >
-      <span class="atlassian-tab__dot atlassian-tab__dot--cancelled"></span>
-      <span>Cancelled</span>
-      <span class="atlassian-tab__badge"
-        >{{ (routesByStatus().get('cancelled') ?? []).length }}</span
-      >
-    </button>
-  </div>
-
   <div class="dispatch-layout">
     @if (viewMode() === 'kanban') {
     <div class="atlassian-board">
       <!-- Top Workflow Category Bar (mimicking reference layout) -->
-      @if (activeTab() === 'all') {
       <div class="atlassian-board__category-bar" aria-hidden="true">
         <div class="atlassian-board__category atlassian-board__category--backlog">
           <span>BACKLOG</span>
@@ -207,19 +96,11 @@
           <span>CANCELLED</span>
         </div>
       </div>
-      }
 
       <!-- Tabular Columns Grid -->
-      <div
-        class="atlassian-board__columns-grid"
-        [class.atlassian-board__columns-grid--single]="activeTab() !== 'all'"
-      >
+      <div class="atlassian-board__columns-grid">
         <!-- COLUMN 1: WAITING (The first tab/column on the Kanban board) -->
-        @if (activeTab() === 'all' || activeTab() === 'waiting') {
-        <div
-          class="atlassian-col atlassian-col--waiting"
-          [class.atlassian-col--expanded]="activeTab() === 'waiting'"
-        >
+        <div class="atlassian-col atlassian-col--waiting">
           <div class="atlassian-col__header">
             <div class="atlassian-col__indicator atlassian-col__indicator--waiting"></div>
             <div class="atlassian-col__header-main">
@@ -285,16 +166,10 @@
             }
           </div>
         </div>
-        }
 
         <!-- ROUTE COLUMNS (Not loaded, Ready to leave, On the road, Back to settle, Settled, Cancelled) -->
-        @for (status of statusColumns; track status) { @if (activeTab() === 'all' || activeTab() ===
-        status) {
-        <div
-          class="atlassian-col"
-          [attr.data-status]="status"
-          [class.atlassian-col--expanded]="activeTab() === status"
-        >
+        @for (status of statusColumns; track status) {
+        <div class="atlassian-col" [attr.data-status]="status">
           <div class="atlassian-col__header">
             <div class="atlassian-col__indicator" [attr.data-status]="status"></div>
             <div class="atlassian-col__header-main">
@@ -358,31 +233,20 @@
             }
           </div>
         </div>
-        } }
+        }
       </div>
     </div>
     } @else {
     <!-- Table View -->
     <div class="dispatch-table-view">
-      @if (activeTab() === 'waiting') {
       <lpg-data-grid
-        [rows]="unassignedOrders()"
-        [columns]="waitingOrderColumns"
-        [loading]="loading()"
-        ariaLabel="Waiting orders list"
-        emptyTitle="No waiting orders"
-        emptyMessage="All confirmed orders have been assigned to trips."
-      />
-      } @else {
-      <lpg-data-grid
-        [rows]="filteredTableRoutes()"
+        [rows]="routes()"
         [columns]="routeColumns"
         [loading]="loading()"
         ariaLabel="Dispatch routes list"
         emptyTitle="No trips found"
-        emptyMessage="No trips found matching the selected branch, date, or status filter."
+        emptyMessage="No trips found matching the selected branch or date filter."
       />
-      }
     </div>
     }
   </div>

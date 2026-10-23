@@ -1,17 +1,17 @@
 :host {
   display: block;
-  /* Fill the scroll viewport when routes are few, but grow past it when the
-     board is long — a hard `block-size: 100%` caps the page at the fold, and
-     the board's overflow then escapes the shell's padded scroll area (the
-     bottom padding is lost and cards butt against the edge). */
-  min-block-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
 }
 
 .dispatch-container {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  min-block-size: 100%;
+  gap: var(--spacing-sm);
+  block-size: 100%;
+  max-block-size: 100%;
+  min-block-size: 0;
+  overflow: hidden;
 }
 
 .section-title {
@@ -23,7 +23,6 @@
 .empty-hint,
 .route-column__count,
 .detail-field__label,
-.unassigned-card__id,
 .stop-card__order,
 .stop-card__failure,
 .stop-card__pod {
@@ -38,6 +37,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
+  flex-shrink: 0;
 }
 
 .toolbar-actions {
@@ -59,121 +59,25 @@
 }
 
 /* -----------------------------------------------------------------------------
- * Atlassian Workflow Stage Tab Bar
- * -------------------------------------------------------------------------- */
-.atlassian-tab-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  overflow-x: auto;
-  border-bottom: var(--border-width, 1px) solid var(--color-border-default);
-  padding-block-end: var(--spacing-xs);
-  background: var(--color-surface-base);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-  padding-inline: var(--spacing-xs);
-}
-
-.atlassian-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: var(--typography-body-small-font-size);
-  font-weight: var(--typography-label-font-weight);
-  cursor: pointer;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  position: relative;
-  white-space: nowrap;
-  transition: all var(--motion-duration-fast, 150ms) ease;
-}
-
-.atlassian-tab:hover {
-  color: var(--color-text-primary);
-  background: var(--color-surface-overlay);
-}
-
-.atlassian-tab--active {
-  color: var(--color-action-primary) !important;
-  background: var(--color-surface-overlay);
-  font-weight: var(--typography-heading3-font-weight);
-}
-
-.atlassian-tab--active::after {
-  content: '';
-  position: absolute;
-  bottom: calc(-1 * var(--border-width, 1px));
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--color-action-primary);
-  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
-}
-
-.atlassian-tab__icon {
-  font-size: var(--typography-body-small-font-size);
-}
-
-.atlassian-tab__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-}
-
-.atlassian-tab__dot--waiting {
-  background: var(--color-status-warning);
-}
-.atlassian-tab__dot--planned {
-  background: var(--color-text-secondary);
-}
-.atlassian-tab__dot--loaded {
-  background: var(--color-status-info);
-}
-.atlassian-tab__dot--in_progress {
-  background: var(--color-status-warning);
-}
-.atlassian-tab__dot--completed {
-  background: var(--color-action-primary);
-}
-.atlassian-tab__dot--reconciled {
-  background: var(--color-status-success);
-}
-.atlassian-tab__dot--cancelled {
-  background: var(--color-status-danger);
-}
-
-.atlassian-tab__badge {
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-label-font-weight);
-  padding: 1px var(--spacing-xs);
-  border-radius: var(--radius-full);
-  background: var(--color-surface-overlay);
-  color: var(--color-text-secondary);
-}
-
-.atlassian-tab__badge--waiting {
-  background: var(--component-chip-warning-background);
-  color: var(--component-chip-warning-text);
-}
-
-/* -----------------------------------------------------------------------------
  * Layout & Table View
  * -------------------------------------------------------------------------- */
 .dispatch-layout {
   display: flex;
   gap: var(--spacing-md);
   align-items: stretch;
-  min-block-size: calc(100vh - 250px);
+  flex: 1 1 0;
+  min-block-size: 0;
+  block-size: 100%;
   inline-size: 100%;
+  overflow: hidden;
 }
 
 .dispatch-table-view {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-inline-size: 0;
+  min-block-size: 0;
   block-size: 100%;
+  overflow: hidden;
 }
 
 /* -----------------------------------------------------------------------------
@@ -182,23 +86,28 @@
 .atlassian-board {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-inline-size: 0;
+  min-block-size: 0;
+  block-size: 100%;
   border: var(--border-width, 1px) solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-surface-base);
   box-shadow: var(--elevation-1);
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) var(--color-surface-base);
 }
 
 /* Top Workflow Category Header Bar (mimicking reference layout with theme chips) */
 .atlassian-board__category-bar {
   display: grid;
-  grid-template-columns: repeat(7, minmax(230px, 1fr));
-  min-inline-size: 1610px;
+  grid-template-columns: repeat(7, minmax(240px, 1fr));
+  min-inline-size: 1680px;
   border-bottom: var(--border-width, 1px) solid var(--color-border-strong);
   background: var(--color-surface-raised);
+  flex-shrink: 0;
 }
 
 .atlassian-board__category {
@@ -243,32 +152,25 @@
 /* Columns Grid */
 .atlassian-board__columns-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(230px, 1fr));
-  min-inline-size: 1610px;
-  flex: 1 1 auto;
+  grid-template-columns: repeat(7, minmax(240px, 1fr));
+  min-inline-size: 1680px;
+  flex: 1 1 0;
+  min-block-size: 0;
   align-items: stretch;
-}
-
-.atlassian-board__columns-grid--single {
-  grid-template-columns: 1fr !important;
-  min-inline-size: 100% !important;
 }
 
 /* Board Column */
 .atlassian-col {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-block-size: 0;
   background: var(--color-surface-raised);
   border-right: var(--border-width, 1px) solid var(--color-border-default);
-  min-block-size: 450px;
 }
 
 .atlassian-col:last-child {
   border-right: none;
-}
-
-.atlassian-col--expanded {
-  border-right: none !important;
 }
 
 .atlassian-col__header {
@@ -278,6 +180,7 @@
   border-bottom: var(--border-width, 1px) solid var(--color-border-default);
   padding: var(--spacing-sm) var(--spacing-md);
   gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
 .atlassian-col__indicator {
@@ -338,15 +241,22 @@
   color: var(--component-chip-warning-text);
 }
 
-/* Cards Area inside Column */
+/* Cards Area inside Column (no visible vertical scrollbars to preserve single scrollbar) */
 .atlassian-col__cards {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm);
+  flex: 1 1 0;
+  min-block-size: 0;
   overflow-y: auto;
-  flex: 1 1 auto;
-  max-block-size: calc(100vh - 290px);
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.atlassian-col__cards::-webkit-scrollbar {
+  display: none;
 }
 
 /* -----------------------------------------------------------------------------

@@ -241,64 +241,10 @@ export class FeatureDispatch implements OnInit {
     ROUTE_STATUS_SEVERITY[status] ?? 'secondary';
 
   protected readonly viewMode = signal<'kanban' | 'table'>('kanban');
-  protected readonly activeTab = signal<string>('all');
 
   protected orderCustomerName(order: OrderResponse): string {
     return order.customer?.full_name ?? 'Customer';
   }
-
-  protected readonly totalItemsCount = computed(
-    () => this.unassignedOrders().length + this.routes().length,
-  );
-
-  protected readonly filteredTableRoutes = computed(() => {
-    const tab = this.activeTab();
-    if (tab === 'all') return this.routes();
-    return this.routes().filter((r) => r.status === tab);
-  });
-
-  protected readonly waitingOrderColumns: DataGridColumn<OrderResponse>[] = [
-    {
-      field: 'order_number',
-      header: 'Order #',
-      width: 140,
-      sortable: true,
-      valueFormatter: (_v, row) => row.order_number ?? shortId(row.id),
-    },
-    {
-      field: 'customer',
-      header: 'Customer',
-      flex: 1.5,
-      valueFormatter: (_v, row) => row.customer?.full_name ?? '—',
-    },
-    {
-      field: 'delivery_address',
-      header: 'Delivery Address',
-      flex: 2,
-      valueFormatter: (_v, row) => row.delivery_address?.address_line ?? '—',
-    },
-    {
-      field: 'lines',
-      header: 'Cylinders',
-      flex: 1.5,
-      valueFormatter: (_v, row) => this.orderCylinders(row),
-    },
-    {
-      field: 'requested_date',
-      header: 'Requested Date',
-      width: 140,
-      sortable: true,
-      valueFormatter: (v) =>
-        v ? new Date(v as string).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—',
-    },
-    {
-      field: 'id',
-      header: 'Action',
-      width: 130,
-      onLinkClick: (row) => this.openNewTrip(row),
-      valueFormatter: () => '+ Plan Trip',
-    },
-  ];
 
   protected readonly routeColumns: DataGridColumn<RouteResponse>[] = [
     {
