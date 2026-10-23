@@ -696,6 +696,71 @@
   gap: var(--spacing-sm);
 }
 
+.stop-card__order--link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-action-primary, #3b82f6) !important;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--motion-duration-fast, 150ms) ease;
+}
+
+.stop-card__order--link:hover {
+  color: var(--color-action-primary-hover, #60a5fa) !important;
+  text-decoration: underline;
+}
+
+.stop-card__link-icon {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.reconciliation-banner,
+.reconciliation-banner .p-message,
+.reconciliation-banner .p-message-content {
+  width: 100%;
+}
+
+.reconciliation-banner__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm, 0.5rem);
+  width: 100%;
+  flex: 1 1 auto;
+}
+
+.reconcile-inventory-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  font-weight: 600 !important;
+  font-size: var(--typography-caption-font-size, 0.8125rem) !important;
+  color: var(--color-status-warning, #e7b94a) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  padding: 0.25rem 0.5rem !important;
+  margin-inline-start: auto !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-sm, 4px) !important;
+  transition: all var(--motion-duration-fast, 150ms) ease !important;
+}
+
+.reconcile-inventory-link:hover,
+.reconcile-inventory-link:focus-visible {
+  text-decoration: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: rgba(231, 185, 74, 0.16) !important;
+  filter: brightness(1.1);
+}
+
 .trip-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));

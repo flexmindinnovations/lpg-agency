@@ -18,6 +18,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
@@ -147,6 +148,9 @@ export class FeatureInventory implements OnInit {
   private readonly weighmentService = inject(WeighmentService);
   private readonly notify = inject(NotifyService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute, { optional: true });
+
+  protected readonly selectedCylinderTypeId = signal<string | null>(null);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
@@ -458,6 +462,24 @@ export class FeatureInventory implements OnInit {
     });
     this.loadReorderPolicies();
     this.loadReorderSignals();
+
+    this.route?.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const type = params['type'] as InventoryLocationType | undefined;
+      const id = params['id'] as string | undefined;
+      const cylinderTypeId = params['cylinder_type_id'] as string | undefined;
+
+      if (type === 'warehouse' || type === 'vehicle') {
+        this.locationType.set(type);
+      }
+      if (id) {
+        this.locationRefId.set(id);
+        this.reload();
+      }
+      if (cylinderTypeId) {
+        this.selectedCylinderTypeId.set(cylinderTypeId);
+        this.reconcileForm.controls.cylinder_type_id.setValue(cylinderTypeId);
+      }
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -810,7 +832,8 @@ export class FeatureInventory implements OnInit {
   // ---------------------------------------------------------------------------
 
   protected openReconcileModal(): void {
-    this.reconcileForm.reset({ cylinder_type_id: '', status: 'filled', actual_quantity: 0 });
+    const preselectedCt = this.selectedCylinderTypeId() ?? '';
+    this.reconcileForm.reset({ cylinder_type_id: preselectedCt, status: 'filled', actual_quantity: 0 });
     this.lastReconciliationRecordId.set(null);
     this.drawerError.set(null);
     this.showReconcileModal.set(true);

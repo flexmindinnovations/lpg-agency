@@ -581,11 +581,20 @@
       }
     </div>
     } @if (route.status === 'completed') {
-    <p-message severity="info">
-      <span>Settling needs an approved reconciliation for this vehicle.</span>
-      <button pButton type="button" text (click)="goToInventoryReconciliation()">
-        Go to Inventory
-      </button>
+    <p-message severity="warn" styleClass="reconciliation-banner">
+      <div class="reconciliation-banner__content">
+        <span>Settling needs an approved reconciliation for this vehicle.</span>
+        <button
+          pButton
+          type="button"
+          text
+          class="reconcile-inventory-link"
+          (click)="goToInventoryReconciliation()"
+        >
+          <span>Go to Inventory</span>
+          <i class="pi pi-arrow-right" aria-hidden="true"></i>
+        </button>
+      </div>
     </p-message>
     } @if (showLoadOutWeighmentForm()) {
     <div class="load-form">
@@ -746,10 +755,15 @@
       <div class="stop-card">
         <div class="stop-card__row">
           <span class="stop-card__seq">#{{ stop.sequence_number }}</span>
-          <span class="stop-card__order" [pTooltip]="stop.order_id" tooltipPosition="top"
-            >Order {{ orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id)
-            }}</span
+          <a
+            class="stop-card__order stop-card__order--link"
+            [routerLink]="['/orders', stop.order_id]"
+            [pTooltip]="'View details for order ' + (orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id))"
+            tooltipPosition="top"
           >
+            <span>Order {{ orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id) }}</span>
+            <i class="pi pi-external-link stop-card__link-icon" aria-hidden="true"></i>
+          </a>
           <p-tag [severity]="statusSeverity(stop.status)" [value]="stopStatusLabel(stop.status)" />
         </div>
         @if (orderById().get(stop.order_id); as order) {

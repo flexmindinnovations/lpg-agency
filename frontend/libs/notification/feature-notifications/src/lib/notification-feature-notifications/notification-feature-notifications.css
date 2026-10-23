@@ -9,13 +9,10 @@
   block-size: 100%;
 }
 
-.data-toolbar {
-  margin-block-end: var(--spacing-sm);
-}
-
-.data-toolbar__filters {
-  display: flex;
+.notifications-actions {
+  display: inline-flex;
   align-items: center;
+  gap: var(--spacing-sm, 0.5rem);
 }
 
 .filter-toggle {

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
@@ -36,6 +37,7 @@ describe('FeatureInventory', () => {
           withInterceptors([globalErrorToastInterceptor, problemDetailsInterceptor]),
         ),
         provideHttpClientTesting(),
+        provideRouter([]),
         MessageService,
         { provide: NotifyService, useValue: notify },
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },

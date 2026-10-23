@@ -48,12 +48,13 @@ def ensure_reconciliation_decidable(
     decided_by: uuid.UUID,
     approved_at: datetime | None,
     rejected_at: datetime | None,
+    allow_self_approval: bool = False,
 ) -> None:
     """Raises unless `decided_by` may approve or reject this pending count."""
     state = reconciliation_state(approved_at=approved_at, rejected_at=rejected_at)
     if state != "pending":
         msg = f"This count was already {state}."
         raise ReconciliationAlreadyDecidedError(msg, record_id=str(record_id), state=state)
-    if recorded_by == decided_by:
+    if recorded_by == decided_by and not allow_self_approval:
         msg = "You recorded this count, so someone else has to approve or reject it."
         raise SelfApprovalNotAllowedError(msg, record_id=str(record_id))

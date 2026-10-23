@@ -497,6 +497,7 @@ class CreateReconciliationRecordUseCase:
 class ApproveReconciliationCommand(Command):
     record_id: uuid.UUID
     approved_by: uuid.UUID
+    allow_self_approval: bool = False
 
 
 class ApproveReconciliationUseCase:
@@ -522,6 +523,7 @@ class ApproveReconciliationUseCase:
             decided_by=command.approved_by,
             approved_at=record.approved_at,
             rejected_at=record.rejected_at,
+            allow_self_approval=command.allow_self_approval,
         )
         location = await self._location_repository.get_by_id(record.inventory_location_id)
         if location is None:
@@ -546,6 +548,7 @@ class RejectReconciliationCommand(Command):
     record_id: uuid.UUID
     rejected_by: uuid.UUID
     reason: str
+    allow_self_approval: bool = False
 
 
 class RejectReconciliationUseCase:
@@ -570,6 +573,7 @@ class RejectReconciliationUseCase:
             decided_by=command.rejected_by,
             approved_at=record.approved_at,
             rejected_at=record.rejected_at,
+            allow_self_approval=command.allow_self_approval,
         )
         rejected = await self._repository.mark_rejected(
             record.id, rejected_by=command.rejected_by, reason=reason

@@ -9,12 +9,7 @@
   </div>
 
   <ng-template lpgPageActions>
-    <button pButton severity="secondary" [disabled]="unreadCount() === 0" (click)="markAllAsRead()">
-      <i class="pi pi-check-circle"></i><span>Mark all as read</span>
-    </button>
-  </ng-template>
-  <div class="data-toolbar">
-    <div class="data-toolbar__filters">
+    <div class="notifications-actions">
       <div class="filter-toggle" role="group" aria-label="Filter notifications">
         <button
           pButton
@@ -41,8 +36,11 @@
           <span>Unread</span>
         </button>
       </div>
+      <button pButton severity="secondary" size="small" [disabled]="unreadCount() === 0" (click)="markAllAsRead()">
+        <i class="pi pi-check-circle"></i><span>Mark all as read</span>
+      </button>
     </div>
-  </div>
+  </ng-template>
 
   <section class="inbox" aria-label="Notifications" aria-live="polite">
     @if (loading() && !loaded()) {
