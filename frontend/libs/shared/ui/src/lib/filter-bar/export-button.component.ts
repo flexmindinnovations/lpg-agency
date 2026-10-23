@@ -45,6 +45,5 @@ import { Tooltip } from 'primeng/tooltip';
 export class ExportButtonComponent {
   readonly label = input('Export CSV');
   readonly disabled = input(false);
-  // eslint-disable-next-line @angular-eslint/no-output-native -- "export" reads naturally here and is not a DOM event
   readonly export = output<void>();
 }

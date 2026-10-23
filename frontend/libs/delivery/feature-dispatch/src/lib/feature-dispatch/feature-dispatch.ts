@@ -1,5 +1,14 @@
-import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
-import { HasPermissionDirective, PageHeaderComponent, shortId } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  DrawerA11yDirective,
+  HasPermissionDirective,
+  HeaderTitlePortalDirective,
+  PageActionsDirective,
+  PageHeaderComponent,
+  StatusChipCell,
+  shortId,
+  type DataGridColumn,
+} from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -23,7 +32,6 @@ import { debounceTime } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputNumber } from 'primeng/inputnumber';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
@@ -155,6 +163,7 @@ function toDateOnlyString(date: Date): string {
     DatePicker,
     Tooltip,
     HasPermissionDirective,
+    DataGridComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-dispatch.html',
@@ -231,6 +240,67 @@ export class FeatureDispatch implements OnInit {
   protected readonly stopStatusLabel = (status: string) => STOP_STATUS_LABELS[status] ?? status;
   protected readonly statusSeverity = (status: string) =>
     ROUTE_STATUS_SEVERITY[status] ?? 'secondary';
+
+  protected readonly viewMode = signal<'kanban' | 'table'>('kanban');
+
+  protected orderCustomerName(order: OrderResponse): string {
+    return order.customer?.full_name ?? 'Customer';
+  }
+
+  protected readonly routeColumns: DataGridColumn<RouteResponse>[] = [
+    {
+      field: 'date',
+      header: 'Trip Date',
+      width: 130,
+      sortable: true,
+      valueFormatter: (v) =>
+        v ? new Date(v as string).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—',
+    },
+    {
+      field: 'status',
+      header: 'Status',
+      width: 160,
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        severityMap: {
+          planned: 'secondary',
+          loaded: 'info',
+          in_progress: 'warn',
+          completed: 'info',
+          reconciled: 'success',
+          cancelled: 'danger',
+        },
+        labelMap: ROUTE_STATUS_LABELS,
+      },
+    },
+    {
+      field: 'driver_id',
+      header: 'Driver',
+      flex: 1.5,
+      valueFormatter: (v) => this.driverNameById().get(v as string) ?? (v as string),
+    },
+    {
+      field: 'vehicle_id',
+      header: 'Vehicle',
+      flex: 1.5,
+      valueFormatter: (v) => this.vehicleNameById().get(v as string) ?? (v as string),
+    },
+    {
+      field: 'stops',
+      header: 'Orders',
+      width: 100,
+      numeric: true,
+      valueFormatter: (_v, row) => String(row.stops?.length ?? 0),
+    },
+    {
+      field: 'id',
+      header: 'Action',
+      width: 110,
+      onLinkClick: (row) => this.openRouteDetail(row),
+      valueFormatter: () => 'Open Trip',
+    },
+  ];
 
   // ---------------------------------------------------------------------------
   // Filters

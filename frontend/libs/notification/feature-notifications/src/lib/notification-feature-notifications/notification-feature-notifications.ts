@@ -10,8 +10,6 @@ import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
-import { SelectButton } from 'primeng/selectbutton';
-import { FormsModule } from '@angular/forms';
 import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import { EmptyStateComponent, PageHeaderComponent, SkeletonComponent } from '@lpg/shared/ui';
 import {
@@ -33,11 +31,9 @@ type InboxFilter = 'all' | 'unread';
   imports: [
     PageActionsDirective,
     DatePipe,
-    FormsModule,
     HeaderTitlePortalDirective,
     PageHeaderComponent,
     ButtonDirective,
-    SelectButton,
     EmptyStateComponent,
     SkeletonComponent,
   ],
@@ -54,10 +50,6 @@ export class NotificationFeatureNotifications implements OnInit {
   protected readonly loading = signal(false);
   protected readonly loaded = signal(false);
   protected readonly filter = signal<InboxFilter>('all');
-  protected readonly filterOptions = [
-    { label: 'All', value: 'all' },
-    { label: 'Unread', value: 'unread' },
-  ];
 
   protected readonly unreadCount = this.notificationService.unreadCount;
   protected readonly groups = computed(() => {

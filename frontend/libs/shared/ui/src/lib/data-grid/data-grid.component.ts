@@ -267,6 +267,7 @@ function escapeHtml(text: string): string {
       }
       .lpg-data-grid__pager {
         flex: none;
+        margin-top: auto;
         border-block-start: var(--border-width, 1px) solid var(--color-border-default);
       }
       :host ::ng-deep .lpg-data-grid__pager .p-paginator {
@@ -275,6 +276,62 @@ function escapeHtml(text: string): string {
         background: transparent;
         color: var(--color-text-secondary);
         font-size: var(--typography-body-small-font-size);
+      }
+      :host ::ng-deep .lpg-data-grid .ag-styled-root {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+      }
+      :host ::ng-deep .lpg-data-grid .ag-root-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        flex: 1 1 auto !important;
+      }
+      :host ::ng-deep .lpg-data-grid .ag-root-wrapper-body {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: 100% !important;
+      }
+      :host ::ng-deep .lpg-data-grid .ag-paging-panel {
+        margin-top: auto !important;
+        flex: none !important;
+        border-block-start: var(--border-width, 1px) solid var(--color-border-default);
+      }
+      :host ::ng-deep .lpg-data-grid .lpg-data-grid__empty-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: var(--spacing-xs, 6px);
+        padding: var(--spacing-xl, 24px) var(--spacing-md, 16px);
+        pointer-events: none;
+      }
+      :host ::ng-deep .lpg-data-grid .lpg-data-grid__empty-icon-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        inline-size: 3rem;
+        block-size: 3rem;
+        border-radius: var(--radius-full, 9999px);
+        background: var(--color-surface-overlay, #f3f4f6);
+        color: var(--color-text-secondary, #6b7280);
+        margin-block-end: var(--spacing-xs, 4px);
+      }
+      :host ::ng-deep .lpg-data-grid .lpg-data-grid__empty-icon {
+        font-size: 1.5rem;
+      }
+      :host ::ng-deep .lpg-data-grid .lpg-data-grid__empty-title {
+        font-size: var(--typography-body-font-size, 14px);
+        font-weight: var(--typography-label-font-weight, 600);
+        color: var(--color-text-primary, #111827);
+      }
+      :host ::ng-deep .lpg-data-grid .lpg-data-grid__empty-desc {
+        font-size: var(--typography-body-small-font-size, 13px);
+        color: var(--color-text-secondary, #6b7280);
+        max-inline-size: 40ch;
       }
       ::ng-deep .lpg-data-grid .lpg-data-grid__empty {
         color: var(--color-text-secondary);
@@ -426,6 +483,7 @@ export class DataGridComponent<TRow = unknown> {
   readonly error = input<string | null>(null);
   /** Shown in the grid body when there are no rows (AG Grid's own text is
    *  "No Rows To Show"). Pages wanting a call to action use `lpg-empty-state`. */
+  readonly emptyTitle = input('No data available');
   readonly emptyMessage = input('Nothing to show yet.');
   /** Server-side paging: the total row count on the server. When set, the
    *  grid shows its own pager in the card footer (client-side pagination is
@@ -514,10 +572,22 @@ export class DataGridComponent<TRow = unknown> {
     paginationPageSize: this.pageSize() || 25,
     paginationPageSizeSelector: [10, 25, 50, 100],
     quickFilterText: this.searchQuery(),
-    overlayNoRowsTemplate: `<span class="lpg-data-grid__empty">${escapeHtml(this.emptyMessage())}</span>`,
+    overlayNoRowsTemplate: this.getEmptyOverlayTemplate(),
   }));
 
   readonly selectionChange = output<TRow[]>();
+
+  private getEmptyOverlayTemplate(): string {
+    return `
+      <div class="lpg-data-grid__empty-container" role="status">
+        <div class="lpg-data-grid__empty-icon-wrap">
+          <i class="pi pi-inbox lpg-data-grid__empty-icon" aria-hidden="true"></i>
+        </div>
+        <div class="lpg-data-grid__empty-title">${escapeHtml(this.emptyTitle())}</div>
+        <div class="lpg-data-grid__empty-desc">${escapeHtml(this.emptyMessage())}</div>
+      </div>
+    `;
+  }
 
   /**
    * AG Grid creates `cellRenderer` components dynamically via
@@ -538,8 +608,26 @@ export class DataGridComponent<TRow = unknown> {
 
   constructor() {
     effect(() => {
-      this.rowData();
+      const data = this.rowData();
       this.scheduleCellRendererRefresh();
+      if (this.gridApi) {
+        if (data.length === 0) {
+          this.gridApi.showNoRowsOverlay();
+        } else {
+          this.gridApi.hideOverlay();
+        }
+      }
+    });
+
+    effect(() => {
+      this.emptyTitle();
+      this.emptyMessage();
+      if (this.gridApi) {
+        this.gridApi.setGridOption('overlayNoRowsTemplate', this.getEmptyOverlayTemplate());
+        if (this.rowData().length === 0) {
+          this.gridApi.showNoRowsOverlay();
+        }
+      }
     });
 
     // `[gridOptions]` is only read by ag-grid-angular at grid creation —
@@ -566,6 +654,9 @@ export class DataGridComponent<TRow = unknown> {
     this.gridApi = event.api;
     this.ready.emit();
     this.scheduleCellRendererRefresh();
+    if (this.rowData().length === 0) {
+      this.gridApi.showNoRowsOverlay();
+    }
   }
 
   /** Hide `priority: 'low'` columns while the grid is narrow. */

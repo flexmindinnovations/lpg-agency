@@ -1,4 +1,3 @@
-import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,7 +12,6 @@ import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective, ExportButtonComponent } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { TooltipModule } from 'primeng/tooltip';
@@ -25,7 +23,11 @@ import {
 import {
   DataGridComponent,
   type DataGridColumn,
+  DrawerA11yDirective,
+  ExportButtonComponent,
   FormFieldComponent,
+  HeaderTitlePortalDirective,
+  PageActionsDirective,
   PageHeaderComponent,
   formatTimestamp,
 } from '@lpg/shared/ui';

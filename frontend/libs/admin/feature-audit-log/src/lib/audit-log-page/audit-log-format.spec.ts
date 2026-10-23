@@ -1,5 +1,12 @@
 import type { AuditLogEntryResponse } from '@lpg/shared/data-access';
-import { actorLabel, auditChanges, auditLogCsv, recordLabel } from './audit-log-format';
+import {
+  actorLabel,
+  auditChanges,
+  auditLogCsv,
+  orderIdForEntry,
+  recordLabel,
+  technicalIdentifiersOf,
+} from './audit-log-format';
 
 function entry(overrides: Partial<AuditLogEntryResponse>): AuditLogEntryResponse {
   return {
@@ -38,7 +45,7 @@ describe('audit log formatting', () => {
         after_state: { status: 'confirmed', version: 2, order_number: 'ORD000027' },
       }),
     );
-    expect(changes).toEqual([{ field: 'Status', before: 'booked', after: 'confirmed' }]);
+    expect(changes).toEqual([{ field: 'Status', before: 'Booked', after: 'Confirmed' }]);
   });
 
   it('lists the created values for a create', () => {
@@ -49,6 +56,39 @@ describe('audit log formatting', () => {
       { field: 'Name', before: '', after: 'Nashik West' },
       { field: 'Is active', before: '', after: 'Yes' },
     ]);
+  });
+
+  it('extracts technical identifiers including ids from payload', () => {
+    const ids = technicalIdentifiersOf(
+      entry({
+        id: 'log-1',
+        entity_id: 'order-uuid-1',
+        actor_id: 'actor-uuid-1',
+        correlation_id: 'corr-1',
+        after_state: { route_id: 'route-uuid-1', order_id: 'order-uuid-1' },
+      }),
+    );
+    const keys = ids.map((i) => i.key);
+    expect(keys).toContain('record_id');
+    expect(keys).toContain('user_id');
+    expect(keys).toContain('correlation_id');
+    expect(keys).toContain('log_id');
+    expect(keys).toContain('route_id');
+    expect(keys).toContain('order_id');
+  });
+
+  it('resolves order id for navigation', () => {
+    expect(orderIdForEntry(entry({ entity_name: 'orders', entity_id: 'order-uuid-1' }))).toBe(
+      'order-uuid-1',
+    );
+    expect(
+      orderIdForEntry(
+        entry({
+          entity_name: 'order_status_history',
+          after_state: { order_id: 'order-uuid-from-history' },
+        }),
+      ),
+    ).toBe('order-uuid-from-history');
   });
 
   it('exports the grid columns as CSV, quoting where needed', () => {

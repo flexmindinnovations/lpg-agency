@@ -9,6 +9,27 @@
   block-size: 100%;
 }
 
+.data-toolbar {
+  margin-block-end: var(--spacing-sm);
+}
+
+.data-toolbar__filters {
+  display: flex;
+  align-items: center;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: var(--border-width, 1px) solid var(--color-border-default);
+}
+
+.filter-toggle button {
+  border-radius: 0 !important;
+  border: none !important;
+}
+
 .inbox {
   flex: 1 1 auto;
   min-height: 0;

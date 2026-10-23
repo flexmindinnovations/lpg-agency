@@ -9,6 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { Select } from 'primeng/select';
@@ -88,27 +89,35 @@ function errorMessageFor(error: unknown): string {
               ></p-select>
             </lpg-form-field>
             <div class="admin-form-actions">
-              <button pButton type="button" [disabled]="form.invalid" (click)="checkStatus()">
+              <button
+                pButton
+                type="button"
+                [disabled]="form.invalid || actionLoading()"
+                (click)="checkStatus()"
+              >
                 Check status
               </button>
-              <button
-                pButton
-                type="button"
-                severity="success"
-                [disabled]="form.invalid"
-                (click)="setOverride(true)"
-              >
-                Turn on for your agency
-              </button>
-              <button
-                pButton
-                type="button"
-                severity="danger"
-                [disabled]="form.invalid"
-                (click)="setOverride(false)"
-              >
-                Turn off for your agency
-              </button>
+              @if (isFlagEnabled() === true) {
+                <button
+                  pButton
+                  type="button"
+                  severity="danger"
+                  [disabled]="form.invalid || actionLoading()"
+                  (click)="setOverride(false)"
+                >
+                  Turn off for your agency
+                </button>
+              } @else if (isFlagEnabled() === false) {
+                <button
+                  pButton
+                  type="button"
+                  severity="success"
+                  [disabled]="form.invalid || actionLoading()"
+                  (click)="setOverride(true)"
+                >
+                  Turn on for your agency
+                </button>
+              }
             </div>
           </form>
         </section>
@@ -155,9 +164,11 @@ export class FeatureFlagOverridesPage implements OnInit {
   private readonly featureFlagService = inject(AdminFeatureFlagService);
 
   protected readonly loading = signal(false);
+  protected readonly actionLoading = signal(false);
   protected readonly availableFlags = signal<FeatureFlagSummaryResponse[]>([]);
   protected readonly checkedStatus = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly isFlagEnabled = signal<boolean | null>(null);
 
   protected readonly flagOptions = computed(() =>
     this.availableFlags().map((flag) => ({
@@ -169,6 +180,18 @@ export class FeatureFlagOverridesPage implements OnInit {
   protected readonly form = this.formBuilder.group({
     key: ['', [Validators.required]],
   });
+
+  constructor() {
+    this.form.controls.key.valueChanges.pipe(takeUntilDestroyed()).subscribe((key) => {
+      this.errorMessage.set(null);
+      if (key) {
+        this.checkStatus();
+      } else {
+        this.isFlagEnabled.set(null);
+        this.checkedStatus.set(null);
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.loading.set(true);
@@ -188,13 +211,20 @@ export class FeatureFlagOverridesPage implements OnInit {
     }
     this.errorMessage.set(null);
     const { key } = this.form.getRawValue();
+    this.actionLoading.set(true);
 
     this.featureFlagService.isEnabled(key).subscribe({
-      next: (result) =>
+      next: (result) => {
+        this.actionLoading.set(false);
+        this.isFlagEnabled.set(result.enabled);
         this.checkedStatus.set(
           `'${result.key}' is currently ${result.enabled ? 'ON' : 'OFF'} for your tenant.`,
-        ),
-      error: (error: unknown) => this.errorMessage.set(errorMessageFor(error)),
+        );
+      },
+      error: (error: unknown) => {
+        this.actionLoading.set(false);
+        this.errorMessage.set(errorMessageFor(error));
+      },
     });
   }
 
@@ -205,11 +235,18 @@ export class FeatureFlagOverridesPage implements OnInit {
     }
     this.errorMessage.set(null);
     const { key } = this.form.getRawValue();
+    this.actionLoading.set(true);
 
     this.featureFlagService.setOverride(key, enabled).subscribe({
-      next: () =>
-        this.checkedStatus.set(`'${key}' is now ${enabled ? 'ON' : 'OFF'} for your tenant.`),
-      error: (error: unknown) => this.errorMessage.set(errorMessageFor(error)),
+      next: () => {
+        this.actionLoading.set(false);
+        this.isFlagEnabled.set(enabled);
+        this.checkedStatus.set(`'${key}' is now ${enabled ? 'ON' : 'OFF'} for your tenant.`);
+      },
+      error: (error: unknown) => {
+        this.actionLoading.set(false);
+        this.errorMessage.set(errorMessageFor(error));
+      },
     });
   }
 }

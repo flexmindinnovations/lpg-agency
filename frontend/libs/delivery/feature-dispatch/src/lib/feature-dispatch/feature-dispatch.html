@@ -43,74 +43,210 @@
         (ngModelChange)="onFilterDateChange($event)"
       />
     </div>
+
+    <div class="toolbar-actions">
+      <!-- View mode switcher: Kanban vs Table -->
+      <div class="view-mode-toggle" role="group" aria-label="View format">
+        <button
+          pButton
+          type="button"
+          size="small"
+          [severity]="viewMode() === 'kanban' ? 'primary' : 'secondary'"
+          (click)="viewMode.set('kanban')"
+          title="Kanban board view"
+          aria-label="Kanban board view"
+        >
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+          <span class="hidden sm:inline">Kanban</span>
+        </button>
+        <button
+          pButton
+          type="button"
+          size="small"
+          [severity]="viewMode() === 'table' ? 'primary' : 'secondary'"
+          (click)="viewMode.set('table')"
+          title="Tabular table view"
+          aria-label="Tabular table view"
+        >
+          <i class="pi pi-table" aria-hidden="true"></i>
+          <span class="hidden sm:inline">Table</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <div class="dispatch-layout">
-    <div class="route-board">
-      @for (status of statusColumns; track status) {
-      <div class="route-column">
-        <div class="route-column__header">
-          <span>{{ statusLabel(status) }}</span>
-          <span class="route-column__count">{{ (routesByStatus().get(status) ?? []).length }}</span>
+    @if (viewMode() === 'kanban') {
+    <div class="atlassian-board">
+      <!-- Top Workflow Category Bar (mimicking reference layout) -->
+      <div class="atlassian-board__category-bar" aria-hidden="true">
+        <div class="atlassian-board__category atlassian-board__category--backlog">
+          <span>BACKLOG</span>
         </div>
-        <div class="route-column__cards">
-          @for (route of routesByStatus().get(status); track route.id) {
-          <button type="button" class="route-card" (click)="openRouteDetail(route)">
-            <div class="route-card__row">
-              <span class="route-card__date">{{ route.date | date: 'mediumDate' }}</span>
-              <p-tag
-                [severity]="statusSeverity(route.status)"
-                [value]="statusLabel(route.status)"
-              />
-            </div>
-            <div class="route-card__row">
-              <i class="pi pi-id-card"></i>
-              <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
-            </div>
-            <div class="route-card__row">
-              <i class="pi pi-truck"></i>
-              <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
-            </div>
-            <div class="route-card__row">
-              <i class="pi pi-map-marker"></i>
-              <span>{{ route.stops?.length ?? 0 }} order(s)</span>
-            </div>
-          </button>
-          } @empty {
-          <p class="empty-hint">No trips.</p>
-          }
+        <div class="atlassian-board__category atlassian-board__category--prep">
+          <span>TRIP PREPARATION</span>
+        </div>
+        <div class="atlassian-board__category atlassian-board__category--in-progress">
+          <span>IN PROGRESS</span>
+        </div>
+        <div class="atlassian-board__category atlassian-board__category--completed">
+          <span>COMPLETED</span>
+        </div>
+        <div class="atlassian-board__category atlassian-board__category--cancelled">
+          <span>CANCELLED</span>
         </div>
       </div>
-      }
-    </div>
 
-    <aside class="unassigned-panel">
-      <h2 class="section-title">Orders waiting for a trip</h2>
-      <div class="unassigned-list">
-        @for (order of unassignedOrders(); track order.id) {
-        <div class="unassigned-card">
-          <div class="unassigned-card__info">
-            <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top"
-              >{{ order.order_number ?? shortId(order.id) }}</span
-            >
-            <span class="unassigned-card__addr">{{ order.delivery_address.address_line }}</span>
-            <span class="unassigned-card__addr">{{ orderCylinders(order) }}</span>
+      <!-- Tabular Columns Grid -->
+      <div class="atlassian-board__columns-grid">
+        <!-- COLUMN 1: WAITING (The first tab/column on the Kanban board) -->
+        <div class="atlassian-col atlassian-col--waiting" data-status="waiting">
+          <div class="atlassian-col__header">
+            <div class="atlassian-col__header-main">
+              <span class="atlassian-col__title atlassian-col__title--waiting">WAITING</span>
+              <span class="atlassian-col__badge atlassian-col__badge--waiting"
+                >{{ unassignedOrders().length }}</span
+              >
+            </div>
           </div>
-          <button
-            pButton
-            type="button"
-            severity="secondary"
-            size="small"
-            (click)="openNewTrip(order)"
-          >
-            New trip
-          </button>
+          <div class="atlassian-col__cards">
+            @for (order of unassignedOrders(); track order.id) {
+            <div class="jira-card jira-card--waiting">
+              <div class="jira-card__header">
+                <span class="jira-card__key" [title]="order.id">
+                  <i class="pi pi-tag jira-card__key-icon" aria-hidden="true"></i>
+                  <span>{{ order.order_number ?? shortId(order.id) }}</span>
+                </span>
+                <span class="jira-card__date">
+                  <i class="pi pi-calendar" aria-hidden="true"></i>
+                  {{ order.requested_date | date: 'mediumDate' }}
+                </span>
+              </div>
+              <div class="jira-card__body">
+                <div class="jira-card__row">
+                  <i class="pi pi-user jira-card__icon" aria-hidden="true"></i>
+                  <span class="jira-card__customer">{{ orderCustomerName(order) }}</span>
+                </div>
+                <div class="jira-card__row">
+                  <i class="pi pi-map-marker jira-card__icon" aria-hidden="true"></i>
+                  <span class="jira-card__addr">{{ order.delivery_address.address_line }}</span>
+                </div>
+                <div class="jira-card__row">
+                  <i class="pi pi-box jira-card__icon" aria-hidden="true"></i>
+                  <span class="jira-card__cylinders">{{ orderCylinders(order) }}</span>
+                </div>
+              </div>
+              <div class="jira-card__footer">
+                <span class="jira-card__amount">
+                  @if (order.total_amount) { ₹{{ order.total_amount }} }
+                </span>
+                <button
+                  type="button"
+                  class="jira-card__action-hint jira-card__plan-action"
+                  (click)="openNewTrip(order)"
+                  aria-label="Plan trip for order"
+                >
+                  <span>Plan Trip</span>
+                  <i class="pi pi-arrow-right" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            } @empty {
+            <div class="atlassian-col__empty">
+              <i
+                class="pi pi-check-circle atlassian-col__empty-icon--success"
+                aria-hidden="true"
+              ></i>
+              <span class="atlassian-col__empty-title">All orders dispatched</span>
+              <p class="atlassian-col__empty-subtitle">No confirmed orders waiting for a trip</p>
+            </div>
+            }
+          </div>
         </div>
-        } @empty {
-        <p class="empty-hint">Every confirmed order is on a trip.</p>
+
+        <!-- ROUTE COLUMNS (Not loaded, Ready to leave, On the road, Back to settle, Settled, Cancelled) -->
+        @for (status of statusColumns; track status) {
+        <div class="atlassian-col" [attr.data-status]="status">
+          <div class="atlassian-col__header">
+            <div class="atlassian-col__header-main">
+              <span class="atlassian-col__title" [attr.data-status]="status"
+                >{{ statusLabel(status) }}</span
+              >
+              <span class="atlassian-col__badge" [attr.data-status]="status"
+                >{{ (routesByStatus().get(status) ?? []).length }}</span
+              >
+            </div>
+          </div>
+          <div class="atlassian-col__cards">
+            @for (route of routesByStatus().get(status); track route.id) {
+            <div
+              class="jira-card"
+              [attr.data-status]="route.status"
+              (click)="openRouteDetail(route)"
+              tabindex="0"
+              role="button"
+              (keydown.enter)="openRouteDetail(route)"
+              (keydown.space)="openRouteDetail(route)"
+            >
+              <div class="jira-card__header">
+                <span class="jira-card__date">
+                  <i class="pi pi-calendar" aria-hidden="true"></i>
+                  {{ route.date | date: 'mediumDate' }}
+                </span>
+                <p-tag
+                  [severity]="statusSeverity(route.status)"
+                  [value]="statusLabel(route.status)"
+                />
+              </div>
+              <div class="jira-card__body">
+                <div class="jira-card__row">
+                  <i class="pi pi-id-card jira-card__icon" aria-hidden="true"></i>
+                  <span class="jira-card__text"
+                    >{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span
+                  >
+                </div>
+                <div class="jira-card__row">
+                  <i class="pi pi-truck jira-card__icon" aria-hidden="true"></i>
+                  <span class="jira-card__text"
+                    >{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span
+                  >
+                </div>
+              </div>
+              <div class="jira-card__footer">
+                <span class="jira-card__stops">
+                  <i class="pi pi-map-marker" aria-hidden="true"></i>
+                  <strong>{{ route.stops?.length ?? 0 }}</strong> order(s)
+                </span>
+                <span class="jira-card__action-hint">
+                  <span>View</span>
+                  <i class="pi pi-arrow-right" aria-hidden="true"></i>
+                </span>
+              </div>
+            </div>
+            } @empty {
+            <div class="atlassian-col__empty">
+              <i class="pi pi-inbox atlassian-col__empty-icon" aria-hidden="true"></i>
+              <span class="atlassian-col__empty-title">No trips</span>
+            </div>
+            }
+          </div>
+        </div>
         }
       </div>
-    </aside>
+    </div>
+    } @else {
+    <!-- Table View -->
+    <div class="dispatch-table-view">
+      <lpg-data-grid
+        [rows]="routes()"
+        [columns]="routeColumns"
+        [loading]="loading()"
+        ariaLabel="Dispatch routes list"
+        emptyTitle="No trips found"
+        emptyMessage="No trips found matching the selected branch or date filter."
+      />
+    </div>
+    }
   </div>
 </div>
 

@@ -16,7 +16,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Location } from '@angular/common';
 import { type Observable, map } from 'rxjs';
 
@@ -117,6 +117,7 @@ export class FeatureCustomers implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly location = inject(Location);
 
   protected readonly customers = signal<CustomerResponse[]>([]);
@@ -436,6 +437,12 @@ export class FeatureCustomers implements OnInit {
         this.notify.error('That customer could not be found.');
       },
     });
+  }
+
+  protected navigateToOrder(orderId: string): void {
+    this.showDetailDrawer.set(false);
+    this.selectedCustomer.set(null);
+    this.router.navigate(['/orders', orderId]);
   }
 
   private loadBranches(): void {
