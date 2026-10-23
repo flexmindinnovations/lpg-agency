@@ -1,8 +1,9 @@
-import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   DataGridComponent,
   DrawerA11yDirective,
   HasPermissionDirective,
+  HeaderTitlePortalDirective,
+  PageActionsDirective,
   PageHeaderComponent,
   StatusChipCell,
   shortId,

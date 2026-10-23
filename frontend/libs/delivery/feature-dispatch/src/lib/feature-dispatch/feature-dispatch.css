@@ -100,60 +100,73 @@
   scrollbar-color: var(--color-border-strong) var(--color-surface-base);
 }
 
-/* Top Workflow Category Header Bar (mimicking reference layout with theme chips) */
+/* Top Workflow Category Header Bar (Continuous blocks aligned with column widths and color schemes) */
 .atlassian-board__category-bar {
   display: grid;
-  grid-template-columns: repeat(7, minmax(240px, 1fr));
-  min-inline-size: 1680px;
-  border-bottom: var(--border-width, 1px) solid var(--color-border-strong);
-  background: var(--color-surface-raised);
+  grid-template-columns: repeat(7, minmax(280px, 1fr));
+  min-inline-size: 1960px;
+  border-bottom: var(--border-width, 1px) solid var(--color-border-default);
+  background: var(--color-surface-base);
+  padding: 0;
+  gap: 0;
   flex-shrink: 0;
 }
 
 .atlassian-board__category {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  text-align: center;
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-heading1-font-weight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px var(--spacing-sm);
+  font-size: 11px;
+  font-weight: var(--typography-heading2-font-weight);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  border-right: var(--border-width, 1px) solid var(--color-border-default);
+  border-bottom: 2px solid transparent;
+  box-sizing: border-box;
 }
 
 .atlassian-board__category--backlog {
   grid-column: span 1;
-  background: var(--component-chip-neutral-background);
-  color: var(--component-chip-neutral-text);
+  background: color-mix(in srgb, var(--color-status-warning) 10%, var(--color-surface-base));
+  color: var(--component-chip-warning-text);
+  border-bottom-color: var(--color-status-warning);
 }
 
 .atlassian-board__category--prep {
   grid-column: span 2;
-  background: var(--component-chip-info-background);
+  background: color-mix(in srgb, var(--color-status-info) 10%, var(--color-surface-base));
   color: var(--component-chip-info-text);
+  border-bottom-color: var(--color-status-info);
 }
 
 .atlassian-board__category--in-progress {
-  grid-column: span 2;
-  background: var(--component-chip-warning-background);
+  grid-column: span 1;
+  background: color-mix(in srgb, var(--color-status-warning) 10%, var(--color-surface-base));
   color: var(--component-chip-warning-text);
+  border-bottom-color: var(--color-status-warning);
 }
 
 .atlassian-board__category--completed {
-  grid-column: span 1;
-  background: var(--component-chip-success-background);
+  grid-column: span 2;
+  background: color-mix(in srgb, var(--color-status-success) 10%, var(--color-surface-base));
   color: var(--component-chip-success-text);
+  border-bottom-color: var(--color-status-success);
 }
 
 .atlassian-board__category--cancelled {
   grid-column: span 1;
-  background: var(--component-chip-danger-background);
+  background: color-mix(in srgb, var(--color-status-danger) 10%, var(--color-surface-base));
   color: var(--component-chip-danger-text);
+  border-bottom-color: var(--color-status-danger);
+  border-right: none;
 }
 
 /* Columns Grid */
 .atlassian-board__columns-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(240px, 1fr));
-  min-inline-size: 1680px;
+  grid-template-columns: repeat(7, minmax(280px, 1fr));
+  min-inline-size: 1960px;
   flex: 1 1 0;
   min-block-size: 0;
   align-items: stretch;
@@ -179,38 +192,7 @@
   background: var(--color-surface-base);
   border-bottom: var(--border-width, 1px) solid var(--color-border-default);
   padding: var(--spacing-sm) var(--spacing-md);
-  gap: var(--spacing-xs);
   flex-shrink: 0;
-}
-
-.atlassian-col__indicator {
-  inline-size: 100%;
-  block-size: 3px;
-  border-radius: var(--radius-xs);
-  background: var(--color-text-secondary);
-}
-
-.atlassian-col__indicator--waiting {
-  background: var(--color-status-warning);
-}
-
-.atlassian-col__indicator[data-status='planned'] {
-  background: var(--color-text-secondary);
-}
-.atlassian-col__indicator[data-status='loaded'] {
-  background: var(--color-status-info);
-}
-.atlassian-col__indicator[data-status='in_progress'] {
-  background: var(--color-status-warning);
-}
-.atlassian-col__indicator[data-status='completed'] {
-  background: var(--color-action-primary);
-}
-.atlassian-col__indicator[data-status='reconciled'] {
-  background: var(--color-status-success);
-}
-.atlassian-col__indicator[data-status='cancelled'] {
-  background: var(--color-status-danger);
 }
 
 .atlassian-col__header-main {
@@ -227,18 +209,76 @@
   letter-spacing: 0.05em;
 }
 
+/* Status-colored column titles (text color matching previous indicator border color) */
+.atlassian-col__title--waiting,
+.atlassian-col[data-status='waiting'] .atlassian-col__title {
+  color: var(--color-status-warning);
+}
+.atlassian-col[data-status='planned'] .atlassian-col__title {
+  color: var(--color-text-secondary);
+}
+.atlassian-col[data-status='loaded'] .atlassian-col__title {
+  color: var(--color-status-info);
+}
+.atlassian-col[data-status='in_progress'] .atlassian-col__title {
+  color: var(--color-status-warning);
+}
+.atlassian-col[data-status='completed'] .atlassian-col__title {
+  color: var(--color-status-success);
+}
+.atlassian-col[data-status='reconciled'] .atlassian-col__title {
+  color: var(--color-status-success);
+}
+.atlassian-col[data-status='cancelled'] .atlassian-col__title {
+  color: var(--color-status-danger);
+}
+
 .atlassian-col__badge {
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-heading2-font-weight);
-  padding: 1px var(--spacing-xs);
-  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 20px;
+  block-size: 20px;
+  padding: 0 5px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--typography-caption-font-size, 11px);
+  font-weight: var(--typography-heading2-font-weight, 700);
+  line-height: 1;
+  text-align: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
   background: var(--color-surface-overlay);
   color: var(--color-text-secondary);
 }
 
-.atlassian-col__badge--waiting {
+.atlassian-col__badge--waiting,
+.atlassian-col[data-status='waiting'] .atlassian-col__badge {
   background: var(--component-chip-warning-background);
   color: var(--component-chip-warning-text);
+}
+.atlassian-col[data-status='planned'] .atlassian-col__badge {
+  background: var(--component-chip-neutral-background);
+  color: var(--component-chip-neutral-text);
+}
+.atlassian-col[data-status='loaded'] .atlassian-col__badge {
+  background: var(--component-chip-info-background);
+  color: var(--component-chip-info-text);
+}
+.atlassian-col[data-status='in_progress'] .atlassian-col__badge {
+  background: var(--component-chip-warning-background);
+  color: var(--component-chip-warning-text);
+}
+.atlassian-col[data-status='completed'] .atlassian-col__badge {
+  background: var(--component-chip-success-background);
+  color: var(--component-chip-success-text);
+}
+.atlassian-col[data-status='reconciled'] .atlassian-col__badge {
+  background: var(--component-chip-success-background);
+  color: var(--component-chip-success-text);
+}
+.atlassian-col[data-status='cancelled'] .atlassian-col__badge {
+  background: var(--component-chip-danger-background);
+  color: var(--component-chip-danger-text);
 }
 
 /* Cards Area inside Column (no visible vertical scrollbars to preserve single scrollbar) */
@@ -260,83 +300,57 @@
 }
 
 /* -----------------------------------------------------------------------------
- * Jira Card Design (Theme Token Driven)
+ * Jira Card Design (Modern Flat Aesthetic, No Box Shadow, Micro-Interactions)
  * -------------------------------------------------------------------------- */
 .jira-card {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  padding: var(--spacing-sm);
+  padding: 12px 14px;
   border: var(--border-width, 1px) solid var(--component-card-border);
   border-radius: var(--radius-card, 10px);
   background: var(--component-card-background);
   cursor: pointer;
   text-align: left;
+  box-shadow: none;
   transition:
-    transform var(--motion-duration-fast, 150ms) ease,
-    box-shadow var(--motion-duration-fast, 150ms) ease,
+    transform var(--motion-duration-fast, 150ms) cubic-bezier(0.2, 0, 0, 1),
     border-color var(--motion-duration-fast, 150ms) ease;
-  box-shadow: var(--elevation-1);
 }
 
 .jira-card:hover,
 .jira-card:focus-visible {
-  border-color: var(--color-border-focus);
-  box-shadow: var(--elevation-2);
+  box-shadow: none;
   transform: translateY(-2px);
   outline: none;
 }
 
-/* Status-specific left border tags */
-.jira-card[data-status='planned'] {
-  border-left: 4px solid var(--color-text-secondary);
-}
-.jira-card[data-status='loaded'] {
-  border-left: 4px solid var(--color-status-info);
-}
-.jira-card[data-status='in_progress'] {
-  border-left: 4px solid var(--color-status-warning);
-}
-.jira-card[data-status='completed'] {
-  border-left: 4px solid var(--color-action-primary);
-}
-.jira-card[data-status='reconciled'] {
-  border-left: 4px solid var(--color-status-success);
-}
-.jira-card[data-status='cancelled'] {
-  border-left: 4px solid var(--color-status-danger);
-}
-
-/* Waiting Order Card */
-.jira-card--waiting {
-  background: var(--component-chip-warning-background);
-  border: var(--border-width, 1px) solid var(--component-card-border);
-  border-left: 4px solid var(--color-status-warning);
-}
-
-.jira-card--waiting:hover {
-  border-color: var(--color-status-warning);
-}
-
-.jira-card__key {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--typography-caption-font-size);
-  color: var(--component-chip-warning-text);
-  font-weight: var(--typography-heading2-font-weight);
-}
-
-.jira-card__key-icon {
-  font-size: var(--typography-caption-font-size);
-  color: var(--color-status-warning);
-}
-
+/* Base Card Elements Typography & Spacing */
 .jira-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-xs);
+  flex-wrap: nowrap;
+}
+
+.jira-card__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--typography-caption-font-size, 12px);
+  font-weight: var(--typography-heading2-font-weight, 700);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.jira-card__key-icon {
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .jira-card__date {
@@ -345,14 +359,15 @@
   gap: var(--spacing-xs);
   font-size: var(--typography-caption-font-size);
   font-weight: var(--typography-label-font-weight);
-  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .jira-card__body {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  margin-block: var(--spacing-xs);
+  gap: 6px;
+  margin-block: 6px;
 }
 
 .jira-card__row {
@@ -360,94 +375,207 @@
   align-items: center;
   gap: var(--spacing-xs);
   font-size: var(--typography-body-small-font-size);
-  color: var(--color-text-secondary);
+  line-height: 1.35;
 }
 
 .jira-card__icon {
-  font-size: var(--typography-body-small-font-size);
-  color: var(--color-text-secondary);
+  font-size: 13px;
   inline-size: 1rem;
   text-align: center;
   flex-shrink: 0;
-}
-
-.jira-card__customer {
-  font-weight: var(--typography-label-font-weight);
-  color: var(--color-text-primary);
-}
-
-.jira-card__addr {
-  font-size: var(--typography-caption-font-size);
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.jira-card__cylinders {
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-label-font-weight);
-  color: var(--component-chip-warning-text);
+  opacity: 0.85;
 }
 
 .jira-card__text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--color-text-primary);
+  font-size: 13px;
 }
 
 .jira-card__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-block-start: var(--spacing-xs);
-  border-block-start: var(--border-width, 1px) solid var(--color-border-default);
+  padding-block-start: 10px;
+  margin-block-start: 4px;
+  border-block-start: 1px dashed color-mix(in srgb, currentColor 18%, transparent);
   font-size: var(--typography-caption-font-size);
-}
-
-.jira-card__amount {
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-label-font-weight);
-  color: var(--color-text-secondary);
 }
 
 .jira-card__stops {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  color: var(--color-text-secondary);
 }
 
 .jira-card__action-hint {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  color: var(--color-action-primary);
-  font-weight: var(--typography-label-font-weight);
+  font-weight: var(--typography-heading2-font-weight);
+  font-size: 12px;
 }
 
-.jira-card__action-btn {
-  padding: 2px 10px !important;
-  font-size: var(--typography-caption-font-size) !important;
-  border-radius: var(--radius-sm) !important;
+.jira-card__action-hint i {
+  font-size: 11px;
+  transition: transform var(--motion-duration-fast, 150ms) ease;
 }
 
-/* Empty Column State */
+.jira-card:hover .jira-card__action-hint i,
+.jira-card__action-hint:hover i {
+  transform: translateX(3px);
+}
+
+.jira-card__plan-action {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.jira-card__plan-action:hover {
+  text-decoration: underline;
+}
+
+.jira-card__plan-action:focus-visible {
+  outline: 2px solid var(--color-focus-ring, var(--color-primary));
+  outline-offset: 2px;
+  border-radius: var(--radius-xs, 2px);
+}
+
+/* Card Status Chips (card color only) */
+.jira-card p-tag,
+.jira-card .p-tag {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap !important;
+  flex-shrink: 0;
+}
+
+.jira-card .p-tag {
+  font-size: 11px !important;
+  font-weight: var(--typography-label-font-weight, 500) !important;
+  padding: 1px 8px !important;
+  border-radius: var(--radius-full) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  line-height: 1.3 !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+}
+
+.jira-card .p-tag .p-tag-label {
+  white-space: nowrap !important;
+}
+
+/* Status Variables per Card (Semantic Theme Mapping) */
+.jira-card--waiting,
+.jira-card[data-status='in_progress'] {
+  --card-status-color: var(--color-status-warning);
+  --card-status-text: var(--component-chip-warning-text);
+}
+
+.jira-card[data-status='planned'] {
+  --card-status-color: var(--color-text-secondary);
+  --card-status-text: var(--component-chip-neutral-text);
+}
+
+.jira-card[data-status='loaded'] {
+  --card-status-color: var(--color-status-info);
+  --card-status-text: var(--component-chip-info-text);
+}
+
+.jira-card[data-status='completed'],
+.jira-card[data-status='reconciled'] {
+  --card-status-color: var(--color-status-success);
+  --card-status-text: var(--component-chip-success-text);
+}
+
+.jira-card[data-status='cancelled'] {
+  --card-status-color: var(--color-status-danger);
+  --card-status-text: var(--component-chip-danger-text);
+}
+
+.jira-card {
+  background: color-mix(
+    in srgb,
+    var(--card-status-color, var(--color-text-secondary)) 7%,
+    var(--color-surface-base)
+  );
+  border: var(--border-width, 1px) solid
+    color-mix(
+      in srgb,
+      var(--card-status-color, var(--color-text-secondary)) 22%,
+      var(--color-border-default)
+    );
+}
+
+.jira-card:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--card-status-color, var(--color-text-secondary)) 50%,
+    var(--color-border-default)
+  );
+}
+
+.jira-card .jira-card__date,
+.jira-card .jira-card__text,
+.jira-card .jira-card__stops,
+.jira-card .jira-card__action-hint,
+.jira-card .jira-card__customer,
+.jira-card .jira-card__addr,
+.jira-card .jira-card__cylinders,
+.jira-card .jira-card__amount,
+.jira-card .jira-card__key {
+  color: var(--card-status-text, var(--color-text-primary));
+}
+
+.jira-card .jira-card__icon,
+.jira-card .jira-card__key-icon {
+  color: var(--card-status-color, var(--color-text-secondary));
+}
+
+.jira-card .jira-card__footer {
+  border-block-start-color: color-mix(
+    in srgb,
+    var(--card-status-color, currentColor) 20%,
+    transparent
+  );
+}
+
+.jira-card .p-tag {
+  background: color-mix(
+    in srgb,
+    var(--card-status-color, var(--color-text-secondary)) 14%,
+    var(--color-surface-base)
+  ) !important;
+  color: var(--card-status-text, var(--color-text-primary)) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--card-status-color, var(--color-text-secondary)) 25%,
+    transparent
+  ) !important;
+}
+
+/* Empty Column State (Clean modern dashed card outline) */
 .atlassian-col__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-xl) var(--spacing-sm);
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border-default);
+  border-radius: var(--radius-card, 10px);
   color: var(--color-text-secondary);
   font-size: var(--typography-caption-font-size);
   text-align: center;
   gap: var(--spacing-xs);
   margin: var(--spacing-xs);
-  background: var(--color-surface-base);
+  background: color-mix(in srgb, var(--color-surface-base) 60%, transparent);
 }
 
 .atlassian-col__empty-icon {

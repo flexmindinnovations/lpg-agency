@@ -1,4 +1,3 @@
-import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -33,6 +32,8 @@ import {
   DrawerA11yDirective,
   type DataGridColumn,
   ExportButtonComponent,
+  HeaderTitlePortalDirective,
+  PageActionsDirective,
   PageHeaderComponent,
 } from '@lpg/shared/ui';
 import { DATE_INPUT_PLACEHOLDER, formatDisplayDateTime } from '@lpg/shared/util';

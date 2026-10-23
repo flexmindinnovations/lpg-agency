@@ -1,6 +1,5 @@
 import { notBlank } from '@lpg/shared/util';
 import { ConfirmationService } from 'primeng/api';
-import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,7 +12,6 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective, ExportButtonComponent } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import {
@@ -25,7 +23,11 @@ import {
 import {
   DataGridComponent,
   type DataGridColumn,
+  DrawerA11yDirective,
+  ExportButtonComponent,
   FormFieldComponent,
+  HeaderTitlePortalDirective,
+  PageActionsDirective,
   PageHeaderComponent,
 } from '@lpg/shared/ui';
 

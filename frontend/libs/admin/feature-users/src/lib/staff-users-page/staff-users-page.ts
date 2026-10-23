@@ -1,4 +1,3 @@
-import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -14,7 +13,6 @@ import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective, ExportButtonComponent } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import {
@@ -27,11 +25,15 @@ import {
 import { ASSIGNABLE_STAFF_ROLES, ROLE_LABELS, roleLabel } from '@lpg/shared/util';
 import {
   DataGridComponent,
-  type DataGridColumn,
+  DrawerA11yDirective,
+  ExportButtonComponent,
   FormFieldComponent,
+  HeaderTitlePortalDirective,
+  PageActionsDirective,
   PageHeaderComponent,
   StatusChipCell,
 } from '@lpg/shared/ui';
+import type { DataGridColumn } from '@lpg/shared/ui';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
 /** One grid row: the API user plus the derived, displayable fields. */

@@ -29,4 +29,5 @@ export * from './lib/app-shell/header-title-portal.directive';
 export * from './lib/app-shell/page-actions.directive';
 export * from './lib/profile-menu/profile-menu.component';
 export * from './lib/filter-bar/export-button.component';
+export { ExportButtonComponent } from './lib/filter-bar/export-button.component';
 export * from './lib/filter-bar/date-range-filter.component';

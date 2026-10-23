@@ -100,11 +100,10 @@
       <!-- Tabular Columns Grid -->
       <div class="atlassian-board__columns-grid">
         <!-- COLUMN 1: WAITING (The first tab/column on the Kanban board) -->
-        <div class="atlassian-col atlassian-col--waiting">
+        <div class="atlassian-col atlassian-col--waiting" data-status="waiting">
           <div class="atlassian-col__header">
-            <div class="atlassian-col__indicator atlassian-col__indicator--waiting"></div>
             <div class="atlassian-col__header-main">
-              <span class="atlassian-col__title">WAITING</span>
+              <span class="atlassian-col__title atlassian-col__title--waiting">WAITING</span>
               <span class="atlassian-col__badge atlassian-col__badge--waiting"
                 >{{ unassignedOrders().length }}</span
               >
@@ -116,7 +115,7 @@
               <div class="jira-card__header">
                 <span class="jira-card__key" [title]="order.id">
                   <i class="pi pi-tag jira-card__key-icon" aria-hidden="true"></i>
-                  <strong>{{ order.order_number ?? shortId(order.id) }}</strong>
+                  <span>{{ order.order_number ?? shortId(order.id) }}</span>
                 </span>
                 <span class="jira-card__date">
                   <i class="pi pi-calendar" aria-hidden="true"></i>
@@ -142,15 +141,13 @@
                   @if (order.total_amount) { ₹{{ order.total_amount }} }
                 </span>
                 <button
-                  pButton
                   type="button"
-                  size="small"
-                  severity="primary"
-                  class="jira-card__action-btn"
+                  class="jira-card__action-hint jira-card__plan-action"
                   (click)="openNewTrip(order)"
+                  aria-label="Plan trip for order"
                 >
-                  <i class="pi pi-plus" aria-hidden="true"></i>
                   <span>Plan Trip</span>
+                  <i class="pi pi-arrow-right" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
@@ -171,10 +168,11 @@
         @for (status of statusColumns; track status) {
         <div class="atlassian-col" [attr.data-status]="status">
           <div class="atlassian-col__header">
-            <div class="atlassian-col__indicator" [attr.data-status]="status"></div>
             <div class="atlassian-col__header-main">
-              <span class="atlassian-col__title">{{ statusLabel(status) }}</span>
-              <span class="atlassian-col__badge"
+              <span class="atlassian-col__title" [attr.data-status]="status"
+                >{{ statusLabel(status) }}</span
+              >
+              <span class="atlassian-col__badge" [attr.data-status]="status"
                 >{{ (routesByStatus().get(status) ?? []).length }}</span
               >
             </div>
