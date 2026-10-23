@@ -755,9 +755,12 @@ async def approve_reconciliation_record(
     `RECONCILIATION_ALREADY_DECIDED` on a repeat, 409
     `SELF_APPROVAL_NOT_ALLOWED` for the person who counted."""
     actor_id = _require_actor(principal)
+    allow_self = principal.role in ("agency_admin", "super_admin")
     use_case = ApproveReconciliationUseCase(repository, location_repository, unit_of_work)
     record = await use_case.execute(
-        ApproveReconciliationCommand(record_id=record_id, approved_by=actor_id)
+        ApproveReconciliationCommand(
+            record_id=record_id, approved_by=actor_id, allow_self_approval=allow_self
+        )
     )
     return _reconciliation_to_response(record)
 
@@ -778,9 +781,13 @@ async def reject_reconciliation_record(
 ) -> ReconciliationRecordResponse:
     """Close a pending count without changing stock (e.g. recount needed)."""
     actor_id = _require_actor(principal)
+    allow_self = principal.role in ("agency_admin", "super_admin")
     record = await RejectReconciliationUseCase(repository, unit_of_work).execute(
         RejectReconciliationCommand(
-            record_id=record_id, rejected_by=actor_id, reason=request.reason
+            record_id=record_id,
+            rejected_by=actor_id,
+            reason=request.reason,
+            allow_self_approval=allow_self,
         )
     )
     return _reconciliation_to_response(record)

@@ -175,7 +175,7 @@ class TestStockCountNeedsASecondPerson:
     ) -> None:
         tenant_id, warehouse_id, ct = await _seed_tenant(admin_engine)
         counter = await _staff_token(
-            client, admin_engine, integration_settings, tenant_id=tenant_id, role="agency_admin"
+            client, admin_engine, integration_settings, tenant_id=tenant_id, role="warehouse_staff"
         )
         approver = await _staff_token(
             client, admin_engine, integration_settings, tenant_id=tenant_id, role="warehouse_staff"
@@ -227,12 +227,39 @@ class TestStockCountNeedsASecondPerson:
         assert again.json()["error_code"] == "RECONCILIATION_ALREADY_DECIDED"
         assert await _filled(client, counter, warehouse_id, ct) == 120
 
+    async def test_admin_can_approve_own_count(
+        self, client: AsyncClient, admin_engine: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        tenant_id, warehouse_id, ct = await _seed_tenant(admin_engine)
+        admin = await _staff_token(
+            client, admin_engine, integration_settings, tenant_id=tenant_id, role="agency_admin"
+        )
+        await client.post(
+            f"/api/v1/warehouses/{warehouse_id}/goods-receipt-notes",
+            json={"cylinder_type_id": str(ct), "quantity_received": 100},
+            headers=admin,
+        )
+        count = await client.post(
+            f"/api/v1/inventory-locations/warehouse/{warehouse_id}/reconciliation-records",
+            json={"cylinder_type_id": str(ct), "status": "filled", "actual_quantity": 90},
+            headers=admin,
+        )
+        assert count.status_code == 201, count.text
+        record_id = count.json()["id"]
+
+        approved = await client.post(
+            f"/api/v1/reconciliation-records/{record_id}/approve", headers=admin
+        )
+        assert approved.status_code == 200, approved.text
+        assert approved.json()["state"] == "approved"
+        assert await _filled(client, admin, warehouse_id, ct) == 90
+
     async def test_reject_leaves_stock_and_closes_the_count(
         self, client: AsyncClient, admin_engine: AsyncEngine, integration_settings: Settings
     ) -> None:
         tenant_id, warehouse_id, ct = await _seed_tenant(admin_engine)
         counter = await _staff_token(
-            client, admin_engine, integration_settings, tenant_id=tenant_id, role="agency_admin"
+            client, admin_engine, integration_settings, tenant_id=tenant_id, role="warehouse_staff"
         )
         approver = await _staff_token(
             client, admin_engine, integration_settings, tenant_id=tenant_id, role="warehouse_staff"

@@ -481,6 +481,31 @@ async def test_the_counter_cannot_approve_their_own_count(
     mock_uow.commit.assert_not_called()
 
 
+async def test_counter_can_approve_own_count_when_allow_self_approval(
+    mock_location_repo: MagicMock, mock_reconciliation_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    counter = uuid.uuid4()
+    cylinder_type_id = uuid.uuid4()
+    location = _warehouse(cylinder_type_id, 50)
+    record = _pending_record(
+        location_id=location.id,
+        cylinder_type_id=cylinder_type_id,
+        recorded_by=counter,
+    )
+    mock_reconciliation_repo.get_for_decision.return_value = record
+    mock_location_repo.get_by_id.return_value = location
+
+    use_case = ApproveReconciliationUseCase(mock_reconciliation_repo, mock_location_repo, mock_uow)
+    await use_case.execute(
+        ApproveReconciliationCommand(
+            record_id=record.id, approved_by=counter, allow_self_approval=True
+        )
+    )
+
+    assert location.balance_of(cylinder_type_id, "filled") == 45
+    mock_uow.commit.assert_called_once()
+
+
 async def test_an_approved_count_cannot_be_approved_again(
     mock_location_repo: MagicMock, mock_reconciliation_repo: MagicMock, mock_uow: MagicMock
 ) -> None:

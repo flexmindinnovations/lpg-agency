@@ -26,7 +26,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -164,6 +164,7 @@ function toDateOnlyString(date: Date): string {
     Tooltip,
     HasPermissionDirective,
     DataGridComponent,
+    RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-dispatch.html',
@@ -1027,7 +1028,33 @@ export class FeatureDispatch implements OnInit {
   }
 
   protected goToInventoryReconciliation(): void {
-    void this.router.navigate(['/inventory']);
+    const route = this.selectedRoute();
+    if (!route) {
+      void this.router.navigate(['/inventory']);
+      return;
+    }
+
+    let cylinderTypeId: string | undefined;
+    for (const stop of route.stops ?? []) {
+      const order = this.orderById().get(stop.order_id);
+      if (order?.lines && order.lines.length > 0) {
+        cylinderTypeId = order.lines[0].cylinder_type_id;
+        break;
+      }
+    }
+    if (!cylinderTypeId && route.loaded_lines && route.loaded_lines.length > 0) {
+      cylinderTypeId = route.loaded_lines[0].cylinder_type_id;
+    }
+
+    const queryParams: Record<string, string> = {
+      type: 'vehicle',
+      id: route.vehicle_id,
+    };
+    if (cylinderTypeId) {
+      queryParams['cylinder_type_id'] = cylinderTypeId;
+    }
+
+    void this.router.navigate(['/inventory'], { queryParams });
   }
 
   protected openCashHandoverForm(): void {

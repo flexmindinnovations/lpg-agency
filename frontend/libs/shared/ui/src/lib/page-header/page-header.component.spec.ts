@@ -32,4 +32,24 @@ describe('PageHeaderComponent', () => {
     expect(back?.textContent).toContain('All orders');
     expect(back?.getAttribute('href')).toBe('/orders');
   });
+
+  it('renders an accessible button for subtitle that toggles on click', () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(PageHeaderComponent);
+    fixture.componentRef.setInput('title', 'Notifications');
+    fixture.componentRef.setInput('subtitle', 'All alert types');
+    fixture.detectChanges();
+
+    const btn = fixture.nativeElement.querySelector('button.page-header__info') as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+
+    btn.click();
+    fixture.detectChanges();
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+
+    btn.click();
+    fixture.detectChanges();
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
 });
