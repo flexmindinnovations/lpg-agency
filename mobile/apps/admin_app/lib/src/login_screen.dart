@@ -28,6 +28,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  bool _obscurePassword = true;
   bool _codeRequested = false;
   String? _testingOtp;
   bool _submitting = false;
@@ -80,6 +81,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _submitting = false;
           _errorMessage = null;
         });
+        if (_codeRequested) {
+          LpgFeedback.showToast(context, 'Verification code requested');
+        }
       },
       onFailure: (failure) {
         setState(() {
@@ -177,7 +181,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: LpgSpacing.lg),
 
-              // Segmented Toggle between Phone OTP and Email/Password
               SegmentedButton<_AuthMethod>(
                 segments: const [
                   ButtonSegment(
@@ -242,10 +245,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     isLoading: _submitting,
                   ),
                   const SizedBox(height: LpgSpacing.sm),
-                  LpgButton(
-                    label: 'Change Phone or Agency Code',
-                    variant: LpgButtonVariant.secondary,
-                    onPressed: _submitting ? null : () => setState(() => _codeRequested = false),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _submitting ? null : _requestCode,
+                        icon: const Icon(LpgIcons.sync, size: LpgSizes.iconSm),
+                        label: const Text('Resend / Refresh OTP'),
+                      ),
+                      TextButton(
+                        onPressed: _submitting ? null : () => setState(() => _codeRequested = false),
+                        child: const Text('Change Details'),
+                      ),
+                    ],
                   ),
                 ] else ...[
                   const SizedBox(height: LpgSpacing.lg),
@@ -268,8 +280,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   controller: _passwordController,
                   label: 'Password',
                   hintText: 'Enter your password',
-                  obscureText: true,
+                  obscureText: _obscurePassword,
                   readOnly: _submitting,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? LpgIcons.eyeOff : LpgIcons.eye,
+                      size: LpgSizes.iconSm,
+                      color: colors.textSecondary,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
                 ),
                 const SizedBox(height: LpgSpacing.xl),
                 LpgButton(

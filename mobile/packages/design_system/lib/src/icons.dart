@@ -125,6 +125,8 @@ abstract final class LpgIcons {
   static const IconData logout = LucideIcons.logOut;
   static const IconData close = LucideIcons.x;
   static const IconData lock = LucideIcons.lock;
+  static const IconData eye = LucideIcons.eye;
+  static const IconData eyeOff = LucideIcons.eyeOff;
   static const IconData security = LucideIcons.shieldCheck;
   static const IconData number = LucideIcons.hash;
   static const IconData help = LucideIcons.circleHelp;
