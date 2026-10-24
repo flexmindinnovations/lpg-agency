@@ -275,10 +275,10 @@ CUSTOMERS = [
 
 # Login accounts, one per role worth exercising in the UI. `admin` is listed
 # first because it also anchors tenant resolution — see `main`.
-# (email, role, branch or None, display_name, phone)
+# (email, role, branch or None, display_name)
 LOGIN_USERS = [
-    ("admin@example.com", "agency_admin", "Hyderabad Central", "Rajesh Sharma", "+919848011000"),
-    ("manager@example.com", "manager", "Hyderabad Central", "Ravi Kumar", "+919848011001"),
+    ("admin@example.com", "agency_admin", "Hyderabad Central", "Rajesh Sharma", "+919848011001"),
+    ("manager@example.com", "manager", "Hyderabad Central", "Ravi Kumar", "+919848011008"),
     ("dispatcher@example.com", "dispatcher", "Hyderabad Central", "Sunita Reddy", "+919848011002"),
     ("accountant@example.com", "accountant", "Hyderabad Central", "Lakshmi Rao", "+919848011004"),
     ("warehouse@example.com", "warehouse_staff", "Secunderabad North", "Prakash Menon", "+919848011006"),
@@ -1178,8 +1178,8 @@ async def main() -> None:
     for key, value in row.items():
         print(f"         {key:<16} {value}")
     print(f"\n[seed] demo logins (password: {DEMO_PASSWORD}):")
-    for email, role, _, _, phone in LOGIN_USERS:
-        print(f"         {email:<28} {role:<16} (phone: {phone})")
+    for email, role, _, _ in LOGIN_USERS:
+        print(f"         {email:<28} {role}")
 
 
 if __name__ == "__main__":
