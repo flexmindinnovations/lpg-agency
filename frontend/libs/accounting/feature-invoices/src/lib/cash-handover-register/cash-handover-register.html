@@ -53,13 +53,15 @@
       </dd>
     </div>
   </dl>
-  <lpg-data-grid
-    [rows]="entries()"
-    [columns]="columns"
-    [loading]="loading()"
-    [autoHeight]="true"
-    ariaLabel="Cash handover register"
-  />
+  <section class="grid-section">
+    <lpg-data-grid
+      [rows]="entries()"
+      [columns]="columns"
+      [loading]="loading()"
+      emptyMessage="No cash handovers recorded for this period."
+      ariaLabel="Cash handover register"
+    />
+  </section>
   }
 </div>
 

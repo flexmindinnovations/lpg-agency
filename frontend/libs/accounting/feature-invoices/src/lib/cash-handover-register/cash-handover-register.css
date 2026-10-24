@@ -1,11 +1,13 @@
 :host {
   display: block;
+  block-size: 100%;
 }
 
 .register {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  block-size: 100%;
 }
 
 .register__note {

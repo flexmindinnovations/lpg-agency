@@ -304,6 +304,8 @@ function escapeHtml(text: string): string {
         font-size: var(--typography-body-small-font-size);
       }
       .lpg-data-grid {
+        display: flex;
+        flex-direction: column;
         flex: 1 1 auto;
         min-block-size: 0;
         block-size: 100%;
