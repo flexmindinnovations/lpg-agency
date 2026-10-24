@@ -111,10 +111,10 @@ describe('DataGridComponent', () => {
     expect(formatter).toHaveBeenCalledWith(3, rows[0]);
   });
 
-  it('paginates by default at 25 rows per page', () => {
+  it('paginates by default at 10 rows per page', () => {
     const options = gridOptionsOf(create());
     expect(options.pagination).toBe(true);
-    expect(options.paginationPageSize).toBe(25);
+    expect(options.paginationPageSize).toBe(10);
     expect(options.paginationPageSizeSelector).toEqual([10, 25, 50, 100]);
   });
 
