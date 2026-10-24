@@ -182,35 +182,8 @@ body {
 }
 
 /* ========================================================================
-   MOTION (Fluent Glass, Phase 29 Stage 1)
-
-   Route transitions run on the native View Transitions API, wired in
-   app.config.ts via provideRouter(withViewTransitions()). The animation
-   itself is styled here on the ::view-transition-*(root) pseudo-elements.
-   Progressive enhancement: browsers without the API just hard-cut.
+   MOTION
    ======================================================================== */
-
-/* Route transition — a plain, fast opacity cross-fade. No transform (it
-   caused a visible jump on every navigation), no blur. */
-@keyframes lpg-route-out {
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes lpg-route-in {
-  from {
-    opacity: 0;
-  }
-}
-
-::view-transition-old(root) {
-  animation: 100ms linear both lpg-route-out;
-}
-
-::view-transition-new(root) {
-  animation: 140ms linear both lpg-route-in;
-}
 
 /* Entrance utility — a single quiet fade-in for a card/list on first paint.
    No translate, no per-item stagger (both read as flicker on a data tool
@@ -227,8 +200,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root),
   .animate-fade-up,
   .animate-fade-in {
     animation: none;

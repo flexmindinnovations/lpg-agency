@@ -4,7 +4,6 @@ import {
   provideRouter,
   withComponentInputBinding,
   withNavigationErrorHandler,
-  withViewTransitions,
 } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
@@ -51,24 +50,6 @@ export const appConfig: ApplicationConfig = {
         if (isStaleAssetError(navigationError.error)) {
           reloadOnceForStaleAsset(navigationError.url, inject(HARD_NAVIGATE));
         }
-      }),
-      // Native View Transitions API cross-fade between routes (Phase 29
-      // Stage 1). Progressive enhancement — a no-op in browsers without
-      // `document.startViewTransition`. The actual animation is styled on
-      // `::view-transition-old/new(root)` in styles.css; `skipInitial
-      // Transition` keeps the first paint from animating; the hook below
-      // skips it entirely under `prefers-reduced-motion` (the styled
-      // durations also collapse to 0 there — belt and braces).
-      withViewTransitions({
-        skipInitialTransition: true,
-        onViewTransitionCreated: ({ transition }) => {
-          if (
-            typeof matchMedia === 'function' &&
-            matchMedia('(prefers-reduced-motion: reduce)').matches
-          ) {
-            transition.skipTransition();
-          }
-        },
       }),
     ),
     // Backend root URL, swapped per build configuration via `fileReplacements`
