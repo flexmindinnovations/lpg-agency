@@ -1,4 +1,3 @@
-// Admin Order Placement Screen
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -16,32 +15,28 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
-  final _customerIdController = TextEditingController();
-  final _addressIdController = TextEditingController();
-  final _branchIdController = TextEditingController();
+  CustomerResponse? _selectedCustomer;
+  CustomerAddressResponse? _selectedAddress;
+  String? _selectedCylinderTypeId;
   final _quantityController = TextEditingController(text: '1');
 
-  String? _selectedCylinderTypeId;
   bool _submitting = false;
   String? _errorMessage;
 
   @override
   void dispose() {
-    _customerIdController.dispose();
-    _addressIdController.dispose();
-    _branchIdController.dispose();
     _quantityController.dispose();
     super.dispose();
   }
 
   Future<void> _submitOrder() async {
-    final customerId = _customerIdController.text.trim();
-    final addressId = _addressIdController.text.trim();
-    final branchId = _branchIdController.text.trim();
+    final customer = _selectedCustomer;
+    final address = _selectedAddress;
+    final cylinderTypeId = _selectedCylinderTypeId;
     final quantity = int.tryParse(_quantityController.text.trim()) ?? 1;
 
-    if (customerId.isEmpty || addressId.isEmpty || branchId.isEmpty || _selectedCylinderTypeId == null) {
-      setState(() => _errorMessage = 'Please fill in Customer ID, Address ID, Branch ID, and select Cylinder Type.');
+    if (customer == null || address == null || cylinderTypeId == null) {
+      setState(() => _errorMessage = 'Please select a Customer, Delivery Address, and Cylinder Type.');
       return;
     }
 
@@ -52,17 +47,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     final orderApi = ref.read(orderApiProvider);
     final request = CreateOrderRequest(
-      branchId: branchId,
-      customerId: customerId,
-      addressId: addressId,
-      deliveryAddress: const DeliveryAddressPayload(
-        addressLine: 'Admin Placement',
+      branchId: customer.branchId,
+      customerId: customer.id,
+      addressId: address.id,
+      deliveryAddress: DeliveryAddressPayload(
+        addressLine: '${address.line1}, ${address.city ?? ''}',
       ),
       bookingSource: 'phone',
       requestedDate: DateTime.now(),
       lines: [
         CreateOrderLineRequest(
-          cylinderTypeId: _selectedCylinderTypeId!,
+          cylinderTypeId: cylinderTypeId,
           quantity: quantity,
         ),
       ],
@@ -74,7 +69,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     result.when(
       onSuccess: (_) {
-        LpgFeedback.showToast(context, 'Order created successfully');
+        LpgFeedback.showToast(context, 'Order placed successfully on behalf of ${customer.fullName}');
         ref.invalidate(adminOrdersProvider(1));
         context.pop();
       },
@@ -89,7 +84,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.lpgColors;
     final text = context.lpgText;
+
+    final customersAsync = ref.watch(availableCustomersProvider);
+    final cylindersAsync = ref.watch(cylinderCatalogProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Create Order on Behalf')),
@@ -103,40 +102,104 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 LpgBanner(message: _errorMessage!, tone: LpgTone.danger),
                 const SizedBox(height: LpgSpacing.md),
               ],
-              Text('Customer & Branch Details', style: text.titleMedium),
-              const SizedBox(height: LpgSpacing.md),
-              LpgTextField(
-                controller: _customerIdController,
-                label: 'Customer ID (UUID)',
-                hintText: 'e.g. 550e8400-e29b-41d4-a716-446655440000',
+
+              Text('Customer Selection', style: text.titleMedium),
+              const SizedBox(height: LpgSpacing.sm),
+
+              customersAsync.when(
+                loading: () => const LpgSkeleton(height: 56),
+                error: (err, _) => LpgErrorState(
+                  message: 'Failed to load customer list',
+                  onRetry: () => ref.invalidate(availableCustomersProvider),
+                ),
+                data: (page) => DropdownButtonFormField<CustomerResponse>(
+                  decoration: const InputDecoration(
+                    labelText: 'Select Customer',
+                    border: OutlineInputBorder(),
+                  ),
+                  initialValue: _selectedCustomer,
+                  items: page.items.map((cust) {
+                    return DropdownMenuItem(
+                      value: cust,
+                      child: Text('${cust.fullName} (${cust.phoneNumber})'),
+                    );
+                  }).toList(),
+                  onChanged: (cust) {
+                    setState(() {
+                      _selectedCustomer = cust;
+                      _selectedAddress = cust?.addresses.firstOrNull;
+                    });
+                  },
+                ),
               ),
-              const SizedBox(height: LpgSpacing.md),
-              LpgTextField(
-                controller: _branchIdController,
-                label: 'Branch ID (UUID)',
-                hintText: 'e.g. 123e4567-e89b-12d3-a456-426614174000',
-              ),
-              const SizedBox(height: LpgSpacing.md),
-              LpgTextField(
-                controller: _addressIdController,
-                label: 'Delivery Address ID (UUID)',
-                hintText: 'e.g. 123e4567-e89b-12d3-a456-426614174000',
-              ),
+
               const SizedBox(height: LpgSpacing.lg),
-              Text('Cylinder & Quantity', style: text.titleMedium),
+
+              if (_selectedCustomer != null) ...[
+                Text('Delivery Address', style: text.titleMedium),
+                const SizedBox(height: LpgSpacing.sm),
+                if (_selectedCustomer!.addresses.isEmpty)
+                  Text(
+                    'No saved addresses for this customer.',
+                    style: text.bodyMedium?.copyWith(color: colors.statusDanger),
+                  )
+                else
+                  DropdownButtonFormField<CustomerAddressResponse>(
+                    decoration: const InputDecoration(
+                      labelText: 'Select Delivery Address',
+                      border: OutlineInputBorder(),
+                    ),
+                    initialValue: _selectedAddress,
+                    items: _selectedCustomer!.addresses.map((addr) {
+                      return DropdownMenuItem(
+                        value: addr,
+                        child: Text('${addr.line1}, ${addr.city ?? ''}'),
+                      );
+                    }).toList(),
+                    onChanged: (addr) {
+                      setState(() => _selectedAddress = addr);
+                    },
+                  ),
+                const SizedBox(height: LpgSpacing.lg),
+              ],
+
+              Text('Product & Quantity', style: text.titleMedium),
+              const SizedBox(height: LpgSpacing.sm),
+
+              cylindersAsync.when(
+                loading: () => const LpgSkeleton(height: 56),
+                error: (err, _) => LpgErrorState(
+                  message: 'Failed to load cylinder catalog',
+                  onRetry: () => ref.invalidate(cylinderCatalogProvider),
+                ),
+                data: (cylinders) => DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Select Cylinder Type',
+                    border: OutlineInputBorder(),
+                  ),
+                  initialValue: _selectedCylinderTypeId,
+                  items: cylinders.map((cyl) {
+                    return DropdownMenuItem(
+                      value: cyl.id,
+                      child: Text('${cyl.name} (${cyl.weightKg} kg)'),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() => _selectedCylinderTypeId = val);
+                  },
+                ),
+              ),
+
               const SizedBox(height: LpgSpacing.md),
+
               LpgTextField(
                 controller: _quantityController,
                 label: 'Quantity',
                 keyboardType: TextInputType.number,
               ),
-              const SizedBox(height: LpgSpacing.md),
-              LpgTextField(
-                label: 'Cylinder Type ID',
-                hintText: 'Enter cylinder type UUID',
-                onChanged: (val) => _selectedCylinderTypeId = val.trim(),
-              ),
+
               const SizedBox(height: LpgSpacing.xxl),
+
               LpgButton(
                 label: 'Place Order',
                 isLoading: _submitting,

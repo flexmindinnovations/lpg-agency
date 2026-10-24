@@ -30,3 +30,21 @@ final availableRoutesProvider = FutureProvider<List<RouteSummary>>((ref) async {
     FailureResult(:final failure) => throw Exception(failure.message),
   };
 });
+
+final availableCustomersProvider = FutureProvider<CustomerPageResponse>((ref) async {
+  final customerApi = ref.watch(customerApiProvider);
+  final result = await customerApi.listCustomers(skip: 0, limit: 100);
+  return switch (result) {
+    Success(:final value) => value,
+    FailureResult(:final failure) => throw Exception(failure.message),
+  };
+});
+
+final cylinderCatalogProvider = FutureProvider<List<CylinderTypeResponse>>((ref) async {
+  final cylinderTypeApi = ref.watch(cylinderTypeApiProvider);
+  final result = await cylinderTypeApi.list();
+  return switch (result) {
+    Success(:final value) => value,
+    FailureResult(:final failure) => throw Exception(failure.message),
+  };
+});

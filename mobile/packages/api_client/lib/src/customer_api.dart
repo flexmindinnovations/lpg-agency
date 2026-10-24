@@ -121,4 +121,29 @@ final class CustomerApi {
       return FailureResult(Failure(message: e.toString()));
     }
   }
+
+  Future<Result<CustomerPageResponse>> listCustomers({
+    int skip = 0,
+    int limit = 100,
+    String? search,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/customers',
+        queryParameters: {
+          'skip': skip,
+          'limit': limit,
+          'search': ?search,
+        },
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(CustomerPageResponse.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
 }

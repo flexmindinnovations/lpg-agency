@@ -270,3 +270,18 @@ class UpdateCustomerAddressRequest {
     if (longitude != null) 'longitude': longitude,
   };
 }
+
+class CustomerPageResponse {
+  const CustomerPageResponse({required this.items, required this.total});
+
+  factory CustomerPageResponse.fromJson(Map<String, dynamic> json) =>
+      CustomerPageResponse(
+        items: (json['items'] as List<dynamic>? ?? const [])
+            .map((e) => CustomerResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        total: json['total'] as int? ?? 0,
+      );
+
+  final List<CustomerResponse> items;
+  final int total;
+}
