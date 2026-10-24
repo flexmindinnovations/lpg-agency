@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Admin App",
+      "request": "launch",
+      "type": "dart",
+      "program": "apps/admin_app/lib/main.dart",
+      "cwd": "apps/admin_app",
+      "args": [
+        "--dart-define-from-file=dart_defines.local.json"
+      ]
+    },
+    {
+      "name": "Customer App",
+      "request": "launch",
+      "type": "dart",
+      "program": "apps/customer_app/lib/main.dart",
+      "cwd": "apps/customer_app",
+      "args": [
+        "--dart-define-from-file=dart_defines.local.json"
+      ]
+    },
+    {
+      "name": "Driver App",
+      "request": "launch",
+      "type": "dart",
+      "program": "apps/driver_app/lib/main.dart",
+      "cwd": "apps/driver_app",
+      "args": [
+        "--dart-define-from-file=dart_defines.local.json"
+      ]
+    }
+  ]
+}

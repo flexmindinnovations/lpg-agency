@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy to dart_defines.local.json (gitignored) and fill in real values. Run with: flutter run --dart-define-from-file=dart_defines.local.json",
+  "API_BASE_URL": "https://lpg.vitessetec.com",
+  "SHOW_DEV_OTP": "true"
+}
