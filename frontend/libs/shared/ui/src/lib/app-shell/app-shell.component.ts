@@ -831,10 +831,17 @@ export class AppShellComponent {
   private revealActiveLink(): void {
     if (typeof requestAnimationFrame !== 'function') return;
     requestAnimationFrame(() => {
+      const container = this.host.nativeElement.querySelector<HTMLElement>('.shell__nav-groups');
       const active = this.host.nativeElement.querySelector<HTMLElement>(
         '.shell__nav-link.is-active',
       );
-      active?.scrollIntoView?.({ block: 'nearest' });
+      if (!container || !active) return;
+      const cRect = container.getBoundingClientRect();
+      const aRect = active.getBoundingClientRect();
+      // Only scroll if the active item is currently outside the visible sidebar viewport
+      if (aRect.top < cRect.top || aRect.bottom > cRect.bottom) {
+        active.scrollIntoView?.({ block: 'nearest' });
+      }
     });
   }
 
