@@ -277,12 +277,6 @@ function escapeHtml(text: string): string {
         color: var(--color-text-secondary);
         font-size: var(--typography-body-small-font-size);
       }
-      :host ::ng-deep .lpg-data-grid .ag-styled-root {
-        height: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        flex: 1 1 auto !important;
-      }
       :host ::ng-deep .lpg-data-grid .ag-root-wrapper {
         display: flex !important;
         flex-direction: column !important;
