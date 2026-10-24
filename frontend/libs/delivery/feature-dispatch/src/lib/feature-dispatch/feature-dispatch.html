@@ -762,7 +762,6 @@
             tooltipPosition="top"
           >
             <span>Order {{ orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id) }}</span>
-            <i class="pi pi-external-link stop-card__link-icon" aria-hidden="true"></i>
           </a>
           <p-tag [severity]="statusSeverity(stop.status)" [value]="stopStatusLabel(stop.status)" />
         </div>
