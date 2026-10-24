@@ -11,3 +11,4 @@ export 'notification_models.dart';
 export 'order_models.dart';
 export 'route_models.dart';
 export 'payment_models.dart';
+export 'admin_models.dart';

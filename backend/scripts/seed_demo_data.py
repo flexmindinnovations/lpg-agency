@@ -275,14 +275,14 @@ CUSTOMERS = [
 
 # Login accounts, one per role worth exercising in the UI. `admin` is listed
 # first because it also anchors tenant resolution — see `main`.
-# (email, role, branch or None, display_name)
+# (email, role, branch or None, display_name, phone)
 LOGIN_USERS = [
-    ("admin@example.com", "agency_admin", "Hyderabad Central", "Rajesh Sharma"),
-    ("manager@example.com", "manager", "Hyderabad Central", "Ravi Kumar"),
-    ("dispatcher@example.com", "dispatcher", "Hyderabad Central", "Sunita Reddy"),
-    ("accountant@example.com", "accountant", "Hyderabad Central", "Lakshmi Rao"),
-    ("warehouse@example.com", "warehouse_staff", "Secunderabad North", "Prakash Menon"),
-    ("driver@example.com", "driver", "Hyderabad Central", "Imran Shaikh"),
+    ("admin@example.com", "agency_admin", "Hyderabad Central", "Rajesh Sharma", "+919848011000"),
+    ("manager@example.com", "manager", "Hyderabad Central", "Ravi Kumar", "+919848011001"),
+    ("dispatcher@example.com", "dispatcher", "Hyderabad Central", "Sunita Reddy", "+919848011002"),
+    ("accountant@example.com", "accountant", "Hyderabad Central", "Lakshmi Rao", "+919848011004"),
+    ("warehouse@example.com", "warehouse_staff", "Secunderabad North", "Prakash Menon", "+919848011006"),
+    ("driver@example.com", "driver", "Hyderabad Central", "Imran Shaikh", "+919848011003"),
 ]
 
 # (customer phone, cylinder, qty, status, days_offset)
@@ -585,14 +585,21 @@ async def main() -> None:
         # --- Login users ---------------------------------------------------
         # Hashing is the slow part of this script; five accounts keeps it brief.
         pw_hash = hasher.hash(DEMO_PASSWORD)
-        for email, role, branch, display_name in LOGIN_USERS:
+        for email, role, branch, display_name, phone in LOGIN_USERS:
             user_id = await ensure(
                 "identity.identity_user",
                 match="email = :em",
-                columns="tenant_id, email, password_hash, role, display_name",
-                values=":t, :em, :pw, :role, :dn",
+                columns="tenant_id, email, password_hash, role, display_name, phone_number",
+                values=":t, :em, :pw, :role, :dn, :ph",
                 new_id=sid("user", email),
-                params={**p, "em": email, "pw": pw_hash, "role": role, "dn": display_name},
+                params={
+                    **p,
+                    "em": email,
+                    "pw": pw_hash,
+                    "role": role,
+                    "dn": display_name,
+                    "ph": phone,
+                },
             )
             # `identity_user.email` is globally unique, not unique per tenant,
             # so a demo account stranded in some other tenant cannot simply be
@@ -604,11 +611,11 @@ async def main() -> None:
             await conn.execute(
                 text(
                     "UPDATE identity.identity_user "
-                    "SET tenant_id = :t, role = :role, display_name = :dn "
+                    "SET tenant_id = :t, role = :role, display_name = :dn, phone_number = :ph "
                     "WHERE id = :u AND (tenant_id <> :t OR display_name IS NULL "
-                    "OR display_name <> :dn)"
+                    "OR display_name <> :dn OR phone_number IS NULL OR phone_number <> :ph)"
                 ),
-                {**p, "u": user_id, "role": role, "dn": display_name},
+                {**p, "u": user_id, "role": role, "dn": display_name, "ph": phone},
             )
             role_id = (
                 await conn.execute(
@@ -1171,8 +1178,8 @@ async def main() -> None:
     for key, value in row.items():
         print(f"         {key:<16} {value}")
     print(f"\n[seed] demo logins (password: {DEMO_PASSWORD}):")
-    for email, role, _, _ in LOGIN_USERS:
-        print(f"         {email:<28} {role}")
+    for email, role, _, _, phone in LOGIN_USERS:
+        print(f"         {email:<28} {role:<16} (phone: {phone})")
 
 
 if __name__ == "__main__":

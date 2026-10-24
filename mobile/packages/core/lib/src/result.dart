@@ -24,6 +24,7 @@ sealed class Result<T> {
 final class Success<T> extends Result<T> {
   const Success(this.value);
   final T value;
+  T get data => value;
 }
 
 final class FailureResult<T> extends Result<T> {

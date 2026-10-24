@@ -88,3 +88,91 @@ class RouteCashHandover {
   /// that surfaces the "reconcile your cash" prompt.
   bool get isPending => routeStatus == 'completed' && handover == null;
 }
+
+class CashHandoverReviewResponse {
+  final String id;
+  final String outcome;
+  final String? note;
+  final String reviewedBy;
+  final DateTime reviewedAt;
+
+  CashHandoverReviewResponse({
+    required this.id,
+    required this.outcome,
+    this.note,
+    required this.reviewedBy,
+    required this.reviewedAt,
+  });
+
+  factory CashHandoverReviewResponse.fromJson(Map<String, dynamic> json) =>
+      CashHandoverReviewResponse(
+        id: json['id'] as String? ?? '',
+        outcome: json['outcome'] as String? ?? '',
+        note: json['note'] as String?,
+        reviewedBy: json['reviewed_by'] as String? ?? '',
+        reviewedAt: json['reviewed_at'] != null
+            ? DateTime.parse(json['reviewed_at'] as String)
+            : DateTime.now(),
+      );
+}
+
+class CashHandoverRegisterEntryResponse {
+  final String id;
+  final String? handoverNumber;
+  final String driverId;
+  final String driverName;
+  final String routeId;
+  final DateTime routeDate;
+  final String? vehicleRegistration;
+  final int cashStopCount;
+  final double expectedAmount;
+  final double actualAmount;
+  final double shortfall;
+  final double excess;
+  final DateTime declaredAt;
+  final String reviewStatus;
+  final CashHandoverReviewResponse? review;
+
+  CashHandoverRegisterEntryResponse({
+    required this.id,
+    this.handoverNumber,
+    required this.driverId,
+    required this.driverName,
+    required this.routeId,
+    required this.routeDate,
+    this.vehicleRegistration,
+    required this.cashStopCount,
+    required this.expectedAmount,
+    required this.actualAmount,
+    required this.shortfall,
+    required this.excess,
+    required this.declaredAt,
+    required this.reviewStatus,
+    this.review,
+  });
+
+  factory CashHandoverRegisterEntryResponse.fromJson(Map<String, dynamic> json) =>
+      CashHandoverRegisterEntryResponse(
+        id: json['id'] as String? ?? '',
+        handoverNumber: json['handover_number'] as String?,
+        driverId: json['driver_id'] as String? ?? '',
+        driverName: json['driver_name'] as String? ?? '',
+        routeId: json['route_id'] as String? ?? '',
+        routeDate: json['route_date'] != null
+            ? DateTime.parse(json['route_date'] as String)
+            : DateTime.now(),
+        vehicleRegistration: json['vehicle_registration'] as String?,
+        cashStopCount: json['cash_stop_count'] as int? ?? 0,
+        expectedAmount: asDouble(json['expected_amount']),
+        actualAmount: asDouble(json['actual_amount']),
+        shortfall: asDouble(json['shortfall']),
+        excess: asDouble(json['excess']),
+        declaredAt: json['declared_at'] != null
+            ? DateTime.parse(json['declared_at'] as String)
+            : DateTime.now(),
+        reviewStatus: json['review_status'] as String? ?? 'pending',
+        review: json['review'] != null
+            ? CashHandoverReviewResponse.fromJson(json['review'] as Map<String, dynamic>)
+            : null,
+      );
+}
