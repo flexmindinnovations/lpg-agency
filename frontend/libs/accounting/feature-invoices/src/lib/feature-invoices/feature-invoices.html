@@ -78,11 +78,7 @@
         [loading]="isLoading()"
         [error]="loadError()"
         (retry)="loadInvoices()"
-        [totalRecords]="total()"
-        [page]="page()"
-        [serverPageSize]="pageSize()"
-        recordLabel="invoices"
-        (pageChange)="onPageChange($event)"
+        emptyMessage="No invoices match these filters."
         ariaLabel="Invoices list"
       ></lpg-data-grid>
     </section>
