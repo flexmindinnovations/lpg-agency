@@ -197,10 +197,6 @@
   color: var(--color-action-primary-hover, #0369a1);
 }
 
-.order-link__icon {
-  font-size: 0.75rem;
-}
-
 .kyc-doc-info {
   display: flex;
   flex-direction: column;

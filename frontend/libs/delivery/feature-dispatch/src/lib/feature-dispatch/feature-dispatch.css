@@ -712,11 +712,6 @@
   text-decoration: underline;
 }
 
-.stop-card__link-icon {
-  font-size: 0.75rem;
-  opacity: 0.75;
-}
-
 .reconciliation-banner,
 .reconciliation-banner .p-message,
 .reconciliation-banner .p-message-content {

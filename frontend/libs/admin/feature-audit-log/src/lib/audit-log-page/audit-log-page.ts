@@ -234,7 +234,6 @@ interface Option<T> {
                     title="View order details"
                   >
                     <span>{{ recordLabel(entry) }}</span>
-                    <i class="pi pi-external-link entity-link__icon" aria-hidden="true"></i>
                   </a>
                 } @else {
                   <span class="entity-name">{{ recordLabel(entry) }}</span>
@@ -338,7 +337,7 @@ interface Option<T> {
                             title="View order details"
                             aria-label="View order details"
                           >
-                            <i class="pi pi-external-link" aria-hidden="true"></i>
+                            <i class="pi pi-arrow-right" aria-hidden="true"></i>
                           </a>
                         }
                       </div>
@@ -411,10 +410,6 @@ interface Option<T> {
 
       .entity-link:hover {
         color: var(--color-action-primary-hover, #0369a1);
-      }
-
-      .entity-link__icon {
-        font-size: 0.75rem;
       }
 
       .section-label-row {
