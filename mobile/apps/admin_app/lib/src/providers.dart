@@ -24,6 +24,12 @@ final customerApiProvider = Provider<CustomerApi>((ref) {
   return CustomerApi(apiClient.dio);
 });
 
+/// Provides the [CylinderTypeApi] client.
+final cylinderTypeApiProvider = Provider<CylinderTypeApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return CylinderTypeApi(apiClient.dio);
+});
+
 /// Provides the [RouteApi] client.
 final routeApiProvider = Provider<RouteApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
