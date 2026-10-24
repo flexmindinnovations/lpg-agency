@@ -260,17 +260,7 @@
     emptyMessage="No inventory transactions recorded yet."
     ariaLabel="Inventory transaction history"
   />
-  @if (transactionsCursor()) {
-  <button
-    pButton
-    type="button"
-    severity="secondary"
-    class="load-more"
-    (click)="loadMoreTransactions()"
-  >
-    Load more
-  </button>
-  } } @else {
+  } @else {
   <p class="empty-hint">Select a warehouse or vehicle to view its inventory.</p>
   }
 

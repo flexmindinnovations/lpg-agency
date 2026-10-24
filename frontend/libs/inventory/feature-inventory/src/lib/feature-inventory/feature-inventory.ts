@@ -206,7 +206,6 @@ export class FeatureInventory implements OnInit {
   protected readonly locationRefId = signal<string | null>(null);
   protected readonly balance = signal<InventoryBalanceResponse | null>(null);
   protected readonly transactions = signal<InventoryTransactionResponse[]>([]);
-  protected readonly transactionsCursor = signal<string | null>(null);
 
   protected readonly loading = signal(false);
   /** Page-level load failures (balance, history, register). */
@@ -562,23 +561,9 @@ export class FeatureInventory implements OnInit {
   protected loadTransactions(): void {
     const refId = this.locationRefId();
     if (!refId) return;
-    this.inventoryService.listTransactions(this.locationType(), refId, undefined, 50).subscribe({
+    this.inventoryService.listTransactions(this.locationType(), refId, undefined, 100).subscribe({
       next: (page) => {
         this.transactions.set(page.items);
-        this.transactionsCursor.set(page.next_cursor);
-      },
-      error: (err) => this.errorMessage.set(errorMessageFor(err)),
-    });
-  }
-
-  protected loadMoreTransactions(): void {
-    const refId = this.locationRefId();
-    const cursor = this.transactionsCursor();
-    if (!refId || !cursor) return;
-    this.inventoryService.listTransactions(this.locationType(), refId, cursor, 50).subscribe({
-      next: (page) => {
-        this.transactions.set([...this.transactions(), ...page.items]);
-        this.transactionsCursor.set(page.next_cursor);
       },
       error: (err) => this.errorMessage.set(errorMessageFor(err)),
     });

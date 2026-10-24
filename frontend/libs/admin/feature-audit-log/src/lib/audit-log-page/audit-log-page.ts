@@ -196,20 +196,6 @@ interface Option<T> {
           ariaLabel="Audit log"
         />
       </section>
-
-      @if (nextCursor()) {
-        <div class="load-more">
-          <button
-            pButton
-            type="button"
-            severity="secondary"
-            (click)="loadMore()"
-            [disabled]="loading()"
-          >
-            <i class="pi pi-chevron-down" aria-hidden="true"></i><span>Load more</span>
-          </button>
-        </div>
-      }
     </div>
 
     <p-drawer
@@ -369,12 +355,6 @@ interface Option<T> {
         flex-direction: column;
         gap: var(--spacing-md);
         block-size: 100%;
-      }
-
-      .load-more {
-        display: flex;
-        justify-content: center;
-        padding-block: var(--spacing-sm);
       }
 
       .audit-detail-header {
@@ -548,7 +528,6 @@ export class AuditLogPage implements OnInit {
   private readonly document = inject(DOCUMENT);
 
   protected readonly entries = signal<AuditLogEntryResponse[]>([]);
-  protected readonly nextCursor = signal<string | null>(null);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly selectedEntry = signal<AuditLogEntryResponse | null>(null);
@@ -680,12 +659,7 @@ export class AuditLogPage implements OnInit {
   }
 
   protected reload(): void {
-    this.fetch(null, false);
-  }
-
-  protected loadMore(): void {
-    const cursor = this.nextCursor();
-    if (cursor) this.fetch(cursor, true);
+    this.fetch();
   }
 
   protected openEntry(entry: AuditLogEntryResponse): void {
@@ -703,7 +677,7 @@ export class AuditLogPage implements OnInit {
     URL.revokeObjectURL(url);
   }
 
-  private fetch(cursor: string | null, append: boolean): void {
+  private fetch(): void {
     this.loading.set(true);
     this.loadError.set(null);
     const [from, to] = this.dateRange() ?? [];
@@ -718,12 +692,11 @@ export class AuditLogPage implements OnInit {
         actorId: this.actorId(),
         dateFrom: from ? from.toISOString() : null,
         dateTo: dayAfter ? dayAfter.toISOString() : null,
-        cursor,
+        limit: 100,
       })
       .subscribe({
         next: (page) => {
-          this.entries.set(append ? [...this.entries(), ...page.items] : page.items);
-          this.nextCursor.set(page.next_cursor);
+          this.entries.set(page.items);
           this.loading.set(false);
         },
         error: (error: unknown) => {

@@ -28,10 +28,6 @@
   margin: 0;
 }
 
-.load-more {
-  align-self: flex-start;
-}
-
 .reconcile-approve-hint {
   display: flex;
   align-items: center;
