@@ -60,8 +60,8 @@ describe('FeatureInvoices', () => {
   it('loads a server page with filters and the invoices on hold', () => {
     const list = http.expectOne((req) => req.url.endsWith('/api/v1/invoices'));
     expect(list.request.params.get('page')).toBe('1');
-    expect(list.request.params.get('page_size')).toBe('25');
-    list.flush({ items: [INVOICE], total: 1, page: 1, page_size: 25 });
+    expect(list.request.params.get('page_size')).toBe('10');
+    list.flush({ items: [INVOICE], total: 1, page: 1, page_size: 10 });
     http.expectOne((req) => req.url.endsWith('/api/v1/invoices/uninvoiced-orders')).flush([]);
     expect(component.invoices()).toEqual([INVOICE]);
   });

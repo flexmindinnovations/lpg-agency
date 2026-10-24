@@ -234,7 +234,7 @@ function escapeHtml(text: string): string {
         [first]="(page() - 1) * serverPageSize()"
         [rows]="serverPageSize()"
         [totalRecords]="totalRecords() ?? 0"
-        [rowsPerPageOptions]="[25, 50, 100]"
+        [rowsPerPageOptions]="[10, 25, 50, 100]"
         [showCurrentPageReport]="true"
         [currentPageReportTemplate]="'{first}–{last} of {totalRecords} ' + recordLabel()"
         appendTo="body"
@@ -467,7 +467,7 @@ export class DataGridComponent<TRow = unknown> {
   /** Client-side pagination. `0` disables it (single scrolling list);
    *  anything else is the initial page size, with a [10, 25, 50, 100]
    *  selector. Defaults on — a long list is unusable without it. */
-  readonly pageSize = input(25);
+  readonly pageSize = input(10);
   /** Grow to fit the rows (up to a page) instead of filling a fixed-height
    *  host. Use inside a padded content box that has no height of its own —
    *  e.g. a report page. */
@@ -492,8 +492,8 @@ export class DataGridComponent<TRow = unknown> {
   /** Current 1-based page for server-side paging. */
   readonly page = input(1);
   /** Rows per page for server-side paging. */
-  readonly serverPageSize = input(25);
-  /** Noun in the pager's "1–25 of 80 invoices" report. */
+  readonly serverPageSize = input(10);
+  /** Noun in the pager's "1–10 of 80 invoices" report. */
   readonly recordLabel = input('rows');
   readonly pageChange = output<{ page: number; pageSize: number }>();
 
@@ -569,7 +569,7 @@ export class DataGridComponent<TRow = unknown> {
     tooltipHideDelay: 4000,
     // Client-side pagination — `pageSize()` of 0 turns it off.
     pagination: this.totalRecords() === null && this.pageSize() > 0,
-    paginationPageSize: this.pageSize() || 25,
+    paginationPageSize: this.pageSize() || 10,
     paginationPageSizeSelector: [10, 25, 50, 100],
     quickFilterText: this.searchQuery(),
     overlayNoRowsTemplate: this.getEmptyOverlayTemplate(),

@@ -84,7 +84,7 @@ export class FeatureInvoices implements OnInit {
   // Server-side paging and filters (DA-07) — the list is no longer capped
   // at the first 100 invoices.
   protected readonly page = signal(1);
-  protected readonly pageSize = signal(25);
+  protected readonly pageSize = signal(10);
   protected readonly total = signal(0);
   protected readonly statusFilter = signal<string | null>(null);
   protected readonly issuedFrom = signal('');

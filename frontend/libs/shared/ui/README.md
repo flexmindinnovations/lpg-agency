@@ -61,7 +61,7 @@ Document upload:
 `DataGridComponent` (`lpg-data-grid`) is the only sanctioned grid (ADR-020 /
 ADR-028 — AG Grid stays behind this wrapper; feature libs never import AG Grid
 types). Inputs: `rows` (req), `columns: DataGridColumn<TRow>[]` (req),
-`ariaLabel` (req), `selectionMode`, `loading`, `pageSize` (default 25),
+`ariaLabel` (req), `selectionMode`, `loading`, `pageSize` (default 10),
 `autoHeight`. Use `autoHeight` for report tables that should grow with content
 rather than scroll inside a fixed viewport.
 
