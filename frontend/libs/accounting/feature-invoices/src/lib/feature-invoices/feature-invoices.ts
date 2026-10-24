@@ -81,10 +81,7 @@ export class FeatureInvoices implements OnInit {
   readonly selectedInvoice = signal<InvoiceResponse | null>(null);
   readonly searchQuery = signal('');
 
-  // Server-side paging and filters (DA-07) — the list is no longer capped
-  // at the first 100 invoices.
-  protected readonly page = signal(1);
-  protected readonly pageSize = signal(10);
+  // Paging and filters — invoices are loaded and paginated via the global data grid.
   protected readonly total = signal(0);
   protected readonly statusFilter = signal<string | null>(null);
   protected readonly issuedFrom = signal('');
@@ -161,7 +158,6 @@ export class FeatureInvoices implements OnInit {
   constructor() {
     this.searchChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((query) => {
       this.searchQuery.set(query);
-      this.page.set(1);
       this.loadInvoices();
     });
   }
@@ -186,8 +182,8 @@ export class FeatureInvoices implements OnInit {
     this.loadError.set(null);
     this.invoiceService
       .list({
-        page: this.page(),
-        pageSize: this.pageSize(),
+        page: 1,
+        pageSize: 100,
         status: this.statusFilter(),
         issuedFrom: this.issuedFrom(),
         issuedTo: this.issuedTo(),
@@ -212,14 +208,12 @@ export class FeatureInvoices implements OnInit {
 
   protected onStatusChange(status: string | null): void {
     this.statusFilter.set(status);
-    this.page.set(1);
     this.loadInvoices();
   }
 
   protected onDateRangeChange(range: DateRangeValue): void {
     this.issuedFrom.set(range.from ?? '');
     this.issuedTo.set(range.to ?? '');
-    this.page.set(1);
     this.loadInvoices();
   }
 
@@ -228,18 +222,11 @@ export class FeatureInvoices implements OnInit {
     this.issuedFrom.set('');
     this.issuedTo.set('');
     this.searchQuery.set('');
-    this.page.set(1);
-    this.loadInvoices();
-  }
-
-  protected onPageChange(event: { page: number; pageSize: number }): void {
-    this.pageSize.set(event.pageSize);
-    this.page.set(event.page);
     this.loadInvoices();
   }
 
   protected exportCsv(): void {
-    this.grid()?.exportCsv(`invoices-page-${this.page()}`);
+    this.grid()?.exportCsv('invoices');
   }
 
   private readonly grid = viewChild(DataGridComponent);
