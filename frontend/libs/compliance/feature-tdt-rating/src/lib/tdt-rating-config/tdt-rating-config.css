@@ -136,7 +136,7 @@
 
 .tdt-config-actions__inner {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   max-inline-size: 48rem;
   margin-inline: auto;
   inline-size: 100%;
