@@ -40,7 +40,9 @@ describe('PageHeaderComponent', () => {
     fixture.componentRef.setInput('subtitle', 'All alert types');
     fixture.detectChanges();
 
-    const btn = fixture.nativeElement.querySelector('button.page-header__info') as HTMLButtonElement;
+    const btn = fixture.nativeElement.querySelector(
+      'button.page-header__info',
+    ) as HTMLButtonElement;
     expect(btn).not.toBeNull();
     expect(btn.getAttribute('aria-expanded')).toBe('false');
 

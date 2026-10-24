@@ -761,7 +761,10 @@
             [pTooltip]="'View details for order ' + (orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id))"
             tooltipPosition="top"
           >
-            <span>Order {{ orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id) }}</span>
+            <span
+              >Order {{ orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id)
+              }}</span
+            >
           </a>
           <p-tag [severity]="statusSeverity(stop.status)" [value]="stopStatusLabel(stop.status)" />
         </div>

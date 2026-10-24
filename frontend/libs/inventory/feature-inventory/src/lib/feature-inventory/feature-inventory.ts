@@ -833,7 +833,11 @@ export class FeatureInventory implements OnInit {
 
   protected openReconcileModal(): void {
     const preselectedCt = this.selectedCylinderTypeId() ?? '';
-    this.reconcileForm.reset({ cylinder_type_id: preselectedCt, status: 'filled', actual_quantity: 0 });
+    this.reconcileForm.reset({
+      cylinder_type_id: preselectedCt,
+      status: 'filled',
+      actual_quantity: 0,
+    });
     this.lastReconciliationRecordId.set(null);
     this.drawerError.set(null);
     this.showReconcileModal.set(true);
