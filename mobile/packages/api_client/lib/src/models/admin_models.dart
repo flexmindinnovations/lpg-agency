@@ -26,10 +26,11 @@ class DashboardSummaryResponse {
       customerCount: json['customer_count'] as int? ?? 0,
       driverCount: json['driver_count'] as int? ?? 0,
       vehicleCount: json['vehicle_count'] as int? ?? 0,
-      vehiclesByStatus: Map<String, int>.from(json['vehicles_by_status'] ?? {}),
+      vehiclesByStatus: (json['vehicles_by_status'] as Map<String, dynamic>? ?? {})
+          .map((k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0)),
       warehouseCount: json['warehouse_count'] as int? ?? 0,
       cylinderTypeCount: json['cylinder_type_count'] as int? ?? 0,
-      inventoryByStatus: Map<String, dynamic>.from(json['inventory_by_status'] ?? {}),
+      inventoryByStatus: Map<String, dynamic>.from(json['inventory_by_status'] as Map? ?? {}),
       priceCards: (json['price_cards'] as List<dynamic>? ?? [])
           .map((e) => CylinderTypePriceCardResponse.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -151,7 +152,8 @@ class OrderPipelineResponse {
   factory OrderPipelineResponse.fromJson(Map<String, dynamic> json) {
     return OrderPipelineResponse(
       bookingsToday: json['bookings_today'] as int? ?? 0,
-      openByStatus: Map<String, int>.from(json['open_by_status'] ?? {}),
+      openByStatus: (json['open_by_status'] as Map<String, dynamic>? ?? {})
+          .map((k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0)),
       deliveredToday: json['delivered_today'] as int? ?? 0,
       failedToday: json['failed_today'] as int? ?? 0,
       pendingCancellations: json['pending_cancellations'] as int? ?? 0,
