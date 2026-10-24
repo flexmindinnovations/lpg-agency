@@ -36,7 +36,13 @@
           <span>Unread</span>
         </button>
       </div>
-      <button pButton severity="secondary" size="small" [disabled]="unreadCount() === 0" (click)="markAllAsRead()">
+      <button
+        pButton
+        severity="secondary"
+        size="small"
+        [disabled]="unreadCount() === 0"
+        (click)="markAllAsRead()"
+      >
         <i class="pi pi-check-circle"></i><span>Mark all as read</span>
       </button>
     </div>
