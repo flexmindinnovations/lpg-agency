@@ -97,6 +97,44 @@ final class OrderApi {
     }
   }
 
+  /// `booked -> confirmed` (staff).
+  Future<Result<OrderResponse>> confirmOrder(String orderId) =>
+      _postOrderAction('/api/v1/orders/$orderId/confirm');
+
+  /// `failed_delivery -> confirmed` on a new [requestedDate]: the order
+  /// leaves its trip and waits to be sent out again.
+  Future<Result<OrderResponse>> rescheduleOrder(
+    String orderId,
+    DateTime requestedDate,
+  ) => _postOrderAction(
+    '/api/v1/orders/$orderId/reschedule',
+    data: {'requested_date': requestedDate.toUtc().toIso8601String()},
+  );
+
+  /// `delivered -> closed`.
+  Future<Result<OrderResponse>> closeOrder(String orderId) =>
+      _postOrderAction('/api/v1/orders/$orderId/close');
+
+  /// Approves the waiting post-dispatch cancellation request (Manager).
+  Future<Result<OrderResponse>> approveCancellation(String orderId) =>
+      _postOrderAction('/api/v1/orders/$orderId/cancel/approve');
+
+  /// Rejects the waiting cancellation request; the order carries on and the
+  /// requester sees [reason].
+  Future<Result<void>> rejectCancellation(String orderId, String reason) async {
+    try {
+      await _dio.post<dynamic>(
+        '/api/v1/orders/$orderId/cancel/reject',
+        data: {'reason': reason},
+      );
+      return const Success(null);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// `ready_for_dispatch -> out_for_delivery` — the driver departs with the
   /// vehicle. The backend issues the delivery OTP to the customer.
   Future<Result<OrderResponse>> departOrder(String orderId) =>

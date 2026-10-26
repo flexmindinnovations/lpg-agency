@@ -48,10 +48,9 @@ abstract final class LpgFormat {
     return shortDate(value);
   }
 
-  /// A backend status code as a badge label: `out_for_delivery` ->
-  /// `OUT FOR DELIVERY`.
-  static String statusLabel(String status) =>
-      status.replaceAll('_', ' ').toUpperCase();
+  /// A backend status code as a badge label, in sentence case:
+  /// `out_for_delivery` -> `Out for delivery`.
+  static String statusLabel(String status) => sentence(status);
 
   /// An order as people know it: its number (`ORD000027`), the same one
   /// the dashboard shows. Falls back to a short id (`#4C6826F9`) only for

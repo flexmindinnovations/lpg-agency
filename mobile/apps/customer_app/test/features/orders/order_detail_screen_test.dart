@@ -90,7 +90,7 @@ void main() {
 
       expect(find.text('Order Details'), findsOneWidget);
       expect(find.text('12 Baker Street, Marylebone'), findsOneWidget);
-      expect(find.textContaining('CONFIRMED'), findsWidgets);
+      expect(find.textContaining('Confirmed'), findsWidgets);
     });
 
     testWidgets('offers Cancel Order while the order is still open', (

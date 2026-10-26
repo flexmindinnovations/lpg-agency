@@ -49,12 +49,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final phone = normalizePhoneNumber(_phoneController.text);
 
     if (tenantId.isEmpty || phone.isEmpty) {
-      setState(() => _errorMessage = 'Please enter both Agency Code and Phone number.');
+      setState(
+        () => _errorMessage = 'Please enter both Agency Code and Phone number.',
+      );
       return;
     }
 
     if (!isValidPhoneNumber(phone)) {
-      setState(() => _errorMessage = 'Please enter a valid 10-digit mobile number.');
+      setState(
+        () => _errorMessage = 'Please enter a valid 10-digit mobile number.',
+      );
       return;
     }
 
@@ -65,8 +69,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     final auth = ref.read(authControllerProvider);
-    final result = await auth.requestOtp(tenantId: tenantId, phoneNumber: phone);
-    final testingOtp = result is Success ? await ref.read(devOtpLookupProvider)(phone) : null;
+    final result = await auth.requestOtp(
+      tenantId: tenantId,
+      phoneNumber: phone,
+    );
+    final testingOtp = result is Success
+        ? await ref.read(devOtpLookupProvider)(phone)
+        : null;
 
     if (!mounted) return;
 
@@ -97,7 +106,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _verifyCode() async {
     final code = _codeController.text.trim();
     if (code.length < 6) {
-      setState(() => _errorMessage = 'Please enter a 6-digit verification code.');
+      setState(
+        () => _errorMessage = 'Please enter a 6-digit verification code.',
+      );
       return;
     }
 
@@ -172,7 +183,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: LpgSpacing.xl),
               const Center(child: LpgBrandMark(image: appLogo, size: 88)),
               const SizedBox(height: LpgSpacing.lg),
-              Text('Admin Console', style: text.headlineSmall, textAlign: TextAlign.center),
+              Text(
+                'Admin Console',
+                style: text.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: LpgSpacing.xs),
               Text(
                 'Sign in to manage agency operations',
@@ -254,7 +269,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         label: const Text('Resend / Refresh OTP'),
                       ),
                       TextButton(
-                        onPressed: _submitting ? null : () => setState(() => _codeRequested = false),
+                        onPressed: _submitting
+                            ? null
+                            : () => setState(() => _codeRequested = false),
                         child: const Text('Change Details'),
                       ),
                     ],
@@ -288,7 +305,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       size: LpgSizes.iconSm,
                       color: colors.textSecondary,
                     ),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 const SizedBox(height: LpgSpacing.xl),

@@ -124,23 +124,4 @@ final class AdminApi {
       return FailureResult(Failure(message: e.toString()));
     }
   }
-
-  /// Review pending cancellation request (`POST /api/v1/orders/{orderId}/cancel/review`)
-  Future<Result<void>> reviewCancellationRequest(
-    String orderId, {
-    required bool approve,
-    String? note,
-  }) async {
-    try {
-      await _dio.post<dynamic>(
-        '/api/v1/orders/$orderId/cancel/review',
-        data: {'approve': approve, 'note': ?note},
-      );
-      return const Success(null);
-    } on DioException catch (e) {
-      return FailureResult(mapDioError(e));
-    } catch (e) {
-      return FailureResult(Failure(message: e.toString()));
-    }
-  }
 }

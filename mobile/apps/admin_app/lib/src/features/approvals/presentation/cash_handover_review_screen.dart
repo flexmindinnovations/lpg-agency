@@ -24,10 +24,12 @@ class CashHandoverReviewScreen extends ConsumerStatefulWidget {
   final double shortfall;
 
   @override
-  ConsumerState<CashHandoverReviewScreen> createState() => _CashHandoverReviewScreenState();
+  ConsumerState<CashHandoverReviewScreen> createState() =>
+      _CashHandoverReviewScreenState();
 }
 
-class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScreen> {
+class _CashHandoverReviewScreenState
+    extends ConsumerState<CashHandoverReviewScreen> {
   final _noteController = TextEditingController();
   bool _loading = false;
   String? _errorMessage;
@@ -41,7 +43,10 @@ class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScr
   Future<void> _submitReview(String outcome) async {
     final note = _noteController.text.trim();
     if (outcome == 'disputed' && note.isEmpty) {
-      setState(() => _errorMessage = 'A note is required when disputing a cash handover.');
+      setState(
+        () => _errorMessage =
+            'A note is required when disputing a cash handover.',
+      );
       return;
     }
 
@@ -51,14 +56,23 @@ class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScr
     });
 
     final adminApi = ref.read(adminApiProvider);
-    final request = ReviewCashHandoverRequest(outcome: outcome, note: note.isEmpty ? null : note);
-    final result = await adminApi.reviewCashHandover(widget.cashHandoverId, request);
+    final request = ReviewCashHandoverRequest(
+      outcome: outcome,
+      note: note.isEmpty ? null : note,
+    );
+    final result = await adminApi.reviewCashHandover(
+      widget.cashHandoverId,
+      request,
+    );
 
     if (!mounted) return;
 
     result.when(
       onSuccess: (_) {
-        LpgFeedback.showToast(context, 'Cash handover review submitted ($outcome)');
+        LpgFeedback.showToast(
+          context,
+          'Cash handover review submitted ($outcome)',
+        );
         ref.invalidate(pendingCashHandoversProvider);
         context.pop();
       },
@@ -92,13 +106,19 @@ class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScr
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Driver: ${widget.driverName}', style: text.titleMedium),
+                    Text(
+                      'Driver: ${widget.driverName}',
+                      style: text.titleMedium,
+                    ),
                     const SizedBox(height: LpgSpacing.sm),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Expected Cash:', style: text.bodyMedium),
-                        Text(LpgFormat.currency(widget.expectedAmount), style: text.titleSmall),
+                        Text(
+                          LpgFormat.currency(widget.expectedAmount),
+                          style: text.titleSmall,
+                        ),
                       ],
                     ),
                     const SizedBox(height: LpgSpacing.xs),
@@ -108,7 +128,9 @@ class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScr
                         Text('Actual Handed Over:', style: text.bodyMedium),
                         Text(
                           LpgFormat.currency(widget.actualAmount),
-                          style: text.titleSmall?.copyWith(color: colors.actionPrimary),
+                          style: text.titleSmall?.copyWith(
+                            color: colors.actionPrimary,
+                          ),
                         ),
                       ],
                     ),
@@ -117,10 +139,17 @@ class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScr
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Shortfall Variance:', style: text.bodyMedium?.copyWith(color: colors.statusDanger)),
+                          Text(
+                            'Shortfall Variance:',
+                            style: text.bodyMedium?.copyWith(
+                              color: colors.statusDanger,
+                            ),
+                          ),
                           Text(
                             LpgFormat.currency(widget.shortfall),
-                            style: text.titleMedium?.copyWith(color: colors.statusDanger),
+                            style: text.titleMedium?.copyWith(
+                              color: colors.statusDanger,
+                            ),
                           ),
                         ],
                       ),
@@ -132,7 +161,8 @@ class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScr
               LpgTextField(
                 controller: _noteController,
                 label: 'Reconciliation / Resolution Note',
-                hintText: 'e.g., Shortfall deducted from driver allowance or verified cash count',
+                hintText:
+                    'e.g., Shortfall deducted from driver allowance or verified cash count',
                 maxLines: 3,
               ),
               const SizedBox(height: LpgSpacing.xxl),
@@ -143,7 +173,9 @@ class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScr
                       label: 'Dispute',
                       variant: LpgButtonVariant.destructive,
                       isLoading: _loading,
-                      onPressed: _loading ? null : () => _submitReview('disputed'),
+                      onPressed: _loading
+                          ? null
+                          : () => _submitReview('disputed'),
                     ),
                   ),
                   const SizedBox(width: LpgSpacing.md),
@@ -152,7 +184,9 @@ class _CashHandoverReviewScreenState extends ConsumerState<CashHandoverReviewScr
                       label: 'Accept & Verify',
                       variant: LpgButtonVariant.primary,
                       isLoading: _loading,
-                      onPressed: _loading ? null : () => _submitReview('accepted'),
+                      onPressed: _loading
+                          ? null
+                          : () => _submitReview('accepted'),
                     ),
                   ),
                 ],

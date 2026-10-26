@@ -28,6 +28,7 @@ jobs:
           - mobile/packages/local_storage
           - mobile/packages/realtime
           - mobile/packages/sync_engine
+          - mobile/apps/admin_app
           - mobile/apps/customer_app
           - mobile/apps/driver_app
 

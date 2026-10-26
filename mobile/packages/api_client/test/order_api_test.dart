@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -433,6 +434,50 @@ void main() {
         'reason_code': 'customer_unavailable',
         'note': 'Back after 6',
       });
+    });
+
+    test('confirmOrder posts to the confirm route', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.method, 'POST');
+        expect(options.path, '/api/v1/orders/order-1/confirm');
+        return jsonResponse(_orderJson(status: 'confirmed'), 200);
+      });
+
+      final result = await OrderApi(client.dio).confirmOrder('order-1');
+
+      final order = result.when(onSuccess: (o) => o, onFailure: (_) => null);
+      expect(order!.status, 'confirmed');
+    });
+
+    test('rejectCancellation sends the reason', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/orders/order-1/cancel/reject');
+        expect(options.data, {'reason': 'Already loaded'});
+        return jsonResponse({'id': 'c-1'}, 200);
+      });
+
+      final result = await OrderApi(
+        client.dio,
+      ).rejectCancellation('order-1', 'Already loaded');
+
+      expect(result, isA<Success<void>>());
+    });
+
+    test('rescheduleOrder sends the new date in UTC', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/orders/order-1/reschedule');
+        expect(options.data, {'requested_date': '2026-11-02T00:00:00.000Z'});
+        return jsonResponse(_orderJson(status: 'confirmed'), 200);
+      });
+
+      final result = await OrderApi(
+        client.dio,
+      ).rescheduleOrder('order-1', DateTime.utc(2026, 11, 2));
+
+      expect(result, isA<Success<OrderResponse>>());
     });
   });
 }

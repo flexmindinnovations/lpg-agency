@@ -305,6 +305,50 @@ void main() {
       },
     );
 
+    test(
+      'subscribeToStaffUpdates subscribes to orders and notifications',
+      () async {
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => 'the-token',
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+
+        final events = <Map<String, dynamic>>[];
+        final sub = client.subscribeToStaffUpdates().listen(events.add);
+        await Future<void>.delayed(Duration.zero);
+        sockets.single.ready();
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          sockets.single.sentAfterAuth
+              .map(jsonDecode)
+              .map((m) => m['subscribe']),
+          contains(containsAll(['orders', 'notifications'])),
+        );
+
+        sockets.single.emit({
+          'type': 'order.status_changed',
+          'order_id': 'o-1',
+          'status': 'out_for_delivery',
+        });
+        sockets.single.emit({'type': 'notification.new', 'title': 'Hi'});
+        sockets.single.emit({'type': 'delivery.route_updated'});
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events.map((e) => e['type']), [
+          'order.status_changed',
+          'notification.new',
+        ]);
+        await sub.cancel();
+        await client.disconnect();
+      },
+    );
+
     test('subscribeToDriverRoutes subscribes to the driver channel', () async {
       final sockets = <_FakeSocket>[];
       final client = RealtimeClient(

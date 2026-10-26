@@ -45,7 +45,10 @@ class ProfileScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(profile.displayName, style: text.titleMedium),
+                              Text(
+                                profile.displayName,
+                                style: text.titleMedium,
+                              ),
                               const SizedBox(height: LpgSpacing.xs),
                               Text(
                                 profile.agencyName ?? 'Agency',

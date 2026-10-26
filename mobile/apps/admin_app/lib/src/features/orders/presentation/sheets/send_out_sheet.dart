@@ -1,0 +1,383 @@
+import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
+import 'package:design_system/design_system.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../api_result.dart';
+import '../../../../providers.dart';
+import '../../data/orders_provider.dart';
+import '../../domain/order_flow.dart';
+
+const _newTrip = 'new';
+
+/// The trip sheet for one order: pick a driver and van (or an open trip) and
+/// the godown, check the cylinders against stock, then load and hand the van
+/// to the driver in one step (`POST /routes/{id}/load-and-dispatch`, ADR-056).
+/// Pops `true` when the order went out.
+class SendOutSheet extends ConsumerStatefulWidget {
+  const SendOutSheet({super.key, required this.order, this.currentTrip});
+
+  final OrderResponse order;
+
+  /// The open trip the order is already on (status "assigned"), if known.
+  final RouteSummary? currentTrip;
+
+  @override
+  ConsumerState<SendOutSheet> createState() => _SendOutSheetState();
+}
+
+class _SendOutSheetState extends ConsumerState<SendOutSheet> {
+  String _tripId = _newTrip;
+  String? _driverId;
+  String? _vehicleId;
+  String? _warehouseId;
+  String? _error;
+  bool _busy = false;
+
+  /// A trip made by an earlier attempt that failed to load: a retry joins it
+  /// instead of planning another.
+  RouteSummary? _plannedTrip;
+
+  OrderResponse get _order => widget.order;
+
+  /// An order already on a trip keeps what was reserved for it.
+  bool get _onTrip => _order.status != 'confirmed';
+
+  List<RouteSummary> _openTrips(List<RouteSummary> trips) => [
+    for (final t in trips)
+      if (t.status == 'planned' || t.status == 'loaded') t,
+  ];
+
+  RouteSummary? _selectedTrip(List<RouteSummary> trips) {
+    if (widget.currentTrip != null) return widget.currentTrip;
+    if (_plannedTrip != null) return _plannedTrip;
+    if (_tripId == _newTrip) return null;
+    for (final t in trips) {
+      if (t.id == _tripId) return t;
+    }
+    return null;
+  }
+
+  String _tripLabel(RouteSummary trip, FleetData fleet) {
+    final orders = trip.stops.length;
+    return '${fleet.driverName(trip.driverId)} · '
+        '${fleet.vehicleName(trip.vehicleId)} · '
+        '$orders ${orders == 1 ? 'order' : 'orders'}';
+  }
+
+  Future<void> _submit(RouteSummary? existing) async {
+    final warehouseId = _warehouseId;
+    if (warehouseId == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    final routeApi = ref.read(routeApiProvider);
+    var trip = existing;
+    if (trip == null) {
+      final requested = _order.requestedDate;
+      final now = DateTime.now();
+      final planned = await routeApi.planRoute(
+        branchId: _order.branchId,
+        driverId: _driverId!,
+        vehicleId: _vehicleId!,
+        routeDate: requested.isAfter(now) ? requested : now,
+      );
+      switch (planned) {
+        case FailureResult<RouteSummary>(:final failure):
+          return _fail(failure);
+        case Success<RouteSummary>(:final value):
+          trip = value;
+          _plannedTrip = value;
+      }
+    }
+
+    final dispatched = await routeApi.loadAndDispatch(
+      trip.id,
+      warehouseId: warehouseId,
+      orderIds: _order.status == 'confirmed' ? [_order.id] : const [],
+    );
+    if (dispatched case FailureResult<RouteSummary>(:final failure)) {
+      return _fail(failure);
+    }
+    ref.invalidate(activeTripsProvider(_order.branchId));
+    if (mounted) Navigator.of(context).pop(true);
+  }
+
+  void _fail(Failure failure) {
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = sendOutErrorMessage(failure.errorCode) ?? failure.message;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.lpgText;
+    final fleetAsync = ref.watch(fleetProvider);
+    final tripsAsync = ref.watch(activeTripsProvider(_order.branchId));
+    final names = ref.watch(cylinderNamesProvider).value ?? const {};
+
+    final fleet = fleetAsync.value;
+    if (fleetAsync.hasError) {
+      return LpgErrorState(
+        message: errorMessage(fleetAsync.error!),
+        onRetry: () => ref.invalidate(fleetProvider),
+      );
+    }
+    if (fleet == null || tripsAsync.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(LpgSpacing.xl),
+        child: Center(child: LpgLoadingIndicator()),
+      );
+    }
+
+    final trips = tripsAsync.value ?? const <RouteSummary>[];
+    final trip = _selectedTrip(trips);
+    final isNewTrip = trip == null;
+
+    final busyDrivers = {for (final t in trips) t.driverId};
+    final busyVehicles = {for (final t in trips) t.vehicleId};
+    final drivers = {
+      for (final d in fleet.drivers)
+        if (d.isActive &&
+            d.branchId == _order.branchId &&
+            !busyDrivers.contains(d.id))
+          d.id: d.name,
+    };
+    final vehicles = {
+      for (final v in fleet.vehicles)
+        if (v.isActive &&
+            v.branchId == _order.branchId &&
+            !busyVehicles.contains(v.id))
+          v.id: '${v.registrationNumber} · holds ${v.capacityUnits}',
+    };
+
+    final inBranch = [
+      for (final w in fleet.warehouses)
+        if (w.isActive && w.branchId == _order.branchId) w,
+    ];
+    final godowns = inBranch.isNotEmpty
+        ? inBranch
+        : [
+            for (final w in fleet.warehouses)
+              if (w.isActive) w,
+          ];
+    final warehouseId =
+        _warehouseId ?? (godowns.isEmpty ? null : godowns.first.id);
+
+    final vehicleId = trip?.vehicleId ?? _vehicleId;
+    final vanStock = vehicleId == null
+        ? const <String, int>{}
+        : ref.watch(filledStockProvider(('vehicle', vehicleId))).value ??
+              const <String, int>{};
+    final godownStockAsync = warehouseId == null
+        ? null
+        : ref.watch(filledStockProvider(('warehouse', warehouseId)));
+    final godownStock = godownStockAsync?.value;
+
+    final rows = [
+      for (final line in _order.lines)
+        _LoadRow.of(
+          name: names[line.cylinderTypeId] ?? 'Cylinder',
+          forOrder: _onTrip ? line.quantityPending : line.quantityOrdered,
+          onVan: vanStock[line.cylinderTypeId] ?? 0,
+          inGodown: godownStock == null
+              ? null
+              : godownStock[line.cylinderTypeId] ?? 0,
+        ),
+    ];
+    final short = rows.any((r) => r.short);
+
+    final companions = trip != null && trip.status == 'planned'
+        ? trip.stops
+              .where((s) => s.status == 'pending' && s.orderId != _order.id)
+              .length
+        : 0;
+
+    final canSubmit =
+        !_busy &&
+        warehouseId != null &&
+        !short &&
+        (!isNewTrip || (_driverId != null && _vehicleId != null));
+
+    final tripOptions = <String, String>{
+      _newTrip: 'New trip',
+      for (final t in _openTrips(trips)) t.id: _tripLabel(t, fleet),
+    };
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Load the van with this order and hand it to the driver in one step.',
+            style: text.bodyMedium?.copyWith(
+              color: context.lpgColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: LpgSpacing.md),
+          if (widget.currentTrip != null)
+            LpgKeyValueRow(
+              label: 'Trip',
+              value: _tripLabel(widget.currentTrip!, fleet),
+            )
+          else ...[
+            LpgDropdownField<String>(
+              label: 'Trip',
+              value: tripOptions.containsKey(_tripId) ? _tripId : _newTrip,
+              items: tripOptions,
+              onChanged: _busy || _plannedTrip != null
+                  ? null
+                  : (id) => setState(() => _tripId = id ?? _newTrip),
+            ),
+            if (isNewTrip) ...[
+              const SizedBox(height: LpgSpacing.md),
+              LpgDropdownField<String?>(
+                label: 'Driver',
+                isRequired: true,
+                placeholder: drivers.isEmpty
+                    ? 'No free driver in this branch'
+                    : 'Choose a driver',
+                value: drivers.containsKey(_driverId) ? _driverId : null,
+                items: drivers,
+                onChanged: _busy
+                    ? null
+                    : (id) => setState(() => _driverId = id),
+              ),
+              const SizedBox(height: LpgSpacing.md),
+              LpgDropdownField<String?>(
+                label: 'Van',
+                isRequired: true,
+                placeholder: vehicles.isEmpty
+                    ? 'No free van in this branch'
+                    : 'Choose a van',
+                value: vehicles.containsKey(_vehicleId) ? _vehicleId : null,
+                items: vehicles,
+                onChanged: _busy
+                    ? null
+                    : (id) => setState(() => _vehicleId = id),
+              ),
+            ],
+          ],
+          const SizedBox(height: LpgSpacing.md),
+          LpgDropdownField<String?>(
+            label: 'Load from godown',
+            isRequired: true,
+            placeholder: godowns.isEmpty
+                ? 'No active godown'
+                : 'Choose a godown',
+            value: godowns.any((w) => w.id == warehouseId) ? warehouseId : null,
+            items: {for (final w in godowns) w.id: w.name},
+            onChanged: _busy ? null : (id) => setState(() => _warehouseId = id),
+          ),
+          const SizedBox(height: LpgSpacing.md),
+          Text('Cylinders', style: text.titleSmall),
+          const SizedBox(height: LpgSpacing.xs),
+          for (final row in rows) _LoadRowTile(row: row),
+          if (short) ...[
+            const SizedBox(height: LpgSpacing.sm),
+            const LpgBanner(
+              tone: LpgTone.danger,
+              message:
+                  "The godown doesn't have enough filled cylinders for this order. Receive stock or pick another godown.",
+            ),
+          ],
+          if (companions > 0) ...[
+            const SizedBox(height: LpgSpacing.sm),
+            LpgBanner(
+              message:
+                  '$companions other ${companions == 1 ? 'order' : 'orders'} '
+                  'on this trip will go out with it.',
+            ),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: LpgSpacing.sm),
+            LpgBanner(tone: LpgTone.danger, message: _error!),
+          ],
+          const SizedBox(height: LpgSpacing.lg),
+          LpgButton(
+            label: 'Load and send out',
+            icon: LpgIcons.truck,
+            isLoading: _busy,
+            expand: true,
+            onPressed: canSubmit ? () => _submit(trip) : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One cylinder type against the van and the godown: the server's arithmetic.
+class _LoadRow {
+  const _LoadRow._({
+    required this.name,
+    required this.forOrder,
+    required this.onVan,
+    required this.toLoad,
+    required this.inGodown,
+    required this.short,
+  });
+
+  factory _LoadRow.of({
+    required String name,
+    required int forOrder,
+    required int onVan,
+    required int? inGodown,
+  }) {
+    final toLoad = forOrder > onVan ? forOrder - onVan : 0;
+    return _LoadRow._(
+      name: name,
+      forOrder: forOrder,
+      onVan: onVan,
+      toLoad: toLoad,
+      inGodown: inGodown,
+      short: inGodown != null && toLoad > inGodown,
+    );
+  }
+
+  final String name;
+  final int forOrder;
+  final int onVan;
+  final int toLoad;
+  final int? inGodown;
+  final bool short;
+}
+
+class _LoadRowTile extends StatelessWidget {
+  const _LoadRowTile({required this.row});
+
+  final _LoadRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lpgColors;
+    final text = context.lpgText;
+    final godown = row.inGodown == null ? '–' : '${row.inGodown}';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 3, child: Text(row.name, style: text.bodyMedium)),
+          Expanded(
+            flex: 4,
+            child: Text(
+              'Needs ${row.forOrder} · on van ${row.onVan} · '
+              'load ${row.toLoad} · godown $godown',
+              textAlign: TextAlign.right,
+              style: text.bodySmall?.copyWith(
+                color: row.short ? colors.statusDanger : colors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

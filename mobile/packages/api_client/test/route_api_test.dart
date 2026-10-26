@@ -179,5 +179,66 @@ void main() {
         'heading': 42,
       });
     });
+
+    test('planRoute posts the driver, van and branch', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.method, 'POST');
+        expect(options.path, '/api/v1/routes');
+        expect(options.data, {
+          'branch_id': 'branch-1',
+          'driver_id': 'driver-1',
+          'vehicle_id': 'vehicle-1',
+        });
+        return jsonResponse(_routeJson(status: 'planned'), 201);
+      });
+
+      final result = await RouteApi(client.dio).planRoute(
+        branchId: 'branch-1',
+        driverId: 'driver-1',
+        vehicleId: 'vehicle-1',
+      );
+
+      final route = result.when(onSuccess: (r) => r, onFailure: (_) => null);
+      expect(route!.status, 'planned');
+    });
+
+    test('loadAndDispatch sends the godown and the orders', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/routes/route-1/load-and-dispatch');
+        expect(options.data, {
+          'warehouse_id': 'wh-1',
+          'order_ids': ['order-1'],
+          'extra_lines': <Map<String, dynamic>>[],
+        });
+        return jsonResponse(_routeJson(status: 'loaded'), 200);
+      });
+
+      final result = await RouteApi(
+        client.dio,
+      ).loadAndDispatch('route-1', warehouseId: 'wh-1', orderIds: ['order-1']);
+
+      final route = result.when(onSuccess: (r) => r, onFailure: (_) => null);
+      expect(route!.status, 'loaded');
+    });
+
+    test('listRoutes filters by branch', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.queryParameters['branch_id'], 'branch-1');
+        expect(options.queryParameters['status'], 'planned');
+        return jsonResponse({
+          'items': [_routeJson(status: 'planned')],
+        }, 200);
+      });
+
+      final result = await RouteApi(
+        client.dio,
+      ).listRoutes(status: 'planned', branchId: 'branch-1');
+
+      final routes = result.when(onSuccess: (r) => r, onFailure: (_) => null);
+      expect(routes, hasLength(1));
+    });
   });
 }

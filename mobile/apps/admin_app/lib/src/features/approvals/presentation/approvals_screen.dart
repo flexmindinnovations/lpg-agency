@@ -62,7 +62,8 @@ class _ApprovalsScreenState extends ConsumerState<ApprovalsScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: handovers.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: LpgSpacing.sm),
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: LpgSpacing.sm),
                     itemBuilder: (context, index) {
                       final item = handovers[index];
                       return LpgCard(
@@ -90,7 +91,9 @@ class _ApprovalsScreenState extends ConsumerState<ApprovalsScreen> {
                                 const SizedBox(height: LpgSpacing.xs),
                                 Text(
                                   'Route #${item.routeId.substring(0, 8)}  •  ${LpgFormat.date(item.routeDate)}',
-                                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                                  style: text.bodySmall?.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
                                 ),
                               ],
                             ),
@@ -99,7 +102,9 @@ class _ApprovalsScreenState extends ConsumerState<ApprovalsScreen> {
                               children: [
                                 Text(
                                   LpgFormat.currency(item.actualAmount),
-                                  style: text.titleSmall?.copyWith(color: colors.actionPrimary),
+                                  style: text.titleSmall?.copyWith(
+                                    color: colors.actionPrimary,
+                                  ),
                                 ),
                                 if (item.shortfall > 0) ...[
                                   const SizedBox(height: LpgSpacing.xs),
