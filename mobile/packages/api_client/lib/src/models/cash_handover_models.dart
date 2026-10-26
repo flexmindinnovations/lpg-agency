@@ -151,28 +151,31 @@ class CashHandoverRegisterEntryResponse {
     this.review,
   });
 
-  factory CashHandoverRegisterEntryResponse.fromJson(Map<String, dynamic> json) =>
-      CashHandoverRegisterEntryResponse(
-        id: json['id'] as String? ?? '',
-        handoverNumber: json['handover_number'] as String?,
-        driverId: json['driver_id'] as String? ?? '',
-        driverName: json['driver_name'] as String? ?? '',
-        routeId: json['route_id'] as String? ?? '',
-        routeDate: json['route_date'] != null
-            ? DateTime.parse(json['route_date'] as String)
-            : DateTime.now(),
-        vehicleRegistration: json['vehicle_registration'] as String?,
-        cashStopCount: json['cash_stop_count'] as int? ?? 0,
-        expectedAmount: asDouble(json['expected_amount']),
-        actualAmount: asDouble(json['actual_amount']),
-        shortfall: asDouble(json['shortfall']),
-        excess: asDouble(json['excess']),
-        declaredAt: json['declared_at'] != null
-            ? DateTime.parse(json['declared_at'] as String)
-            : DateTime.now(),
-        reviewStatus: json['review_status'] as String? ?? 'pending',
-        review: json['review'] != null
-            ? CashHandoverReviewResponse.fromJson(json['review'] as Map<String, dynamic>)
-            : null,
-      );
+  factory CashHandoverRegisterEntryResponse.fromJson(
+    Map<String, dynamic> json,
+  ) => CashHandoverRegisterEntryResponse(
+    id: json['id'] as String? ?? '',
+    handoverNumber: json['handover_number'] as String?,
+    driverId: json['driver_id'] as String? ?? '',
+    driverName: json['driver_name'] as String? ?? '',
+    routeId: json['route_id'] as String? ?? '',
+    routeDate: json['route_date'] != null
+        ? DateTime.parse(json['route_date'] as String)
+        : DateTime.now(),
+    vehicleRegistration: json['vehicle_registration'] as String?,
+    cashStopCount: json['cash_stop_count'] as int? ?? 0,
+    expectedAmount: asDouble(json['expected_amount']),
+    actualAmount: asDouble(json['actual_amount']),
+    shortfall: asDouble(json['shortfall']),
+    excess: asDouble(json['excess']),
+    declaredAt: json['declared_at'] != null
+        ? DateTime.parse(json['declared_at'] as String)
+        : DateTime.now(),
+    reviewStatus: json['review_status'] as String? ?? 'pending',
+    review: json['review'] != null
+        ? CashHandoverReviewResponse.fromJson(
+            json['review'] as Map<String, dynamic>,
+          )
+        : null,
+  );
 }

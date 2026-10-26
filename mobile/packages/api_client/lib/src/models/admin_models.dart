@@ -26,16 +26,28 @@ class DashboardSummaryResponse {
       customerCount: json['customer_count'] as int? ?? 0,
       driverCount: json['driver_count'] as int? ?? 0,
       vehicleCount: json['vehicle_count'] as int? ?? 0,
-      vehiclesByStatus: (json['vehicles_by_status'] as Map<String, dynamic>? ?? {})
-          .map((k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0)),
+      vehiclesByStatus:
+          (json['vehicles_by_status'] as Map<String, dynamic>? ?? {}).map(
+            (k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0),
+          ),
       warehouseCount: json['warehouse_count'] as int? ?? 0,
       cylinderTypeCount: json['cylinder_type_count'] as int? ?? 0,
-      inventoryByStatus: Map<String, dynamic>.from(json['inventory_by_status'] as Map? ?? {}),
+      inventoryByStatus: Map<String, dynamic>.from(
+        json['inventory_by_status'] as Map? ?? {},
+      ),
       priceCards: (json['price_cards'] as List<dynamic>? ?? [])
-          .map((e) => CylinderTypePriceCardResponse.fromJson(e as Map<String, dynamic>))
+          .map(
+            (e) => CylinderTypePriceCardResponse.fromJson(
+              e as Map<String, dynamic>,
+            ),
+          )
           .toList(),
       recentActivity: (json['recent_activity'] as List<dynamic>? ?? [])
-          .map((e) => DashboardActivityEntryResponse.fromJson(e as Map<String, dynamic>))
+          .map(
+            (e) => DashboardActivityEntryResponse.fromJson(
+              e as Map<String, dynamic>,
+            ),
+          )
           .toList(),
     );
   }
@@ -120,11 +132,15 @@ class OperationsSnapshotResponse {
 
   factory OperationsSnapshotResponse.fromJson(Map<String, dynamic> json) {
     return OperationsSnapshotResponse(
-      orders: OrderPipelineResponse.fromJson(json['orders'] as Map<String, dynamic>? ?? {}),
+      orders: OrderPipelineResponse.fromJson(
+        json['orders'] as Map<String, dynamic>? ?? {},
+      ),
       openComplaints: json['open_complaints'] as int? ?? 0,
       lowStockCount: json['low_stock_count'] as int? ?? 0,
       invoices: json['invoices'] != null
-          ? InvoiceSnapshotResponse.fromJson(json['invoices'] as Map<String, dynamic>)
+          ? InvoiceSnapshotResponse.fromJson(
+              json['invoices'] as Map<String, dynamic>,
+            )
           : null,
       cash: json['cash'] != null
           ? CashSnapshotResponse.fromJson(json['cash'] as Map<String, dynamic>)
@@ -152,8 +168,9 @@ class OrderPipelineResponse {
   factory OrderPipelineResponse.fromJson(Map<String, dynamic> json) {
     return OrderPipelineResponse(
       bookingsToday: json['bookings_today'] as int? ?? 0,
-      openByStatus: (json['open_by_status'] as Map<String, dynamic>? ?? {})
-          .map((k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0)),
+      openByStatus: (json['open_by_status'] as Map<String, dynamic>? ?? {}).map(
+        (k, v) => MapEntry(k, (v as num?)?.toInt() ?? 0),
+      ),
       deliveredToday: json['delivered_today'] as int? ?? 0,
       failedToday: json['failed_today'] as int? ?? 0,
       pendingCancellations: json['pending_cancellations'] as int? ?? 0,
@@ -179,9 +196,11 @@ class InvoiceSnapshotResponse {
   factory InvoiceSnapshotResponse.fromJson(Map<String, dynamic> json) {
     return InvoiceSnapshotResponse(
       outstandingCount: json['outstanding_count'] as int? ?? 0,
-      outstandingAmount: double.tryParse(json['outstanding_amount']?.toString() ?? '0') ?? 0.0,
+      outstandingAmount:
+          double.tryParse(json['outstanding_amount']?.toString() ?? '0') ?? 0.0,
       overdueCount: json['overdue_count'] as int? ?? 0,
-      overdueAmount: double.tryParse(json['overdue_amount']?.toString() ?? '0') ?? 0.0,
+      overdueAmount:
+          double.tryParse(json['overdue_amount']?.toString() ?? '0') ?? 0.0,
       onHoldCount: json['on_hold_count'] as int? ?? 0,
     );
   }
@@ -198,7 +217,8 @@ class CashSnapshotResponse {
 
   factory CashSnapshotResponse.fromJson(Map<String, dynamic> json) {
     return CashSnapshotResponse(
-      awaitingHandover: double.tryParse(json['awaiting_handover']?.toString() ?? '0') ?? 0.0,
+      awaitingHandover:
+          double.tryParse(json['awaiting_handover']?.toString() ?? '0') ?? 0.0,
       handoversAwaitingReview: json['handovers_awaiting_review'] as int? ?? 0,
     );
   }
@@ -208,28 +228,22 @@ class ReviewCashHandoverRequest {
   final String outcome; // 'accepted' or 'disputed'
   final String? note;
 
-  ReviewCashHandoverRequest({
-    required this.outcome,
-    this.note,
-  });
+  ReviewCashHandoverRequest({required this.outcome, this.note});
 
   Map<String, dynamic> toJson() => {
-        'outcome': outcome,
-        if (note != null) 'note': note,
-      };
+    'outcome': outcome,
+    if (note != null) 'note': note,
+  };
 }
 
 class VerifyKycDocumentRequest {
   final bool approved;
   final String? rejectionReason;
 
-  VerifyKycDocumentRequest({
-    required this.approved,
-    this.rejectionReason,
-  });
+  VerifyKycDocumentRequest({required this.approved, this.rejectionReason});
 
   Map<String, dynamic> toJson() => {
-        'approved': approved,
-        if (rejectionReason != null) 'rejection_reason': rejectionReason,
-      };
+    'approved': approved,
+    if (rejectionReason != null) 'rejection_reason': rejectionReason,
+  };
 }

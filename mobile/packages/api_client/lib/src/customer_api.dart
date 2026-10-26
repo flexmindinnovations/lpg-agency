@@ -130,11 +130,7 @@ final class CustomerApi {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/customers',
-        queryParameters: {
-          'skip': skip,
-          'limit': limit,
-          'search': ?search,
-        },
+        queryParameters: {'skip': skip, 'limit': limit, 'search': ?search},
       );
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));

@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for release builds to reach the API; debug/profile manifests
+         add it on their own, the main one did not. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="admin_app"
+        android:usesCleartextTraffic="true"
+        android:label="LPG Admin"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
