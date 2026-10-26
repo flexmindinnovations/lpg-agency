@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'src/auth_provider.dart';
 import 'src/providers.dart';
 import 'src/router.dart';
+import 'src/staff_only_auth_repository.dart';
 
 const _apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -34,9 +35,11 @@ void main() async {
     onSessionExpired: () => authController.handleSessionExpired(),
   );
 
-  authRepository = ApiAuthRepository(
-    authApi: AuthApi(apiClient.dio),
-    tokenStorage: tokenStorage,
+  authRepository = StaffOnlyAuthRepository(
+    ApiAuthRepository(
+      authApi: AuthApi(apiClient.dio),
+      tokenStorage: tokenStorage,
+    ),
   );
   authController = AuthController(authRepository);
 
