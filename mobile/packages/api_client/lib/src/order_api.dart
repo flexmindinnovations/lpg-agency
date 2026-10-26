@@ -19,7 +19,7 @@ final class OrderApi {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/orders',
-        queryParameters: {'page': page, 'size': size},
+        queryParameters: {'skip': (page - 1) * size, 'limit': size},
       );
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));
