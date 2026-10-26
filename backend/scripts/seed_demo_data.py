@@ -281,7 +281,13 @@ LOGIN_USERS = [
     ("manager@example.com", "manager", "Hyderabad Central", "Ravi Kumar", "+919848011008"),
     ("dispatcher@example.com", "dispatcher", "Hyderabad Central", "Sunita Reddy", "+919848011002"),
     ("accountant@example.com", "accountant", "Hyderabad Central", "Lakshmi Rao", "+919848011004"),
-    ("warehouse@example.com", "warehouse_staff", "Secunderabad North", "Prakash Menon", "+919848011006"),
+    (
+        "warehouse@example.com",
+        "warehouse_staff",
+        "Secunderabad North",
+        "Prakash Menon",
+        "+919848011006",
+    ),
     ("driver@example.com", "driver", "Hyderabad Central", "Imran Shaikh", "+919848011003"),
 ]
 
