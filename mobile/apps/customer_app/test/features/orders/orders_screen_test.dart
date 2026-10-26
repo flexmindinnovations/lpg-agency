@@ -55,7 +55,7 @@ void main() {
       await pumpScreen(tester, _screen(orders: [_order()]));
 
       expect(find.text('Order ORD000042'), findsOneWidget);
-      expect(find.text('CONFIRMED'), findsOneWidget);
+      expect(find.text('Confirmed'), findsOneWidget);
       expect(find.textContaining('1,234.50'), findsOneWidget);
     });
 

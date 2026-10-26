@@ -8,8 +8,8 @@ class ApiException implements Exception {
   final Failure failure;
 
   String get message => switch (failure.errorCode) {
-    'FORBIDDEN' || 'PERMISSION_DENIED' =>
-      'You do not have permission to view this.',
+    'FORBIDDEN' ||
+    'PERMISSION_DENIED' => 'You do not have permission to view this.',
     _ => failure.message,
   };
 

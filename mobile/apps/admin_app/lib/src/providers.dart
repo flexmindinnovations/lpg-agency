@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:realtime/realtime.dart';
 
 /// Provides the singleton [ApiClient] instance.
 final apiClientProvider = Provider<ApiClient>((ref) {
@@ -58,4 +59,21 @@ final cashHandoverApiProvider = Provider<CashHandoverApi>((ref) {
 final complaintApiProvider = Provider<ComplaintApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return ComplaintApi(apiClient.dio);
+});
+
+/// Provides the [FleetApi] client (drivers, vans, godowns, stock).
+final fleetApiProvider = Provider<FleetApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return FleetApi(apiClient.dio);
+});
+
+/// Provides the [NotificationApi] client.
+final notificationApiProvider = Provider<NotificationApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return NotificationApi(apiClient.dio);
+});
+
+/// The shared `/ws` connection. `main()` overrides this.
+final realtimeClientProvider = Provider<RealtimeClient>((ref) {
+  throw UnimplementedError('realtimeClientProvider was not overridden');
 });

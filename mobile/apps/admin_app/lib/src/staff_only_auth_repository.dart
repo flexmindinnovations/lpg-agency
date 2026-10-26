@@ -65,7 +65,9 @@ final class StaffOnlyAuthRepository implements AuthRepository {
   Future<void> logout() => _inner.logout();
 
   Future<Result<Principal>> _staffOnly(Result<Principal> result) async {
-    if (result case Success(:final value) when nonStaffRoles.contains(value.role)) {
+    if (result case Success(
+      :final value,
+    ) when nonStaffRoles.contains(value.role)) {
       await _inner.logout();
       final app = value.role == 'driver' ? 'Driver' : 'Customer';
       return FailureResult(

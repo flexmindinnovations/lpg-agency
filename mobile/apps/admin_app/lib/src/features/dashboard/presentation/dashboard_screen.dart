@@ -49,9 +49,17 @@ class DashboardScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Today\'s Bookings', style: text.bodyMedium?.copyWith(color: colors.onHero)),
+                      Text(
+                        'Today\'s Bookings',
+                        style: text.bodyMedium?.copyWith(color: colors.onHero),
+                      ),
                       const SizedBox(height: LpgSpacing.xs),
-                      Text('${ops.orders.bookingsToday}', style: text.headlineLarge?.copyWith(color: colors.onHero)),
+                      Text(
+                        '${ops.orders.bookingsToday}',
+                        style: text.headlineLarge?.copyWith(
+                          color: colors.onHero,
+                        ),
+                      ),
                       const SizedBox(height: LpgSpacing.sm),
                       Text(
                         '${ops.orders.deliveredToday} Delivered  •  ${ops.orders.failedToday} Failed  •  ${ops.orders.pendingCancellations} Pending Cancellation',
@@ -95,33 +103,42 @@ class DashboardScreen extends ConsumerWidget {
 
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Cylinder Catalog & Prices', style: text.titleSmall),
+                      child: Text(
+                        'Cylinder Catalog & Prices',
+                        style: text.titleSmall,
+                      ),
                     ),
                     const SizedBox(height: LpgSpacing.sm),
-                    ...summary.priceCards.map((card) => Padding(
-                          padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
-                          child: LpgCard(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(card.name, style: text.bodyLarge),
-                                    Text(
-                                      '${card.weightKg} kg  •  ${card.customerType}',
-                                      style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                    ...summary.priceCards.map(
+                      (card) => Padding(
+                        padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
+                        child: LpgCard(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(card.name, style: text.bodyLarge),
+                                  Text(
+                                    '${card.weightKg} kg  •  ${card.customerType}',
+                                    style: text.bodySmall?.copyWith(
+                                      color: colors.textSecondary,
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                LpgFormat.currency(card.price),
+                                style: text.titleMedium?.copyWith(
+                                  color: colors.actionPrimary,
                                 ),
-                                Text(
-                                  LpgFormat.currency(card.price),
-                                  style: text.titleMedium?.copyWith(color: colors.actionPrimary),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        )),
+                        ),
+                      ),
+                    ),
 
                     const SizedBox(height: LpgSpacing.lg),
                     Align(
@@ -135,13 +152,20 @@ class DashboardScreen extends ConsumerWidget {
                         icon: LpgIcons.home,
                       )
                     else
-                      ...summary.recentActivity.take(5).map((act) => Padding(
-                            padding: const EdgeInsets.only(bottom: LpgSpacing.xs),
-                            child: LpgListTile(
-                              title: '${act.actorDisplayName}: ${act.action}',
-                              subtitle: '${act.entityName} ${act.entityDisplayName}  •  ${LpgFormat.dateTime(act.performedAt)}',
+                      ...summary.recentActivity
+                          .take(5)
+                          .map(
+                            (act) => Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: LpgSpacing.xs,
+                              ),
+                              child: LpgListTile(
+                                title: '${act.actorDisplayName}: ${act.action}',
+                                subtitle:
+                                    '${act.entityName} ${act.entityDisplayName}  •  ${LpgFormat.dateTime(act.performedAt)}',
+                              ),
                             ),
-                          )),
+                          ),
                   ],
                 ),
               ),

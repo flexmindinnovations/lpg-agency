@@ -194,6 +194,20 @@ final class RealtimeClient {
     );
   }
 
+  /// What an office user's screens refresh on: every order status change in
+  /// the tenant (`order.status_changed` on the `orders` feed), plus
+  /// [subscribeToNotificationChanges]'s inbox events. The Admin App shell
+  /// listens to this one stream.
+  Stream<Map<String, dynamic>> subscribeToStaffUpdates() {
+    _addIntent('orders');
+    _addIntent('notifications');
+    return _messages.stream.where(
+      (m) =>
+          _notificationChangeTypes.contains(m['type']) ||
+          m['type'] == 'order.status_changed',
+    );
+  }
+
   /// Route changes for the signed-in driver — the backend's
   /// `delivery.route_updated` messages on the driver's own channel.
   Stream<Map<String, dynamic>> subscribeToDriverRoutes() {

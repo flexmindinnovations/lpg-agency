@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'auth_provider.dart';
 import 'features/approvals/presentation/approvals_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/orders/presentation/create_order_screen.dart';
 import 'features/orders/presentation/order_detail_screen.dart';
 import 'features/orders/presentation/order_list_screen.dart';
@@ -52,7 +53,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -98,6 +100,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: '/alerts',
+                name: 'alerts',
+                builder: (context, state) => const NotificationsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: '/profile',
                 name: 'profile',
                 builder: (context, state) => const ProfileScreen(),
@@ -107,8 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(child: Text('Route not found: ${state.uri}')),
-    ),
+    errorBuilder: (context, state) =>
+        Scaffold(body: Center(child: Text('Route not found: ${state.uri}'))),
   );
 });

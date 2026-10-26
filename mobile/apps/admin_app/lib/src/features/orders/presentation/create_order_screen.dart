@@ -37,7 +37,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final quantity = int.tryParse(_quantityController.text.trim()) ?? 1;
 
     if (customer == null || address == null || cylinderTypeId == null) {
-      setState(() => _errorMessage = 'Please select a Customer, Delivery Address, and Cylinder Type.');
+      setState(
+        () => _errorMessage =
+            'Please select a Customer, Delivery Address, and Cylinder Type.',
+      );
       return;
     }
 
@@ -70,7 +73,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     result.when(
       onSuccess: (_) {
-        LpgFeedback.showToast(context, 'Order placed successfully on behalf of ${customer.fullName}');
+        LpgFeedback.showToast(
+          context,
+          'Order placed successfully on behalf of ${customer.fullName}',
+        );
         ref.invalidate(adminOrdersProvider(1));
         context.pop();
       },
@@ -142,7 +148,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 if (_selectedCustomer!.addresses.isEmpty)
                   Text(
                     'No saved addresses for this customer.',
-                    style: text.bodyMedium?.copyWith(color: colors.statusDanger),
+                    style: text.bodyMedium?.copyWith(
+                      color: colors.statusDanger,
+                    ),
                   )
                 else
                   DropdownButtonFormField<CustomerAddressResponse>(

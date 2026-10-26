@@ -54,10 +54,9 @@ void main() {
 
   test('lets a staff account through', () async {
     final inner = _FakeRepository('agency_admin');
-    final result = await StaffOnlyAuthRepository(inner).login(
-      email: 'a@b.c',
-      password: 'x',
-    );
+    final result = await StaffOnlyAuthRepository(
+      inner,
+    ).login(email: 'a@b.c', password: 'x');
 
     expect(result, isA<Success<Principal>>());
     expect(inner.loggedOut, isFalse);

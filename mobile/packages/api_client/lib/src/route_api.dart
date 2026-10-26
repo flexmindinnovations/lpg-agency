@@ -39,12 +39,17 @@ final class RouteApi {
   /// `status` to narrow it (e.g. `completed`).
   Future<Result<List<RouteSummary>>> listRoutes({
     String? status,
+    String? branchId,
     int pageSize = 20,
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/routes',
-        queryParameters: {'page_size': pageSize, 'status': ?status},
+        queryParameters: {
+          'page_size': pageSize,
+          'status': ?status,
+          'branch_id': ?branchId,
+        },
       );
       final items = (response.data?['items'] as List<dynamic>? ?? const [])
           .map((e) => RouteSummary.fromJson(e as Map<String, dynamic>))
@@ -96,6 +101,63 @@ final class RouteApi {
         data: report.toJson(),
       );
       return const Success(null);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// Plans a new (empty) trip for a driver and van (`POST /routes`).
+  Future<Result<RouteSummary>> planRoute({
+    required String branchId,
+    required String driverId,
+    required String vehicleId,
+    DateTime? routeDate,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/routes',
+        data: {
+          'branch_id': branchId,
+          'driver_id': driverId,
+          'vehicle_id': vehicleId,
+          'route_date': ?routeDate?.toUtc().toIso8601String(),
+        },
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(RouteSummary.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// The trip sheet's one action (`POST /routes/{id}/load-and-dispatch`):
+  /// adds [orderIds], moves what they need from [warehouseId] onto the van
+  /// and releases the trip to the driver. `409 INSUFFICIENT_STOCK` when the
+  /// godown is short.
+  Future<Result<RouteSummary>> loadAndDispatch(
+    String routeId, {
+    required String warehouseId,
+    List<String> orderIds = const [],
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/routes/$routeId/load-and-dispatch',
+        data: {
+          'warehouse_id': warehouseId,
+          'order_ids': orderIds,
+          'extra_lines': <Map<String, dynamic>>[],
+        },
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(RouteSummary.fromJson(response.data!));
     } on DioException catch (e) {
       return FailureResult(mapDioError(e));
     } catch (e) {

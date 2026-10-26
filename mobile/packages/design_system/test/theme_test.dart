@@ -59,7 +59,7 @@ void main() {
     });
 
     test('turns status codes into labels and sentences', () {
-      expect(LpgFormat.statusLabel('out_for_delivery'), 'OUT FOR DELIVERY');
+      expect(LpgFormat.statusLabel('out_for_delivery'), 'Out for delivery');
       expect(LpgFormat.sentence('out_for_delivery'), 'Out for delivery');
       expect(LpgFormat.sentence(''), '');
     });

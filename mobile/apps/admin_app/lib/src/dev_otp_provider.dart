@@ -18,7 +18,7 @@ final devOtpLookupProvider = Provider<DevOtpLookup>(
       final result = await AuthApi(
         ref.read(apiClientProvider).dio,
       ).fetchDevOtp(phoneNumber: phoneNumber);
-      return result.when(
+      return result.when<String?>(
         onSuccess: (code) => code,
         onFailure: (_) => null,
       );

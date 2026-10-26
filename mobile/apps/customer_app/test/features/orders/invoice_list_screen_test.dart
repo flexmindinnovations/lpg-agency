@@ -55,7 +55,7 @@ void main() {
       await pumpScreen(tester, _screen(invoices: [_invoice()]));
 
       expect(find.textContaining('000042'), findsOneWidget);
-      expect(find.text('ISSUED'), findsOneWidget);
+      expect(find.text('Issued'), findsOneWidget);
       expect(find.textContaining('1,180.00'), findsOneWidget);
     });
 
@@ -91,7 +91,7 @@ void main() {
       );
 
       // The middle of the card, not the "View" label.
-      await tester.tap(find.text('ISSUED'));
+      await tester.tap(find.text('Issued'));
       await tester.pumpAndSettle();
       expect(opened, 'inv-abcd1234');
     });
