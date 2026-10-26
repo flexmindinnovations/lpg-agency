@@ -6,6 +6,12 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   throw UnimplementedError('apiClientProvider was not overridden');
 });
 
+/// Provides the [AuthApi] client (`/auth/me`).
+final authApiProvider = Provider<AuthApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return AuthApi(apiClient.dio);
+});
+
 /// Provides the [AdminApi] client for admin operations.
 final adminApiProvider = Provider<AdminApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);

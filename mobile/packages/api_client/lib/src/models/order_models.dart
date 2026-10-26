@@ -51,6 +51,7 @@ class OrderResponse {
     required this.metadata,
     this.routeStopId,
     this.totalAmount,
+    this.customerName,
     required this.lines,
   });
 
@@ -71,6 +72,8 @@ class OrderResponse {
     metadata: json['metadata'] as Map<String, dynamic>,
     routeStopId: json['route_stop_id'] as String?,
     totalAmount: asDoubleOrNull(json['total_amount']),
+    customerName:
+        (json['customer'] as Map<String, dynamic>?)?['full_name'] as String?,
     lines: (json['lines'] as List<dynamic>)
         .map((e) => OrderLineResponse.fromJson(e as Map<String, dynamic>))
         .toList(),
@@ -96,6 +99,9 @@ class OrderResponse {
   final Map<String, dynamic> metadata;
   final String? routeStopId;
   final double? totalAmount;
+
+  /// The customer's name (`null` when the server did not embed it).
+  final String? customerName;
   final List<OrderLineResponse> lines;
 }
 

@@ -26,7 +26,16 @@ final class ApiClient {
   }) : _getAccessToken = getAccessToken ?? (() => null),
        _refreshAccessToken = refreshAccessToken ?? (() async => null),
        _onSessionExpired = onSessionExpired ?? (() {}) {
-    dio = Dio(BaseOptions(baseUrl: baseUrl));
+    // Explicit timeouts: Dio has none by default, so a stalled connection
+    // would leave a screen's loader spinning forever.
+    dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      ),
+    );
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {

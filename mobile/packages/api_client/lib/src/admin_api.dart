@@ -10,6 +10,23 @@ final class AdminApi {
 
   final Dio _dio;
 
+  /// The caller's agency (`GET /api/v1/admin/tenant`, needs `tenant:read`).
+  Future<Result<AgencyTenantResponse>> getTenant() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/admin/tenant',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(AgencyTenantResponse.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Executive dashboard summary (`GET /api/v1/dashboard/summary`)
   Future<Result<DashboardSummaryResponse>> getDashboardSummary() async {
     try {

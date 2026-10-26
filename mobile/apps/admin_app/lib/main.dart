@@ -42,6 +42,10 @@ void main() async {
 
   runApp(
     ProviderScope(
+      // Riverpod 3 retries failed providers with backoff and keeps them in
+      // the loading state meanwhile, so errors never reached the screens'
+      // error/Retry states. Fail fast; the user retries explicitly.
+      retry: (_, _) => null,
       overrides: [
         authControllerProvider.overrideWithValue(authController),
         apiClientProvider.overrideWithValue(apiClient),

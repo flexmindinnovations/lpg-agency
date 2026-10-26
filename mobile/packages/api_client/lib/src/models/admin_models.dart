@@ -1,3 +1,5 @@
+import 'decimal_json.dart';
+
 class DashboardSummaryResponse {
   final int customerCount;
   final int driverCount;
@@ -72,9 +74,9 @@ class CylinderTypePriceCardResponse {
     return CylinderTypePriceCardResponse(
       cylinderTypeId: json['cylinder_type_id'] as String? ?? '',
       name: json['name'] as String? ?? '',
-      weightKg: (json['weight_kg'] as num?)?.toDouble() ?? 0.0,
+      weightKg: asDoubleOrNull(json['weight_kg']) ?? 0.0,
       customerType: json['customer_type'] as String? ?? '',
-      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      price: asDoubleOrNull(json['price']) ?? 0.0,
     );
   }
 }
@@ -246,4 +248,18 @@ class VerifyKycDocumentRequest {
     'approved': approved,
     if (rejectionReason != null) 'rejection_reason': rejectionReason,
   };
+}
+
+/// `GET /admin/tenant` — only the agency's display name is used by the app.
+class AgencyTenantResponse {
+  const AgencyTenantResponse({required this.id, required this.name});
+
+  factory AgencyTenantResponse.fromJson(Map<String, dynamic> json) =>
+      AgencyTenantResponse(
+        id: json['id'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+      );
+
+  final String id;
+  final String name;
 }
