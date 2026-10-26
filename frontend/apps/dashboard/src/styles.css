@@ -86,6 +86,14 @@ body {
   margin: 0;
 }
 
+/* The app shell owns scrolling (sidebar and page content scroll separately);
+   with it mounted the window must never scroll or the header/sidebar move
+   with it. Pages without the shell (sign-in, licence) still scroll normally. */
+html:has(.shell__sidebar-wrapper),
+html:has(.shell__sidebar-wrapper) body {
+  overflow: hidden;
+}
+
 body {
   background-color: var(--color-surface-base);
   color: var(--color-text-primary);

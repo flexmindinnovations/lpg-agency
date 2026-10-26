@@ -253,6 +253,12 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       .shell {
         display: flex;
         block-size: 100vh;
+        /* Mobile/tablet browsers: 100vh is the viewport *without* the URL
+           bar, so the shell was taller than the visible area and the whole
+           window scrolled (header gone, sidebar footer cut off). dvh tracks
+           the visible area; the window itself never scrolls (styles.css). */
+        block-size: 100dvh;
+        overflow: hidden;
       }
 
       /* ---- Sidebar Wrapper & Sidebar ---- */
