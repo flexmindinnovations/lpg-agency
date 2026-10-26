@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api_result.dart';
 import '../../../auth_provider.dart';
+import '../../../providers.dart';
 import '../data/profile_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -89,7 +90,18 @@ class ProfileScreen extends ConsumerWidget {
             LpgButton(
               label: 'Sign Out',
               variant: LpgButtonVariant.destructive,
-              onPressed: () => ref.read(authControllerProvider).logout(),
+              onPressed: () async {
+                // Drop this device's FCM token first so a shared handset
+                // stops getting this user's alerts; it must not block the
+                // sign-out itself.
+                try {
+                  await ref.read(pushNotificationServiceProvider).unregister();
+                } catch (e) {
+                  debugPrint('logout: push cleanup failed ($e)');
+                } finally {
+                  await ref.read(authControllerProvider).logout();
+                }
+              },
             ),
           ],
         ),

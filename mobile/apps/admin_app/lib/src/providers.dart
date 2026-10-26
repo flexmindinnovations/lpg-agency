@@ -2,6 +2,8 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:realtime/realtime.dart';
 
+import 'push/push_notification_service.dart';
+
 /// Provides the singleton [ApiClient] instance.
 final apiClientProvider = Provider<ApiClient>((ref) {
   throw UnimplementedError('apiClientProvider was not overridden');
@@ -76,4 +78,13 @@ final notificationApiProvider = Provider<NotificationApi>((ref) {
 /// The shared `/ws` connection. `main()` overrides this.
 final realtimeClientProvider = Provider<RealtimeClient>((ref) {
   throw UnimplementedError('realtimeClientProvider was not overridden');
+});
+
+/// Owns FCM for the Admin App. `main()` overrides this.
+final pushNotificationServiceProvider = Provider<PushNotificationService>((
+  ref,
+) {
+  throw UnimplementedError(
+    'pushNotificationServiceProvider was not overridden',
+  );
 });
