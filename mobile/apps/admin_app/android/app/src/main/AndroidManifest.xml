@@ -2,6 +2,7 @@
     <!-- Required for release builds to reach the API; debug/profile manifests
          add it on their own, the main one did not. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:usesCleartextTraffic="true"
         android:label="LPG Admin"
@@ -29,6 +30,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- FCM: the channel the OS uses for notifications delivered while the
+             app is backgrounded/killed. PushNotificationService creates the
+             matching channel for the foreground path. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="lpg_default_channel" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

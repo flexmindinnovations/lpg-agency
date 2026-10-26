@@ -27,3 +27,9 @@ final unreadNotificationCountProvider = FutureProvider<int>((ref) async {
 final staffRealtimeProvider = StreamProvider<Map<String, dynamic>>((ref) {
   return ref.watch(realtimeClientProvider).subscribeToStaffUpdates();
 });
+
+/// Ticks when an FCM message lands while the app is foregrounded — the shell
+/// listens and refreshes the badge and inbox.
+final pushMessagesProvider = StreamProvider<void>((ref) {
+  return ref.watch(pushNotificationServiceProvider).messages;
+});

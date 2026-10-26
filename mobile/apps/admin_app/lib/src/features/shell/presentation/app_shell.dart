@@ -82,6 +82,11 @@ class AppShell extends ConsumerWidget {
       if (message != null) _onRealtime(context, ref, message);
     });
 
+    ref.listen(pushMessagesProvider, (_, _) {
+      ref.invalidate(unreadNotificationCountProvider);
+      ref.invalidate(adminNotificationsProvider);
+    });
+
     final unread = ref.watch(unreadNotificationCountProvider).value ?? 0;
 
     return LpgAdaptiveShell(
