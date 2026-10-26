@@ -2,6 +2,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../api_result.dart';
 import '../../../providers.dart';
 import '../data/orders_provider.dart';
 
@@ -79,7 +80,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Order #${widget.orderId.substring(0, 8)}'),
+        title: Text(
+          orderAsync.maybeWhen(
+            data: (o) => LpgFormat.orderNumber(o.orderNumber, o.id),
+            orElse: () => 'Order details',
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(LpgIcons.orders),
@@ -90,7 +96,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       body: orderAsync.when(
         loading: () => const Center(child: LpgLoadingIndicator()),
         error: (err, _) => LpgErrorState(
-          message: 'Failed to load order details: $err',
+          message: errorMessage(err),
           onRetry: () => ref.invalidate(adminOrderDetailProvider(widget.orderId)),
         ),
         data: (order) => SingleChildScrollView(
@@ -106,7 +112,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(order.orderNumber ?? order.id.substring(0, 8), style: text.headlineSmall),
+                        Text(LpgFormat.orderNumber(order.orderNumber, order.id), style: text.headlineSmall),
                         LpgStatusBadge(
                           label: order.status,
                           severity: switch (order.status.toLowerCase()) {
@@ -119,7 +125,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: LpgSpacing.sm),
-                    Text('Customer ID: ${order.customerId}', style: text.bodyLarge),
+                    Text(order.customerName ?? 'Customer', style: text.bodyLarge),
                     Text(
                       'Requested Date: ${LpgFormat.date(order.requestedDate)}',
                       style: text.bodyMedium?.copyWith(color: colors.textSecondary),
@@ -141,7 +147,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Cylinder Type #${line.cylinderTypeId.substring(0, 8)}', style: text.bodyLarge),
+                              Text('Cylinder', style: text.bodyLarge),
                               Text('Quantity: ${line.quantityOrdered}', style: text.bodySmall?.copyWith(color: colors.textSecondary)),
                             ],
                           ),

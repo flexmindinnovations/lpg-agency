@@ -2,6 +2,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../api_result.dart';
 import '../data/approvals_provider.dart';
 import 'cash_handover_review_screen.dart';
 
@@ -46,7 +47,7 @@ class _ApprovalsScreenState extends ConsumerState<ApprovalsScreen> {
               handoversAsync.when(
                 loading: () => const LpgSkeletonList(itemCount: 3),
                 error: (err, _) => LpgErrorState(
-                  message: 'Failed to load pending handovers',
+                  message: errorMessage(err),
                   onRetry: () => ref.invalidate(pendingCashHandoversProvider),
                 ),
                 data: (handovers) {

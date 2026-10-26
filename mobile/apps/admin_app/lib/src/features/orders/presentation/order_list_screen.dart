@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../api_result.dart';
 import '../data/orders_provider.dart';
 
 class OrderListScreen extends ConsumerStatefulWidget {
@@ -68,7 +69,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             child: ordersAsync.when(
               loading: () => const LpgSkeletonList(itemCount: 5),
               error: (err, _) => LpgErrorState(
-                message: 'Failed to load orders: $err',
+                message: errorMessage(err),
                 onRetry: () => ref.invalidate(adminOrdersProvider(1)),
               ),
               data: (page) {
@@ -98,7 +99,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(order.orderNumber ?? order.id.substring(0, 8), style: text.titleMedium),
+                              Text(LpgFormat.orderNumber(order.orderNumber, order.id), style: text.titleMedium),
                               LpgStatusBadge(
                                 label: order.status,
                                 severity: switch (order.status.toLowerCase()) {
@@ -112,7 +113,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ),
                           const SizedBox(height: LpgSpacing.xs),
                           Text(
-                            'Customer: ${order.customerId}',
+                            order.customerName ?? 'Customer',
                             style: text.bodyMedium?.copyWith(color: colors.textSecondary),
                           ),
                           const SizedBox(height: LpgSpacing.xs),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../api_result.dart';
 import '../../../providers.dart';
 import '../data/orders_provider.dart';
 
@@ -109,7 +110,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               customersAsync.when(
                 loading: () => const LpgSkeleton(height: 56),
                 error: (err, _) => LpgErrorState(
-                  message: 'Failed to load customer list',
+                  message: errorMessage(err),
                   onRetry: () => ref.invalidate(availableCustomersProvider),
                 ),
                 data: (page) => DropdownButtonFormField<CustomerResponse>(
@@ -169,7 +170,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               cylindersAsync.when(
                 loading: () => const LpgSkeleton(height: 56),
                 error: (err, _) => LpgErrorState(
-                  message: 'Failed to load cylinder catalog',
+                  message: errorMessage(err),
                   onRetry: () => ref.invalidate(cylinderCatalogProvider),
                 ),
                 data: (cylinders) => DropdownButtonFormField<String>(

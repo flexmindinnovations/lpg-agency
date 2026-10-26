@@ -3,7 +3,9 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../api_result.dart';
 import '../../../auth_provider.dart';
+import '../data/profile_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -13,8 +15,7 @@ class ProfileScreen extends ConsumerWidget {
     final colors = context.lpgColors;
     final text = context.lpgText;
 
-    final auth = ref.watch(authControllerProvider);
-    final principal = auth.state.principal;
+    final profileAsync = ref.watch(adminProfileProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Admin Profile')),
@@ -23,37 +24,58 @@ class ProfileScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LpgCard(
-              child: Row(
+            profileAsync.when(
+              loading: () => const LpgSkeleton(height: 96),
+              error: (err, _) => LpgErrorState(
+                message: errorMessage(err),
+                onRetry: () => ref.invalidate(adminProfileProvider),
+              ),
+              data: (profile) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const LpgAvatar(
-                    name: 'Admin User',
-                    size: LpgSizes.avatarLg,
-                  ),
-                  const SizedBox(width: LpgSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  LpgCard(
+                    child: Row(
                       children: [
-                        Text('Admin Console User', style: text.titleMedium),
-                        const SizedBox(height: LpgSpacing.xs),
-                        Text(
-                          'Agency Tenant: ${principal?.tenantId ?? 'dev-tenant'}',
-                          style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                        LpgAvatar(
+                          name: profile.displayName,
+                          size: LpgSizes.avatarLg,
+                        ),
+                        const SizedBox(width: LpgSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(profile.displayName, style: text.titleMedium),
+                              const SizedBox(height: LpgSpacing.xs),
+                              Text(
+                                profile.agencyName ?? 'Agency',
+                                style: text.bodySmall?.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                              if (profile.email != null)
+                                Text(
+                                  profile.email!,
+                                  style: text.bodySmall?.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: LpgSpacing.lg),
+                  Text('System Overview', style: text.titleSmall),
+                  const SizedBox(height: LpgSpacing.sm),
+                  LpgListTile(
+                    title: 'Role & Access Level',
+                    subtitle: LpgFormat.sentence(profile.role),
+                    leadingIcon: LpgIcons.profile,
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: LpgSpacing.lg),
-            Text('System Overview', style: text.titleSmall),
-            const SizedBox(height: LpgSpacing.sm),
-            const LpgListTile(
-              title: 'Role & Access Level',
-              subtitle: 'Agency Administrator / Manager',
-              leadingIcon: LpgIcons.profile,
             ),
             const LpgListTile(
               title: 'App Version',

@@ -2,6 +2,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../api_result.dart';
 import '../data/dashboard_providers.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -41,7 +42,7 @@ class DashboardScreen extends ConsumerWidget {
               opsAsync.when(
                 loading: () => const LpgSkeleton(height: 120),
                 error: (err, _) => LpgErrorState(
-                  message: 'Failed to load operations snapshot',
+                  message: errorMessage(err),
                   onRetry: () => ref.invalidate(operationsSnapshotProvider),
                 ),
                 data: (ops) => LpgHeroCard(
@@ -68,7 +69,7 @@ class DashboardScreen extends ConsumerWidget {
               summaryAsync.when(
                 loading: () => const LpgSkeletonList(itemCount: 3),
                 error: (err, _) => LpgErrorState(
-                  message: 'Failed to load summary',
+                  message: errorMessage(err),
                   onRetry: () => ref.invalidate(dashboardSummaryProvider),
                 ),
                 data: (summary) => Column(

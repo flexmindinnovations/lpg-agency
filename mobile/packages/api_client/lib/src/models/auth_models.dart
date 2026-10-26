@@ -23,6 +23,8 @@ class Principal {
     required this.tenantId,
     required this.role,
     required this.permissions,
+    this.displayName,
+    this.email,
   });
 
   factory Principal.fromJson(Map<String, dynamic> json) => Principal(
@@ -30,10 +32,16 @@ class Principal {
     tenantId: json['tenant_id'] as String?,
     role: json['role'] as String,
     permissions: (json['permissions'] as List<dynamic>).cast<String>().toSet(),
+    displayName: json['display_name'] as String?,
+    email: json['email'] as String?,
   );
 
   final String userId;
   final String? tenantId;
   final String role;
   final Set<String> permissions;
+
+  /// The signed-in user's real name (`null` when the account has none).
+  final String? displayName;
+  final String? email;
 }
