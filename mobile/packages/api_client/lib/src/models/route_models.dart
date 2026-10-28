@@ -125,3 +125,27 @@ class DriverLocationReport {
     if (accuracyM != null) 'accuracy_m': accuracyM,
   };
 }
+
+/// Result of re-ordering a trip's stops — mirrors `OptimizeRouteResponse`.
+/// The distances are straight-line estimates, not road distances.
+class RouteOptimization {
+  const RouteOptimization({
+    required this.route,
+    required this.kmBefore,
+    required this.kmAfter,
+    required this.kmSaved,
+  });
+
+  factory RouteOptimization.fromJson(Map<String, dynamic> json) =>
+      RouteOptimization(
+        route: RouteSummary.fromJson(json['route'] as Map<String, dynamic>),
+        kmBefore: (json['km_before'] as num).toDouble(),
+        kmAfter: (json['km_after'] as num).toDouble(),
+        kmSaved: (json['km_saved'] as num).toDouble(),
+      );
+
+  final RouteSummary route;
+  final double kmBefore;
+  final double kmAfter;
+  final double kmSaved;
+}

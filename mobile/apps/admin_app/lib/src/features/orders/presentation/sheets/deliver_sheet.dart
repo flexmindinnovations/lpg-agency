@@ -4,6 +4,8 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:signature/signature.dart';
 
 import '../../../../providers.dart';
 import '../../data/orders_provider.dart';
@@ -37,6 +39,10 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
   bool _busy = false;
   bool _resending = false;
 
+  // Proof of delivery is optional, as it is in the Driver App.
+  final _signature = SignatureController(penStrokeWidth: 2);
+  Uint8List? _photoBytes;
+
   String _initialAmount() {
     final total = widget.order.totalAmount ?? 0;
     return total == total.roundToDouble()
@@ -49,6 +55,7 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
     _code.dispose();
     _dac.dispose();
     _amount.dispose();
+    _signature.dispose();
     super.dispose();
   }
 
@@ -69,6 +76,63 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
       case FailureResult<void>(:final failure):
         LpgFeedback.showToast(context, failure.message, tone: LpgTone.danger);
     }
+  }
+
+  Future<void> _pickPhoto() async {
+    final XFile? file;
+    try {
+      file = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 60,
+      );
+    } catch (_) {
+      setState(() => _error = 'Could not open the camera.');
+      return;
+    }
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (mounted) setState(() => _photoBytes = bytes);
+  }
+
+  /// Stages the optional signature and photo; the blob refs go in the
+  /// delivery request. Returns the failure message when an upload fails.
+  Future<({String? signature, String? photo, String? error})> _uploadProof(
+    String orderId,
+  ) async {
+    final api = ref.read(orderApiProvider);
+    String? signatureRef;
+    if (_signature.isNotEmpty) {
+      final bytes = await _signature.toPngBytes();
+      if (bytes != null) {
+        final r = await api.uploadPodAttachment(
+          orderId,
+          bytes: bytes,
+          filename: 'signature.png',
+        );
+        switch (r) {
+          case Success<PodAttachmentResponse>(:final value):
+            signatureRef = value.blobRef;
+          case FailureResult<PodAttachmentResponse>(:final failure):
+            return (signature: null, photo: null, error: failure.message);
+        }
+      }
+    }
+    String? photoRef;
+    if (_photoBytes != null) {
+      final r = await api.uploadPodAttachment(
+        orderId,
+        bytes: _photoBytes!,
+        filename: 'delivery.jpg',
+        contentType: 'image/jpeg',
+      );
+      switch (r) {
+        case Success<PodAttachmentResponse>(:final value):
+          photoRef = value.blobRef;
+        case FailureResult<PodAttachmentResponse>(:final failure):
+          return (signature: null, photo: null, error: failure.message);
+      }
+    }
+    return (signature: signatureRef, photo: photoRef, error: null);
   }
 
   Future<void> _send() async {
@@ -101,6 +165,15 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
     });
     final order = widget.order;
     final address = order.deliveryAddress;
+    final proof = await _uploadProof(order.id);
+    if (!mounted) return;
+    if (proof.error != null) {
+      setState(() {
+        _busy = false;
+        _error = 'Could not upload the proof: ${proof.error}';
+      });
+      return;
+    }
     final request = DeliverOrderRequest(
       otpCode: code,
       lines: [
@@ -118,6 +191,8 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
         paymentMethod: _method,
         amountCollected: amount,
         dacCode: dac.isEmpty ? null : dac,
+        signatureBlobRef: proof.signature,
+        photoBlobRef: proof.photo,
       ),
     );
     final result = await ref
@@ -237,6 +312,59 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
               LengthLimitingTextInputFormatter(6),
             ],
             enabled: !_busy,
+          ),
+          const SizedBox(height: LpgSpacing.md),
+          Text("Customer's signature (optional)", style: text.titleSmall),
+          const SizedBox(height: LpgSpacing.sm),
+          LpgCard(
+            variant: LpgCardVariant.outlined,
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(LpgRadius.xl),
+                  ),
+                  child: Signature(
+                    controller: _signature,
+                    height: 140,
+                    backgroundColor: context.lpgColors.card,
+                  ),
+                ),
+                const Divider(height: 1),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _busy ? null : _signature.clear,
+                    icon: const Icon(LpgIcons.delete, size: LpgSizes.iconSm),
+                    label: const Text('Clear'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: LpgSpacing.md),
+          Text('Delivery photo (optional)', style: text.titleSmall),
+          const SizedBox(height: LpgSpacing.sm),
+          if (_photoBytes case final photo?) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(LpgRadius.xl),
+              child: Image.memory(
+                photo,
+                height: 140,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: LpgSpacing.sm),
+          ],
+          LpgButton(
+            label: _photoBytes == null ? 'Take a photo' : 'Retake',
+            icon: _photoBytes == null ? LpgIcons.addPhoto : LpgIcons.camera,
+            variant: LpgButtonVariant.secondary,
+            expand: true,
+            onPressed: _busy ? null : _pickPhoto,
           ),
           if (_error != null) ...[
             const SizedBox(height: LpgSpacing.sm),

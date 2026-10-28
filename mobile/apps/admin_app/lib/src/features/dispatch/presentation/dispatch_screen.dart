@@ -234,6 +234,10 @@ class _DispatchScreenState extends ConsumerState<DispatchScreen> {
                   children: [
                     for (final trip in trips) ...[
                       LpgCard(
+                        onTap: () => context.pushNamed(
+                          'trip_detail',
+                          pathParameters: {'tripId': trip.id},
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

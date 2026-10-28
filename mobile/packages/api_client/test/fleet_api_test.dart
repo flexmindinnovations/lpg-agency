@@ -242,5 +242,135 @@ void main() {
         'cancelled',
       );
     });
+
+    test('moveDriverToBranch patches the assignment', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.method, 'PATCH');
+        expect(options.path, '/api/v1/drivers/d-1/assignment');
+        expect(options.data, {'employee_id': 'e-1', 'branch_id': 'b-2'});
+        return jsonResponse({
+          'id': 'd-1',
+          'branch_id': 'b-2',
+          'status': 'active',
+        }, 200);
+      });
+
+      final result = await FleetApi(
+        client.dio,
+      ).moveDriverToBranch('d-1', employeeId: 'e-1', branchId: 'b-2');
+
+      expect(
+        result.when(onSuccess: (d) => d.branchId, onFailure: (_) => null),
+        'b-2',
+      );
+    });
+
+    test('recordCount and approveCount drive a van reconciliation', () async {
+      final calls = <String>[];
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        calls.add('${options.method} ${options.path}');
+        return jsonResponse({
+          'id': 'rec-1',
+          'cylinder_type_id': 'ct-1',
+          'status': 'empty',
+          'expected_quantity': 5,
+          'actual_quantity': 4,
+          'variance': -1,
+          'state': options.path.endsWith('/approve') ? 'approved' : 'pending',
+        }, 201);
+      });
+      final api = FleetApi(client.dio);
+
+      final recorded = await api.recordCount(
+        'vehicle',
+        'v-1',
+        cylinderTypeId: 'ct-1',
+        status: 'empty',
+        actualQuantity: 4,
+      );
+      final approved = await api.approveCount('rec-1');
+
+      expect(
+        recorded.when(onSuccess: (r) => r.isPending, onFailure: (_) => null),
+        isTrue,
+      );
+      expect(
+        approved.when(onSuccess: (r) => r.state, onFailure: (_) => null),
+        'approved',
+      );
+      expect(calls, [
+        'POST /api/v1/inventory-locations/vehicle/v-1/reconciliation-records',
+        'POST /api/v1/reconciliation-records/rec-1/approve',
+      ]);
+    });
+
+    test('getBalanceLines keeps every status', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
+          'balances': [
+            {'cylinder_type_id': 'ct-1', 'status': 'filled', 'quantity': 2},
+            {'cylinder_type_id': 'ct-1', 'status': 'empty', 'quantity': 3},
+          ],
+        }, 200),
+      );
+
+      final result = await FleetApi(
+        client.dio,
+      ).getBalanceLines('vehicle', 'v-1');
+
+      final lines = result.when(onSuccess: (l) => l, onFailure: (_) => null);
+      expect(lines!.map((l) => l.status), ['filled', 'empty']);
+    });
+
+    test(
+      'settleRoute posts to reconcile and reports a pending count',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          expect(options.path, '/api/v1/routes/r-1/reconcile');
+          return jsonResponse({
+            'error_code': 'ROUTE_RECONCILIATION_PENDING',
+            'detail': 'No approved reconciliation yet.',
+          }, 409);
+        });
+
+        final result = await RouteApi(client.dio).settleRoute('r-1');
+
+        final failure = result.when(
+          onSuccess: (_) => null,
+          onFailure: (f) => f,
+        );
+        expect(failure?.errorCode, 'ROUTE_RECONCILIATION_PENDING');
+      },
+    );
+
+    test('optimizeRoute parses the saved distance', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/routes/r-1/optimize');
+        return jsonResponse({
+          'route': {
+            'id': 'r-1',
+            'status': 'loaded',
+            'driver_id': 'd-1',
+            'vehicle_id': 'v-1',
+            'stops': <Object>[],
+          },
+          'km_before': 12.5,
+          'km_after': 9.0,
+          'km_saved': 3.5,
+        }, 200);
+      });
+
+      final result = await RouteApi(client.dio).optimizeRoute('r-1');
+
+      expect(
+        result.when(onSuccess: (o) => o.kmSaved, onFailure: (_) => null),
+        3.5,
+      );
+    });
   });
 }
