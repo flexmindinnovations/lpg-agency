@@ -189,6 +189,18 @@
       <button pButton type="button" size="small" [text]="true" (click)="copyPaymentLink()">
         <i class="pi pi-copy"></i><span>Copy</span>
       </button>
+      @if (paymentLink()?.provider === 'mock') {
+      <button
+        pButton
+        type="button"
+        size="small"
+        [text]="true"
+        [disabled]="submitting()"
+        (click)="simulatePayment()"
+      >
+        <i class="pi pi-check-circle"></i><span>Simulate payment</span>
+      </button>
+      }
     </p-message>
     } @if (paymentLinkError(); as message) {
     <p-message severity="warn" styleClass="w-full">{{ message }}</p-message>
@@ -205,6 +217,17 @@
         (click)="sendPaymentLink()"
       >
         <i class="pi pi-send"></i><span>Send payment link</span>
+      </button>
+      <button
+        pButton
+        type="button"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="upiQrLoading()"
+        (click)="openUpiQr()"
+      >
+        <i [class]="upiQrLoading() ? 'pi pi-spin pi-spinner' : 'pi pi-qrcode'"></i
+        ><span>Pay by UPI QR</span>
       </button>
     </div>
     } @if (canRecordPayment() && +(inv.amount_paid ?? 0) > 0 && inv.status !== 'refunded') {
@@ -279,6 +302,29 @@
       <span>Print Receipt</span>
     </button>
   </div>
+</p-dialog>
+
+<p-dialog
+  [visible]="showUpiQr()"
+  (visibleChange)="!$event && showUpiQr.set(false)"
+  header="Pay by UPI"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '22rem' }"
+>
+  @if (upiQr(); as qr) {
+  <div class="upi-qr">
+    <img
+      class="upi-qr__image"
+      [src]="'data:image/png;base64,' + qr.qr_png_base64"
+      alt="UPI QR code for {{ qr.amount | currency:'INR' }}"
+    />
+    <p class="upi-qr__amount">{{ qr.amount | currency:'INR' }}</p>
+    <p class="upi-qr__payee">{{ qr.payee_name }}</p>
+    <p class="upi-qr__id">{{ qr.upi_id }}</p>
+    <p class="upi-qr__hint">Scan with any UPI app. The amount is filled in.</p>
+  </div>
+  }
 </p-dialog>
 
 <lpg-preview-dialog #customerPreviewDialog header="Customer" />

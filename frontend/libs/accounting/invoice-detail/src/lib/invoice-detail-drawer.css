@@ -259,3 +259,33 @@
 .payment-link {
   overflow-wrap: anywhere;
 }
+
+.upi-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  text-align: center;
+}
+
+.upi-qr__image {
+  inline-size: 14rem;
+  block-size: 14rem;
+  /* The QR needs a white quiet zone to scan, in dark mode too. */
+  background: #fff;
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+.upi-qr__amount {
+  margin: 0;
+  font-size: var(--typography-heading-3-font-size, 1.25rem);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.upi-qr__payee,
+.upi-qr__id,
+.upi-qr__hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--typography-body-small-font-size);
+}

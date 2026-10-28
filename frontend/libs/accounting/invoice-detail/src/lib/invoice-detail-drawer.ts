@@ -40,13 +40,16 @@ import {
   CustomerService,
   InvoiceService,
   OrderService,
+  PaymentProfileService,
   PrintingService,
   type CreditNoteResponse,
   type CustomerResponse,
   type CylinderTypeResponse,
   type InvoiceResponse,
+  type OnlinePaymentResponse,
   type OrderResponse,
   type StaffPaymentMethod,
+  type UpiQrResponse,
 } from '@lpg/shared/data-access';
 import { invoiceStatusLabel, invoiceStatusSeverity } from './invoice-status';
 
@@ -88,6 +91,7 @@ const REFERENCE_REQUIRED: ReadonlySet<StaffPaymentMethod> = new Set(['cheque', '
 })
 export class InvoiceDetailDrawer implements OnInit {
   private readonly invoiceService = inject(InvoiceService);
+  private readonly paymentProfile = inject(PaymentProfileService);
   private readonly printingService = inject(PrintingService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly customerService = inject(CustomerService);
@@ -113,6 +117,12 @@ export class InvoiceDetailDrawer implements OnInit {
   protected readonly refundDrawerVisible = signal(false);
   protected readonly submitting = signal(false);
   protected readonly paymentLinkUrl = signal<string | null>(null);
+  /** The link just created; its `provider` decides whether "Simulate payment" is offered. */
+  protected readonly paymentLink = signal<OnlinePaymentResponse | null>(null);
+  // UPI pay QR (ADR-066).
+  protected readonly upiQr = signal<UpiQrResponse | null>(null);
+  protected readonly upiQrLoading = signal(false);
+  protected readonly showUpiQr = signal(false);
   protected readonly paymentLinkError = signal<string | null>(null);
   protected readonly paymentMethodOptions: { label: string; value: StaffPaymentMethod }[] = [
     { label: 'Cash', value: 'cash' },
@@ -222,6 +232,7 @@ export class InvoiceDetailDrawer implements OnInit {
       openId = id;
       untracked(() => {
         this.paymentLinkUrl.set(null);
+        this.paymentLink.set(null);
         this.paymentLinkError.set(null);
         this.creditNotes.set([]);
         if (id) this.loadCreditNotes(id);
@@ -330,6 +341,7 @@ export class InvoiceDetailDrawer implements OnInit {
       next: (link) => {
         this.submitting.set(false);
         this.paymentLinkUrl.set(link.payment_url);
+        this.paymentLink.set(link);
       },
       error: (error: unknown) => {
         this.submitting.set(false);
@@ -338,6 +350,57 @@ export class InvoiceDetailDrawer implements OnInit {
           status === 503
             ? 'Online payments are not set up for this agency yet. Record the payment manually, or ask an admin to configure Razorpay.'
             : 'The payment link could not be created.',
+        );
+      },
+    });
+  }
+
+  /** Demo gateway only: the same effect as the customer paying the link. */
+  protected simulatePayment(): void {
+    const link = this.paymentLink();
+    const inv = this.invoice();
+    if (!link || !inv) return;
+    this.submitting.set(true);
+    this.invoiceService.simulatePaid(link.online_payment_id).subscribe({
+      next: () => {
+        this.paymentLink.set(null);
+        this.paymentLinkUrl.set(null);
+        this.invoiceService.get(inv.invoice_id).subscribe({
+          next: (updated) => {
+            this.submitting.set(false);
+            this.invoice.set(updated);
+            this.invoiceUpdated.emit(updated);
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Payment simulated',
+              detail: 'The demo gateway marked the link paid.',
+            });
+          },
+          error: () => this.submitting.set(false),
+        });
+      },
+      error: () => this.submitting.set(false),
+    });
+  }
+
+  protected openUpiQr(): void {
+    const inv = this.invoice();
+    if (!inv) return;
+    this.upiQrLoading.set(true);
+    this.upiQr.set(null);
+    this.paymentProfile.upiQr({ invoiceId: inv.invoice_id }).subscribe({
+      next: (qr) => {
+        this.upiQrLoading.set(false);
+        this.upiQr.set(qr);
+        this.showUpiQr.set(true);
+      },
+      error: (error: unknown) => {
+        this.upiQrLoading.set(false);
+        const status = (error as { status?: number } | null)?.status;
+        this.paymentLinkError.set(
+          status === 409
+            ? 'Add a UPI ID under Settings > Payments to show a pay QR.'
+            : 'The UPI QR could not be created.',
         );
       },
     });
