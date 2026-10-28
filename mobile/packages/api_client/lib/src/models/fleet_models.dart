@@ -193,3 +193,65 @@ class RecognizedComplianceDocument {
   final String? makerModel;
   final DateTime? insuranceUpto;
 }
+
+/// One line of a location's stock — a cylinder type in one status.
+class StockBalanceLine {
+  const StockBalanceLine({
+    required this.cylinderTypeId,
+    required this.status,
+    required this.quantity,
+  });
+
+  factory StockBalanceLine.fromJson(Map<String, dynamic> json) =>
+      StockBalanceLine(
+        cylinderTypeId: json['cylinder_type_id'] as String,
+        status: json['status'] as String,
+        quantity: (json['quantity'] as num).toInt(),
+      );
+
+  final String cylinderTypeId;
+  final String status;
+  final int quantity;
+}
+
+/// A physical count against the tracked balance — mirrors
+/// `ReconciliationRecordResponse`.
+class ReconciliationRecord {
+  const ReconciliationRecord({
+    required this.id,
+    required this.cylinderTypeId,
+    required this.status,
+    required this.expectedQuantity,
+    required this.actualQuantity,
+    required this.variance,
+    required this.state,
+    this.recordedAt,
+  });
+
+  factory ReconciliationRecord.fromJson(Map<String, dynamic> json) =>
+      ReconciliationRecord(
+        id: json['id'] as String,
+        cylinderTypeId: json['cylinder_type_id'] as String,
+        status: json['status'] as String,
+        expectedQuantity: (json['expected_quantity'] as num).toInt(),
+        actualQuantity: (json['actual_quantity'] as num).toInt(),
+        variance: (json['variance'] as num).toInt(),
+        state: (json['state'] as String?) ?? 'pending',
+        recordedAt: json['recorded_at'] == null
+            ? null
+            : DateTime.tryParse(json['recorded_at'] as String),
+      );
+
+  final String id;
+  final String cylinderTypeId;
+  final String status;
+  final int expectedQuantity;
+  final int actualQuantity;
+  final int variance;
+
+  /// `pending`, `approved` or `rejected`.
+  final String state;
+  final DateTime? recordedAt;
+
+  bool get isPending => state == 'pending';
+}

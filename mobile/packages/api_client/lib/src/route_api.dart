@@ -136,6 +136,60 @@ final class RouteApi {
     }
   }
 
+  /// One trip with its stops and van-load manifest (`GET /routes/{id}`).
+  Future<Result<RouteSummary>> getRoute(String routeId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/routes/$routeId',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(RouteSummary.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// Re-orders the trip's pending stops for a shorter drive
+  /// (`POST /routes/{id}/optimize`). Only sequence numbers move; the agency
+  /// can switch the feature off, which comes back as a failure.
+  Future<Result<RouteOptimization>> optimizeRoute(String routeId) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/routes/$routeId/optimize',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(RouteOptimization.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// Settles a completed trip (`POST /routes/{id}/reconcile`). `409
+  /// ROUTE_RECONCILIATION_PENDING` until the van has an approved count.
+  Future<Result<RouteSummary>> settleRoute(String routeId) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/routes/$routeId/reconcile',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(RouteSummary.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Cancels a trip that hasn't left yet (`PATCH /routes/{id}/status`,
   /// planned or loaded only).
   Future<Result<RouteSummary>> cancelRoute(String routeId) async {

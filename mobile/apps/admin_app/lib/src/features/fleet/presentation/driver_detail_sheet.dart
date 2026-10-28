@@ -33,6 +33,8 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
   var _busy = false;
   String? _error;
   var _editing = false;
+  var _moving = false;
+  String? _newBranchId;
   final _number = TextEditingController();
   DateTime? _expiry;
 
@@ -63,6 +65,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
         setState(() {
           _busy = false;
           _editing = false;
+          _moving = false;
         });
         if (success != null) {
           LpgFeedback.showToast(context, success, tone: LpgTone.success);
@@ -87,6 +90,25 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
       () => ref.read(fleetApiProvider).setDriverStatus(driver.id, status),
       success:
           '${driver.name} is now ${fleetStatusLabel(status).toLowerCase()}.',
+    );
+  }
+
+  Future<void> _moveBranch(FleetDriver driver) async {
+    final branchId = _newBranchId;
+    final employeeId = driver.employeeId;
+    if (branchId == null || employeeId == null) {
+      setState(() => _error = 'Choose the branch to move them to.');
+      return;
+    }
+    await _run(
+      () => ref
+          .read(fleetApiProvider)
+          .moveDriverToBranch(
+            driver.id,
+            employeeId: employeeId,
+            branchId: branchId,
+          ),
+      success: '${driver.name} moved to a new branch.',
     );
   }
 
@@ -206,6 +228,34 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
               onPressed: _busy ? null : () => setState(() => _editing = false),
             ),
           ],
+          if (_moving) ...[
+            const SizedBox(height: LpgSpacing.md),
+            LpgDropdownField<String?>(
+              label: 'Move to branch',
+              placeholder: 'Choose a branch',
+              prefixIcon: LpgIcons.agency,
+              value: _newBranchId,
+              items: {
+                for (final b in branches)
+                  if (b.id != driver.branchId) b.id: b.name,
+              },
+              onChanged: _busy
+                  ? null
+                  : (id) => setState(() => _newBranchId = id),
+            ),
+            const SizedBox(height: LpgSpacing.md),
+            LpgButton(
+              label: 'Move driver',
+              expand: true,
+              isLoading: _busy,
+              onPressed: _busy ? null : () => _moveBranch(driver),
+            ),
+            LpgButton(
+              label: 'Cancel',
+              variant: LpgButtonVariant.text,
+              onPressed: _busy ? null : () => setState(() => _moving = false),
+            ),
+          ],
           if (!driver.hasLogin) ...[
             const SizedBox(height: LpgSpacing.md),
             LpgBanner(
@@ -241,6 +291,24 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
                       _expiry = driver.licenseExpiryDate;
                     }),
             ),
+          if (!_editing &&
+              !_moving &&
+              driver.status != 'inactive' &&
+              branches.length > 1) ...[
+            const SizedBox(height: LpgSpacing.sm),
+            LpgButton(
+              label: 'Change branch',
+              icon: LpgIcons.agency,
+              variant: LpgButtonVariant.secondary,
+              expand: true,
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _moving = true;
+                      _newBranchId = null;
+                    }),
+            ),
+          ],
           for (final status in targets) ...[
             const SizedBox(height: LpgSpacing.sm),
             LpgButton(

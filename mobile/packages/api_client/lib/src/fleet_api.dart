@@ -174,6 +174,81 @@ final class FleetApi {
     return FleetDriver.fromJson(response.data!);
   });
 
+  /// Moves a driver to another branch (`PATCH /drivers/{id}/assignment`),
+  /// keeping the same employee, as the dashboard does.
+  Future<Result<FleetDriver>> moveDriverToBranch(
+    String id, {
+    required String employeeId,
+    required String branchId,
+  }) => _guard(() async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/drivers/$id/assignment',
+      data: {'employee_id': employeeId, 'branch_id': branchId},
+    );
+    return FleetDriver.fromJson(response.data!);
+  });
+
+  /// Everything counted at a `warehouse` or `vehicle`, one line per cylinder
+  /// type and status (`GET /inventory-locations/{type}/{id}/balance`).
+  Future<Result<List<StockBalanceLine>>> getBalanceLines(
+    String locationType,
+    String locationId,
+  ) => _guard(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/inventory-locations/$locationType/$locationId/balance',
+    );
+    return [
+      for (final e in response.data?['balances'] as List<dynamic>? ?? const [])
+        StockBalanceLine.fromJson(e as Map<String, dynamic>),
+    ];
+  });
+
+  /// Counts already on file for a location, newest first
+  /// (`GET /inventory-locations/{type}/{id}/reconciliation-records`).
+  Future<Result<List<ReconciliationRecord>>> listReconciliations(
+    String locationType,
+    String locationId,
+  ) => _guard(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/inventory-locations/$locationType/$locationId/reconciliation-records',
+    );
+    return [
+      for (final e in response.data?['items'] as List<dynamic>? ?? const [])
+        ReconciliationRecord.fromJson(e as Map<String, dynamic>),
+    ];
+  });
+
+  /// Records a physical count (`POST .../reconciliation-records`); stock
+  /// doesn't change until someone approves it.
+  Future<Result<ReconciliationRecord>> recordCount(
+    String locationType,
+    String locationId, {
+    required String cylinderTypeId,
+    required String status,
+    required int actualQuantity,
+  }) => _guard(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/inventory-locations/$locationType/$locationId/reconciliation-records',
+      data: {
+        'cylinder_type_id': cylinderTypeId,
+        'status': status,
+        'actual_quantity': actualQuantity,
+      },
+    );
+    return ReconciliationRecord.fromJson(response.data!);
+  });
+
+  /// Approves a pending count and books its variance
+  /// (`POST /reconciliation-records/{id}/approve`). `409
+  /// SELF_APPROVAL_NOT_ALLOWED` for the person who counted, unless admin.
+  Future<Result<ReconciliationRecord>> approveCount(String recordId) =>
+      _guard(() async {
+        final response = await _dio.post<Map<String, dynamic>>(
+          '/api/v1/reconciliation-records/$recordId/approve',
+        );
+        return ReconciliationRecord.fromJson(response.data!);
+      });
+
   /// Registers a van (`POST /vehicles`). The RC scan ([rcDocumentRef], from
   /// [uploadDocument]) and its expiry are required.
   Future<Result<FleetVehicle>> registerVehicle({

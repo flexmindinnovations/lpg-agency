@@ -8,6 +8,7 @@ import 'auth_provider.dart';
 import 'features/approvals/presentation/approvals_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/dispatch/presentation/dispatch_screen.dart';
+import 'features/dispatch/presentation/trip_detail_screen.dart';
 import 'features/fleet/presentation/driver_form_screen.dart';
 import 'features/fleet/presentation/fleet_screen.dart';
 import 'features/fleet/presentation/vehicle_form_screen.dart';
@@ -99,6 +100,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 name: 'dispatch',
                 builder: (context, state) => const DispatchScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'trip/:tripId',
+                    name: 'trip_detail',
+                    builder: (context, state) => TripDetailScreen(
+                      tripId: state.pathParameters['tripId']!,
+                    ),
+                  ),
                   GoRoute(
                     path: 'fleet',
                     name: 'fleet',
