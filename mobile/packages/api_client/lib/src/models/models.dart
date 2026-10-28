@@ -13,3 +13,4 @@ export 'route_models.dart';
 export 'payment_models.dart';
 export 'admin_models.dart';
 export 'fleet_models.dart';
+export 'weighment_models.dart';

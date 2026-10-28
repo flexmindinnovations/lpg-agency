@@ -23,6 +23,7 @@ class DeliverSheet extends ConsumerStatefulWidget {
 
 class _DeliverSheetState extends ConsumerState<DeliverSheet> {
   late final TextEditingController _code = TextEditingController();
+  final TextEditingController _dac = TextEditingController();
   late final TextEditingController _amount = TextEditingController(
     text: _initialAmount(),
   );
@@ -46,6 +47,7 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
   @override
   void dispose() {
     _code.dispose();
+    _dac.dispose();
     _amount.dispose();
     super.dispose();
   }
@@ -73,6 +75,18 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
     final code = _code.text.trim();
     if (code.isEmpty) {
       setState(() => _codeError = "Enter the customer's delivery code.");
+      return;
+    }
+    final dac = _dac.text.trim();
+    if (dac.isNotEmpty && !RegExp(r'^\d{6}$').hasMatch(dac)) {
+      setState(() => _error = 'The OMC delivery code has 6 digits.');
+      return;
+    }
+    if (_delivered.every((q) => q == 0)) {
+      setState(
+        () => _error =
+            'Hand over at least one cylinder, or record a failed delivery instead.',
+      );
       return;
     }
     final amount = double.tryParse(_amount.text.trim());
@@ -103,6 +117,7 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
         gpsLng: address.longitude ?? 0,
         paymentMethod: _method,
         amountCollected: amount,
+        dacCode: dac.isEmpty ? null : dac,
       ),
     );
     final result = await ref
@@ -209,6 +224,18 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
             isRequired: true,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             prefixText: '₹ ',
+            enabled: !_busy,
+          ),
+          const SizedBox(height: LpgSpacing.md),
+          LpgTextField(
+            label: 'OMC delivery code (optional)',
+            hintText: '6 digits, if the customer has one',
+            controller: _dac,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
             enabled: !_busy,
           ),
           if (_error != null) ...[

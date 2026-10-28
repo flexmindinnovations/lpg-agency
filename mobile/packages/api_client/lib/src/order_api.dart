@@ -15,11 +15,18 @@ final class OrderApi {
   Future<Result<OrderPageResponse>> getMyOrders({
     int page = 1,
     int size = 50,
+    String? status,
+    String? search,
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/orders',
-        queryParameters: {'skip': (page - 1) * size, 'limit': size},
+        queryParameters: {
+          'skip': (page - 1) * size,
+          'limit': size,
+          'status': ?status,
+          if (search != null && search.isNotEmpty) 'search': search,
+        },
       );
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));

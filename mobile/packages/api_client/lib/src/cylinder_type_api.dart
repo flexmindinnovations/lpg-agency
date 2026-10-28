@@ -41,11 +41,15 @@ final class CylinderTypeApi {
 
   /// The cylinder types the signed-in customer can book right now, from
   /// `GET /api/v1/orders/orderable-cylinder-types` (the server works out the
-  /// customer and their branch from the login).
-  Future<Result<List<OrderableCylinderTypeResponse>>> listOrderable() async {
+  /// customer and their branch from the login). Staff pass [customerId]:
+  /// the server answers for that customer's type and branch.
+  Future<Result<List<OrderableCylinderTypeResponse>>> listOrderable({
+    String? customerId,
+  }) async {
     try {
       final response = await _dio.get<List<dynamic>>(
         '/api/v1/orders/orderable-cylinder-types',
+        queryParameters: {'customer_id': ?customerId},
       );
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));
