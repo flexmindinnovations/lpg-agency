@@ -197,6 +197,10 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # emergency helpline) when a tenant has not set one.
         "emergency_helpline_number",
         "customer_support_phone",
+        # The agency's bank account, UPI ID and invoice footer note (ADR-066):
+        # one JSON object, validated by `application.accounting.
+        # payment_profile`. Printed on invoices and used to build UPI QR codes.
+        "payment_profile",
     }
 )
 

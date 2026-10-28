@@ -16,6 +16,7 @@ from sqlalchemy import (
     Uuid,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lpg.infrastructure.persistence.database import Base
@@ -129,6 +130,9 @@ class CashHandoverModel(Base):
     actual_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     declared_by: Mapped[uuid.UUID] = mapped_column(Uuid())
     declared_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    denominations: Mapped[dict[str, int] | None] = mapped_column(JSONB(), nullable=True)
+    variance_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    upi_expected: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )

@@ -1532,6 +1532,21 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Consequences:** One-sided changes deploy in roughly 3-4 minutes. Base-image security updates arrive through Dependabot PRs rather than on every build. Orphan `<sha>` image tags can exist for commits that failed a gate.
 
+## ADR-066: Payment Profile, UPI QR and Cash Controls
+
+**Status:** Accepted
+
+**Context:** Cash handover compared one declared number with one expected number. There was nowhere to record the agency's bank or UPI details, invoices could not show how to pay, and Razorpay could only be exercised with real keys.
+
+**Decision:**
+- The agency's bank and UPI details live in tenant configuration under `payment_profile` (historised like other settings), validated on write. Printing and the QR endpoint read it; only admins write it.
+- A UPI payment link (`upi://pay?pa=&pn=&am=&cu=INR&tn=`) is generated server-side for the outstanding amount and rendered as a QR PNG with the existing QR generator. Apps show the PNG; no new mobile dependency.
+- `LPG_PAYMENTS_PROVIDER=mock` adds a keyless gateway adapter for demos and tests; a staff-only endpoint simulates payment. In production it also needs `LPG_PAYMENTS_ALLOW_MOCK=true`, because staff could otherwise mark invoices paid with no money moving.
+- Cash handover keeps its append-only shape. New columns are nullable: `denominations` (JSON note counts, must add up to the declared amount), `variance_reason` (required when the amount differs from expected), `upi_expected` (informational mode split). Review and segregation of duties are unchanged.
+- Cash in hand and the daily cash book are read models over proof of delivery, handovers and reviews; they add no new write path.
+
+**Consequences:** Any agency can print invoices with pay-by-UPI, and see what each driver carries. Real Razorpay keys switch the provider without code changes.
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1596,6 +1611,8 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 062 | Customer-readable delivery code, support contacts, payment availability for apps | Accepted |
 | 063 | Dashboard-wide UI conventions (amends 028) | Accepted |
 | 064 | Standard dashboard page layout (amends 063) | Accepted |
+| 065 | Incremental deploy pipeline | Accepted |
+| 066 | Payment profile, UPI QR and cash controls | Accepted |
 
 ## Deferred Decisions
 

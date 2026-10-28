@@ -10,9 +10,12 @@ from sqlalchemy import Select, func, or_, select, text
 from sqlalchemy.orm import selectinload
 
 from lpg.application.accounting.ports import (
+    CashBook,
+    CashBookCollection,
     CashHandoverRegisterEntry,
     CashHandoverRepository,
     CreditNoteRepository,
+    DriverCashInHand,
     InvoiceRepository,
     OnlinePaymentRepository,
     UninvoicedOrder,
@@ -352,6 +355,13 @@ class SqlAlchemyCashHandoverRepository(CashHandoverRepository):
                 actual_amount=handover.actual_amount,
                 declared_by=handover.declared_by,
                 declared_at=handover.declared_at,
+                denominations=(
+                    {str(k): v for k, v in handover.denominations.items()}
+                    if handover.denominations is not None
+                    else None
+                ),
+                variance_reason=handover.variance_reason,
+                upi_expected=handover.upi_expected,
             )
         )
         self._uow.register_aggregate(handover)
@@ -367,6 +377,13 @@ class SqlAlchemyCashHandoverRepository(CashHandoverRepository):
             declared_by=model.declared_by,
             handover_number=model.handover_number,
             declared_at=model.declared_at,
+            denominations=(
+                {int(k): int(v) for k, v in model.denominations.items()}
+                if model.denominations is not None
+                else None
+            ),
+            variance_reason=model.variance_reason,
+            upi_expected=model.upi_expected,
         )
 
     async def get_expected_cash_for_route(self, route_id: uuid.UUID) -> Decimal:
@@ -527,6 +544,117 @@ class SqlAlchemyCashHandoverRepository(CashHandoverRepository):
             )
         )
         return self._review_to_domain(model) if model is not None else None
+
+    async def get_expected_upi_for_route(self, route_id: uuid.UUID) -> Decimal:
+        result = await self._session.scalar(
+            text("""
+                SELECT COALESCE(SUM(pod.amount_collected), 0)
+                FROM delivery.route_stop rs
+                JOIN orders.proof_of_delivery pod ON pod.order_id = rs.order_id
+                WHERE rs.route_id = :route_id AND pod.payment_method = 'upi'
+            """),
+            {"route_id": route_id},
+        )
+        return Decimal(result) if result is not None else Decimal("0")
+
+    async def list_cash_in_hand(
+        self, *, driver_id: uuid.UUID | None = None
+    ) -> list[DriverCashInHand]:
+        result = await self._session.execute(
+            text("""
+                SELECT d.id AS driver_id,
+                       TRIM(e.first_name || ' ' || e.last_name) AS driver_name,
+                       COUNT(DISTINCT r.id) AS route_count,
+                       COUNT(*) FILTER (WHERE pod.payment_method = 'cash') AS stop_count,
+                       COALESCE(SUM(pod.amount_collected)
+                                FILTER (WHERE pod.payment_method = 'cash'), 0) AS cash_amount,
+                       COALESCE(SUM(pod.amount_collected)
+                                FILTER (WHERE pod.payment_method = 'upi'), 0) AS upi_amount,
+                       MIN(r.route_date) AS oldest_route_date
+                FROM delivery.route_stop rs
+                JOIN orders.proof_of_delivery pod ON pod.order_id = rs.order_id
+                JOIN delivery.route r ON r.id = rs.route_id
+                JOIN delivery.driver d ON d.id = r.driver_id
+                JOIN tenant.employee e ON e.id = d.employee_id
+                WHERE NOT EXISTS (
+                          SELECT 1 FROM accounting.cash_handover h WHERE h.route_id = rs.route_id
+                      )
+                  AND (CAST(:driver_id AS uuid) IS NULL OR d.id = :driver_id)
+                GROUP BY d.id, driver_name
+                HAVING COALESCE(SUM(pod.amount_collected)
+                                FILTER (WHERE pod.payment_method = 'cash'), 0) > 0
+                ORDER BY cash_amount DESC
+            """),
+            {"driver_id": driver_id},
+        )
+        return [
+            DriverCashInHand(
+                driver_id=row.driver_id,
+                driver_name=row.driver_name,
+                route_count=int(row.route_count),
+                stop_count=int(row.stop_count),
+                cash_amount=Decimal(row.cash_amount),
+                upi_amount=Decimal(row.upi_amount),
+                oldest_route_date=row.oldest_route_date,
+            )
+            for row in result.all()
+        ]
+
+    async def cash_book(self, *, day_from: datetime, day_to: datetime) -> CashBook:
+        params = {"day_from": day_from, "day_to": day_to}
+        collections = await self._session.execute(
+            text("""
+                SELECT method, COUNT(*) AS payment_count, COALESCE(SUM(amount), 0) AS amount
+                FROM accounting.payment
+                WHERE collected_at >= :day_from AND collected_at < :day_to
+                GROUP BY method
+                ORDER BY amount DESC
+            """),
+            params,
+        )
+        totals = (
+            await self._session.execute(
+                text("""
+                    SELECT COUNT(*) AS handover_count,
+                           COALESCE(SUM(h.expected_amount), 0) AS expected_total,
+                           COALESCE(SUM(h.actual_amount), 0) AS handed_over_total,
+                           COALESCE(SUM(GREATEST(h.expected_amount - h.actual_amount, 0)), 0)
+                               AS shortfall_total,
+                           COALESCE(SUM(GREATEST(h.actual_amount - h.expected_amount, 0)), 0)
+                               AS excess_total,
+                           COALESCE(SUM(h.actual_amount) FILTER (WHERE rv.outcome = 'accepted'), 0)
+                               AS accepted_total,
+                           COALESCE(SUM(h.actual_amount) FILTER (WHERE rv.outcome = 'disputed'), 0)
+                               AS disputed_total,
+                           COALESCE(SUM(h.actual_amount) FILTER (WHERE rv.id IS NULL), 0)
+                               AS pending_total,
+                           COUNT(*) FILTER (WHERE rv.id IS NULL) AS pending_count
+                    FROM accounting.cash_handover h
+                    LEFT JOIN accounting.cash_handover_review rv ON rv.cash_handover_id = h.id
+                    WHERE h.declared_at >= :day_from AND h.declared_at < :day_to
+                """),
+                params,
+            )
+        ).one()
+        return CashBook(
+            collections=[
+                CashBookCollection(
+                    method=row.method,
+                    payment_count=int(row.payment_count),
+                    amount=Decimal(row.amount),
+                )
+                for row in collections.all()
+            ],
+            handover_count=int(totals.handover_count),
+            expected_total=Decimal(totals.expected_total),
+            handed_over_total=Decimal(totals.handed_over_total),
+            shortfall_total=Decimal(totals.shortfall_total),
+            excess_total=Decimal(totals.excess_total),
+            accepted_total=Decimal(totals.accepted_total),
+            disputed_total=Decimal(totals.disputed_total),
+            pending_total=Decimal(totals.pending_total),
+            pending_count=int(totals.pending_count),
+        )
 
     async def cash_awaiting_handover(self) -> Decimal:
         result = await self._session.scalar(

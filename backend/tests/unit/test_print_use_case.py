@@ -118,3 +118,36 @@ async def test_stored_job_still_uploads_when_storage_exists() -> None:
 
     storage.upload.assert_awaited_once()
     assert result.download_url == "https://files.example/x"
+
+
+async def test_pdf_with_payment_profile_shows_bank_and_upi() -> None:
+    from lpg.application.accounting.payment_profile import PaymentProfile
+
+    invoice = _invoice()
+    invoice.amount_paid = Decimal("0.00")
+    invoice.balance_due = Decimal("4000.00")
+    invoice.status = "issued"
+    use_case = _use_case(invoice, None)
+    profile = PaymentProfile.validated(
+        account_holder="Sai Gas Agency",
+        bank_name="HDFC Bank",
+        account_number="50100123456789",
+        ifsc="HDFC0001234",
+        branch="Pune",
+        upi_id="saigas@okhdfcbank",
+        upi_payee_name="",
+        invoice_footer_note="Thank you",
+    )
+    config = SimpleNamespace(config_key="payment_profile", config_value=profile.to_config())
+    config_repo = AsyncMock()
+    config_repo.list_for_tenant_and_key.return_value = [config]
+    config.effective_from = datetime(2026, 1, 1, tzinfo=UTC)
+    use_case._tenant_config_repo = config_repo  # noqa: SLF001
+
+    pdf = await use_case.render(_command(PrintFormat.PDF))
+    thermal = await use_case.render(_command(PrintFormat.THERMAL))
+
+    assert pdf.content.startswith(b"%PDF")
+    assert b"saigas@okhdfcbank" in thermal.content
+    assert b"50100123456789" in thermal.content
+    assert b"HDFC0001234" in thermal.content

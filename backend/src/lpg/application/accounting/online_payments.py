@@ -197,6 +197,15 @@ class CreateOrderPaymentLinkUseCase:
         self._link_ttl = link_ttl
         self._currency = currency
 
+    async def quote(self, command: CreateOrderPaymentLinkCommand) -> tuple[Order, Decimal]:
+        """What is still owed on the order, by the same rule a payment link
+        uses. Creates nothing; also serves the UPI QR (ADR-066).
+        """
+        order = await _get_scoped_order(self._order_repository, command.order_id, command.scope)
+        existing = await self._online_payment_repository.list_for_order(order.id)
+        _, amount = await self._amount_due(command.tenant_id, order, existing, datetime.now(UTC))
+        return order, amount
+
     async def execute(self, command: CreateOrderPaymentLinkCommand) -> OnlinePayment:
         if not self._gateway.is_configured:
             msg = "Online payments are not configured for this environment."
@@ -373,6 +382,49 @@ class RefreshOnlinePaymentUseCase:
         await _apply_gateway_status(
             online_payment=online_payment,
             status=status,
+            invoice_repository=self._invoice_repository,
+            online_payment_repository=self._online_payment_repository,
+        )
+        await self._unit_of_work.commit()
+        return online_payment
+
+
+class SimulateOnlinePaymentPaidUseCase:
+    """Demo and test only: mark a payment link of the mock gateway paid, by
+    the same path a verified gateway webhook takes.
+    """
+
+    def __init__(
+        self,
+        *,
+        order_repository: OrderRepository,
+        invoice_repository: InvoiceRepository,
+        online_payment_repository: OnlinePaymentRepository,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._order_repository = order_repository
+        self._invoice_repository = invoice_repository
+        self._online_payment_repository = online_payment_repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RefreshOnlinePaymentCommand) -> OnlinePayment:
+        online_payment = await self._online_payment_repository.get_by_id(command.online_payment_id)
+        if online_payment is None:
+            msg = f"No online payment visible with id {command.online_payment_id}."
+            raise NotFoundError(msg, online_payment_id=str(command.online_payment_id))
+        await _get_scoped_order(self._order_repository, online_payment.order_id, command.scope)
+        if online_payment.provider != "mock":
+            msg = "Only payments made through the demo gateway can be simulated."
+            raise ConflictError(msg)
+        await _apply_gateway_status(
+            online_payment=online_payment,
+            status=PaymentLinkStatus(
+                link_id=online_payment.provider_link_id,
+                status="paid",
+                provider_payment_id=f"mockpay_{online_payment.id.hex[:12]}",
+                payment_method="upi",
+                paid_at=datetime.now(UTC),
+            ),
             invoice_repository=self._invoice_repository,
             online_payment_repository=self._online_payment_repository,
         )

@@ -46,6 +46,28 @@ class PrintLineItem(BaseModel):
     total_amount: Decimal
 
 
+class PaymentInfo(BaseModel):
+    """How the customer can pay, from the agency's payment profile (ADR-066).
+    Every field is optional: an agency prints only what it has set up.
+    """
+
+    model_config = ConfigDict(frozen=True)
+    account_holder: str = ""
+    bank_name: str = ""
+    account_number: str = ""
+    ifsc: str = ""
+    branch: str = ""
+    upi_id: str = ""
+    #: `upi://pay` link for the balance due; empty when nothing is due or
+    #: the agency has no UPI ID. Rendered as the pay QR.
+    upi_uri: str = ""
+    footer_note: str = ""
+
+    @property
+    def has_bank_details(self) -> bool:
+        return bool(self.account_number and self.ifsc)
+
+
 class InvoicePrintPayload(BaseModel):
     """Fully-resolved print payload for an invoice.
 
@@ -73,6 +95,7 @@ class InvoicePrintPayload(BaseModel):
     balance_due: Decimal = Decimal("0.00")
     payment_status: str
     issued_at: datetime
+    payment_info: PaymentInfo = PaymentInfo()
     qr_code_data: str = ""  # The string to encode as QR — typically a URL or reference
 
     @property

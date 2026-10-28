@@ -343,6 +343,9 @@ class Settings(BaseSettings):
     # refuses a test key (see `model_post_init`). The webhook secret is the
     # one entered when creating the webhook in the Razorpay dashboard.
     payments_provider: str = "razorpay"
+    #: Explicit opt-in for `payments_provider="mock"` in production (demo
+    #: before real Razorpay keys exist). Ignored by every other provider.
+    payments_allow_mock: bool = False
     razorpay_key_id: str = ""
     razorpay_key_secret: SecretStr | None = None
     razorpay_webhook_secret: SecretStr | None = None
@@ -470,6 +473,12 @@ class Settings(BaseSettings):
             if self.otp_delivery_dev_mode:
                 msg = f"otp_delivery_dev_mode must be disabled in environment {self.environment!r}"
                 raise ValueError(msg)
+        if self.is_production and self.payments_provider == "mock" and not self.payments_allow_mock:
+            msg = (
+                "The mock payments provider needs LPG_PAYMENTS_ALLOW_MOCK=true in production, "
+                "because staff can mark its links paid without any money moving"
+            )
+            raise ValueError(msg)
         if self.is_production and self.razorpay_key_id.startswith("rzp_test_"):
             msg = "A Razorpay test key (rzp_test_…) is not permitted in production"
             raise ValueError(msg)

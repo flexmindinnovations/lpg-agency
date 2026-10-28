@@ -4,10 +4,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from lpg.application.accounting.payment_profile import (
+    GetPaymentProfileUseCase,
+    build_upi_uri,
+)
 from lpg.application.printing.amount_in_words import rupees_in_words
 from lpg.application.printing.models import (
     CustomerInfo,
     InvoicePrintPayload,
+    PaymentInfo,
     PrintLineItem,
     TenantHeader,
 )
@@ -21,7 +26,11 @@ if TYPE_CHECKING:
     from lpg.application.common.ports import FileStorage
     from lpg.application.customer.ports import CustomerRepository
     from lpg.application.printing.ports import PrintingEngine
-    from lpg.application.tenant.ports import CylinderTypeRepository, TenantRepository
+    from lpg.application.tenant.ports import (
+        CylinderTypeRepository,
+        TenantConfigurationRepository,
+        TenantRepository,
+    )
     from lpg.domain.accounting.invoice import Invoice
     from lpg.domain.customer.customer import Customer
     from lpg.domain.tenant.tenant import Tenant
@@ -80,7 +89,9 @@ class GeneratePrintJobUseCase:
         cylinder_type_repository: CylinderTypeRepository,
         tenant_repository: TenantRepository,
         storage: FileStorage | None,
+        tenant_config_repository: TenantConfigurationRepository | None = None,
     ) -> None:
+        self._tenant_config_repo = tenant_config_repository
         self._engine = printing_engine
         self._invoice_repo = invoice_repository
         self._customer_repo = customer_repository
@@ -141,6 +152,7 @@ class GeneratePrintJobUseCase:
             tax_amount=invoice.tax_amount,
             total_amount=invoice.total_amount,
             total_in_words=rupees_in_words(invoice.total_amount),
+            payment_info=await self._build_payment_info(invoice),
             place_of_supply=self._place_of_supply(invoice.place_of_supply_state_code),
             is_inter_state=invoice.is_inter_state,
             amount_paid=invoice.amount_paid,
@@ -172,6 +184,40 @@ class GeneratePrintJobUseCase:
             )
         msg = f"Unsupported format: {command.output_format}"  # type: ignore[unreachable]
         raise UnsupportedDocumentError(msg)
+
+    async def _build_payment_info(self, invoice: Invoice) -> PaymentInfo:
+        if self._tenant_config_repo is None:
+            return PaymentInfo()
+        profile = await GetPaymentProfileUseCase(self._tenant_config_repo).execute(
+            invoice.tenant_id
+        )
+        upi_uri = ""
+        if (
+            profile.has_upi
+            and invoice.balance_due > 0
+            and invoice.status
+            in (
+                "issued",
+                "partially_paid",
+            )
+        ):
+            label = invoice.invoice_number or str(invoice.id)
+            upi_uri = build_upi_uri(
+                profile,
+                amount=invoice.balance_due,
+                note=f"Invoice {label}",
+                reference=label,
+            )
+        return PaymentInfo(
+            account_holder=profile.account_holder,
+            bank_name=profile.bank_name,
+            account_number=profile.account_number,
+            ifsc=profile.ifsc,
+            branch=profile.branch,
+            upi_id=profile.upi_id,
+            upi_uri=upi_uri,
+            footer_note=profile.invoice_footer_note,
+        )
 
     async def _build_line_items(self, invoice: Invoice) -> list[PrintLineItem]:
         # Resolve each distinct cylinder type once, even if it appears on

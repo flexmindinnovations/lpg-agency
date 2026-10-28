@@ -19,10 +19,14 @@ from lpg.api.v1.dependencies.identity import get_current_principal, require_perm
 from lpg.api.v1.dependencies.order import get_idempotency_service
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.cash_handover import (
+    CashBookCollectionResponse,
+    CashBookResponse,
     CashHandoverRegisterEntryResponse,
     CashHandoverResponse,
     CashHandoverReviewResponse,
+    CashInHandResponse,
     DeclareCashHandoverRequest,
+    DriverCashInHandResponse,
     ReviewCashHandoverRequest,
     RouteCashHandoverResponse,
 )
@@ -30,10 +34,14 @@ from lpg.application.accounting.ports import CashHandoverNumberSequence, CashHan
 from lpg.application.accounting.use_cases import (
     DeclareCashHandoverCommand,
     DeclareCashHandoverUseCase,
+    GetCashBookQuery,
+    GetCashBookUseCase,
     GetRouteCashHandoverViewQuery,
     GetRouteCashHandoverViewUseCase,
     ListCashHandoverRegisterQuery,
     ListCashHandoverRegisterUseCase,
+    ListCashInHandQuery,
+    ListCashInHandUseCase,
     ReviewCashHandoverCommand,
     ReviewCashHandoverUseCase,
 )
@@ -43,7 +51,7 @@ from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.infrastructure.idempotency.service import IdempotencyService, run_idempotent
 
 if TYPE_CHECKING:
-    from lpg.application.accounting.ports import CashHandoverRegisterEntry
+    from lpg.application.accounting.ports import CashHandoverRegisterEntry, DriverCashInHand
     from lpg.domain.accounting.cash_handover import CashHandover
 
 router = APIRouter(prefix="/cash-handovers", tags=["Cash Handovers"])
@@ -53,6 +61,108 @@ _IST = ZoneInfo("Asia/Kolkata")
 
 def _to_response(handover: CashHandover) -> CashHandoverResponse:
     return CashHandoverResponse.model_validate(handover)
+
+
+def _in_hand_response(rows: list[DriverCashInHand]) -> CashInHandResponse:
+    return CashInHandResponse(
+        total_cash=sum((r.cash_amount for r in rows), Decimal("0")),
+        drivers=[
+            DriverCashInHandResponse(
+                driver_id=r.driver_id,
+                driver_name=r.driver_name,
+                route_count=r.route_count,
+                stop_count=r.stop_count,
+                cash_amount=r.cash_amount,
+                upi_amount=r.upi_amount,
+                oldest_route_date=r.oldest_route_date,
+            )
+            for r in rows
+        ],
+    )
+
+
+@router.get(
+    "/cash-in-hand/mine",
+    response_model=CashInHandResponse,
+    dependencies=[Depends(require_permission("cash_handovers:declare"))],
+    summary="Cash the signed-in driver is carrying",
+)
+async def get_my_cash_in_hand(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    cash_handover_repository: Annotated[
+        CashHandoverRepository, Depends(get_cash_handover_repository)
+    ],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+) -> CashInHandResponse:
+    driver = (
+        await driver_repository.get_by_identity_user_id(principal.user_id)
+        if principal.user_id is not None
+        else None
+    )
+    if driver is None:
+        return CashInHandResponse(total_cash=Decimal("0"), drivers=[])
+    rows = await ListCashInHandUseCase(cash_handover_repository).execute(
+        ListCashInHandQuery(driver_id=driver.id)
+    )
+    return _in_hand_response(rows)
+
+
+@router.get(
+    "/cash-in-hand",
+    response_model=CashInHandResponse,
+    dependencies=[Depends(require_permission("cash_handovers:review"))],
+    summary="Cash each driver is carrying (collected, not yet handed over)",
+)
+async def list_cash_in_hand(
+    cash_handover_repository: Annotated[
+        CashHandoverRepository, Depends(get_cash_handover_repository)
+    ],
+    driver_id: uuid.UUID | None = None,
+) -> CashInHandResponse:
+    rows = await ListCashInHandUseCase(cash_handover_repository).execute(
+        ListCashInHandQuery(driver_id=driver_id)
+    )
+    return _in_hand_response(rows)
+
+
+@router.get(
+    "/cash-book",
+    response_model=CashBookResponse,
+    dependencies=[Depends(require_permission("cash_handovers:review"))],
+    summary="Daily cash book: collected by mode, handed over, reviewed",
+)
+async def get_cash_book(
+    cash_handover_repository: Annotated[
+        CashHandoverRepository, Depends(get_cash_handover_repository)
+    ],
+    day: Annotated[date | None, Query(alias="date", description="IST day; default today")] = None,
+) -> CashBookResponse:
+    book_day = day or datetime.now(_IST).date()
+    start = datetime.combine(book_day, time.min, tzinfo=_IST)
+    book = await GetCashBookUseCase(cash_handover_repository).execute(
+        GetCashBookQuery(day_from=start, day_to=start + timedelta(days=1))
+    )
+    in_hand = await ListCashInHandUseCase(cash_handover_repository).execute(ListCashInHandQuery())
+    return CashBookResponse(
+        date=book_day,
+        collections=[
+            CashBookCollectionResponse(
+                method=c.method, payment_count=c.payment_count, amount=c.amount
+            )
+            for c in book.collections
+        ],
+        total_collected=sum((c.amount for c in book.collections), Decimal("0")),
+        handover_count=book.handover_count,
+        expected_total=book.expected_total,
+        handed_over_total=book.handed_over_total,
+        shortfall_total=book.shortfall_total,
+        excess_total=book.excess_total,
+        accepted_total=book.accepted_total,
+        disputed_total=book.disputed_total,
+        pending_total=book.pending_total,
+        pending_count=book.pending_count,
+        cash_in_hand_total=sum((r.cash_amount for r in in_hand), Decimal("0")),
+    )
 
 
 @router.get(
@@ -138,6 +248,8 @@ async def declare_cash_handover(
                 route_id=request.route_id,
                 actual_amount=request.actual_amount,
                 declared_by=declared_by,
+                denominations=request.denominations,
+                variance_reason=request.variance_reason,
             )
         )
         return _to_response(handover).model_dump(mode="json")
@@ -172,6 +284,9 @@ def _register_entry_to_response(
         shortfall=handover.shortfall,
         excess=excess if excess > 0 else Decimal("0"),
         declared_at=handover.declared_at,
+        denominations=handover.denominations,
+        variance_reason=handover.variance_reason,
+        upi_expected=handover.upi_expected,
         review_status=review.outcome if review is not None else "pending",
         review=(
             CashHandoverReviewResponse(

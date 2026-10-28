@@ -42,6 +42,7 @@ from lpg.api.v1.routers import (
     onboarding_draft,
     online_payment,
     order,
+    payment_profile,
     platform,
     printing,
     reporting,
@@ -351,6 +352,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(dashboard.router, prefix=settings.api_v1_prefix)
     app.include_router(invoice.router, prefix=settings.api_v1_prefix)
     app.include_router(online_payment.router, prefix=settings.api_v1_prefix)
+    app.include_router(payment_profile.router, prefix=settings.api_v1_prefix)
     app.include_router(cash_handover.router, prefix=settings.api_v1_prefix)
     app.include_router(complaint.router, prefix=settings.api_v1_prefix)
     app.include_router(support.router, prefix=settings.api_v1_prefix)
