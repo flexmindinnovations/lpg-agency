@@ -8,6 +8,9 @@ import 'auth_provider.dart';
 import 'features/approvals/presentation/approvals_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/dispatch/presentation/dispatch_screen.dart';
+import 'features/fleet/presentation/driver_form_screen.dart';
+import 'features/fleet/presentation/fleet_screen.dart';
+import 'features/fleet/presentation/vehicle_form_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/orders/presentation/create_order_screen.dart';
 import 'features/orders/presentation/order_detail_screen.dart';
@@ -95,6 +98,29 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/dispatch',
                 name: 'dispatch',
                 builder: (context, state) => const DispatchScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'fleet',
+                    name: 'fleet',
+                    builder: (context, state) => FleetScreen(
+                      initialTab: state.uri.queryParameters['tab'] == 'vans'
+                          ? 1
+                          : 0,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'driver-new',
+                        name: 'fleet_driver_new',
+                        builder: (context, state) => const DriverFormScreen(),
+                      ),
+                      GoRoute(
+                        path: 'van-new',
+                        name: 'fleet_vehicle_new',
+                        builder: (context, state) => const VehicleFormScreen(),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),

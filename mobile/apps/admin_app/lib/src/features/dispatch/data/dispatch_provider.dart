@@ -35,3 +35,25 @@ final ordersWaitingForTripProvider = FutureProvider<List<OrderResponse>>((
       .getMyOrders(status: 'confirmed', size: 100);
   return unwrap(result).items;
 });
+
+/// Trips that are over (finished or cancelled), newest first.
+final pastTripsProvider = FutureProvider<List<RouteSummary>>((ref) async {
+  final api = ref.watch(routeApiProvider);
+  final pages = await Future.wait([
+    for (final status in pastTripStatuses)
+      api.listRoutes(status: status, pageSize: 20),
+  ]);
+  final trips = <RouteSummary>[];
+  for (final page in pages) {
+    switch (page) {
+      case Success<List<RouteSummary>>(:final value):
+        trips.addAll(value);
+      case FailureResult<List<RouteSummary>>(:final failure):
+        throw ApiException(failure);
+    }
+  }
+  trips.sort(
+    (a, b) => (b.date ?? DateTime(0)).compareTo(a.date ?? DateTime(0)),
+  );
+  return trips;
+});
