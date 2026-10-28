@@ -41,6 +41,7 @@ class TodayScreen extends ConsumerWidget {
                 ref.watch(pendingCashHandoversProvider).value ?? const [];
             final pendingLoad = ref.watch(pendingLoadProvider).value;
             final sections = <Widget>[
+              const _CashInHandCard(),
               if (pendingLoad != null) _PendingLoadCard(route: pendingLoad),
               for (final view in pendingCash) _PendingCashCard(view: view),
               if (route == null)
@@ -313,6 +314,34 @@ class _PendingCashCard extends StatelessWidget {
             'Declare ${LpgFormat.currency(view.expectedAmount)} from your '
             '${LpgFormat.date(view.routeDate)} route',
         showChevron: true,
+      ),
+    );
+  }
+}
+
+/// What the driver is carrying right now: cash to hand over and UPI already
+/// in the agency's account (ADR-066). Hidden when there is nothing.
+class _CashInHandCard extends ConsumerWidget {
+  const _CashInHandCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final held = ref.watch(myCashInHandProvider).value;
+    if (held == null || (held.cashAmount <= 0 && held.upiAmount <= 0)) {
+      return const SizedBox.shrink();
+    }
+    return LpgCard(
+      variant: LpgCardVariant.tonal,
+      tone: LpgTone.info,
+      padding: EdgeInsets.zero,
+      child: LpgListTile(
+        leadingIcon: LpgIcons.cash,
+        leadingTone: LpgTone.info,
+        title: 'Cash in hand ${LpgFormat.currency(held.cashAmount)}',
+        subtitle: held.upiAmount > 0
+            ? '${LpgFormat.currency(held.upiAmount)} was paid by UPI, so you '
+                  'do not hand that over'
+            : 'Collected since your last handover',
       ),
     );
   }

@@ -36,6 +36,12 @@ final cashHandoverApiProvider = Provider<CashHandoverApi>(
   (ref) => CashHandoverApi(ref.watch(apiClientProvider).dio),
 );
 
+/// The `/payments/*` API — the UPI QR shown when a customer pays by UPI
+/// (ADR-066).
+final paymentApiProvider = Provider<PaymentApi>(
+  (ref) => PaymentApi(ref.watch(apiClientProvider).dio),
+);
+
 /// The `/notifications/*` API — device-token registration and the inbox.
 final notificationApiProvider = Provider<NotificationApi>(
   (ref) => NotificationApi(ref.watch(apiClientProvider).dio),

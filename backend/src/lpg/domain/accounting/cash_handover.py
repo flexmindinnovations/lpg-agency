@@ -21,6 +21,11 @@ if TYPE_CHECKING:
 CASH_DENOMINATIONS: tuple[int, ...] = (2000, 500, 200, 100, 50, 20, 10, 5, 2, 1)
 
 
+#: Doorstep totals carry paise (GST on a price), but notes cannot: a counted
+#: handover within a rupee of expected needs no reason.
+ROUNDING_TOLERANCE = Decimal("1")
+
+
 def validate_denominations(denominations: dict[int, int], total: Decimal) -> dict[int, int]:
     """Counts per note/coin, dropping zero counts. Must add up to `total`."""
     clean: dict[int, int] = {}
@@ -146,7 +151,7 @@ class CashHandover(AggregateRoot):
             # difference from the deliveries needs a reason. Clients that
             # send only an amount (older apps) keep the earlier behaviour.
             clean_denominations = validate_denominations(denominations, actual_amount)
-            if actual_amount != expected_amount and reason is None:
+            if abs(actual_amount - expected_amount) >= ROUNDING_TOLERANCE and reason is None:
                 msg = "Say why the cash differs from what the deliveries account for."
                 raise InvariantViolation(msg, field="variance_reason")
         handover = cls(

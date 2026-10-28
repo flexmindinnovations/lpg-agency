@@ -126,4 +126,82 @@ void main() {
       expect(failure!.errorCode, 'CONFLICT');
     });
   });
+
+  group('counted handover (ADR-066)', () {
+    test('sends denominations and the variance reason', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse({
+          ..._handoverJson(shortfall: '5.50'),
+          'denominations': {'500': 1, '200': 2},
+          'variance_reason': 'Gave change',
+          'upi_expected': '120.00',
+        }, 201);
+      });
+
+      final result = await CashHandoverApi(client.dio).declare(
+        routeId: 'route-1',
+        driverId: 'drv-1',
+        actualAmount: 900,
+        denominations: {500: 1, 200: 2, 100: 0},
+        varianceReason: '  Gave change ',
+      );
+
+      expect(captured!.data, {
+        'driver_id': 'drv-1',
+        'route_id': 'route-1',
+        'actual_amount': '900.00',
+        'denominations': {'500': 1, '200': 2},
+        'variance_reason': 'Gave change',
+      });
+      final handover = result.when(onSuccess: (h) => h, onFailure: (_) => null);
+      expect(handover!.denominations, {500: 1, 200: 2});
+      expect(handover.varianceReason, 'Gave change');
+      expect(handover.upiExpected, 120.0);
+    });
+
+    test('an amount-only declaration stays as before', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse(_handoverJson(shortfall: '0.00'), 201);
+      });
+
+      await CashHandoverApi(
+        client.dio,
+      ).declare(routeId: 'route-1', driverId: 'drv-1', actualAmount: 900);
+
+      expect((captured!.data as Map).containsKey('denominations'), isFalse);
+      expect((captured!.data as Map).containsKey('variance_reason'), isFalse);
+    });
+
+    test('reads cash in hand for the signed-in driver', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
+          'total_cash': '2400.00',
+          'drivers': [
+            {
+              'driver_id': 'drv-1',
+              'driver_name': 'Ravi',
+              'route_count': 2,
+              'stop_count': 5,
+              'cash_amount': '2400.00',
+              'upi_amount': '300.00',
+              'oldest_route_date': '2026-10-27T00:00:00Z',
+            },
+          ],
+        }, 200),
+      );
+
+      final result = await CashHandoverApi(client.dio).getMyCashInHand();
+
+      final hand = result.when(onSuccess: (h) => h, onFailure: (_) => null);
+      expect(hand!.totalCash, 2400.0);
+      expect(hand.drivers.single.stopCount, 5);
+    });
+  });
 }

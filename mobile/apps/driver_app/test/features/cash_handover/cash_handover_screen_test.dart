@@ -55,6 +55,18 @@ Future<void> _pump(WidgetTester tester, ProviderContainer container) async {
   await tester.pumpAndSettle();
 }
 
+/// Taps the + button of one note value's stepper [times] times.
+Future<void> _count(WidgetTester tester, int value, int times) async {
+  final plus = find.descendant(
+    of: find.byKey(ValueKey('denomination-$value')),
+    matching: find.byTooltip('Increase'),
+  );
+  for (var i = 0; i < times; i++) {
+    await tester.tap(plus);
+    await tester.pump();
+  }
+}
+
 /// Stateful fake: `/for-route` returns the pending view until a POST lands,
 /// then the declared one — so a real declare flow flips the screen to the
 /// receipt on its own.
@@ -142,7 +154,56 @@ void main() {
       );
     });
 
-    testWidgets('reports the delta as the driver types', (tester) async {
+    testWidgets('adds up the counted notes and reports the delta', (
+      tester,
+    ) async {
+      final container = ProviderContainer(
+        overrides: [
+          routeCashHandoverProvider.overrideWith(
+            (ref, id) async => _view(expected: 1000),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      // 500 + 2 x 200 = 900.
+      await _count(tester, 500, 1);
+      await _count(tester, 200, 2);
+      expect(find.text('Short by ₹100.00'), findsOneWidget);
+      // A difference needs a reason.
+      expect(find.textContaining('Why does it differ?'), findsOneWidget);
+
+      await _count(tester, 100, 1);
+      expect(find.textContaining('Matches the expected'), findsOneWidget);
+      expect(find.textContaining('Why does it differ?'), findsNothing);
+
+      await _count(tester, 100, 1);
+      expect(find.text('Over by ₹100.00'), findsOneWidget);
+    });
+
+    testWidgets('rounding under a rupee needs no reason', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          routeCashHandoverProvider.overrideWith(
+            (ref, id) async => _view(expected: 905.50),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      await _count(tester, 500, 1);
+      await _count(tester, 200, 2);
+      await _count(tester, 5, 1);
+
+      expect(find.textContaining('Matches the expected'), findsOneWidget);
+      expect(find.textContaining('Why does it differ?'), findsNothing);
+    });
+
+    testWidgets('the total can be typed instead of counted', (tester) async {
       final container = ProviderContainer(
         overrides: [
           routeCashHandoverProvider.overrideWith((ref, id) async => _view()),
@@ -151,18 +212,13 @@ void main() {
       addTearDown(container.dispose);
 
       await _pump(tester, container);
+      await tester.tap(find.text('Enter the total instead'));
+      await tester.pump();
 
       await tester.enterText(find.byType(TextFormField), '900');
       await tester.pump();
       expect(find.text('Short by ₹5.50'), findsOneWidget);
-
-      await tester.enterText(find.byType(TextFormField), '905.50');
-      await tester.pump();
-      expect(find.textContaining('Matches the expected'), findsOneWidget);
-
-      await tester.enterText(find.byType(TextFormField), '910');
-      await tester.pump();
-      expect(find.text('Over by ₹4.50'), findsOneWidget);
+      expect(find.textContaining('Why does it differ?'), findsOneWidget);
     });
 
     testWidgets('a route still in progress cannot be reconciled', (
@@ -214,7 +270,9 @@ void main() {
 
       await _pump(tester, container);
 
-      await tester.enterText(find.byType(TextFormField), '900');
+      await _count(tester, 500, 1);
+      await _count(tester, 200, 2);
+      await tester.enterText(find.byType(TextFormField), 'Gave change');
       await tester.pump();
       await tester.tap(find.widgetWithText(LpgButton, 'Declare handover'));
       await tester.pumpAndSettle();
@@ -231,6 +289,8 @@ void main() {
         'driver_id': 'drv-1',
         'route_id': 'route-1',
         'actual_amount': '900.00',
+        'denominations': {'500': 1, '200': 2},
+        'variance_reason': 'Gave change',
       });
       // ...synced against the stub, and the screen has caught up to the
       // receipt.

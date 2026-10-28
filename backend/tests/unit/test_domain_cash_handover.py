@@ -135,6 +135,13 @@ class TestCountedHandover:
         assert handover.shortfall == Decimal("0")
         assert handover.variance_reason == "Customer paid extra"
 
+    def test_rounding_within_a_rupee_needs_no_reason(self) -> None:
+        handover = self._counted(
+            expected="905.50", actual="905", denominations={500: 1, 200: 2, 5: 1}
+        )
+        assert handover.variance_reason is None
+        assert handover.shortfall == Decimal("0.50")
+
     def test_amount_only_declaration_still_works(self) -> None:
         handover = self._counted(expected="1200", actual="1100", denominations=None)
         assert handover.denominations is None
