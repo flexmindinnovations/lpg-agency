@@ -36,7 +36,7 @@ def test_normalises_and_defaults_payee_to_account_holder() -> None:
 
 
 def test_blank_profile_is_valid() -> None:
-    profile = PaymentProfile.validated(**{k: "" for k in _full()})
+    profile = PaymentProfile.validated(**dict.fromkeys(_full(), ""))
     assert not profile.has_bank_details
     assert not profile.has_upi
 

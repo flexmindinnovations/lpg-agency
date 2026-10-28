@@ -142,7 +142,7 @@ async def test_pdf_with_payment_profile_shows_bank_and_upi() -> None:
     config_repo = AsyncMock()
     config_repo.list_for_tenant_and_key.return_value = [config]
     config.effective_from = datetime(2026, 1, 1, tzinfo=UTC)
-    use_case._tenant_config_repo = config_repo  # noqa: SLF001
+    use_case._tenant_config_repo = config_repo
 
     pdf = await use_case.render(_command(PrintFormat.PDF))
     thermal = await use_case.render(_command(PrintFormat.THERMAL))
