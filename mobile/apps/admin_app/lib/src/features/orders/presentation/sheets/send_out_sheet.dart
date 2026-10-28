@@ -8,6 +8,7 @@ import '../../../../api_result.dart';
 import '../../../../providers.dart';
 import '../../data/orders_provider.dart';
 import '../../domain/order_flow.dart';
+import 'weighment_section.dart';
 
 const _newTrip = 'new';
 
@@ -38,6 +39,11 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
   /// A trip made by an earlier attempt that failed to load: a retry joins it
   /// instead of planning another.
   RouteSummary? _plannedTrip;
+
+  /// Set when the server wants a load-out weighment before it loads this
+  /// trip: the trip to log it against and how many of each type to weigh.
+  String? _weighRouteId;
+  Map<String, int> _weighNeeded = const {};
 
   OrderResponse get _order => widget.order;
 
@@ -100,10 +106,42 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
       orderIds: _order.status == 'confirmed' ? [_order.id] : const [],
     );
     if (dispatched case FailureResult<RouteSummary>(:final failure)) {
+      if (failure.errorCode == 'WEIGHMENT_CHECK_REQUIRED') {
+        return _askForWeighment(trip, failure);
+      }
       return _fail(failure);
     }
     ref.invalidate(activeTripsProvider(_order.branchId));
     if (mounted) Navigator.of(context).pop(true);
+  }
+
+  /// Works out what has to be weighed for [trip] (this order plus the
+  /// others waiting on it) and shows the weighment step.
+  Future<void> _askForWeighment(RouteSummary trip, Failure failure) async {
+    final needed = <String, int>{};
+    for (final line in _order.lines) {
+      final qty = _onTrip ? line.quantityPending : line.quantityOrdered;
+      needed[line.cylinderTypeId] = (needed[line.cylinderTypeId] ?? 0) + qty;
+    }
+    for (final stop in trip.stops) {
+      if (stop.status != 'pending' || stop.orderId == _order.id) continue;
+      final other = await ref.read(orderApiProvider).getOrder(stop.orderId);
+      if (other case Success<OrderResponse>(:final value)) {
+        for (final line in value.lines) {
+          needed[line.cylinderTypeId] =
+              (needed[line.cylinderTypeId] ?? 0) + line.quantityPending;
+        }
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _weighRouteId = trip.id;
+      _weighNeeded = needed;
+      _error =
+          'This agency weighs every cylinder before loading. Log the '
+          'checks below, then send the trip out again.';
+    });
   }
 
   void _fail(Failure failure) {
@@ -298,6 +336,15 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
           if (_error != null) ...[
             const SizedBox(height: LpgSpacing.sm),
             LpgBanner(tone: LpgTone.danger, message: _error!),
+          ],
+          if (_weighRouteId != null) ...[
+            const SizedBox(height: LpgSpacing.md),
+            WeighmentSection(
+              routeId: _weighRouteId!,
+              needed: _weighNeeded,
+              names: names,
+              warehouseId: warehouseId,
+            ),
           ],
           const SizedBox(height: LpgSpacing.lg),
           LpgButton(

@@ -154,7 +154,21 @@ const paymentMethods = {
 String? sendOutErrorMessage(String? code) => switch (code) {
   'INSUFFICIENT_STOCK' =>
     "The godown doesn't have enough filled cylinders for this order. Receive stock or pick another godown.",
-  'WEIGHMENT_CHECK_REQUIRED' =>
-    'This agency weighs every cylinder before dispatch. Log the load-out weighment for this trip on the web dashboard, then send it out again.',
   _ => null,
 };
+
+/// The first thing wrong with a load-out weighment entry, or `null`.
+/// [underweight] is how many of the [cylinders] weighed short.
+String? weighmentProblem({
+  required String? scaleId,
+  required int cylinders,
+  required int underweight,
+}) {
+  if (scaleId == null) return 'Choose the scale you used.';
+  if (cylinders < 1) return 'Enter how many cylinders you weighed.';
+  if (underweight < 0) return 'The underweight count cannot be negative.';
+  if (underweight > cylinders) {
+    return 'More cylinders came up underweight than were weighed.';
+  }
+  return null;
+}

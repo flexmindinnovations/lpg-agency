@@ -69,6 +69,12 @@ final fleetApiProvider = Provider<FleetApi>((ref) {
   return FleetApi(apiClient.dio);
 });
 
+/// Provides the [WeighmentApi] client (scales, load-out checks).
+final weighmentApiProvider = Provider<WeighmentApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return WeighmentApi(apiClient.dio);
+});
+
 /// Provides the [NotificationApi] client.
 final notificationApiProvider = Provider<NotificationApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);

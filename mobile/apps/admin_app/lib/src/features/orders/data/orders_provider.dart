@@ -5,14 +5,54 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../api_result.dart';
 import '../../../providers.dart';
 
-final adminOrdersProvider = FutureProvider.family<OrderPageResponse, int>((
-  ref,
-  page,
-) async {
-  final orderApi = ref.watch(orderApiProvider);
-  final result = await orderApi.getMyOrders(page: page, size: 50);
-  return unwrap(result);
-});
+/// What the order list asks the server for: a free-text [search] (order
+/// number, customer name, phone or consumer number) and, when the chosen
+/// filter covers a single status, that [status].
+class OrderQuery {
+  const OrderQuery({this.search = '', this.status});
+
+  final String search;
+  final String? status;
+
+  @override
+  bool operator ==(Object other) =>
+      other is OrderQuery && other.search == search && other.status == status;
+
+  @override
+  int get hashCode => Object.hash(search, status);
+}
+
+const orderPageSize = 50;
+
+/// One page (1-based) of the order queue, newest first.
+final adminOrdersProvider =
+    FutureProvider.family<OrderPageResponse, (OrderQuery, int)>((
+      ref,
+      args,
+    ) async {
+      final orderApi = ref.watch(orderApiProvider);
+      final (query, page) = args;
+      final result = await orderApi.getMyOrders(
+        page: page,
+        size: orderPageSize,
+        status: query.status,
+        search: query.search.trim(),
+      );
+      return unwrap(result);
+    });
+
+/// Cylinder types a customer can be booked for right now (active, priced for
+/// them at their branch, in stock), with today's price and stock left.
+final orderableCylindersProvider =
+    FutureProvider.family<List<OrderableCylinderTypeResponse>, String>((
+      ref,
+      customerId,
+    ) async {
+      final result = await ref
+          .watch(cylinderTypeApiProvider)
+          .listOrderable(customerId: customerId);
+      return unwrap(result);
+    });
 
 final adminOrderDetailProvider = FutureProvider.family<OrderResponse, String>((
   ref,
@@ -29,13 +69,19 @@ final availableRoutesProvider = FutureProvider<List<RouteSummary>>((ref) async {
   return unwrap(result);
 });
 
-final availableCustomersProvider = FutureProvider<CustomerPageResponse>((
-  ref,
-) async {
-  final customerApi = ref.watch(customerApiProvider);
-  final result = await customerApi.listCustomers(skip: 0, limit: 100);
-  return unwrap(result);
-});
+/// Customers matching [search] (name, phone or consumer number); every
+/// customer, first page, when empty.
+final customerSearchProvider = FutureProvider.autoDispose
+    .family<CustomerPageResponse, String>((ref, search) async {
+      final result = await ref
+          .watch(customerApiProvider)
+          .listCustomers(
+            skip: 0,
+            limit: 30,
+            search: search.isEmpty ? null : search,
+          );
+      return unwrap(result);
+    });
 
 final cylinderCatalogProvider = FutureProvider<List<CylinderTypeResponse>>((
   ref,
@@ -151,4 +197,25 @@ final filledStockProvider =
         Success(:final value) => value,
         FailureResult() => null,
       };
+    });
+
+/// Scales in service, for the load-out weighment form. A role without
+/// `weighment:record` gets an empty list rather than an error.
+final activeScalesProvider = FutureProvider.autoDispose<List<ScaleSummary>>((
+  ref,
+) async {
+  final result = await ref.watch(weighmentApiProvider).listActiveScales();
+  return switch (result) {
+    Success(:final value) => value,
+    FailureResult() => const [],
+  };
+});
+
+/// Load-out checks already on file for a trip.
+final routeWeighmentsProvider = FutureProvider.autoDispose
+    .family<List<WeighmentRecord>, String>((ref, routeId) async {
+      final result = await ref
+          .watch(weighmentApiProvider)
+          .listForRoute(routeId);
+      return unwrap(result);
     });

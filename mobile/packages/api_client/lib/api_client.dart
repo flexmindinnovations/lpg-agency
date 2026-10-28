@@ -22,5 +22,6 @@ export 'src/notification_api.dart';
 export 'src/order_api.dart';
 export 'src/payment_api.dart';
 export 'src/route_api.dart';
+export 'src/weighment_api.dart';
 export 'src/admin_api.dart';
 export 'src/models/models.dart';
