@@ -77,6 +77,9 @@ class _ApprovalsScreenState extends ConsumerState<ApprovalsScreen> {
                                 expectedAmount: item.expectedAmount,
                                 actualAmount: item.actualAmount,
                                 shortfall: item.shortfall,
+                                denominations: item.denominations,
+                                varianceReason: item.varianceReason,
+                                upiExpected: item.upiExpected,
                               ),
                             ),
                           );

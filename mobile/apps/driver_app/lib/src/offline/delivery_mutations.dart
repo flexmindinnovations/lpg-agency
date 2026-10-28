@@ -93,6 +93,8 @@ class DeliveryMutations {
     required String routeId,
     required String driverId,
     required double actualAmount,
+    Map<int, int>? denominations,
+    String? varianceReason,
   }) {
     return _coordinator.enqueueOperation(
       'cash_handover_declare',
@@ -102,6 +104,10 @@ class DeliveryMutations {
           'driver_id': driverId,
           'route_id': routeId,
           'actual_amount': actualAmount.toStringAsFixed(2),
+          if (denominations != null)
+            'denominations': denominationsToJson(denominations),
+          if (varianceReason != null && varianceReason.trim().isNotEmpty)
+            'variance_reason': varianceReason.trim(),
         },
         'aggregateId': routeId,
       }),

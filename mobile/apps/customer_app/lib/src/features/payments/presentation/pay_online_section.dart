@@ -105,6 +105,70 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
     if (mounted) setState(() => _busy = false);
   }
 
+  /// The agency's UPI QR and bank details for this order's balance
+  /// (ADR-066): scan it in any UPI app, or pay by bank transfer.
+  Future<void> _showUpiQr() async {
+    final api = ref.read(paymentApiProvider);
+    final qr = await api.getUpiQr(orderId: widget.orderId);
+    final profile = await api.getPaymentProfile();
+    if (!mounted) return;
+    final upi = qr.when(onSuccess: (v) => v, onFailure: (_) => null);
+    final bank = profile.when(onSuccess: (v) => v, onFailure: (_) => null);
+    if (upi == null && (bank == null || !bank.hasBankDetails)) {
+      _showMessage(
+        'UPI payment is not set up for this agency yet.',
+        tone: LpgTone.warning,
+      );
+      return;
+    }
+    await LpgFeedback.showSheet<void>(
+      context,
+      title: 'Pay by UPI',
+      builder: (_) => SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (upi != null)
+              LpgUpiQrCard(
+                png: upi.png,
+                amountText: LpgFormat.currency(upi.amount),
+                payeeName: upi.payeeName,
+                upiId: upi.upiId,
+              ),
+            if (bank != null && bank.hasBankDetails) ...[
+              const SizedBox(height: LpgSpacing.md),
+              LpgCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Or pay by bank transfer',
+                      style: context.lpgText.titleSmall,
+                    ),
+                    const SizedBox(height: LpgSpacing.sm),
+                    Text(bank.accountHolder),
+                    Text('${bank.bankName} ${bank.branch}'.trim()),
+                    Text('A/c ${bank.accountNumber}'),
+                    Text('IFSC ${bank.ifsc}'),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: LpgSpacing.md),
+            Text(
+              'Tell the driver once you have paid. The agency confirms the '
+              'payment on its side.',
+              textAlign: TextAlign.center,
+              style: context.lpgText.bodySmall?.copyWith(
+                color: context.lpgColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _checkStatus({bool quiet = false}) async {
     final paymentId = _pendingPaymentId;
     if (paymentId == null) return;
@@ -156,7 +220,11 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
         ref.watch(onlinePaymentAvailableProvider).asData?.value ?? false;
     final showPayButton = widget.canPay && available && paid.isEmpty;
 
-    if (paid.isEmpty && !showPayButton) return const SizedBox.shrink();
+    final showUpi = widget.canPay && paid.isEmpty;
+
+    if (paid.isEmpty && !showPayButton && !showUpi) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -221,6 +289,16 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
                 ),
               ),
             ],
+          ),
+        ],
+        if (showUpi) ...[
+          if (showPayButton) const SizedBox(height: LpgSpacing.smd),
+          LpgButton(
+            label: 'Pay by UPI QR',
+            icon: LpgIcons.qrCode,
+            variant: LpgButtonVariant.secondary,
+            expand: true,
+            onPressed: _showUpiQr,
           ),
         ],
         const SizedBox(height: LpgSpacing.md),

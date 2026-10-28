@@ -85,6 +85,42 @@ final class AdminApi {
     }
   }
 
+  /// Cash each driver is carrying (`GET /api/v1/cash-handovers/cash-in-hand`).
+  Future<Result<CashInHand>> getCashInHand() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/cash-handovers/cash-in-hand',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(CashInHand.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// One IST day of the cash book; [day] is `YYYY-MM-DD`, default today
+  /// (`GET /api/v1/cash-handovers/cash-book`).
+  Future<Result<CashBook>> getCashBook({String? day}) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/cash-handovers/cash-book',
+        queryParameters: {'date': ?day},
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(CashBook.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Review driver cash handover (`POST /api/v1/cash-handovers/{id}/review`)
   Future<Result<CashHandoverReviewResponse>> reviewCashHandover(
     String cashHandoverId,

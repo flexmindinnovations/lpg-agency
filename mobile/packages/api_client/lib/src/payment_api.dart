@@ -60,6 +60,64 @@ final class PaymentApi {
     () => _dio.post('/api/v1/online-payments/$onlinePaymentId/refresh'),
   );
 
+  /// The agency's bank and UPI details (`GET /payment-profile`).
+  Future<Result<PaymentProfile>> getPaymentProfile() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/payment-profile',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(PaymentProfile.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// Replace the agency's bank and UPI details (`PUT /payment-profile`,
+  /// needs `tenant:configure`). The server validates IFSC, account number
+  /// and UPI ID and answers 422 with a readable message.
+  Future<Result<PaymentProfile>> savePaymentProfile(
+    PaymentProfile profile,
+  ) async {
+    try {
+      final response = await _dio.put<Map<String, dynamic>>(
+        '/api/v1/payment-profile',
+        data: profile.toJson(),
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(PaymentProfile.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// UPI link and QR for what is still owed on an order or invoice. `409`
+  /// when the agency has no UPI ID or nothing is due.
+  Future<Result<UpiQr>> getUpiQr({String? orderId, String? invoiceId}) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/payments/upi-qr',
+        queryParameters: {'order_id': ?orderId, 'invoice_id': ?invoiceId},
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(UpiQr.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   Future<Result<OnlinePaymentResponse>> _single(
     Future<Response<Map<String, dynamic>>> Function() request,
   ) async {

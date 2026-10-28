@@ -15,6 +15,9 @@ class CashHandoverReviewScreen extends ConsumerStatefulWidget {
     required this.expectedAmount,
     required this.actualAmount,
     required this.shortfall,
+    this.denominations,
+    this.varianceReason,
+    this.upiExpected,
   });
 
   final String cashHandoverId;
@@ -22,6 +25,15 @@ class CashHandoverReviewScreen extends ConsumerStatefulWidget {
   final double expectedAmount;
   final double actualAmount;
   final double shortfall;
+
+  /// Notes the driver counted, by denomination (ADR-066). Null when the
+  /// driver typed a total instead.
+  final Map<int, int>? denominations;
+  final String? varianceReason;
+
+  /// UPI the driver collected on the route; paid straight to the agency, so
+  /// it is not part of the cash to hand over.
+  final double? upiExpected;
 
   @override
   ConsumerState<CashHandoverReviewScreen> createState() =>
@@ -154,9 +166,69 @@ class _CashHandoverReviewScreenState
                         ],
                       ),
                     ],
+                    if ((widget.upiExpected ?? 0) > 0) ...[
+                      const SizedBox(height: LpgSpacing.xs),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Paid by UPI (not cash):',
+                            style: text.bodyMedium,
+                          ),
+                          Text(
+                            LpgFormat.currency(widget.upiExpected!),
+                            style: text.titleSmall,
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
+              if (widget.varianceReason case final reason?
+                  when reason.isNotEmpty) ...[
+                const SizedBox(height: LpgSpacing.md),
+                LpgBanner(
+                  tone: LpgTone.warning,
+                  title: "Driver's reason for the difference",
+                  message: reason,
+                ),
+              ],
+              if (widget.denominations case final notes?
+                  when notes.isNotEmpty) ...[
+                const SizedBox(height: LpgSpacing.md),
+                LpgCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Notes counted', style: text.titleSmall),
+                      const SizedBox(height: LpgSpacing.sm),
+                      for (final value in cashDenominations)
+                        if ((notes[value] ?? 0) > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: LpgSpacing.xs,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '₹$value × ${notes[value]}',
+                                  style: text.bodyMedium,
+                                ),
+                                Text(
+                                  LpgFormat.currency(
+                                    (value * notes[value]!).toDouble(),
+                                  ),
+                                  style: text.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: LpgSpacing.lg),
               LpgTextField(
                 controller: _noteController,

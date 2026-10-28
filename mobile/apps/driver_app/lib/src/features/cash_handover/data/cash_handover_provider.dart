@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api_provider.dart';
@@ -63,3 +64,16 @@ extension on RouteCashHandover {
   bool get needsDeclaring =>
       isPending && (expectedAmount > 0 || cashStopCount > 0);
 }
+
+/// Cash and UPI the signed-in driver is carrying that no handover covers yet
+/// (`GET /cash-handovers/cash-in-hand/mine`). Online-only: a failed fetch is
+/// simply no card, so Today still opens in a dead zone.
+final myCashInHandProvider = FutureProvider.autoDispose<DriverCashInHand?>((
+  ref,
+) async {
+  final result = await ref.watch(cashHandoverApiProvider).getMyCashInHand();
+  if (result case Success(:final value)) {
+    return value.drivers.isEmpty ? null : value.drivers.first;
+  }
+  return null;
+});

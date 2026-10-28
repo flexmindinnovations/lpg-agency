@@ -117,6 +117,7 @@ abstract final class LpgIcons {
   static const IconData edit = LucideIcons.pencil;
   static const IconData delete = LucideIcons.trash2;
   static const IconData copy = LucideIcons.copy;
+  static const IconData qrCode = LucideIcons.qrCode;
   static const IconData share = LucideIcons.share2;
   static const IconData download = LucideIcons.download;
   static const IconData search = LucideIcons.search;

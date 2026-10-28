@@ -30,14 +30,36 @@ final class CashHandoverApi {
     }
   }
 
+  /// Cash the signed-in driver is carrying: collected on routes that have no
+  /// handover yet, including the route in progress.
+  Future<Result<CashInHand>> getMyCashInHand() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/cash-handovers/cash-in-hand/mine',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(CashInHand.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Declare the cash handed over for a route. `actualAmount` is sent as a
   /// fixed-2 string so it round-trips the backend's `Decimal` without float
-  /// drift. `409 CONFLICT` if a handover was already declared for the route;
-  /// `422` if the route isn't `completed` yet.
+  /// drift. [denominations] (note value -> count) must add up to the amount,
+  /// and when it is sent any difference from the expected cash needs a
+  /// [varianceReason]. `409 CONFLICT` if a handover was already declared for
+  /// the route; `422` if the route isn't `completed` yet.
   Future<Result<CashHandover>> declare({
     required String routeId,
     required String driverId,
     required double actualAmount,
+    Map<int, int>? denominations,
+    String? varianceReason,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -46,6 +68,10 @@ final class CashHandoverApi {
           'driver_id': driverId,
           'route_id': routeId,
           'actual_amount': actualAmount.toStringAsFixed(2),
+          if (denominations != null)
+            'denominations': denominationsToJson(denominations),
+          if (varianceReason != null && varianceReason.trim().isNotEmpty)
+            'variance_reason': varianceReason.trim(),
         },
       );
       if (response.data == null) {

@@ -284,6 +284,10 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                   if (v != null) setState(() => _paymentMethod = v);
                 },
               ),
+              if (_paymentMethod == 'upi') ...[
+                const SizedBox(height: LpgSpacing.md),
+                _UpiQrPanel(orderId: widget.orderId),
+              ],
               const SizedBox(height: LpgSpacing.md),
               LpgTextField(
                 label: 'Amount collected',
@@ -535,3 +539,55 @@ class _Stepper extends StatelessWidget {
     );
   }
 }
+
+/// The agency's UPI QR for this order's balance, for the customer to scan
+/// (ADR-066). Needs a connection; offline the driver is told to take the
+/// payment another way or ask the customer to pay the UPI ID.
+class _UpiQrPanel extends ConsumerWidget {
+  const _UpiQrPanel({required this.orderId});
+
+  final String orderId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final qr = ref.watch(_upiQrProvider(orderId));
+    return qr.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(LpgSpacing.lg),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, _) => const _UpiUnavailable(),
+      data: (value) => value == null
+          ? const _UpiUnavailable()
+          : LpgUpiQrCard(
+              png: value.png,
+              amountText: LpgFormat.currency(value.amount),
+              payeeName: value.payeeName,
+              upiId: value.upiId,
+            ),
+    );
+  }
+}
+
+class _UpiUnavailable extends StatelessWidget {
+  const _UpiUnavailable();
+
+  @override
+  Widget build(BuildContext context) => const LpgBanner(
+    message:
+        'The UPI QR is not available right now. Check your connection, or '
+        'ask your office to set up the agency UPI ID.',
+    tone: LpgTone.warning,
+  );
+}
+
+final _upiQrProvider = FutureProvider.autoDispose.family<UpiQr?, String>((
+  ref,
+  orderId,
+) async {
+  final result = await ref.watch(paymentApiProvider).getUpiQr(orderId: orderId);
+  return switch (result) {
+    Success(:final value) => value,
+    _ => null,
+  };
+});
