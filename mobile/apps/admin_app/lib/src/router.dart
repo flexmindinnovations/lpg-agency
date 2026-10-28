@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'auth_provider.dart';
 import 'features/approvals/presentation/approvals_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/dispatch/presentation/dispatch_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/orders/presentation/create_order_screen.dart';
 import 'features/orders/presentation/order_detail_screen.dart';
@@ -85,6 +86,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/dispatch',
+                name: 'dispatch',
+                builder: (context, state) => const DispatchScreen(),
               ),
             ],
           ),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:realtime/realtime.dart';
 
 import '../../dashboard/data/dashboard_providers.dart';
+import '../../dispatch/data/dispatch_provider.dart';
 import '../../notifications/data/notifications_provider.dart';
 import '../../orders/data/orders_provider.dart';
 
@@ -52,6 +53,8 @@ class AppShell extends ConsumerWidget {
     ref.invalidate(pendingCancellationProvider);
     ref.invalidate(orderHistoryProvider);
     ref.invalidate(activeTripsProvider);
+    ref.invalidate(dispatchTripsProvider);
+    ref.invalidate(ordersWaitingForTripProvider);
   }
 
   void _showAlert(BuildContext context, Map<String, dynamic> m) {
@@ -103,6 +106,11 @@ class AppShell extends ConsumerWidget {
           icon: LpgIcons.orders,
           selectedIcon: LpgIcons.ordersFilled,
           label: 'Orders',
+        ),
+        const LpgNavDestination(
+          icon: LpgIcons.truck,
+          selectedIcon: LpgIcons.truckFilled,
+          label: 'Dispatch',
         ),
         const LpgNavDestination(
           icon: LpgIcons.support,
