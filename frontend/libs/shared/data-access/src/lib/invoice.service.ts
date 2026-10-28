@@ -12,6 +12,7 @@ import { listCreditNotesApiV1InvoicesInvoiceIdCreditNotesGet } from './generated
 import { requestRefundApiV1InvoicesInvoiceIdRefundsPost } from './generated/fn/invoices/request-refund-api-v-1-invoices-invoice-id-refunds-post';
 import { approveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost } from './generated/fn/invoices/approve-refund-api-v-1-invoices-invoice-id-refunds-credit-note-id-approve-post';
 import { createPaymentLinkApiV1OrdersOrderIdPaymentLinksPost } from './generated/fn/online-payments/create-payment-link-api-v-1-orders-order-id-payment-links-post';
+import { simulateOnlinePaymentPaidApiV1OnlinePaymentsOnlinePaymentIdSimulatePaidPost } from './generated/fn/online-payments/simulate-online-payment-paid-api-v-1-online-payments-online-payment-id-simulate-paid-post';
 import type { InvoicePageResponse } from './generated/models/invoice-page-response';
 import type { InvoiceResponse } from './generated/models/invoice-response';
 import type { UninvoicedOrderResponse } from './generated/models/uninvoiced-order-response';
@@ -124,5 +125,14 @@ export class InvoiceService {
     return createPaymentLinkApiV1OrdersOrderIdPaymentLinksPost(this.http, this.config.rootUrl, {
       order_id: orderId,
     }).pipe(map((res) => res.body));
+  }
+
+  /** Demo gateway only: marks a payment link paid, as a Razorpay webhook would. */
+  simulatePaid(onlinePaymentId: string): Observable<OnlinePaymentResponse> {
+    return simulateOnlinePaymentPaidApiV1OnlinePaymentsOnlinePaymentIdSimulatePaidPost(
+      this.http,
+      this.config.rootUrl,
+      { online_payment_id: onlinePaymentId },
+    ).pipe(map((res) => res.body));
   }
 }

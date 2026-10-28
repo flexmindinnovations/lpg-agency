@@ -8,6 +8,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { Select } from 'primeng/select';
@@ -25,12 +27,14 @@ import {
   ExportButtonComponent,
   DateRangeFilterComponent,
   type DateRangeValue,
+  PageActionsDirective,
   PageHeaderComponent,
 } from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   CashHandoverService,
   type CashHandoverRegisterEntryResponse,
+  type CashInHandResponse,
 } from '@lpg/shared/data-access';
 
 const REVIEW_SEVERITY: Record<string, ChipSeverity> = {
@@ -63,7 +67,10 @@ function istDate(offsetDays = 0): string {
     DataGridComponent,
     EmptyStateComponent,
     HeaderTitlePortalDirective,
+    PageActionsDirective,
     PageHeaderComponent,
+    RouterLink,
+    DatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './cash-handover-register.html',
@@ -74,6 +81,7 @@ export class CashHandoverRegister implements OnInit {
   private readonly messageService = inject(MessageService);
   private readonly grid = viewChild(DataGridComponent);
 
+  protected readonly inHand = signal<CashInHandResponse | null>(null);
   protected readonly entries = signal<CashHandoverRegisterEntryResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -148,6 +156,28 @@ export class CashHandoverRegister implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.loadInHand();
+  }
+
+  private loadInHand(): void {
+    this.service.cashInHand().subscribe({
+      next: (res) => this.inHand.set(res),
+      // The panel is a convenience; the register still works without it.
+      error: () => this.inHand.set(null),
+    });
+  }
+
+  /** Note value and count pairs, largest note first, for the detail drawer. */
+  protected denominationRows(
+    entry: CashHandoverRegisterEntryResponse,
+  ): { value: number; count: number; amount: number }[] {
+    return Object.entries(entry.denominations ?? {})
+      .map(([value, count]) => ({
+        value: Number(value),
+        count: Number(count),
+        amount: Number(value) * Number(count),
+      }))
+      .sort((a, b) => b.value - a.value);
   }
 
   protected load(): void {
@@ -228,6 +258,7 @@ export class CashHandoverRegister implements OnInit {
           detail: `${entry.driver_name} · ${formatCurrencyInr(entry.actual_amount)}`,
         });
         this.load();
+        this.loadInHand();
       },
       error: () => this.submitting.set(false),
     });

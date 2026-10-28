@@ -5,7 +5,36 @@
   />
 </ng-template>
 
+<ng-template lpgPageActions>
+  <a pButton routerLink="/cash-handovers/book" severity="secondary" [outlined]="true">
+    <i class="pi pi-book"></i>
+    <span>Cash book</span>
+  </a>
+</ng-template>
+
 <div class="register">
+  @if (inHand(); as hand) { @if (hand.drivers.length > 0) {
+  <section class="inhand" aria-label="Cash with drivers">
+    <h2 class="inhand__title">
+      Cash with drivers
+      <span class="inhand__total">{{ formatCurrencyInr(hand.total_cash) }}</span>
+    </h2>
+    <p class="inhand__hint">Collected on routes that have no handover yet.</p>
+    <ul class="inhand__list">
+      @for (driver of hand.drivers; track driver.driver_id) {
+      <li>
+        <span class="inhand__name">{{ driver.driver_name }}</span>
+        <span class="inhand__meta"
+          >{{ driver.stop_count }} cash {{ driver.stop_count === 1 ? 'stop' : 'stops' }} · since {{
+          driver.oldest_route_date | date: 'd MMM' }}</span
+        >
+        <span class="inhand__amount">{{ formatCurrencyInr(driver.cash_amount) }}</span>
+      </li>
+      }
+    </ul>
+  </section>
+  } }
+
   <div class="data-toolbar">
     <div class="data-toolbar__filters">
       <lpg-date-range-filter
@@ -101,7 +130,12 @@
           <dt>Handed over</dt>
           <dd>{{ formatCurrencyInr(entry.actual_amount) }}</dd>
         </div>
-        @if (+entry.shortfall > 0) {
+        @if (entry.upi_expected !== null && entry.upi_expected !== undefined) {
+        <div>
+          <dt>UPI collected</dt>
+          <dd>{{ formatCurrencyInr(entry.upi_expected) }}</dd>
+        </div>
+        } @if (+entry.shortfall > 0) {
         <div>
           <dt>Shortfall</dt>
           <dd class="register__short">{{ formatCurrencyInr(entry.shortfall) }}</dd>
@@ -114,7 +148,28 @@
         }
       </dl>
 
-      @if (entry.review; as review) {
+      @if (denominationRows(entry); as rows) { @if (rows.length > 0) {
+      <table class="register__notes" aria-label="Counted notes">
+        <thead>
+          <tr>
+            <th scope="col">Note</th>
+            <th scope="col">Count</th>
+            <th scope="col">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows; track row.value) {
+          <tr>
+            <td>{{ formatCurrencyInr(row.value) }}</td>
+            <td>{{ row.count }}</td>
+            <td>{{ formatCurrencyInr(row.amount) }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+      } } @if (entry.variance_reason) {
+      <p class="page-lede"><strong>Driver's reason:</strong> {{ entry.variance_reason }}</p>
+      } @if (entry.review; as review) {
       <p class="page-lede">
         {{ review.outcome === 'accepted' ? 'Accepted' : 'Disputed' }} by {{ review.reviewed_by_name
         ?? 'a colleague' }} on {{ formatTimestamp(review.reviewed_at) }}{{ review.note ? ': ' +

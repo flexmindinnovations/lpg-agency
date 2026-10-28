@@ -4,6 +4,10 @@ import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { listCashHandoverRegisterApiV1CashHandoversGet } from './generated/fn/cash-handovers/list-cash-handover-register-api-v-1-cash-handovers-get';
 import { reviewCashHandoverApiV1CashHandoversCashHandoverIdReviewPost } from './generated/fn/cash-handovers/review-cash-handover-api-v-1-cash-handovers-cash-handover-id-review-post';
+import { getCashBookApiV1CashHandoversCashBookGet } from './generated/fn/cash-handovers/get-cash-book-api-v-1-cash-handovers-cash-book-get';
+import { listCashInHandApiV1CashHandoversCashInHandGet } from './generated/fn/cash-handovers/list-cash-in-hand-api-v-1-cash-handovers-cash-in-hand-get';
+import type { CashBookResponse } from './generated/models/cash-book-response';
+import type { CashInHandResponse } from './generated/models/cash-in-hand-response';
 import type { CashHandoverRegisterEntryResponse } from './generated/models/cash-handover-register-entry-response';
 import type { CashHandoverReviewResponse } from './generated/models/cash-handover-review-response';
 
@@ -41,5 +45,19 @@ export class CashHandoverService {
       this.config.rootUrl,
       { cash_handover_id: cashHandoverId, body: { outcome, note: note?.trim() || null } },
     ).pipe(map((res) => res.body));
+  }
+
+  /** What each driver is carrying: collected on routes not yet handed over. */
+  cashInHand(): Observable<CashInHandResponse> {
+    return listCashInHandApiV1CashHandoversCashInHandGet(this.http, this.config.rootUrl).pipe(
+      map((res) => res.body),
+    );
+  }
+
+  /** One IST day (`YYYY-MM-DD`): money in by mode and the fate of the cash. */
+  cashBook(day: string): Observable<CashBookResponse> {
+    return getCashBookApiV1CashHandoversCashBookGet(this.http, this.config.rootUrl, {
+      date: day,
+    }).pipe(map((res) => res.body));
   }
 }

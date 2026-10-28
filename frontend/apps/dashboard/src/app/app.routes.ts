@@ -139,6 +139,19 @@ export const appRoutes: Route[] = [
               ),
           },
           {
+            path: 'payments',
+            canActivate: [permissionGuard('tenant:configure')],
+            loadComponent: () =>
+              import('./settings/payments/payment-settings').then((m) => m.PaymentSettings),
+            title: 'Payments',
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'Payments', routerLink: '/settings/payments' },
+              ],
+            },
+          },
+          {
             path: 'configuration/tdt-rating',
             canActivate: [permissionGuard('tenant:configure')],
             data: {

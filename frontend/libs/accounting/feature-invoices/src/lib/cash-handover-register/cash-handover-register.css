@@ -51,3 +51,69 @@
 :host ::ng-deep .cell--danger {
   color: var(--color-status-danger);
 }
+
+.inhand {
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-surface-raised, var(--color-surface-default));
+}
+
+.inhand__title {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin: 0;
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.inhand__hint {
+  margin: var(--spacing-xs) 0 var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.inhand__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inhand__list li {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) auto auto;
+  gap: var(--spacing-md);
+  align-items: baseline;
+}
+
+.inhand__meta {
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.inhand__amount {
+  font-weight: var(--typography-label-font-weight);
+  text-align: end;
+}
+
+.register__notes {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--typography-body-small-font-size);
+}
+
+.register__notes th,
+.register__notes td {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-block-end: 1px solid var(--color-border-default);
+  text-align: end;
+}
+
+.register__notes th:first-child,
+.register__notes td:first-child {
+  text-align: start;
+}

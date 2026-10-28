@@ -33,6 +33,12 @@ export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
         permission: 'tenant:configure',
       },
       {
+        label: 'Payments',
+        icon: 'pi pi-wallet',
+        route: '/settings/payments',
+        permission: 'tenant:configure',
+      },
+      {
         label: 'Feature Flags',
         icon: 'pi pi-flag',
         route: '/settings/feature-flags',

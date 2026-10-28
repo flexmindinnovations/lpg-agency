@@ -59,6 +59,7 @@ describe('SettingsShell', () => {
       'My Profile',
       'Agency',
       'Configuration',
+      'Payments',
       'Feature Flags',
       'License',
       'Linked Devices',
