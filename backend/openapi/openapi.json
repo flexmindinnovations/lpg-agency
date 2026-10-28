@@ -985,6 +985,117 @@
         "title": "CancelOrderResponse",
         "type": "object"
       },
+      "CashBookCollectionResponse": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "payment_count": {
+            "title": "Payment Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "method",
+          "payment_count",
+          "amount"
+        ],
+        "title": "CashBookCollectionResponse",
+        "type": "object"
+      },
+      "CashBookResponse": {
+        "description": "One IST day: money in by mode, and the fate of the cash handed over.",
+        "properties": {
+          "accepted_total": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Accepted Total",
+            "type": "string"
+          },
+          "cash_in_hand_total": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cash In Hand Total",
+            "type": "string"
+          },
+          "collections": {
+            "items": {
+              "$ref": "#/components/schemas/CashBookCollectionResponse"
+            },
+            "title": "Collections",
+            "type": "array"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "disputed_total": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Disputed Total",
+            "type": "string"
+          },
+          "excess_total": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Excess Total",
+            "type": "string"
+          },
+          "expected_total": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Expected Total",
+            "type": "string"
+          },
+          "handed_over_total": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Handed Over Total",
+            "type": "string"
+          },
+          "handover_count": {
+            "title": "Handover Count",
+            "type": "integer"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "pending_total": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Pending Total",
+            "type": "string"
+          },
+          "shortfall_total": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Shortfall Total",
+            "type": "string"
+          },
+          "total_collected": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Collected",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "collections",
+          "total_collected",
+          "handover_count",
+          "expected_total",
+          "handed_over_total",
+          "shortfall_total",
+          "excess_total",
+          "accepted_total",
+          "disputed_total",
+          "pending_total",
+          "pending_count",
+          "cash_in_hand_total"
+        ],
+        "title": "CashBookResponse",
+        "type": "object"
+      },
       "CashHandoverRegisterEntryResponse": {
         "description": "One row of the accountant's cash-handover register (DA-33).",
         "properties": {
@@ -1001,6 +1112,20 @@
             "format": "date-time",
             "title": "Declared At",
             "type": "string"
+          },
+          "denominations": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominations"
           },
           "driver_id": {
             "format": "uuid",
@@ -1066,6 +1191,29 @@
             "title": "Shortfall",
             "type": "string"
           },
+          "upi_expected": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi Expected"
+          },
+          "variance_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance Reason"
+          },
           "vehicle_registration": {
             "anyOf": [
               {
@@ -1114,9 +1262,29 @@
             "title": "Declared By",
             "type": "string"
           },
+          "denominations": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominations"
+          },
           "driver_id": {
             "format": "uuid",
             "title": "Driver Id",
+            "type": "string"
+          },
+          "excess": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Excess",
             "type": "string"
           },
           "expected_amount": {
@@ -1149,6 +1317,29 @@
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Shortfall",
             "type": "string"
+          },
+          "upi_expected": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upi Expected"
+          },
+          "variance_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance Reason"
           }
         },
         "required": [
@@ -1216,6 +1407,28 @@
           "reviewed_at"
         ],
         "title": "CashHandoverReviewResponse",
+        "type": "object"
+      },
+      "CashInHandResponse": {
+        "properties": {
+          "drivers": {
+            "items": {
+              "$ref": "#/components/schemas/DriverCashInHandResponse"
+            },
+            "title": "Drivers",
+            "type": "array"
+          },
+          "total_cash": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Cash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "total_cash",
+          "drivers"
+        ],
+        "title": "CashInHandResponse",
         "type": "object"
       },
       "CashSnapshotResponse": {
@@ -3137,6 +3350,20 @@
             ],
             "title": "Actual Amount"
           },
+          "denominations": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominations"
+          },
           "driver_id": {
             "format": "uuid",
             "title": "Driver Id",
@@ -3146,6 +3373,18 @@
             "format": "uuid",
             "title": "Route Id",
             "type": "string"
+          },
+          "variance_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance Reason"
           }
         },
         "required": [
@@ -3320,6 +3559,53 @@
           "blob_ref"
         ],
         "title": "DocumentAttachmentResponse",
+        "type": "object"
+      },
+      "DriverCashInHandResponse": {
+        "properties": {
+          "cash_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cash Amount",
+            "type": "string"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "driver_name": {
+            "title": "Driver Name",
+            "type": "string"
+          },
+          "oldest_route_date": {
+            "format": "date-time",
+            "title": "Oldest Route Date",
+            "type": "string"
+          },
+          "route_count": {
+            "title": "Route Count",
+            "type": "integer"
+          },
+          "stop_count": {
+            "title": "Stop Count",
+            "type": "integer"
+          },
+          "upi_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Upi Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "driver_id",
+          "driver_name",
+          "route_count",
+          "stop_count",
+          "cash_amount",
+          "upi_amount",
+          "oldest_route_date"
+        ],
+        "title": "DriverCashInHandResponse",
         "type": "object"
       },
       "DriverLocationPingRequest": {
@@ -6946,6 +7232,62 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "PaymentProfileResponse": {
+        "properties": {
+          "account_holder": {
+            "default": "",
+            "title": "Account Holder",
+            "type": "string"
+          },
+          "account_number": {
+            "default": "",
+            "title": "Account Number",
+            "type": "string"
+          },
+          "bank_name": {
+            "default": "",
+            "title": "Bank Name",
+            "type": "string"
+          },
+          "branch": {
+            "default": "",
+            "title": "Branch",
+            "type": "string"
+          },
+          "has_bank_details": {
+            "default": false,
+            "title": "Has Bank Details",
+            "type": "boolean"
+          },
+          "has_upi": {
+            "default": false,
+            "title": "Has Upi",
+            "type": "boolean"
+          },
+          "ifsc": {
+            "default": "",
+            "title": "Ifsc",
+            "type": "string"
+          },
+          "invoice_footer_note": {
+            "default": "",
+            "title": "Invoice Footer Note",
+            "type": "string"
+          },
+          "upi_id": {
+            "default": "",
+            "title": "Upi Id",
+            "type": "string"
+          },
+          "upi_payee_name": {
+            "default": "",
+            "title": "Upi Payee Name",
+            "type": "string"
+          }
+        },
+        "title": "PaymentProfileResponse",
+        "type": "object"
+      },
       "PaymentResponse": {
         "properties": {
           "amount": {
@@ -9758,6 +10100,12 @@
           "route_status": {
             "title": "Route Status",
             "type": "string"
+          },
+          "upi_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Upi Amount",
+            "type": "string"
           }
         },
         "required": [
@@ -10288,6 +10636,60 @@
           "plan_tier"
         ],
         "title": "SetLicensePlanTierRequest",
+        "type": "object"
+      },
+      "SetPaymentProfileRequest": {
+        "properties": {
+          "account_holder": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Account Holder",
+            "type": "string"
+          },
+          "account_number": {
+            "default": "",
+            "maxLength": 30,
+            "title": "Account Number",
+            "type": "string"
+          },
+          "bank_name": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Bank Name",
+            "type": "string"
+          },
+          "branch": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Branch",
+            "type": "string"
+          },
+          "ifsc": {
+            "default": "",
+            "maxLength": 11,
+            "title": "Ifsc",
+            "type": "string"
+          },
+          "invoice_footer_note": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Invoice Footer Note",
+            "type": "string"
+          },
+          "upi_id": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Upi Id",
+            "type": "string"
+          },
+          "upi_payee_name": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Upi Payee Name",
+            "type": "string"
+          }
+        },
+        "title": "SetPaymentProfileRequest",
         "type": "object"
       },
       "SetPriceRequest": {
@@ -11631,6 +12033,65 @@
           "status"
         ],
         "title": "UpdateVehicleStatusRequest",
+        "type": "object"
+      },
+      "UpiQrResponse": {
+        "description": "What a payer needs to pay by UPI: the deep link, and the same link as\na QR image the app can show as is.",
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "invoice_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Id"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Id"
+          },
+          "payee_name": {
+            "title": "Payee Name",
+            "type": "string"
+          },
+          "qr_png_base64": {
+            "title": "Qr Png Base64",
+            "type": "string"
+          },
+          "upi_id": {
+            "title": "Upi Id",
+            "type": "string"
+          },
+          "upi_uri": {
+            "title": "Upi Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upi_uri",
+          "upi_id",
+          "payee_name",
+          "amount",
+          "qr_png_base64"
+        ],
+        "title": "UpiQrResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -14425,6 +14886,129 @@
           }
         },
         "summary": "Declare Cash Handover",
+        "tags": [
+          "Cash Handovers"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/cash-book": {
+      "get": {
+        "operationId": "get_cash_book_api_v1_cash_handovers_cash_book_get",
+        "parameters": [
+          {
+            "description": "IST day; default today",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "IST day; default today",
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashBookResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Daily cash book: collected by mode, handed over, reviewed",
+        "tags": [
+          "Cash Handovers"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/cash-in-hand": {
+      "get": {
+        "operationId": "list_cash_in_hand_api_v1_cash_handovers_cash_in_hand_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "driver_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Driver Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashInHandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cash each driver is carrying (collected, not yet handed over)",
+        "tags": [
+          "Cash Handovers"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/cash-in-hand/mine": {
+      "get": {
+        "operationId": "get_my_cash_in_hand_api_v1_cash_handovers_cash_in_hand_mine_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashInHandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cash the signed-in driver is carrying",
         "tags": [
           "Cash Handovers"
         ]
@@ -19216,6 +19800,53 @@
         ]
       }
     },
+    "/api/v1/online-payments/{online_payment_id}/simulate-paid": {
+      "post": {
+        "description": "Staff only (customers cannot pay themselves). Never available with a\nreal gateway: the payment's own provider must be `mock`.",
+        "operationId": "simulate_online_payment_paid_api_v1_online_payments__online_payment_id__simulate_paid_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "online_payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Online Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlinePaymentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The payment was not made through the demo gateway."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demo gateway only: mark a payment link paid",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
     "/api/v1/orders": {
       "get": {
         "description": "Order Queue — newest first; filter by status, delivery date range,\ncustomer, or a free-text search (DO-12). Each order carries its\ncustomer's name, phone and consumer number.",
@@ -20624,6 +21255,67 @@
         ]
       }
     },
+    "/api/v1/payment-profile": {
+      "get": {
+        "operationId": "get_payment_profile_api_v1_payment_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Payment Profile",
+        "tags": [
+          "Payment Profile"
+        ]
+      },
+      "put": {
+        "description": "Replaces the whole profile. Each save is a new historised row.",
+        "operationId": "set_payment_profile_api_v1_payment_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPaymentProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Payment Profile",
+        "tags": [
+          "Payment Profile"
+        ]
+      }
+    },
     "/api/v1/payments/razorpay/webhook": {
       "post": {
         "description": "Answers 200 for every verified event, including ones it ignores, so\nRazorpay does not keep retrying them; only a bad signature is refused.",
@@ -20646,6 +21338,76 @@
         "summary": "Razorpay webhook receiver",
         "tags": [
           "Online Payments"
+        ]
+      }
+    },
+    "/api/v1/payments/upi-qr": {
+      "get": {
+        "operationId": "get_upi_qr_api_v1_payments_upi_qr_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "order_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Order Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "invoice_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Invoice Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpiQrResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "No UPI ID is set up, or nothing is due."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "UPI link and QR for what is still owed on an order or invoice",
+        "tags": [
+          "Payment Profile"
         ]
       }
     },

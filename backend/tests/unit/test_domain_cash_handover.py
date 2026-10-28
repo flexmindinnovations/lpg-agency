@@ -81,3 +81,61 @@ class TestShortfallCalculation:
         assert event.expected_amount == Decimal("500")
         assert event.actual_amount == Decimal("420")
         assert event.shortfall == Decimal("80")
+
+
+class TestCountedHandover:
+    @staticmethod
+    def _counted(
+        *,
+        expected: str,
+        actual: str,
+        denominations: dict[int, int] | None,
+        reason: str | None = None,
+    ) -> CashHandover:
+        return CashHandover.declare(
+            cash_handover_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            driver_id=uuid.uuid4(),
+            route_id=uuid.uuid4(),
+            expected_amount=Decimal(expected),
+            actual_amount=Decimal(actual),
+            declared_by=uuid.uuid4(),
+            handover_number="CSH000002",
+            denominations=denominations,
+            variance_reason=reason,
+        )
+
+    def test_notes_must_add_up(self) -> None:
+        with pytest.raises(InvariantViolation, match="add up to 1100"):
+            self._counted(expected="1200", actual="1200", denominations={500: 2, 100: 1})
+
+    def test_unknown_note_value_is_rejected(self) -> None:
+        with pytest.raises(InvariantViolation, match="not a note or coin"):
+            self._counted(expected="30", actual="30", denominations={30: 1})
+
+    def test_matching_count_needs_no_reason_and_drops_zero_counts(self) -> None:
+        handover = self._counted(
+            expected="1100", actual="1100", denominations={500: 2, 100: 1, 50: 0}
+        )
+        assert handover.denominations == {500: 2, 100: 1}
+        assert handover.variance_reason is None
+
+    def test_shortfall_needs_a_reason(self) -> None:
+        with pytest.raises(InvariantViolation, match="Say why"):
+            self._counted(expected="1200", actual="1100", denominations={500: 2, 100: 1})
+
+    def test_excess_needs_a_reason_and_is_reported(self) -> None:
+        handover = self._counted(
+            expected="1000",
+            actual="1100",
+            denominations={500: 2, 100: 1},
+            reason="  Customer paid extra  ",
+        )
+        assert handover.excess == Decimal("100")
+        assert handover.shortfall == Decimal("0")
+        assert handover.variance_reason == "Customer paid extra"
+
+    def test_amount_only_declaration_still_works(self) -> None:
+        handover = self._counted(expected="1200", actual="1100", denominations=None)
+        assert handover.denominations is None
+        assert handover.shortfall == Decimal("100")

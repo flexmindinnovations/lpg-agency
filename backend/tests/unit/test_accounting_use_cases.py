@@ -789,6 +789,7 @@ def mock_cash_handover_repo() -> MagicMock:
     repo.next_id = MagicMock(return_value=uuid.uuid4())
     repo.add = AsyncMock()
     repo.get_expected_cash_for_route = AsyncMock(return_value=Decimal("0"))
+    repo.get_expected_upi_for_route = AsyncMock(return_value=Decimal("0"))
     repo.count_cash_stops_for_route = AsyncMock(return_value=0)
     repo.get_by_route = AsyncMock(return_value=None)
     return repo

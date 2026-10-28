@@ -26,11 +26,13 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from lpg.application.accounting.ports import (
+        CashBook,
         CashHandoverNumberSequence,
         CashHandoverRegisterEntry,
         CashHandoverRepository,
         CreditNoteNumberSequence,
         CreditNoteRepository,
+        DriverCashInHand,
         InvoiceNumberSequence,
         InvoiceRepository,
         OnlinePaymentRepository,
@@ -499,6 +501,9 @@ class DeclareCashHandoverCommand(Command):
     route_id: uuid.UUID
     actual_amount: Decimal
     declared_by: uuid.UUID
+    #: Note value -> count (ADR-066). Optional; older apps send an amount only.
+    denominations: dict[int, int] | None = None
+    variance_reason: str | None = None
 
 
 class DeclareCashHandoverUseCase:
@@ -544,6 +549,10 @@ class DeclareCashHandoverUseCase:
             command.route_id
         )
 
+        expected_upi = await self._cash_handover_repository.get_expected_upi_for_route(
+            command.route_id
+        )
+
         handover_number = await self._handover_number_sequence.next()
         handover = CashHandover.declare(
             cash_handover_id=self._cash_handover_repository.next_id(),
@@ -554,6 +563,9 @@ class DeclareCashHandoverUseCase:
             actual_amount=command.actual_amount,
             declared_by=command.declared_by,
             handover_number=handover_number,
+            denominations=command.denominations,
+            variance_reason=command.variance_reason,
+            upi_expected=expected_upi,
         )
 
         await self._cash_handover_repository.add(handover)
@@ -582,6 +594,7 @@ class RouteCashHandoverView:
     expected_amount: Decimal
     cash_stop_count: int
     handover: CashHandover | None
+    upi_amount: Decimal = Decimal("0")
 
 
 class GetRouteCashHandoverViewUseCase:
@@ -616,6 +629,9 @@ class GetRouteCashHandoverViewUseCase:
                 query.route_id
             ),
             handover=await self._cash_handover_repository.get_by_route(query.route_id),
+            upi_amount=await self._cash_handover_repository.get_expected_upi_for_route(
+                query.route_id
+            ),
         )
 
 
@@ -854,3 +870,32 @@ class ReviewCashHandoverUseCase:
             shortfall=str(handover.shortfall),
         )
         return review
+
+
+@dataclass(frozen=True, slots=True)
+class ListCashInHandQuery(Query):
+    driver_id: uuid.UUID | None = None
+
+
+class ListCashInHandUseCase:
+    """What each driver is carrying: collected on routes not yet handed over."""
+
+    def __init__(self, repository: CashHandoverRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: ListCashInHandQuery) -> list[DriverCashInHand]:
+        return await self._repository.list_cash_in_hand(driver_id=query.driver_id)
+
+
+@dataclass(frozen=True, slots=True)
+class GetCashBookQuery(Query):
+    day_from: datetime.datetime
+    day_to: datetime.datetime
+
+
+class GetCashBookUseCase:
+    def __init__(self, repository: CashHandoverRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: GetCashBookQuery) -> CashBook:
+        return await self._repository.cash_book(day_from=query.day_from, day_to=query.day_to)

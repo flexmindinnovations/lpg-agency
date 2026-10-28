@@ -144,6 +144,44 @@ class CashHandoverRegisterEntry:
     reviewer_name: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class DriverCashInHand:
+    """Cash (and UPI) a driver collected on routes that have no handover
+    declared yet — what they are carrying.
+    """
+
+    driver_id: uuid.UUID
+    driver_name: str
+    route_count: int
+    stop_count: int
+    cash_amount: Decimal
+    upi_amount: Decimal
+    oldest_route_date: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CashBookCollection:
+    method: str
+    payment_count: int
+    amount: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class CashBook:
+    """One day's money in by mode, and what became of the cash (ADR-066)."""
+
+    collections: list[CashBookCollection]
+    handover_count: int
+    expected_total: Decimal
+    handed_over_total: Decimal
+    shortfall_total: Decimal
+    excess_total: Decimal
+    accepted_total: Decimal
+    disputed_total: Decimal
+    pending_total: Decimal
+    pending_count: int
+
+
 class CashHandoverRepository(Protocol):
     """Repository for the `CashHandover` aggregate."""
 
@@ -186,6 +224,21 @@ class CashHandoverRepository(Protocol):
     async def add_review(self, review: CashHandoverReview) -> None: ...
 
     async def get_review(self, cash_handover_id: uuid.UUID) -> CashHandoverReview | None: ...
+
+    async def get_expected_upi_for_route(self, route_id: uuid.UUID) -> Decimal:
+        """UPI collected at the doorstep on this route (informational)."""
+
+    async def list_cash_in_hand(
+        self, *, driver_id: uuid.UUID | None = None
+    ) -> list[DriverCashInHand]:
+        """Per driver, cash collected on routes with no handover yet. Drivers
+        with nothing in hand are left out. Largest first.
+        """
+
+    async def cash_book(self, *, day_from: datetime, day_to: datetime) -> CashBook:
+        """Collections and handovers between `day_from` (inclusive) and
+        `day_to` (exclusive).
+        """
 
     async def cash_awaiting_handover(self) -> Decimal:
         """Cash drivers collected on routes with no handover declared yet."""

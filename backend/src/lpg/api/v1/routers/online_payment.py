@@ -20,6 +20,7 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
 from lpg.api.v1.dependencies.admin import (
@@ -50,6 +51,7 @@ from lpg.application.accounting.online_payments import (
     OrderPaymentScope,
     RefreshOnlinePaymentCommand,
     RefreshOnlinePaymentUseCase,
+    SimulateOnlinePaymentPaidUseCase,
 )
 from lpg.application.accounting.payment_gateway import (
     InvalidWebhookSignatureError,
@@ -241,6 +243,63 @@ async def refresh_online_payment(
         )
     )
     return _to_response(payment)
+
+
+@router.post(
+    "/online-payments/{online_payment_id}/simulate-paid",
+    response_model=OnlinePaymentResponse,
+    dependencies=[Depends(require_permission("payments:create"))],
+    summary="Demo gateway only: mark a payment link paid",
+    responses={409: {"description": "The payment was not made through the demo gateway."}},
+)
+async def simulate_online_payment_paid(
+    online_payment_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    invoice_repository: Annotated[InvoiceRepository, Depends(get_invoice_repository)],
+    online_payment_repository: Annotated[
+        OnlinePaymentRepository, Depends(get_online_payment_repository)
+    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OnlinePaymentResponse:
+    """Staff only (customers cannot pay themselves). Never available with a
+    real gateway: the payment's own provider must be `mock`.
+    """
+    if principal.role == "customer":
+        raise HTTPException(status_code=403, detail="Staff only.")
+    scope = await _resolve_scope(principal, customer_repository)
+    payment = await SimulateOnlinePaymentPaidUseCase(
+        order_repository=order_repository,
+        invoice_repository=invoice_repository,
+        online_payment_repository=online_payment_repository,
+        unit_of_work=unit_of_work,
+    ).execute(
+        RefreshOnlinePaymentCommand(
+            tenant_id=principal.tenant_id, online_payment_id=online_payment_id, scope=scope
+        )
+    )
+    return _to_response(payment)
+
+
+@router.get(
+    "/payments/mock/{link_id}",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+async def mock_checkout_page(link_id: str) -> HTMLResponse:  # noqa: ARG001
+    """What the demo gateway's payment link opens. No money moves."""
+    if get_settings().payments_provider != "mock":
+        raise HTTPException(status_code=404)
+    return HTMLResponse(
+        "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+        "<title>Demo payment</title>"
+        "<body style='font-family:sans-serif;max-width:28rem;margin:3rem auto;padding:0 1rem'>"
+        "<h2>Demo payment gateway</h2>"
+        "<p>This is a test link. No money is taken.</p>"
+        "<p>Ask the agency to confirm the payment (staff use <b>Simulate payment</b>), "
+        "then come back to the app and pull to refresh.</p></body>"
+    )
 
 
 @router.post(

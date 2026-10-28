@@ -42,10 +42,17 @@ def render_invoice_pdf(payload: InvoicePrintPayload) -> bytes:
         qr_bytes = generate_qr_png(payload.qr_code_data, size=150)
         qr_b64 = base64.b64encode(qr_bytes).decode("ascii")
 
+    upi_qr_b64 = ""
+    if payload.payment_info.upi_uri:
+        upi_qr_b64 = base64.b64encode(
+            generate_qr_png(payload.payment_info.upi_uri, size=240)
+        ).decode("ascii")
+
     template = _env.get_template("invoice.html")
     html = template.render(
         payload=payload,
         qr_code_b64=qr_b64,
+        upi_qr_b64=upi_qr_b64,
         currency_symbol=_CURRENCY_SYMBOL,
     )
 

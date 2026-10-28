@@ -5,10 +5,16 @@ export interface CashHandoverResponse {
   actual_amount: string;
   declared_at: string;
   declared_by: string;
+  denominations?: ({
+[key: string]: number;
+} | null);
   driver_id: string;
+  excess?: string;
   expected_amount: string;
   handover_number?: (string | null);
   id: string;
   route_id: string;
   shortfall: string;
+  upi_expected?: (string | null);
+  variance_reason?: (string | null);
 }

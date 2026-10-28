@@ -14,6 +14,11 @@
             color: #1a1a2e;
             line-height: 1.5;
         }
+        div {
+            margin: 0;
+            padding: 0;
+            -pdf-keep-with-next: false;
+        }
         .header {
             display: flex;
             margin-bottom: 20px;
@@ -129,9 +134,15 @@
         }
         .footer {
             clear: both;
-            margin-top: 30px;
-            padding-top: 12px;
+            margin-top: 16px;
+            padding-top: 10px;
             border-top: 1px solid #e0e0e0;
+        }
+        .pay-key {
+            width: 28%; font-size: 10px; color: #6b7280; padding: 1px 0;
+        }
+        .pay-val {
+            font-size: 11px; font-weight: bold; color: #1a1a2e; padding: 1px 0;
         }
         .qr-section {
             text-align: center;
@@ -183,31 +194,26 @@
 <body>
     <table class="header" cellpadding="0" cellspacing="0" style="width:100%; border:none;">
         <tr>
-            <td style="width:60%; vertical-align:top; border:none; padding:0;">
-                <div class="company-name">{{ payload.tenant_header.agency_name }}</div>
+            <td style="width:62%; vertical-align:top; border:none; padding:14px 16px; background-color:#162b66;">
+                <div class="company-name" style="color:#ffffff;">{{ payload.tenant_header.agency_name }}</div>
                 {% if payload.tenant_header.address_line_1 %}
-                <div class="company-detail">{{ payload.tenant_header.address_line_1 }}</div>
-                {% endif %}
-                {% if payload.tenant_header.address_line_2 %}
-                <div class="company-detail">{{ payload.tenant_header.address_line_2 }}</div>
+                <div class="company-detail" style="color:#d6def5;">{{ payload.tenant_header.address_line_1 }}{% if payload.tenant_header.address_line_2 %}, {{ payload.tenant_header.address_line_2 }}{% endif %}</div>
                 {% endif %}
                 {% if payload.tenant_header.city or payload.tenant_header.state %}
-                <div class="company-detail">{{ payload.tenant_header.city }}{% if payload.tenant_header.state %}, {{ payload.tenant_header.state }}{% endif %} {{ payload.tenant_header.pincode }}</div>
+                <div class="company-detail" style="color:#d6def5;">{{ payload.tenant_header.city }}{% if payload.tenant_header.state %}, {{ payload.tenant_header.state }}{% endif %} {{ payload.tenant_header.pincode }}</div>
                 {% endif %}
-                <div class="company-detail"><strong>GSTIN:</strong> {{ payload.tenant_header.gstin or "Not registered" }}</div>
-                {% if payload.tenant_header.state_code %}
-                <div class="company-detail"><strong>State:</strong> {{ payload.tenant_header.state }} (Code {{ payload.tenant_header.state_code }})</div>
-                {% endif %}
+                <div class="company-detail" style="color:#d6def5;"><strong>GSTIN:</strong> {{ payload.tenant_header.gstin or "Not registered" }}{% if payload.tenant_header.state_code %} &nbsp; <strong>State code:</strong> {{ payload.tenant_header.state_code }}{% endif %}</div>
                 {% if payload.tenant_header.phone %}
-                <div class="company-detail"><strong>Phone:</strong> {{ payload.tenant_header.phone }}</div>
+                <div class="company-detail" style="color:#d6def5;"><strong>Phone:</strong> {{ payload.tenant_header.phone }}</div>
                 {% endif %}
             </td>
-            <td style="width:40%; text-align:right; vertical-align:top; border:none; padding:0;">
-                <div class="invoice-title">{% if payload.tenant_header.gstin %}TAX INVOICE{% else %}INVOICE{% endif %}</div>
-                <div class="company-detail">Original for recipient</div>
+            <td style="width:38%; text-align:right; vertical-align:middle; border:none; padding:14px 16px; background-color:#0f1f4d;">
+                <div class="invoice-title" style="color:#ffffff;">{% if payload.tenant_header.gstin %}TAX INVOICE{% else %}INVOICE{% endif %}</div>
+                <div class="company-detail" style="color:#d6def5;">Original for recipient</div>
             </td>
         </tr>
     </table>
+    <div style="height:18px;"></div>
 
     <table class="meta-row" cellpadding="0" cellspacing="0" style="width:100%; border:none;">
         <tr>
@@ -355,16 +361,46 @@
     </div>
     {% endif %}
 
-    {% if qr_code_b64 %}
-    <div class="qr-section">
-        <img src="data:image/png;base64,{{ qr_code_b64 }}" />
-        <div class="company-detail">Scan to verify invoice</div>
-    </div>
-    {% endif %}
+    {% set info = payload.payment_info %}
+    <table class="pay-block" cellpadding="0" cellspacing="0" style="width:100%; margin-top:14px; border:1px solid #d9deea;">
+        <tr>
+            <td style="width:62%; vertical-align:top; padding:10px 14px; background-color:#f6f8fc;">
+                <div class="section-label">How to pay</div>
+                {% if info.has_bank_details %}
+                <table cellpadding="0" cellspacing="0" style="width:100%; margin:0; border:none;">
+                    {% if info.account_holder %}<tr><td class="pay-key">Account name</td><td class="pay-val">{{ info.account_holder }}</td></tr>{% endif %}
+                    {% if info.bank_name %}<tr><td class="pay-key">Bank</td><td class="pay-val">{{ info.bank_name }}{% if info.branch %}, {{ info.branch }}{% endif %}</td></tr>{% endif %}
+                    <tr><td class="pay-key">Account no.</td><td class="pay-val">{{ info.account_number }}</td></tr>
+                    <tr><td class="pay-key">IFSC</td><td class="pay-val">{{ info.ifsc }}</td></tr>
+                    {% if info.upi_id %}<tr><td class="pay-key">UPI ID</td><td class="pay-val">{{ info.upi_id }}</td></tr>{% endif %}
+                </table>
+                {% elif info.upi_id %}
+                <div class="pay-val">UPI ID: {{ info.upi_id }}</div>
+                {% else %}
+                <div class="company-detail">Pay the agency in cash or as agreed.</div>
+                {% endif %}
+                {% if info.upi_uri %}
+                <div class="company-detail" style="margin-top:6px;">Scan the code to pay {{ currency_symbol }}{{ "{:,.2f}".format(payload.balance_due) }} with any UPI app.</div>
+                {% endif %}
+            </td>
+            <td style="width:38%; vertical-align:middle; text-align:center; padding:10px;">
+                {% if upi_qr_b64 %}
+                <img src="data:image/png;base64,{{ upi_qr_b64 }}" style="width:110px; height:110px;" />
+                <div class="company-detail"><strong>Scan to pay (UPI)</strong></div>
+                {% elif qr_code_b64 %}
+                <img src="data:image/png;base64,{{ qr_code_b64 }}" style="width:96px; height:96px;" />
+                <div class="company-detail">Scan to verify invoice</div>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
 
     <div class="footer">
-        <div class="company-detail">This is a computer-generated invoice. No signature required.</div>
-        <div class="company-detail">Tax is not payable on reverse charge basis.</div>
+        {% if info.footer_note %}
+        <div class="company-detail"><strong>{{ info.footer_note }}</strong><br/>
+        {% endif %}
+        {% if not info.footer_note %}<div class="company-detail">{% endif %}
+        This is a computer-generated invoice. No signature required. Tax is not payable on reverse charge basis.</div>
     </div>
 </body>
 </html>

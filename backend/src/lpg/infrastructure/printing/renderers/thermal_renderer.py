@@ -89,7 +89,22 @@ def render_invoice_thermal(payload: InvoicePrintPayload, *, width: int = _LINE_W
         lines.append(f"{'Balance due:':<{label_w}}{payload.balance_due:>{amt_w}.2f}")
     if payload.total_in_words:
         lines.extend(_wrap(payload.total_in_words, width))
+    info = payload.payment_info
+    if info.upi_id or info.has_bank_details:
+        lines.append(sep)
+        lines.append("PAY".center(width))
+        if info.upi_id:
+            lines.extend(_wrap(f"UPI: {info.upi_id}", width))
+        if info.has_bank_details:
+            if info.account_holder:
+                lines.extend(_wrap(f"A/c name: {info.account_holder}", width))
+            lines.append(f"A/c no: {info.account_number}"[:width])
+            lines.append(f"IFSC: {info.ifsc}"[:width])
+            if info.bank_name:
+                lines.extend(_wrap(f"Bank: {info.bank_name}", width))
     lines.append(sep)
+    if info.footer_note:
+        lines.extend(line.center(width) for line in _wrap(info.footer_note, width))
     lines.append("Thank you for your business!".center(width))
     lines.append("")
 

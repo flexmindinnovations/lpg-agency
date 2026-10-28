@@ -32,7 +32,11 @@ def get_payment_gateway(settings: Settings) -> PaymentGateway:
             callback_url=settings.payment_link_callback_url,
             timeout_seconds=settings.razorpay_timeout_seconds,
         )
-    msg = (
-        f"Unknown payments_provider '{settings.payments_provider}'. Only 'razorpay' is implemented."
-    )
+    if settings.payments_provider == "mock":
+        from lpg.infrastructure.payments.mock import MockPaymentGateway
+
+        return MockPaymentGateway(
+            public_base_url=settings.payment_link_callback_url or settings.dashboard_url
+        )
+    msg = f"Unknown payments_provider '{settings.payments_provider}'. Use 'razorpay' or 'mock'."
     raise ValueError(msg)

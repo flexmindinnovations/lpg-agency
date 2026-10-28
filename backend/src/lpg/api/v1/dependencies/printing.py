@@ -5,13 +5,21 @@ from typing import Annotated
 from fastapi import Depends
 
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
-from lpg.api.v1.dependencies.admin import get_cylinder_type_repository, get_tenant_repository
+from lpg.api.v1.dependencies.admin import (
+    get_cylinder_type_repository,
+    get_tenant_configuration_repository,
+    get_tenant_repository,
+)
 from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.printing.ports import PrintingEngine
 from lpg.application.printing.use_cases import GeneratePrintJobUseCase
-from lpg.application.tenant.ports import CylinderTypeRepository, TenantRepository
+from lpg.application.tenant.ports import (
+    CylinderTypeRepository,
+    TenantConfigurationRepository,
+    TenantRepository,
+)
 from lpg.infrastructure.printing.engine import Xhtml2pdfPrintingEngine
 
 
@@ -24,6 +32,9 @@ async def get_printing_use_case(
     customer_repo: Annotated[CustomerRepository, Depends(get_customer_repository)],
     cylinder_type_repo: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
     tenant_repo: Annotated[TenantRepository, Depends(get_tenant_repository)],
+    tenant_config_repo: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
 ) -> GeneratePrintJobUseCase:
     from lpg.api.app import get_app_state
 
@@ -38,4 +49,5 @@ async def get_printing_use_case(
         cylinder_type_repository=cylinder_type_repo,
         tenant_repository=tenant_repo,
         storage=state.storage,
+        tenant_config_repository=tenant_config_repo,
     )
