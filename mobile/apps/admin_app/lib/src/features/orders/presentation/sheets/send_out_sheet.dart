@@ -3,6 +3,7 @@ import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../api_result.dart';
 import '../../../../providers.dart';
@@ -142,6 +143,47 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
           'This agency weighs every cylinder before loading. Log the '
           'checks below, then send the trip out again.';
     });
+  }
+
+  /// Why the driver or van list is empty, so the fix is obvious: nobody is
+  /// registered, they are in another branch, or they are all out on trips.
+  String _fleetGap(
+    FleetData fleet, {
+    required bool drivers,
+    required bool vans,
+    required Set<String> busyDrivers,
+    required Set<String> busyVehicles,
+  }) {
+    final parts = <String>[];
+    if (drivers) {
+      final inBranch = fleet.drivers
+          .where((d) => d.branchId == _order.branchId)
+          .toList();
+      parts.add(
+        fleet.drivers.isEmpty
+            ? 'No drivers have been added yet.'
+            : inBranch.isEmpty
+            ? 'No driver is registered in this order\'s branch.'
+            : inBranch.any((d) => d.isActive && busyDrivers.contains(d.id))
+            ? 'Every active driver here is already on a trip.'
+            : 'No driver in this branch is active (on leave or inactive).',
+      );
+    }
+    if (vans) {
+      final inBranch = fleet.vehicles
+          .where((v) => v.branchId == _order.branchId)
+          .toList();
+      parts.add(
+        fleet.vehicles.isEmpty
+            ? 'No vans have been added yet.'
+            : inBranch.isEmpty
+            ? 'No van is registered in this order\'s branch.'
+            : inBranch.any((v) => v.isActive && busyVehicles.contains(v.id))
+            ? 'Every active van here is already on a trip.'
+            : 'No van in this branch is active (in maintenance or inactive).',
+      );
+    }
+    return parts.join(' ');
   }
 
   void _fail(Failure failure) {
@@ -300,6 +342,28 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
                     ? null
                     : (id) => setState(() => _vehicleId = id),
               ),
+              if (drivers.isEmpty || vehicles.isEmpty) ...[
+                const SizedBox(height: LpgSpacing.md),
+                LpgBanner(
+                  tone: LpgTone.warning,
+                  message: _fleetGap(
+                    fleet,
+                    drivers: drivers.isEmpty,
+                    vans: vehicles.isEmpty,
+                    busyDrivers: busyDrivers,
+                    busyVehicles: busyVehicles,
+                  ),
+                  actionLabel: drivers.isEmpty
+                      ? 'Manage drivers'
+                      : 'Manage vans',
+                  onAction: () {
+                    final tab = drivers.isEmpty ? 'drivers' : 'vans';
+                    final router = GoRouter.of(context);
+                    Navigator.of(context).pop();
+                    router.pushNamed('fleet', queryParameters: {'tab': tab});
+                  },
+                ),
+              ],
             ],
           ],
           const SizedBox(height: LpgSpacing.md),

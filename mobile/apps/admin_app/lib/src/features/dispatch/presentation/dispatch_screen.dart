@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:core/core.dart';
+
 import '../../../api_result.dart';
+import '../../../providers.dart';
 import '../../orders/data/orders_provider.dart';
 import '../../orders/presentation/sheets/send_out_sheet.dart';
 import '../data/dispatch_provider.dart';
@@ -13,8 +16,16 @@ import '../domain/trip_status.dart';
 /// The trip sheet: confirmed orders waiting for a van, and the trips that
 /// are loading or out. "Send out" opens the same sheet as the order page
 /// (pick a driver and van, load, hand over in one step).
-class DispatchScreen extends ConsumerWidget {
+class DispatchScreen extends ConsumerStatefulWidget {
   const DispatchScreen({super.key});
+
+  @override
+  ConsumerState<DispatchScreen> createState() => _DispatchScreenState();
+}
+
+class _DispatchScreenState extends ConsumerState<DispatchScreen> {
+  /// Show finished and cancelled trips instead of the ones still going.
+  var _past = false;
 
   Future<void> _sendOut(
     BuildContext context,
@@ -37,16 +48,46 @@ class DispatchScreen extends ConsumerWidget {
 
   void _refresh(WidgetRef ref) {
     ref.invalidate(dispatchTripsProvider);
+    ref.invalidate(pastTripsProvider);
     ref.invalidate(ordersWaitingForTripProvider);
     ref.invalidate(adminOrdersProvider);
     ref.invalidate(activeTripsProvider);
   }
 
+  Future<void> _cancelTrip(RouteSummary trip) async {
+    final ok = await LpgFeedback.confirm(
+      context,
+      title: 'Cancel this trip?',
+      message:
+          'The orders on it go back to waiting for a trip, and anything '
+          'already loaded on the van is returned to stock.',
+      confirmLabel: 'Cancel trip',
+      cancelLabel: 'Keep trip',
+      destructive: true,
+    );
+    if (!ok || !mounted) return;
+    final result = await ref.read(routeApiProvider).cancelRoute(trip.id);
+    if (!mounted) return;
+    switch (result) {
+      case FailureResult<RouteSummary>(:final failure):
+        LpgFeedback.showToast(context, failure.message, tone: LpgTone.danger);
+      case Success<RouteSummary>():
+        _refresh(ref);
+        LpgFeedback.showToast(
+          context,
+          'Trip cancelled.',
+          tone: LpgTone.success,
+        );
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colors = context.lpgColors;
     final text = context.lpgText;
-    final tripsAsync = ref.watch(dispatchTripsProvider);
+    final tripsAsync = ref.watch(
+      _past ? pastTripsProvider : dispatchTripsProvider,
+    );
     final waitingAsync = ref.watch(ordersWaitingForTripProvider);
     final fleet = ref.watch(fleetProvider).value;
     final names = ref.watch(cylinderNamesProvider).value ?? const {};
@@ -55,6 +96,11 @@ class DispatchScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dispatch'),
         actions: [
+          IconButton(
+            tooltip: 'Drivers and vans',
+            icon: const Icon(LpgIcons.user),
+            onPressed: () => context.pushNamed('fleet'),
+          ),
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(LpgIcons.sync),
@@ -65,12 +111,27 @@ class DispatchScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           _refresh(ref);
-          await ref.read(dispatchTripsProvider.future);
+          await ref.read(
+            _past ? pastTripsProvider.future : dispatchTripsProvider.future,
+          );
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: LpgSpacing.page,
           children: [
+            if (fleet != null &&
+                (!fleet.drivers.any((d) => d.isActive) ||
+                    !fleet.vehicles.any((v) => v.isActive))) ...[
+              LpgBanner(
+                tone: LpgTone.warning,
+                message: !fleet.drivers.any((d) => d.isActive)
+                    ? 'No active driver. Add or activate one to send orders out.'
+                    : 'No active van. Add or activate one to send orders out.',
+                actionLabel: 'Drivers and vans',
+                onAction: () => context.pushNamed('fleet'),
+              ),
+              const SizedBox(height: LpgSpacing.md),
+            ],
             Text('Waiting for a trip', style: text.titleMedium),
             const SizedBox(height: LpgSpacing.sm),
             waitingAsync.when(
@@ -146,16 +207,26 @@ class DispatchScreen extends ConsumerWidget {
             const SizedBox(height: LpgSpacing.lg),
             Text('Trips', style: text.titleMedium),
             const SizedBox(height: LpgSpacing.sm),
+            LpgChoiceChips<bool>(
+              options: const {false: 'On now', true: 'Past'},
+              selected: _past,
+              onSelected: (v) => setState(() => _past = v ?? false),
+            ),
+            const SizedBox(height: LpgSpacing.sm),
             tripsAsync.when(
               loading: () => const LpgSkeletonList(itemCount: 3),
               error: (err, _) => LpgErrorState(
                 message: errorMessage(err),
-                onRetry: () => ref.invalidate(dispatchTripsProvider),
+                onRetry: () => ref.invalidate(
+                  _past ? pastTripsProvider : dispatchTripsProvider,
+                ),
               ),
               data: (trips) {
                 if (trips.isEmpty) {
-                  return const LpgEmptyState(
-                    message: 'No trips are loading or on the road.',
+                  return LpgEmptyState(
+                    message: _past
+                        ? 'No finished or cancelled trips yet.'
+                        : 'No trips are loading or on the road.',
                     icon: LpgIcons.truck,
                   );
                 }
@@ -221,6 +292,16 @@ class DispatchScreen extends ConsumerWidget {
                                       ),
                                     ],
                                   ),
+                                ),
+                              ),
+                            if (trip.status == 'planned' ||
+                                trip.status == 'loaded')
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: LpgButton(
+                                  label: 'Cancel trip',
+                                  variant: LpgButtonVariant.text,
+                                  onPressed: () => _cancelTrip(trip),
                                 ),
                               ),
                           ],

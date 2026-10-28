@@ -136,6 +136,25 @@ final class RouteApi {
     }
   }
 
+  /// Cancels a trip that hasn't left yet (`PATCH /routes/{id}/status`,
+  /// planned or loaded only).
+  Future<Result<RouteSummary>> cancelRoute(String routeId) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/api/v1/routes/$routeId/status',
+        data: {'status': 'cancelled'},
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(RouteSummary.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// The trip sheet's one action (`POST /routes/{id}/load-and-dispatch`):
   /// adds [orderIds], moves what they need from [warehouseId] onto the van
   /// and releases the trip to the driver. `409 INSUFFICIENT_STOCK` when the
