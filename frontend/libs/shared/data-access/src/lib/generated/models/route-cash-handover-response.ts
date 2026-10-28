@@ -16,4 +16,5 @@ export interface RouteCashHandoverResponse {
   route_date: string;
   route_id: string;
   route_status: string;
+  upi_amount?: string;
 }

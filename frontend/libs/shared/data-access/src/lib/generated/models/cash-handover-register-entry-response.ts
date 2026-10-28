@@ -10,6 +10,9 @@ export interface CashHandoverRegisterEntryResponse {
   actual_amount: string;
   cash_stop_count: number;
   declared_at: string;
+  denominations?: ({
+[key: string]: number;
+} | null);
   driver_id: string;
   driver_name: string;
   excess: string;
@@ -21,5 +24,7 @@ export interface CashHandoverRegisterEntryResponse {
   route_date: string;
   route_id: string;
   shortfall: string;
+  upi_expected?: (string | null);
+  variance_reason?: (string | null);
   vehicle_registration: (string | null);
 }

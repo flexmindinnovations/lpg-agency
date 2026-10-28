@@ -3,6 +3,10 @@
 
 export interface DeclareCashHandoverRequest {
   actual_amount: (number | string);
+  denominations?: ({
+[key: string]: number;
+} | null);
   driver_id: string;
   route_id: string;
+  variance_reason?: (string | null);
 }
