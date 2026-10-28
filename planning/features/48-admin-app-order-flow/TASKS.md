@@ -11,5 +11,6 @@
 - [x] New order form matches the dashboard: customer search, address, booking source, delivery day, several lines from `orderable-cylinder-types` with stock, server-matching validation, retry-safe idempotency key
 - [x] Orders list: server search, single-status filters answered by the server, "Load more" paging
 - [x] Record delivery: optional OMC code, refuses a hand-over of zero cylinders
+- [x] Dispatch tab (waiting orders with Send out, active trips with stops)
 - [ ] Optional delivery photo/signature from the app
 - [ ] Untested on a real device: push (foreground/background/tap), weighment flow against a gated agency
