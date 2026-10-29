@@ -33,3 +33,15 @@
 | **SLA** | Service Level Agreement — (inferred) target response/delivery times the agency commits to customers. |
 | **NFR** | Non-Functional Requirement. |
 | **POS** | Point of Sale — (inferred) potential need for in-agency counter sales, not explicit in blueprint. |
+
+## Indian market wording (user-visible text)
+
+Screens, titles, messages and sample data use the words an Indian LPG agency uses day to day, not international equivalents. Code identifiers, routes and API fields keep their English names (`warehouse_id`, `/admin/warehouses`) so nothing breaks.
+
+| Use | Not | Status |
+|---|---|---|
+| **Godown** | Warehouse | Applied in the dashboard (2026-10-29). Mobile apps, backend messages and printed documents still to do. |
+| ₹, `dd/mm/yyyy`, lakh/crore grouping (`1,23,456`) | `$`, `mm/dd/yyyy`, `123,456` | Dates and ₹ already follow this; number grouping is being checked. |
+| Pune, Mumbai, Nashik and other Indian places | Springfield, New York | For placeholders, demo data and screenshots. |
+
+Proposed, awaiting product owner sign-off (each changes a lot of screens): Customer → **Consumer**, Inventory → **Stock**, Invoice → **Cash Memo** (for delivery bills), Driver → **Delivery Staff**.

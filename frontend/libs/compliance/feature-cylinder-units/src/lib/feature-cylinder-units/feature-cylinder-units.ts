@@ -246,8 +246,8 @@ export class FeatureCylinderUnits implements OnInit {
     if (custodyType === 'warehouse') {
       const name = this.warehouseNameById().get(refId);
       return name
-        ? `Warehouse — ${name}`
-        : `Warehouse (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
+        ? `Godown — ${name}`
+        : `Godown (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
     }
     if (custodyType === 'vehicle') {
       const name = this.vehicleNameById().get(refId);
@@ -418,7 +418,7 @@ export class FeatureCylinderUnits implements OnInit {
           this.registerForm.controls.custody_ref_id.setValue(warehouses[0].id);
         }
       },
-      error: () => this.errorMessage.set('Failed to load warehouses.'),
+      error: () => this.errorMessage.set('Failed to load godowns.'),
     });
   }
 

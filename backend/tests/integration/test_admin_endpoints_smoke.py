@@ -252,6 +252,7 @@ class TestQaFixesThroughTheRealStack:
         progress = await real_lifespan_client.get("/api/v1/admin/setup-progress", headers=headers)
         assert progress.status_code == 200, progress.text
         assert progress.json()["steps"]["branch"] is False
+        assert progress.json()["steps"]["payments"] is False
         assert progress.json()["complete"] is False
 
         created = await real_lifespan_client.post(

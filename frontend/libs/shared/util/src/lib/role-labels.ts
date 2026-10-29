@@ -8,7 +8,7 @@ export const ROLE_LABELS: Readonly<Record<string, string>> = {
   super_admin: 'Super Admin',
   agency_admin: 'Agency Admin',
   manager: 'Manager',
-  warehouse_staff: 'Warehouse Staff',
+  warehouse_staff: 'Godown Staff',
   dispatcher: 'Dispatcher',
   accountant: 'Accountant',
   driver: 'Driver',

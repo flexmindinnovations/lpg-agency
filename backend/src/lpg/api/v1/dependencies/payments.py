@@ -11,6 +11,7 @@ from __future__ import annotations
 import typing
 from collections.abc import AsyncGenerator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
@@ -18,6 +19,7 @@ from fastapi import Depends
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.accounting.online_payments import HandlePaymentWebhookUseCase
 from lpg.application.accounting.payment_gateway import PaymentGateway
+from lpg.application.accounting.payment_verification import IfscDirectory
 from lpg.application.accounting.ports import OnlinePaymentRepository
 from lpg.application.common.ports import UnitOfWork
 
@@ -30,6 +32,14 @@ def get_payment_gateway() -> PaymentGateway:
     from lpg.infrastructure.payments.factory import get_payment_gateway as build_gateway
 
     return build_gateway(get_settings())
+
+
+@lru_cache(maxsize=1)
+def get_ifsc_directory() -> IfscDirectory:
+    """One directory per process, so its answer cache is shared by requests."""
+    from lpg.infrastructure.payments.ifsc_directory import RazorpayIfscDirectory
+
+    return RazorpayIfscDirectory()
 
 
 def get_online_payment_repository(

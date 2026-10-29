@@ -33,10 +33,13 @@ describe('SetupChecklist', () => {
   it('lists the steps with links and ticks the finished ones', () => {
     const { html } = render(['tenant:configure']);
 
-    expect(html.textContent).toContain('2 of 8 done');
+    expect(html.textContent).toContain('2 of 9 done');
     expect(html.querySelectorAll('.setup__item--done')).toHaveLength(2);
     const link = html.querySelector('a[href="/admin/cylinder-types"]');
     expect(link?.textContent).toContain('Add cylinder types');
+    expect(html.querySelector('a[href="/settings/payments"]')?.textContent).toContain(
+      'Set up payments',
+    );
   });
 
   it('does not call the API for a role that cannot configure the agency', () => {

@@ -39,7 +39,7 @@
   <section class="calendar-section" aria-labelledby="warehouse-licences-title">
     <div class="calendar-section__header">
       <h2 id="warehouse-licences-title" class="calendar-section__title">
-        Warehouse licences (PESO Form F)
+        Godown licences (PESO Form F)
       </h2>
       @if (warehouses().length > 0) {
       <p-select
@@ -48,7 +48,7 @@
         optionValue="id"
         [ngModel]="selectedWarehouseId()"
         (ngModelChange)="onWarehouseChange($event)"
-        ariaLabel="Warehouse"
+        ariaLabel="Godown"
         styleClass="warehouse-select"
       ></p-select>
       }

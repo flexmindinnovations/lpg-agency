@@ -202,7 +202,7 @@ function tile(title: string, value: number, icon: string, tone: StatTone, route:
             @for (card of inventoryCards(); track card.status) {
               <div class="mini-card">
                 <span class="mini-card__label">{{ card.label }}</span>
-                <span class="mini-card__value">{{ card.quantity.toLocaleString() }}</span>
+                <span class="mini-card__value">{{ card.quantity.toLocaleString('en-IN') }}</span>
               </div>
             }
           </div>
@@ -612,7 +612,7 @@ export class Home implements OnDestroy {
     this.kpis.set([
       {
         title: 'Total Customers',
-        value: (summary?.customer_count ?? 0).toLocaleString(),
+        value: (summary?.customer_count ?? 0).toLocaleString('en-IN'),
         icon: 'pi pi-users',
         tone: 'info',
         permission: 'customers:read',
@@ -620,7 +620,7 @@ export class Home implements OnDestroy {
       },
       {
         title: 'Drivers',
-        value: (summary?.driver_count ?? 0).toLocaleString(),
+        value: (summary?.driver_count ?? 0).toLocaleString('en-IN'),
         icon: 'pi pi-id-card',
         tone: 'info',
         permission: 'drivers:read',
@@ -628,15 +628,15 @@ export class Home implements OnDestroy {
       },
       {
         title: 'Fleet Vehicles',
-        value: (summary?.vehicle_count ?? 0).toLocaleString(),
+        value: (summary?.vehicle_count ?? 0).toLocaleString('en-IN'),
         icon: 'pi pi-truck',
         tone: 'warning',
         permission: 'vehicles:read',
         route: '/vehicles',
       },
       {
-        title: 'Warehouses',
-        value: (summary?.warehouse_count ?? 0).toLocaleString(),
+        title: 'Godowns',
+        value: (summary?.warehouse_count ?? 0).toLocaleString('en-IN'),
         icon: 'pi pi-warehouse',
         tone: 'primary',
         permission: 'tenant:configure',
@@ -644,7 +644,7 @@ export class Home implements OnDestroy {
       },
       {
         title: 'Filled Cylinders',
-        value: filled.toLocaleString(),
+        value: filled.toLocaleString('en-IN'),
         icon: 'pi pi-box',
         tone: 'success',
         permission: 'inventory:read',
@@ -652,7 +652,7 @@ export class Home implements OnDestroy {
       },
       {
         title: 'Cylinders Needing Attention',
-        value: needingAttention.toLocaleString(),
+        value: needingAttention.toLocaleString('en-IN'),
         icon: 'pi pi-exclamation-triangle',
         tone: 'danger',
         permission: 'inventory:read',
@@ -660,7 +660,7 @@ export class Home implements OnDestroy {
       },
       {
         title: 'Refills Due This Week',
-        value: this.refillsDueSoon().length.toLocaleString(),
+        value: this.refillsDueSoon().length.toLocaleString('en-IN'),
         icon: 'pi pi-bell',
         tone: 'warning',
         permission: 'customers:read',

@@ -212,28 +212,28 @@ export class FeatureAiAssistant {
         this.kpis.set([
           {
             title: 'Filled Cylinders',
-            value: filled.toLocaleString(),
+            value: filled.toLocaleString('en-IN'),
             icon: 'pi pi-box',
             tone: 'success',
             permission: 'inventory:read',
           },
           {
             title: 'Needing Attention',
-            value: needingAttention.toLocaleString(),
+            value: needingAttention.toLocaleString('en-IN'),
             icon: 'pi pi-exclamation-triangle',
             tone: 'danger',
             permission: 'inventory:read',
           },
           {
             title: 'Total Customers',
-            value: (summary?.customer_count ?? 0).toLocaleString(),
+            value: (summary?.customer_count ?? 0).toLocaleString('en-IN'),
             icon: 'pi pi-users',
             tone: 'info',
             permission: 'customers:read',
           },
           {
             title: 'Fleet Vehicles',
-            value: (summary?.vehicle_count ?? 0).toLocaleString(),
+            value: (summary?.vehicle_count ?? 0).toLocaleString('en-IN'),
             icon: 'pi pi-truck',
             tone: 'warning',
             permission: 'vehicles:read',

@@ -40,6 +40,14 @@ _VPA = re.compile(r"^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,63}$")
 _CENT = Decimal("0.01")
 
 
+def is_valid_ifsc(ifsc: str) -> bool:
+    return bool(_IFSC.match(ifsc))
+
+
+def is_valid_vpa(upi_id: str) -> bool:
+    return bool(_VPA.match(upi_id))
+
+
 @dataclass(frozen=True, slots=True)
 class PaymentProfile:
     account_holder: str = ""
@@ -91,6 +99,9 @@ class PaymentProfile:
             raise ValidationError(msg, field="account_number")
         if profile.account_number and not _ACCOUNT_NUMBER.match(profile.account_number):
             msg = "Account number must be 9 to 18 digits."
+            raise ValidationError(msg, field="account_number")
+        if profile.account_number and len(set(profile.account_number)) == 1:
+            msg = "That account number is not valid. Check it against your passbook."
             raise ValidationError(msg, field="account_number")
         if profile.ifsc and not _IFSC.match(profile.ifsc):
             msg = "IFSC must be 11 characters, like HDFC0001234."

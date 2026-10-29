@@ -4,10 +4,13 @@ import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { getPaymentProfileApiV1PaymentProfileGet } from './generated/fn/payment-profile/get-payment-profile-api-v-1-payment-profile-get';
 import { setPaymentProfileApiV1PaymentProfilePut } from './generated/fn/payment-profile/set-payment-profile-api-v-1-payment-profile-put';
+import { verifyPaymentDetailsApiV1PaymentProfileVerifyPost } from './generated/fn/payment-profile/verify-payment-details-api-v-1-payment-profile-verify-post';
 import { getUpiQrApiV1PaymentsUpiQrGet } from './generated/fn/payment-profile/get-upi-qr-api-v-1-payments-upi-qr-get';
 import type { PaymentProfileResponse } from './generated/models/payment-profile-response';
 import type { SetPaymentProfileRequest } from './generated/models/set-payment-profile-request';
 import type { UpiQrResponse } from './generated/models/upi-qr-response';
+import type { VerifyPaymentDetailsRequest } from './generated/models/verify-payment-details-request';
+import type { VerifyPaymentDetailsResponse } from './generated/models/verify-payment-details-response';
 
 /** The agency's bank and UPI details, and the UPI pay QR (ADR-066). */
 @Injectable({ providedIn: 'root' })
@@ -25,6 +28,14 @@ export class PaymentProfileService {
     return setPaymentProfileApiV1PaymentProfilePut(this.http, this.config.rootUrl, { body }).pipe(
       map((res) => res.body),
     );
+  }
+
+  /** Checks an IFSC against the bank-branch directory and a UPI ID's handle,
+   * without saving. The UPI check cannot confirm the ID exists or whose it is. */
+  verify(body: VerifyPaymentDetailsRequest): Observable<VerifyPaymentDetailsResponse> {
+    return verifyPaymentDetailsApiV1PaymentProfileVerifyPost(this.http, this.config.rootUrl, {
+      body,
+    }).pipe(map((res) => res.body));
   }
 
   /** UPI link and QR image for what is still owed on an order or invoice.

@@ -363,10 +363,7 @@ export const appRoutes: Route[] = [
         path: 'admin/warehouses',
         canActivate: [permissionGuard('tenant:configure')],
         data: {
-          breadcrumbs: [
-            { label: 'Admin' },
-            { label: 'Warehouses', routerLink: '/admin/warehouses' },
-          ],
+          breadcrumbs: [{ label: 'Admin' }, { label: 'Godowns', routerLink: '/admin/warehouses' }],
         },
         loadChildren: () =>
           import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeatureWarehousesRoutes),

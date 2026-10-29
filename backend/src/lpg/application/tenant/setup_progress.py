@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from lpg.application.accounting.payment_profile import GetPaymentProfileUseCase
 from lpg.application.common.cqrs import Query
 
 if TYPE_CHECKING:
@@ -38,6 +39,7 @@ SETUP_STEPS = (
     "cylinder_types",
     "prices",
     "gst",
+    "payments",
     "staff",
     "drivers",
     "vehicles",
@@ -86,6 +88,7 @@ class GetSetupProgressUseCase:
         warehouses = await self._warehouses.list_for_tenant(tenant_id)
         cylinder_types = await self._cylinder_types.list_for_tenant(tenant_id)
         gst = await self._configuration.list_for_tenant_and_key(tenant_id, "gst_rate_percent")
+        payment_profile = await GetPaymentProfileUseCase(self._configuration).execute(tenant_id)
         # The agency's first admin always exists; staff means anyone else.
         staff = await self._staff.list_for_tenant(
             tenant_id, exclude_roles=frozenset({"customer", "driver"})
@@ -96,6 +99,8 @@ class GetSetupProgressUseCase:
             "cylinder_types": any(c.is_active for c in cylinder_types),
             "prices": bool(await self._prices.list_for_tenant(tenant_id)),
             "gst": bool(gst),
+            # Customers need to know how to pay: a UPI ID or a bank account is enough.
+            "payments": payment_profile.has_upi or payment_profile.has_bank_details,
             "staff": sum(1 for u in staff if u.is_active) > 1,
             "drivers": await self._drivers.count_drivers() > 0,
             "vehicles": await self._vehicles.count_vehicles() > 0,

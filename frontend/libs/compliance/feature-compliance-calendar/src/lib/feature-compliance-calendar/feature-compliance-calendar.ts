@@ -68,7 +68,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 const OWNER_TYPE_LABELS: Record<string, string> = {
   driver: 'Driver',
   vehicle: 'Vehicle',
-  warehouse: 'Warehouse',
+  warehouse: 'Godown',
   tenant: 'Agency',
 };
 
@@ -259,7 +259,7 @@ export class FeatureComplianceCalendar implements OnInit {
           this.loadWarehouseDocuments(warehouses[0].id);
         }
       },
-      error: () => this.errorMessage.set('Failed to load warehouses.'),
+      error: () => this.errorMessage.set('Failed to load godowns.'),
     });
   }
 

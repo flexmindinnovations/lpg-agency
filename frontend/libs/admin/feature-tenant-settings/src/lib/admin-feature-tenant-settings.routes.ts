@@ -17,7 +17,7 @@ export const adminFeatureWarehousesRoutes: Route[] = [
   {
     path: '',
     loadComponent: () => import('./warehouses-page/warehouses-page').then((m) => m.WarehousesPage),
-    title: 'Warehouses',
+    title: 'Godowns',
   },
 ];
 

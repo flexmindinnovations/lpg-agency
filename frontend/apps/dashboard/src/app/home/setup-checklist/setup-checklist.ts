@@ -12,10 +12,11 @@ interface SetupStep {
 /** Same order and keys as the backend's `SETUP_STEPS` (`setup_progress.py`). */
 const STEPS: readonly SetupStep[] = [
   { key: 'branch', label: 'Add a branch', link: '/admin/branches' },
-  { key: 'warehouse', label: 'Add a godown (warehouse)', link: '/admin/warehouses' },
+  { key: 'warehouse', label: 'Add a godown', link: '/admin/warehouses' },
   { key: 'cylinder_types', label: 'Add cylinder types', link: '/admin/cylinder-types' },
   { key: 'prices', label: 'Set cylinder prices', link: '/admin/price-lists' },
   { key: 'gst', label: 'Set the GST rate', link: '/settings/configuration' },
+  { key: 'payments', label: 'Set up payments (UPI or bank)', link: '/settings/payments' },
   { key: 'staff', label: 'Invite your staff', link: '/admin/users' },
   { key: 'drivers', label: 'Add drivers', link: '/drivers' },
   { key: 'vehicles', label: 'Add vehicles', link: '/vehicles' },

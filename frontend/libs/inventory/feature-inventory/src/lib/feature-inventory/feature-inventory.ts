@@ -180,7 +180,7 @@ export class FeatureInventory implements OnInit {
     quantity: { required: 'Enter a quantity.', min: 'Quantity must be at least 1.' },
     quantity_received: { required: 'Enter a quantity.', min: 'Quantity must be at least 1.' },
     actual_quantity: { required: 'Enter the counted quantity.', min: 'Cannot be negative.' },
-    warehouse_id: { required: 'Select a warehouse.' },
+    warehouse_id: { required: 'Select a godown.' },
     vehicle_id: { required: 'Select a vehicle.' },
     status: { required: 'Select a status.' },
     from_status: { required: 'Select the current status.' },
@@ -415,7 +415,7 @@ export class FeatureInventory implements OnInit {
   protected readonly reorderPolicyColumns: DataGridColumn<ReorderPolicyResponse>[] = [
     {
       field: 'location_ref_id',
-      header: 'Warehouse',
+      header: 'Godown',
       sortable: true,
       valueFormatter: (value) => this.warehouseNameById().get(value as string) ?? (value as string),
     },
