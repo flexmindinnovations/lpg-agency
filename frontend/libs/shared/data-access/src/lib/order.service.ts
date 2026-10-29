@@ -16,6 +16,10 @@ import { createOrderApiV1OrdersPost } from './generated/fn/orders/create-order-a
 import { departOrderApiV1OrdersOrderIdDepartPost } from './generated/fn/orders/depart-order-api-v-1-orders-order-id-depart-post';
 import { deliverOrderApiV1OrdersOrderIdDeliverPost } from './generated/fn/orders/deliver-order-api-v-1-orders-order-id-deliver-post';
 import { dispatchOrderApiV1OrdersOrderIdDispatchPost } from './generated/fn/orders/dispatch-order-api-v-1-orders-order-id-dispatch-post';
+import { getOrderTrackingApiV1OrdersOrderIdTrackingGet } from './generated/fn/orders/get-order-tracking-api-v-1-orders-order-id-tracking-get';
+import { listOrderRemindersApiV1OrdersOrderIdRemindersGet } from './generated/fn/orders/list-order-reminders-api-v-1-orders-order-id-reminders-get';
+import { listReminderPresetsApiV1OrdersReminderPresetsGet } from './generated/fn/orders/list-reminder-presets-api-v-1-orders-reminder-presets-get';
+import { sendOrderReminderApiV1OrdersOrderIdRemindersPost } from './generated/fn/orders/send-order-reminder-api-v-1-orders-order-id-reminders-post';
 import { getOrderApiV1OrdersOrderIdGet } from './generated/fn/orders/get-order-api-v-1-orders-order-id-get';
 import { getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet } from './generated/fn/orders/get-pending-cancellation-api-v-1-orders-order-id-cancellation-request-get';
 import { listOrderStatusHistoryApiV1OrdersOrderIdHistoryGet } from './generated/fn/orders/list-order-status-history-api-v-1-orders-order-id-history-get';
@@ -30,6 +34,10 @@ import { uploadPodAttachmentApiV1OrdersOrderIdPodAttachmentsPost } from './gener
 
 import type { LpgApiV1SchemasOrderAssignOrderRequest } from './generated/models/lpg-api-v-1-schemas-order-assign-order-request';
 import type { AmendOrderRequest } from './generated/models/amend-order-request';
+import type { OrderTrackingResponse } from './generated/models/order-tracking-response';
+import type { ReminderPresetResponse } from './generated/models/reminder-preset-response';
+import type { ReminderResponse } from './generated/models/reminder-response';
+import type { SendReminderRequest } from './generated/models/send-reminder-request';
 import type { ProofOfDeliveryResponse } from './generated/models/proof-of-delivery-response';
 import type { BulkCancelOrdersRequest } from './generated/models/bulk-cancel-orders-request';
 import type { BulkCancelOrdersResponse } from './generated/models/bulk-cancel-orders-response';
@@ -130,6 +138,33 @@ export class OrderService {
   getOrder(orderId: string): Observable<OrderResponse> {
     return getOrderApiV1OrdersOrderIdGet(this.http, this.config.rootUrl, {
       order_id: orderId,
+    }).pipe(map((res) => res.body));
+  }
+
+  /** Driver, van and the driver's last-known position for an order on a trip. */
+  getOrderTracking(orderId: string): Observable<OrderTrackingResponse> {
+    return getOrderTrackingApiV1OrdersOrderIdTrackingGet(this.http, this.config.rootUrl, {
+      order_id: orderId,
+    }).pipe(map((res) => res.body));
+  }
+
+  listReminderPresets(): Observable<ReminderPresetResponse[]> {
+    return listReminderPresetsApiV1OrdersReminderPresetsGet(this.http, this.config.rootUrl).pipe(
+      map((res) => res.body),
+    );
+  }
+
+  listOrderReminders(orderId: string): Observable<ReminderResponse[]> {
+    return listOrderRemindersApiV1OrdersOrderIdRemindersGet(this.http, this.config.rootUrl, {
+      order_id: orderId,
+    }).pipe(map((res) => res.body));
+  }
+
+  /** Push a reminder to the customer's app; recorded on the order's timeline. */
+  sendOrderReminder(orderId: string, request: SendReminderRequest): Observable<ReminderResponse> {
+    return sendOrderReminderApiV1OrdersOrderIdRemindersPost(this.http, this.config.rootUrl, {
+      order_id: orderId,
+      body: request,
     }).pipe(map((res) => res.body));
   }
 

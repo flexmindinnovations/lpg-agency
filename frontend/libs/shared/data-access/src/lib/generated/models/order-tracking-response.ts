@@ -17,6 +17,7 @@ export interface OrderTrackingResponse {
   driver?: (TrackingDriverInfo | null);
   driver_location: (DriverLocationSnapshot | null);
   order_id: string;
+  route_id?: (string | null);
   route_status: (string | null);
   status: 'draft' | 'booked' | 'confirmed' | 'assigned' | 'ready_for_dispatch' | 'out_for_delivery' | 'delivered' | 'failed_delivery' | 'cancelled' | 'closed';
 }

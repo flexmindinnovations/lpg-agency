@@ -428,3 +428,42 @@
   margin: 0;
   color: var(--color-text-secondary);
 }
+
+/* Driver and vehicle card, with the live-location map while out for delivery. */
+.driver-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.driver-card .section-title {
+  margin: 0;
+}
+
+.driver-card__live {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.driver-card__live-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm) var(--spacing-md);
+}
+
+.driver-card__map {
+  inline-size: 100%;
+  block-size: 18rem;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.timeline__entry--reminder {
+  border-left-color: var(--color-status-info);
+}

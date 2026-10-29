@@ -204,6 +204,8 @@ export type { RegisterScaleRequest } from './models/register-scale-request';
 export type { RegisterVehicleRequest } from './models/register-vehicle-request';
 export type { RejectCancellationRequest } from './models/reject-cancellation-request';
 export type { RelocateWarehouseRequest } from './models/relocate-warehouse-request';
+export type { ReminderPresetResponse } from './models/reminder-preset-response';
+export type { ReminderResponse } from './models/reminder-response';
 export type { RenameBranchRequest } from './models/rename-branch-request';
 export type { RenameCylinderTypeRequest } from './models/rename-cylinder-type-request';
 export type { RenameTenantRequest } from './models/rename-tenant-request';
@@ -229,6 +231,7 @@ export type { SaveOnboardingDraftRequest } from './models/save-onboarding-draft-
 export type { ScaleListResponse } from './models/scale-list-response';
 export type { ScaleResponse } from './models/scale-response';
 export type { ScheduleFeatureFlagRequest } from './models/schedule-feature-flag-request';
+export type { SendReminderRequest } from './models/send-reminder-request';
 export type { SetBranchActiveRequest } from './models/set-branch-active-request';
 export type { SetBranchRegionRequest } from './models/set-branch-region-request';
 export type { SetCylinderTypeActiveRequest } from './models/set-cylinder-type-active-request';

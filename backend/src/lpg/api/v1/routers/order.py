@@ -654,6 +654,7 @@ async def get_order_tracking(
     )
 
     route_status: str | None = None
+    route_id: uuid.UUID | None = None
     driver_location: DriverLocationSnapshot | None = None
     driver_info: TrackingDriverInfo | None = None
     if order.route_stop_id is not None:
@@ -661,6 +662,7 @@ async def get_order_tracking(
         if owner is not None:
             route = await route_repository.get_by_id(owner.route_id)
             route_status = route.status if route is not None else None
+            route_id = owner.route_id
 
             driver = await driver_repository.get_by_id(owner.driver_id)
             employee = (
@@ -701,6 +703,7 @@ async def get_order_tracking(
         destination_longitude=address.longitude,
         destination_label=address.address_line,
         route_status=route_status,
+        route_id=route_id,
         driver_location=driver_location,
         driver=driver_info,
     )

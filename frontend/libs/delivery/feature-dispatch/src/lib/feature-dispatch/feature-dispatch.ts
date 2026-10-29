@@ -26,7 +26,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -183,6 +183,7 @@ export class FeatureDispatch implements OnInit {
   private readonly authTokenStore = inject(AuthTokenStore);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
+  private readonly activatedRoute = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
   private readonly wsService = inject(WebSocketService);
 
@@ -859,6 +860,9 @@ export class FeatureDispatch implements OnInit {
     this.loadDriversAndVehicles();
     this.loadRoutes();
     this.loadUnassignedOrders();
+    // The order page links here with `?trip=<id>` to show one trip.
+    const tripId = this.activatedRoute.snapshot.queryParamMap.get('trip');
+    if (tripId) this.openRouteDetailById(tripId);
   }
 
   protected loadDriversAndVehicles(): void {
@@ -949,12 +953,16 @@ export class FeatureDispatch implements OnInit {
   // ---------------------------------------------------------------------------
 
   protected openRouteDetail(route: RouteResponse): void {
+    this.openRouteDetailById(route.id);
+  }
+
+  private openRouteDetailById(routeId: string): void {
     this.showLoadOutWeighmentForm.set(false);
     this.showCashHandoverForm.set(false);
     this.lastCashHandover.set(null);
     this.showRouteDetail.set(true);
     this.loading.set(true);
-    this.deliveryService.getRoute(route.id).subscribe({
+    this.deliveryService.getRoute(routeId).subscribe({
       next: (full) => {
         this.selectedRoute.set(full);
         this.loading.set(false);
