@@ -16,6 +16,7 @@ from lpg.application.common.errors import RateLimitExceededError, ValidationErro
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from typing import Any
 
 #: Between two reminders for the same order, and in any rolling day.
 MIN_GAP = timedelta(minutes=2)
@@ -60,6 +61,10 @@ class OrderReminderRepository(Protocol):
     async def add(self, reminder: OrderReminder, tenant_id: uuid.UUID) -> None: ...
 
     async def list_for_order(self, order_id: uuid.UUID) -> list[OrderReminder]: ...
+
+
+class Notifier(Protocol):
+    async def notify(self, payload: dict[str, Any]) -> None: ...
 
 
 def compose_message(

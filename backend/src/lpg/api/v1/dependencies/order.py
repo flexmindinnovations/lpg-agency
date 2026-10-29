@@ -38,6 +38,7 @@ from lpg.application.order.ports import (
     OrderRepository,
     ProofOfDeliveryRepository,
 )
+from lpg.application.order.reminders import Notifier, OrderReminderRepository
 from lpg.application.order.use_cases import CancelOrderUseCase
 from lpg.application.tenant.ports import (
     CylinderTypeRepository,
@@ -242,3 +243,25 @@ def get_cancel_order_use_case_factory(
             )
 
     return _factory
+
+
+def get_order_reminder_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OrderReminderRepository:
+    from lpg.infrastructure.persistence.repositories.order_reminder import (
+        SqlAlchemyOrderReminderRepository,
+    )
+
+    return SqlAlchemyOrderReminderRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_reminder_notifier() -> Notifier | None:
+    """The notifier that delivers a staff reminder to the customer's app, or
+    `None` before the app has started (tests)."""
+    from lpg.api.app import get_app_state
+    from lpg.infrastructure.notification.delivery import InAppFirstNotifier
+
+    state = get_app_state()
+    if state.database is None:
+        return None
+    return InAppFirstNotifier(state.database, state.event_dispatcher, state.job_queue)

@@ -20,13 +20,16 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from lpg.api.v1.dependencies.admin import get_employee_repository
 from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.api.v1.dependencies.delivery import get_driver_repository, get_route_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
-from lpg.api.v1.dependencies.order import get_order_repository
-from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
+from lpg.api.v1.dependencies.order import (
+    get_order_reminder_repository,
+    get_order_repository,
+    get_reminder_notifier,
+)
 from lpg.application.common.errors import ConflictError, NotFoundError
-from lpg.application.common.ports import UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.delivery.ports import DriverRepository, RouteRepository
 from lpg.application.identity.ports import AuthenticatedPrincipal
@@ -34,10 +37,13 @@ from lpg.application.order.ports import OrderRepository
 from lpg.application.order.reminders import (
     CUSTOM,
     PRESETS,
+    Notifier,
+    OrderReminderRepository,
     check_rate_limit,
     compose_message,
     new_reminder,
 )
+from lpg.application.tenant_admin.ports import EmployeeRepository
 
 if typing.TYPE_CHECKING:
     from lpg.application.order.reminders import OrderReminder
@@ -73,15 +79,6 @@ def _to_response(reminder: OrderReminder) -> ReminderResponse:
     )
 
 
-def _repository(unit_of_work: UnitOfWork) -> typing.Any:
-    from lpg.infrastructure.persistence.repositories.order_reminder import (
-        SqlAlchemyOrderReminderRepository,
-    )
-    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
-
-    return SqlAlchemyOrderReminderRepository(typing.cast("SqlAlchemyUnitOfWork", unit_of_work))
-
-
 async def _visible_order(
     order_id: uuid.UUID,
     principal: AuthenticatedPrincipal,
@@ -115,13 +112,13 @@ async def list_order_reminders(
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    repository: Annotated[OrderReminderRepository, Depends(get_order_reminder_repository)],
 ) -> list[ReminderResponse]:
     if principal.role in ("customer", "driver"):
         msg = "Order not found."
         raise NotFoundError(msg, order_id=str(order_id))
     await _visible_order(order_id, principal, order_repository)
-    return [_to_response(r) for r in await _repository(unit_of_work).list_for_order(order_id)]
+    return [_to_response(r) for r in await repository.list_for_order(order_id)]
 
 
 @router.post(
@@ -143,7 +140,9 @@ async def send_order_reminder(
     customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    employee_repository: Annotated[EmployeeRepository, Depends(get_employee_repository)],
+    repository: Annotated[OrderReminderRepository, Depends(get_order_reminder_repository)],
+    notifier: Annotated[Notifier | None, Depends(get_reminder_notifier)],
 ) -> ReminderResponse:
     order = await _visible_order(order_id, principal, order_repository)
     if order.status in ("delivered", "closed", "cancelled"):
@@ -168,14 +167,7 @@ async def send_order_reminder(
         if driver is None:
             msg = "This order is not on a trip yet, so it cannot be 'on the way'."
             raise ConflictError(msg)
-        from lpg.infrastructure.persistence.repositories.employee import (
-            SqlAlchemyEmployeeRepository,
-        )
-        from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
-
-        employee = await SqlAlchemyEmployeeRepository(
-            typing.cast("SqlAlchemyUnitOfWork", unit_of_work)
-        ).get_by_id(driver.employee_id)
+        employee = await employee_repository.get_by_id(driver.employee_id)
         driver_name = employee.first_name if employee is not None else None
 
     message = compose_message(
@@ -184,7 +176,6 @@ async def send_order_reminder(
         order_ref=order.order_number or "your order",
         driver_name=driver_name,
     )
-    repository = _repository(unit_of_work)
     check_rate_limit(await repository.list_for_order(order_id), datetime.now(UTC))
 
     reminder = new_reminder(
@@ -195,12 +186,8 @@ async def send_order_reminder(
     )
     await repository.add(reminder, principal.tenant_id)
 
-    from lpg.api.app import get_app_state
-    from lpg.infrastructure.notification.delivery import InAppFirstNotifier
-
-    state = get_app_state()
-    if state.database is not None:
-        await InAppFirstNotifier(state.database, state.event_dispatcher, state.job_queue).notify(
+    if notifier is not None:
+        await notifier.notify(
             {
                 "type": "order_reminder",
                 "tenant_id": str(principal.tenant_id),
