@@ -97,6 +97,8 @@ class OrderTrackingResponse(BaseModel):
     destination_longitude: float | None
     destination_label: str
     route_status: str | None
+    #: The trip this order is on, so staff can open it.
+    route_id: uuid.UUID | None = None
     driver_location: DriverLocationSnapshot | None
     driver: TrackingDriverInfo | None = None
 

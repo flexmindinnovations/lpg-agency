@@ -104,6 +104,17 @@
       <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-lock'"></i>
       <span>Close Order</span>
     </button>
+    } @if (canRemind()) {
+    <button
+      *lpgHasPermission="'orders:dispatch'"
+      pButton
+      type="button"
+      severity="secondary"
+      (click)="openReminderDrawer()"
+    >
+      <i class="pi pi-bell"></i>
+      <span>Remind customer</span>
+    </button>
     } @if (canCancelFree() || requiresCancelApproval()) {
     <button
       *lpgHasPermission="'orders:cancel'"
@@ -224,7 +235,71 @@
     }
   </div>
 
-  @if (canSeeInvoices() && invoiceExpected()) {
+  @if (tracking(); as t) { @if (t.driver; as driver) {
+  <section class="driver-card" aria-labelledby="order-driver-title">
+    <h2 id="order-driver-title" class="section-title">Driver and vehicle</h2>
+    <div class="detail-grid">
+      <div class="detail-field">
+        <span class="detail-field__label">Driver</span>
+        <span>{{ driver.name }}</span>
+        @if (driver.phone_number) {
+        <span class="detail-field__hint"
+          ><a [href]="'tel:' + driver.phone_number">{{ driver.phone_number }}</a></span
+        >
+        }
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Vehicle</span>
+        <span>{{ driver.vehicle_number ?? 'Not recorded' }}</span>
+        @if (driver.vehicle_model) {
+        <span class="detail-field__hint">{{ driver.vehicle_model }}</span>
+        }
+      </div>
+      @if (t.route_id) {
+      <div class="detail-field">
+        <span class="detail-field__label">Trip</span>
+        <span>{{ routeStatusLabel(t.route_status) }}</span>
+        <span class="detail-field__links" *lpgHasPermission="'routes:manage'">
+          <a [routerLink]="['/dispatch']" [queryParams]="{ trip: t.route_id }">Open trip</a>
+        </span>
+      </div>
+      }
+    </div>
+    @if (isOutForDelivery()) { @if (t.driver_location; as location) {
+    <div class="driver-card__live">
+      <div class="driver-card__live-head">
+        <span class="detail-field__label">Live location</span>
+        <span class="detail-field__hint"
+          >Updated {{ locationAgeLabel() }}@if (location.speed_kph !== null && location.speed_kph
+          !== undefined) { · {{ location.speed_kph | number: '1.0-0' }} km/h }</span
+        >
+        @if (directionsUrl(); as url) {
+        <a [href]="url" target="_blank" rel="noopener">Open in Maps</a>
+        }
+      </div>
+      @if ((locationAgeSeconds() ?? 0) > 120) {
+      <p-message severity="warn" icon="pi pi-exclamation-triangle"
+        >The driver's phone has not reported for a while. This is the last known
+        position.</p-message
+      >
+      } @if (mapEmbedUrl(); as src) {
+      <iframe
+        class="driver-card__map"
+        title="Driver location"
+        loading="lazy"
+        referrerpolicy="no-referrer"
+        [src]="src"
+      ></iframe>
+      }
+    </div>
+    } @else {
+    <p-message severity="info" icon="pi pi-map-marker"
+      >No location yet. It appears once the driver turns on "Share live location" in the Driver
+      App.</p-message
+    >
+    } }
+  </section>
+  } } @if (canSeeInvoices() && invoiceExpected()) {
   <section class="invoice-card" aria-labelledby="order-invoice-title">
     <h2 id="order-invoice-title" class="section-title">Invoice</h2>
     @for (invoice of invoices(); track invoice.invoice_id) {
@@ -367,16 +442,23 @@
 
   <h2 class="section-title">Timeline</h2>
   <ol class="timeline">
-    @for (entry of history(); track entry.id) {
-    <li class="timeline__entry">
+    @for (item of timeline(); track item.entry.id) {
+    <li class="timeline__entry" [class.timeline__entry--reminder]="item.kind === 'reminder'">
+      @if (item.kind === 'status') {
       <span class="timeline__transition">
-        {{ entry.from_status ? statusLabel(entry.from_status) : 'Created' }}
+        {{ item.entry.from_status ? statusLabel(item.entry.from_status) : 'Created' }}
         <i class="pi pi-arrow-right"></i>
-        {{ statusLabel(entry.to_status) }}
+        {{ statusLabel(item.entry.to_status) }}
       </span>
-      <span class="timeline__when">{{ entry.changed_at | lpgDateTime }}</span>
-      @if (entry.reason) {
-      <span class="timeline__reason">{{ entry.reason }}</span>
+      <span class="timeline__when">{{ item.at | lpgDateTime }}</span>
+      @if (item.entry.reason) {
+      <span class="timeline__reason">{{ item.entry.reason }}</span>
+      } } @else {
+      <span class="timeline__transition"
+        ><i class="pi pi-bell"></i> Reminder sent to the customer</span
+      >
+      <span class="timeline__when">{{ item.at | lpgDateTime }}</span>
+      <span class="timeline__reason">{{ item.entry.message }}</span>
       }
     </li>
     } @empty {
@@ -1014,6 +1096,69 @@
         </button>
         <button pButton type="submit" severity="danger" [disabled]="loading()">
           Reject request
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Remind customer Drawer -->
+  <p-drawer
+    header="Remind customer"
+    [(visible)]="showReminderDrawer"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '28rem' }"
+  >
+    <form [formGroup]="reminderForm" (ngSubmit)="onSendReminder()" class="dialog-form" novalidate>
+      <div class="dialog-form__fields">
+        <p-message severity="info" icon="pi pi-info-circle"
+          >The customer gets this as a notification in the Customer App. It is saved on the order's
+          timeline.</p-message
+        >
+        @if (reminderError(); as error) {
+        <p-message severity="error">{{ error }}</p-message>
+        }
+        <lpg-form-field
+          label="Message"
+          for="reminder_preset"
+          [control]="reminderForm.controls.preset"
+        >
+          <p-select
+            inputId="reminder_preset"
+            formControlName="preset"
+            [options]="reminderOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [fluid]="true"
+            appendTo="body"
+            (onChange)="onReminderPresetChange($event.value)"
+          />
+        </lpg-form-field>
+        @if (isCustomReminder()) {
+        <lpg-form-field
+          label="Your message"
+          for="reminder_message"
+          [control]="reminderForm.controls.message"
+        >
+          <textarea
+            pTextarea
+            id="reminder_message"
+            formControlName="message"
+            rows="4"
+            maxlength="300"
+            [fluid]="true"
+          ></textarea>
+        </lpg-form-field>
+        }
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showReminderDrawer.set(false)">
+          Close
+        </button>
+        <button pButton type="submit" [disabled]="reminderBusy()">
+          <i [class]="reminderBusy() ? 'pi pi-spin pi-spinner' : 'pi pi-send'"></i>
+          <span>Send reminder</span>
         </button>
       </div>
     </form>

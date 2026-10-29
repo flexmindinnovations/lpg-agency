@@ -15,8 +15,10 @@ import {
   inject,
   signal,
   viewChild,
+  DestroyRef,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { DomSanitizer } from '@angular/platform-browser';
 import {
   InvoiceDetailDrawer,
   invoiceStatusLabel,
@@ -69,10 +71,14 @@ import {
   type RecordFailedDeliveryRequest,
   type OrderResponse,
   type OrderStatusHistoryEntryResponse,
+  type OrderTrackingResponse,
+  type ReminderPresetResponse,
+  type ReminderResponse,
   type PendingCancellationResponse,
   type ProofOfDeliveryResponse,
   type ProofOfDeliverySubmission,
   type RouteResponse,
+  type SendReminderRequest,
   type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
@@ -103,6 +109,8 @@ const ACTIVE_TRIP_STATUSES = ['planned', 'loaded', 'in_progress'] as const;
 /** Trips an order can still join from this page. */
 const OPEN_TRIP_STATUSES = new Set(['planned', 'loaded']);
 const NEW_TRIP = 'new';
+/** How often the driver's position is re-read while the order is out. */
+const LOCATION_POLL_MS = 15_000;
 
 /** The order's journey, one step per thing the counter staff can see. */
 const PROGRESS_STEPS = ['Booked', 'Confirmed', 'On a trip', 'Out for delivery', 'Delivered'];
@@ -202,6 +210,8 @@ export class OrderDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   protected readonly auth = inject(AuthService);
   private readonly wsService = inject(WebSocketService);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
     // Live-refresh when this order changes elsewhere (the driver departs or
@@ -224,6 +234,13 @@ export class OrderDetail implements OnInit {
           this.notify.info(`${ref} is now ${statusLabel(message.status)}.`, 'Order updated');
         }
       });
+    // The driver's position moves; ask again while the order is out.
+    const poll = setInterval(() => {
+      this.now.set(Date.now());
+      const o = this.order();
+      if (o?.status === 'out_for_delivery' && o.route_stop_id) this.loadTracking(o.id);
+    }, LOCATION_POLL_MS);
+    this.destroyRef.onDestroy(() => clearInterval(poll));
     // Back after a dropped connection: catch up on anything missed.
     this.wsService.reconnected$.pipe(takeUntilDestroyed()).subscribe(() => {
       const id = this.order()?.id;
@@ -233,6 +250,135 @@ export class OrderDetail implements OnInit {
 
   protected readonly order = signal<OrderResponse | null>(null);
   protected readonly history = signal<OrderStatusHistoryEntryResponse[]>([]);
+
+  // ---- Driver, van and live location ---------------------------------------
+
+  protected readonly tracking = signal<OrderTrackingResponse | null>(null);
+  protected readonly now = signal(Date.now());
+  protected readonly isOutForDelivery = computed(() => this.order()?.status === 'out_for_delivery');
+
+  /** Seconds since the driver's phone last reported, or `null` before it has. */
+  protected readonly locationAgeSeconds = computed(() => {
+    const at = this.tracking()?.driver_location?.recorded_at;
+    if (!at) return null;
+    return Math.max(0, Math.round((this.now() - new Date(at).getTime()) / 1000));
+  });
+
+  protected readonly locationAgeLabel = computed(() => {
+    const seconds = this.locationAgeSeconds();
+    if (seconds === null) return '';
+    if (seconds < 60) return 'just now';
+    const minutes = Math.round(seconds / 60);
+    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
+  });
+
+  protected readonly mapEmbedUrl = computed(() => {
+    const location = this.tracking()?.driver_location;
+    if (!location) return null;
+    const { latitude: lat, longitude: lng } = location;
+    const pad = 0.006;
+    const bbox = [lng - pad, lat - pad, lng + pad, lat + pad].join('%2C');
+    return this.sanitizer.bypassSecurityTrustResourceUrl(
+      `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`,
+    );
+  });
+
+  protected readonly directionsUrl = computed(() => {
+    const t = this.tracking();
+    const location = t?.driver_location;
+    if (!t || !location) return null;
+    const origin = `${location.latitude},${location.longitude}`;
+    const destination =
+      t.destination_latitude !== null && t.destination_longitude !== null
+        ? `&destination=${t.destination_latitude},${t.destination_longitude}`
+        : '';
+    return destination
+      ? `https://www.google.com/maps/dir/?api=1&origin=${origin}${destination}`
+      : `https://www.google.com/maps?q=${origin}`;
+  });
+
+  private loadTracking(orderId: string): void {
+    this.orderService.getOrderTracking(orderId).subscribe({
+      next: (tracking) => this.tracking.set(tracking),
+      error: () => this.tracking.set(null),
+    });
+  }
+
+  // ---- Reminders to the customer -------------------------------------------
+
+  protected readonly reminders = signal<ReminderResponse[]>([]);
+  protected readonly reminderPresets = signal<ReminderPresetResponse[]>([]);
+  protected readonly showReminderDrawer = signal(false);
+  protected readonly reminderBusy = signal(false);
+  protected readonly reminderError = signal<string | null>(null);
+  protected readonly reminderForm = this.fb.group({
+    preset: ['delivery_today', [Validators.required]],
+    message: ['', [Validators.maxLength(300)]],
+  });
+  protected readonly reminderOptions = computed(() => [
+    ...this.reminderPresets().map((p) => ({ label: p.label, value: p.key })),
+    { label: 'Write my own', value: 'custom' },
+  ]);
+  protected readonly isCustomReminder = computed(() => this.reminderPresetValue() === 'custom');
+  private readonly reminderPresetValue = signal('delivery_today');
+  /** Finished orders have nothing left to remind anyone about. */
+  protected readonly canRemind = computed(() => {
+    const status = this.order()?.status;
+    return !!status && !['delivered', 'closed', 'cancelled'].includes(status);
+  });
+
+  /** Status changes and reminders in one list, oldest first. */
+  protected readonly timeline = computed(() => {
+    const items = [
+      ...this.history().map((entry) => ({ kind: 'status' as const, at: entry.changed_at, entry })),
+      ...this.reminders().map((entry) => ({ kind: 'reminder' as const, at: entry.sent_at, entry })),
+    ];
+    return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  });
+
+  protected openReminderDrawer(): void {
+    this.reminderForm.reset({ preset: 'delivery_today', message: '' });
+    this.reminderPresetValue.set('delivery_today');
+    this.reminderError.set(null);
+    this.showReminderDrawer.set(true);
+  }
+
+  protected onReminderPresetChange(value: string): void {
+    this.reminderPresetValue.set(value);
+  }
+
+  protected onSendReminder(): void {
+    const order = this.order();
+    if (!order || this.reminderBusy()) return;
+    const { preset, message } = this.reminderForm.getRawValue();
+    const text = message.trim();
+    if (preset === 'custom' && !text) {
+      this.reminderForm.controls.message.markAsTouched();
+      this.reminderError.set('Write the message to send.');
+      return;
+    }
+    this.reminderBusy.set(true);
+    this.reminderError.set(null);
+    this.orderService
+      .sendOrderReminder(order.id, {
+        preset: preset as SendReminderRequest['preset'],
+        message: preset === 'custom' ? text : null,
+      })
+      .subscribe({
+        next: () => {
+          this.reminderBusy.set(false);
+          this.showReminderDrawer.set(false);
+          this.notify.success('Reminder sent to the customer.');
+          this.orderService.listOrderReminders(order.id).subscribe({
+            next: (list) => this.reminders.set(list),
+          });
+        },
+        error: (err) => {
+          this.reminderBusy.set(false);
+          this.reminderError.set(errorMessageFor(err));
+        },
+      });
+  }
   /** The cancellation request waiting for Manager approval, if any (D-19). */
   protected readonly pendingCancellation = signal<PendingCancellationResponse | null>(null);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
@@ -600,6 +746,21 @@ export class OrderDetail implements OnInit {
   protected readonly deliverReady = computed(() => this.gpsCaptured());
 
   protected readonly statusLabel = statusLabel;
+
+  protected routeStatusLabel(status: string | null | undefined): string {
+    switch (status) {
+      case 'planned':
+        return 'Being planned';
+      case 'loaded':
+        return 'Van loaded';
+      case 'in_progress':
+        return 'On the road';
+      case 'completed':
+        return 'Finished';
+      default:
+        return status ? statusLabel(status) : 'On a trip';
+    }
+  }
   protected readonly formatCurrencyInr = formatCurrencyInr;
   protected readonly bookingSourceLabel = bookingSourceLabel;
   protected readonly statusSeverity = statusSeverity;
@@ -611,6 +772,11 @@ export class OrderDetail implements OnInit {
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (ct) => this.cylinderTypes.set(ct),
     });
+    if (this.auth.principal()?.permissions.has('orders:dispatch')) {
+      this.orderService.listReminderPresets().subscribe({
+        next: (presets) => this.reminderPresets.set(presets),
+      });
+    }
     this.route.paramMap.subscribe((params) => {
       const orderId = params.get('id');
       if (orderId) this.load(orderId);
@@ -628,11 +794,17 @@ export class OrderDetail implements OnInit {
         this.loading.set(false);
         if (this.drivers().length === 0) this.loadFleet();
         if (order.route_stop_id || branchChanged) this.loadActiveTrips(order.branch_id);
+        if (order.route_stop_id) this.loadTracking(order.id);
+        else this.tracking.set(null);
       },
       error: (err) => {
         this.errorMessage.set(errorMessageFor(err));
         this.loading.set(false);
       },
+    });
+    this.orderService.listOrderReminders(orderId).subscribe({
+      next: (list) => this.reminders.set(list),
+      error: () => this.reminders.set([]),
     });
     this.orderService.listOrderStatusHistory(orderId).subscribe({
       next: (entries) => this.history.set(entries),
