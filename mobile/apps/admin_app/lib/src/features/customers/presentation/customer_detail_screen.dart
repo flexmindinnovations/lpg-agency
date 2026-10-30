@@ -430,6 +430,21 @@ class _Contact extends StatelessWidget {
           ),
         ),
         const SizedBox(height: LpgSpacing.sm),
+        LpgGroupedList(
+          children: [
+            LpgListTile(
+              leadingIcon: LpgIcons.complaint,
+              title: 'Complaints',
+              subtitle: 'Raised by this customer',
+              showChevron: true,
+              onTap: () => context.pushNamed(
+                'complaints',
+                queryParameters: {'customer': customer.id},
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: LpgSpacing.sm),
         if (customer.addresses.isEmpty)
           const LpgBanner(
             tone: LpgTone.warning,

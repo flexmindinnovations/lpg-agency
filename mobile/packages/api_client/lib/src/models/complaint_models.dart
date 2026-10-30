@@ -59,6 +59,7 @@ class ComplaintAssignmentResponse {
     required this.assignedAt,
     required this.createdAt,
     this.createdBy,
+    this.assignedToName,
   });
 
   factory ComplaintAssignmentResponse.fromJson(Map<String, dynamic> json) =>
@@ -68,6 +69,7 @@ class ComplaintAssignmentResponse {
         assignedAt: DateTime.parse(json['assigned_at'] as String),
         createdAt: DateTime.parse(json['created_at'] as String),
         createdBy: json['created_by'] as String?,
+        assignedToName: json['assigned_to_name'] as String?,
       );
 
   final String id;
@@ -75,6 +77,9 @@ class ComplaintAssignmentResponse {
   final DateTime assignedAt;
   final DateTime createdAt;
   final String? createdBy;
+
+  /// The assignee's name; `null` if the account no longer exists.
+  final String? assignedToName;
 }
 
 /// Mirrors the backend's `ComplaintResolutionResponse`. `outcome` is one of
@@ -125,6 +130,11 @@ class ComplaintResponse {
     this.updatedBy,
     this.assignments = const [],
     this.resolution,
+    this.customerName,
+    this.customerPhone,
+    this.consumerNumber,
+    this.orderNumber,
+    this.assigneeName,
   });
 
   factory ComplaintResponse.fromJson(Map<String, dynamic> json) =>
@@ -158,6 +168,11 @@ class ComplaintResponse {
             : ComplaintResolutionResponse.fromJson(
                 json['resolution'] as Map<String, dynamic>,
               ),
+        customerName: json['customer_name'] as String?,
+        customerPhone: json['customer_phone'] as String?,
+        consumerNumber: json['consumer_number'] as String?,
+        orderNumber: json['order_number'] as String?,
+        assigneeName: json['assignee_name'] as String?,
       );
 
   final String id;
@@ -175,6 +190,48 @@ class ComplaintResponse {
   final String? updatedBy;
   final List<ComplaintAssignmentResponse> assignments;
   final ComplaintResolutionResponse? resolution;
+
+  /// Who and what the complaint is about, in words (filled on every read).
+  final String? customerName;
+  final String? customerPhone;
+  final String? consumerNumber;
+  final String? orderNumber;
+
+  /// Whoever it is currently assigned to.
+  final String? assigneeName;
+
+  /// Resolved, rejected or closed: nothing more to do.
+  bool get isFinished =>
+      status == 'Resolved' || status == 'Rejected' || status == 'Closed';
+
+  /// Past its SLA deadline and still being worked on.
+  bool isOverdue([DateTime? now]) =>
+      !isFinished &&
+      slaDueAt != null &&
+      slaDueAt!.isBefore(now ?? DateTime.now());
+}
+
+/// A staff member a complaint can be assigned to (`GET /complaints/assignees`).
+class ComplaintAssignee {
+  const ComplaintAssignee({
+    required this.userId,
+    required this.name,
+    required this.role,
+    this.email,
+  });
+
+  factory ComplaintAssignee.fromJson(Map<String, dynamic> json) =>
+      ComplaintAssignee(
+        userId: json['user_id'] as String,
+        name: json['name'] as String,
+        role: json['role'] as String,
+        email: json['email'] as String?,
+      );
+
+  final String userId;
+  final String name;
+  final String role;
+  final String? email;
 }
 
 /// `GET /complaints` pagination wrapper — mirrors the backend's

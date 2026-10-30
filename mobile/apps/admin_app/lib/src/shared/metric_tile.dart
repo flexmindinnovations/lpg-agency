@@ -132,9 +132,13 @@ class SectionHeading extends StatelessWidget {
     super.key,
     this.actionLabel,
     this.onAction,
+    this.topGap = 0,
   });
 
   final String title;
+
+  /// Space above the heading, for screens that stack sections without gaps.
+  final double topGap;
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -142,7 +146,7 @@ class SectionHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = context.lpgText;
     return Padding(
-      padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
+      padding: EdgeInsets.only(top: topGap, bottom: LpgSpacing.sm),
       child: Row(
         children: [
           Expanded(child: Text(title, style: text.titleMedium)),
