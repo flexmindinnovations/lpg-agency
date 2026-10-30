@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/admin_app_bar.dart';
 import '../../approvals/data/approvals_provider.dart';
+import '../../dashboard/data/dashboard_providers.dart';
 
 /// One row of the More menu.
 class _MoreItem {
@@ -31,6 +32,8 @@ class MoreScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pending = ref.watch(pendingCashHandoversProvider).value?.length ?? 0;
+    final openComplaints =
+        ref.watch(operationsSnapshotProvider).value?.openComplaints ?? 0;
 
     final groups = <(String, List<_MoreItem>)>[
       (
@@ -47,6 +50,13 @@ class MoreScreen extends ConsumerWidget {
             label: 'Invoices',
             hint: 'Dues, payments and reminders',
             routeName: 'invoices',
+          ),
+          _MoreItem(
+            icon: LpgIcons.complaint,
+            label: 'Complaints',
+            hint: 'Assign, resolve and meet deadlines',
+            routeName: 'complaints',
+            badge: openComplaints,
           ),
         ],
       ),

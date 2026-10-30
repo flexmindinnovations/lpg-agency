@@ -246,7 +246,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
               onPressed: _busy ? null : () => _send(invoice),
             ),
           ],
-          const SectionHeading('Items'),
+          const SectionHeading('Items', topGap: LpgSpacing.lg),
           LpgGroupedList(
             children: [
               for (final line in invoice.lines)
@@ -300,7 +300,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
               ],
             ),
           ),
-          const SectionHeading('Payments'),
+          const SectionHeading('Payments', topGap: LpgSpacing.lg),
           if (invoice.payments.isEmpty)
             Text(
               'No payments yet.',

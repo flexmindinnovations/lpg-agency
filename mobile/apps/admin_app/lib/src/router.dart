@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
 import 'features/approvals/presentation/approvals_screen.dart';
+import 'features/complaints/presentation/complaint_detail_screen.dart';
+import 'features/complaints/presentation/complaints_screen.dart';
 import 'features/customers/presentation/customer_detail_screen.dart';
 import 'features/customers/presentation/customers_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
@@ -175,6 +177,25 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'customer_detail',
             builder: (context, state) => CustomerDetailScreen(
               customerId: state.pathParameters['customerId']!,
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/complaints',
+        name: 'complaints',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => ComplaintsScreen(
+          key: ValueKey(state.uri.query),
+          customerId: state.uri.queryParameters['customer'],
+          initialStatus: state.uri.queryParameters['status'],
+        ),
+        routes: [
+          GoRoute(
+            path: ':complaintId',
+            name: 'complaint_detail',
+            builder: (context, state) => ComplaintDetailScreen(
+              complaintId: state.pathParameters['complaintId']!,
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_http_client_adapter.dart';
@@ -81,6 +82,126 @@ void main() {
       expect(path, '/api/v1/support/contacts');
       expect(contacts!.emergencyHelpline, '1906');
       expect(contacts.agencyPhone, '+914012345678');
+    });
+
+    test('parses the readable references and the assignee', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
+          'id': 'complaint-1',
+          'complaint_number': 'CMP-0007',
+          'customer_id': 'customer-1',
+          'category': ComplaintCategory.gasLeakSafety,
+          'priority': ComplaintPriority.critical,
+          'status': ComplaintStatus.assigned,
+          'description': 'Smell of gas.',
+          'sla_due_at': '2020-01-01T00:00:00Z',
+          'created_at': '2026-08-01T00:00:00Z',
+          'updated_at': '2026-08-01T00:00:00Z',
+          'customer_name': 'E2E Customer',
+          'customer_phone': '+919999900098',
+          'order_number': 'ORD000061',
+          'assignee_name': 'Anita Desai',
+          'assignments': [
+            {
+              'id': 'a1',
+              'assigned_to': 'u1',
+              'assigned_at': '2026-08-01T00:00:00Z',
+              'created_at': '2026-08-01T00:00:00Z',
+              'assigned_to_name': 'Anita Desai',
+            },
+          ],
+        }, 200),
+      );
+
+      final result = await ComplaintApi(client.dio).getComplaint('complaint-1');
+
+      final c = result.when(onSuccess: (c) => c, onFailure: (_) => null)!;
+      expect(c.customerName, 'E2E Customer');
+      expect(c.orderNumber, 'ORD000061');
+      expect(c.assigneeName, 'Anita Desai');
+      expect(c.assignments.single.assignedToName, 'Anita Desai');
+      expect(c.isFinished, isFalse);
+      expect(c.isOverdue(DateTime(2026, 8, 2)), isTrue, reason: 'SLA passed');
+    });
+
+    test('a resolved complaint is never overdue', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
+          'id': 'complaint-1',
+          'customer_id': 'customer-1',
+          'category': ComplaintCategory.other,
+          'priority': ComplaintPriority.low,
+          'status': ComplaintStatus.resolved,
+          'description': 'Done.',
+          'sla_due_at': '2020-01-01T00:00:00Z',
+          'created_at': '2026-08-01T00:00:00Z',
+          'updated_at': '2026-08-01T00:00:00Z',
+        }, 200),
+      );
+
+      final result = await ComplaintApi(client.dio).getComplaint('complaint-1');
+
+      final c = result.when(onSuccess: (c) => c, onFailure: (_) => null)!;
+      expect(c.isFinished, isTrue);
+      expect(c.isOverdue(DateTime(2026, 8, 2)), isFalse);
+    });
+
+    test('lists assignees, assigns and resolves', () async {
+      final seen = <RequestOptions>[];
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        seen.add(options);
+        if (options.path.endsWith('/assignees')) {
+          return jsonResponse([
+            {'user_id': 'u1', 'name': 'Anita Desai', 'role': 'manager'},
+          ], 200);
+        }
+        return jsonResponse(<String, dynamic>{}, 204);
+      });
+      final api = ComplaintApi(client.dio);
+
+      final staff = await api.getAssignees();
+      await api.assign('complaint-1', 'u1');
+      await api.resolve(
+        'complaint-1',
+        outcome: 'Compensated',
+        notes: 'Refunded',
+      );
+
+      expect(
+        staff.when(onSuccess: (l) => l.single.name, onFailure: (_) => null),
+        'Anita Desai',
+      );
+      expect(seen[1].path, '/api/v1/complaints/complaint-1/assign');
+      expect(seen[1].data, {'assigned_to': 'u1'});
+      expect(seen[2].path, '/api/v1/complaints/complaint-1/resolve');
+      expect(seen[2].data, {
+        'outcome': 'Compensated',
+        'resolution_notes': 'Refunded',
+      });
+    });
+
+    test('getMyComplaints narrows by status and customer', () async {
+      RequestOptions? seen;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        seen = options;
+        return jsonResponse({
+          'items': <Map<String, dynamic>>[],
+          'total': 0,
+          'skip': 0,
+          'limit': 50,
+        }, 200);
+      });
+
+      await ComplaintApi(
+        client.dio,
+      ).getMyComplaints(status: 'Open', customerId: 'customer-1');
+
+      expect(seen!.queryParameters['status'], 'Open');
+      expect(seen!.queryParameters['customer_id'], 'customer-1');
     });
   });
 }

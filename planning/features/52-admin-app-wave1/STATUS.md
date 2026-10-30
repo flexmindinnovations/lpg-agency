@@ -12,6 +12,9 @@ Customer books (cash on delivery) -> Admin confirms -> Send out blocked (no free
 - Send out: the load sheet ignored the other orders already on the chosen trip, so a shortage showed as an unexplained server error.
 - Booked orders showed a total of Rs 0.00 instead of "priced on confirmation".
 
+## Complaints (2026-10-30)
+Tried on the emulator: list with overdue deadlines in red, detail, assign to a staff member (status moved to Assigned, history recorded) and resolve with an outcome and note (status Resolved, outcome card shown). Not tried: Reassign, the Compensated and Rejected outcomes, Call, the per-customer list from a customer page, and raising a complaint on a customer's behalf (not built).
+
 ## Customers and Invoices (2026-10-30)
 Built and tried on the emulator against the local backend: customer list and detail, filtered invoice list, invoice detail with the CGST/SGST split, and a cash payment of the Rs 45.28 balance that moved INV-2026-000013 from Partially paid to Paid. This also gives the office the way to settle the GST remainder behind the invoice-total finding below.
 Not tried on the emulator: UPI QR sheet, cheque/bank-transfer payments, "Send reminder", and Call. Cylinders-held shows a quiet note for roles without `ledger:read`.

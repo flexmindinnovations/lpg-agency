@@ -261,6 +261,15 @@ class _Body extends StatelessWidget {
                 action: 'Review',
                 onTap: () => onOrders('Out for delivery'),
               ),
+            if (ops.openComplaints > 0)
+              _AttentionItem(
+                icon: LpgIcons.complaint,
+                tone: LpgTone.warning,
+                title:
+                    '${ops.openComplaints} open ${ops.openComplaints == 1 ? 'complaint' : 'complaints'} to handle',
+                action: 'Open',
+                onTap: () => context.pushNamed('complaints'),
+              ),
             if ((cash?.handoversAwaitingReview ?? 0) > 0)
               _AttentionItem(
                 icon: LpgIcons.cash,
@@ -400,6 +409,7 @@ class _Body extends StatelessWidget {
               icon: LpgIcons.complaint,
               tone: LpgTone.warning,
               attention: ops.openComplaints > 0,
+              onTap: () => context.pushNamed('complaints'),
             ),
             MetricTile(
               label: 'Low-stock godowns',

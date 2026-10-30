@@ -11,7 +11,7 @@
 ## B. Wave 1 modules
 - [x] B1 Customers: search list, detail (outstanding, cylinders held, recent orders and invoices, contact and addresses), Call, New order prefilled for the customer
 - [x] B2 Invoices: list with search, status and customer filters; detail with GST split and payments; record payment (cash, UPI, card, cheque, bank transfer); UPI QR; send/remind
-- [ ] B3 Complaints
+- [x] B3 Complaints: list with status filters and overdue marking, detail with deadline, customer and order links, assign/reassign, resolve with outcome and note; dashboard tile, attention card and More badge
 - [ ] B4 Stock
 - [ ] B5 Cash book
 
