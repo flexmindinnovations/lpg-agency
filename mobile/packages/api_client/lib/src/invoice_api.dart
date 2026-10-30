@@ -13,16 +13,24 @@ final class InvoiceApi {
 
   final Dio _dio;
 
-  /// Fetch a paginated list of invoices for the current customer. `page` is
+  /// Fetch a paginated list of invoices (a customer sees their own; staff see
+  /// the agency's, optionally narrowed by `search`/`status`). `page` is
   /// 1-indexed, matching the backend's `InvoicePageResponse`.
   Future<Result<InvoicePageResponse>> getMyInvoices({
     int page = 1,
     int pageSize = 50,
+    String? search,
+    String? status,
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/invoices',
-        queryParameters: {'page': page, 'page_size': pageSize},
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+          if (search != null && search.isNotEmpty) 'search': search,
+          'status': ?status,
+        },
       );
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));

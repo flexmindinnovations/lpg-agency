@@ -48,22 +48,14 @@ class DeliveriesScreen extends ConsumerWidget {
                     icon: LpgIcons.truck,
                   );
                 }
-                return Column(
+                return LpgGroupedList(
                   children: [
-                    for (final (i, stop) in route.stops.indexed)
-                      LpgFadeSlideIn(
-                        index: i,
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: LpgSpacing.smd,
-                          ),
-                          child: StopTile(
-                            stop: stop,
-                            onTap: () => context.goNamed(
-                              'stop',
-                              pathParameters: {'orderId': stop.orderId},
-                            ),
-                          ),
+                    for (final stop in route.stops)
+                      StopTile(
+                        stop: stop,
+                        onTap: () => context.goNamed(
+                          'stop',
+                          pathParameters: {'orderId': stop.orderId},
                         ),
                       ),
                   ],
@@ -91,26 +83,18 @@ class DeliveriesScreen extends ConsumerWidget {
                           const <RouteCashHandover>[])
                     view.routeId,
                 };
-                return Column(
+                return LpgGroupedList(
                   children: [
-                    for (final (i, r) in routes.indexed)
-                      LpgFadeSlideIn(
-                        index: i,
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: LpgSpacing.smd,
-                          ),
-                          child: _HistoryRow(
-                            route: r,
-                            cashPending: pendingCashRouteIds.contains(r.id),
-                            onTap: r.status == 'completed'
-                                ? () => context.pushNamed(
-                                    'cashHandover',
-                                    pathParameters: {'routeId': r.id},
-                                  )
-                                : null,
-                          ),
-                        ),
+                    for (final r in routes)
+                      _HistoryRow(
+                        route: r,
+                        cashPending: pendingCashRouteIds.contains(r.id),
+                        onTap: r.status == 'completed'
+                            ? () => context.pushNamed(
+                                'cashHandover',
+                                pathParameters: {'routeId': r.id},
+                              )
+                            : null,
                       ),
                   ],
                 );
@@ -158,28 +142,25 @@ class _HistoryRow extends StatelessWidget {
     final dateLabel = date == null ? 'Route' : LpgFormat.date(date);
     final n = route.stops.length;
     final cancelled = route.status == 'cancelled';
-    return LpgCard(
-      padding: EdgeInsets.zero,
+    return LpgListTile(
+      leadingIcon: LpgIcons.history,
+      leadingTone: LpgTone.neutral,
+      title: dateLabel,
+      subtitle:
+          '$n stop${n == 1 ? '' : 's'} · '
+          '${LpgFormat.sentence(route.status)}',
+      trailing: cashPending
+          ? const LpgStatusBadge(
+              label: 'CASH PENDING',
+              severity: LpgStatusSeverity.warning,
+            )
+          : Icon(
+              cancelled ? LpgIcons.cancel : LpgIcons.success,
+              size: LpgSizes.iconMd,
+              color: cancelled ? colors.statusDanger : colors.statusSuccess,
+            ),
+      showChevron: onTap != null,
       onTap: onTap,
-      child: LpgListTile(
-        leadingIcon: LpgIcons.history,
-        leadingTone: LpgTone.neutral,
-        title: dateLabel,
-        subtitle:
-            '$n stop${n == 1 ? '' : 's'} · '
-            '${LpgFormat.sentence(route.status)}',
-        trailing: cashPending
-            ? const LpgStatusBadge(
-                label: 'CASH PENDING',
-                severity: LpgStatusSeverity.warning,
-              )
-            : Icon(
-                cancelled ? LpgIcons.cancel : LpgIcons.success,
-                size: LpgSizes.iconMd,
-                color: cancelled ? colors.statusDanger : colors.statusSuccess,
-              ),
-        showChevron: onTap != null,
-      ),
     );
   }
 }

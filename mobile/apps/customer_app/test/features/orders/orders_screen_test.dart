@@ -49,14 +49,14 @@ void main() {
       expect(find.text('Book Cylinder'), findsOneWidget);
     });
 
-    testWidgets('renders an order card with its number, status and amount', (
+    testWidgets('renders an order row with its number, status and date', (
       tester,
     ) async {
       await pumpScreen(tester, _screen(orders: [_order()]));
 
       expect(find.text('Order ORD000042'), findsOneWidget);
-      expect(find.text('Confirmed'), findsOneWidget);
-      expect(find.textContaining('1,234.50'), findsOneWidget);
+      expect(find.textContaining('Confirmed'), findsOneWidget);
+      expect(find.text('20 Aug'), findsOneWidget);
     });
 
     testWidgets('an out-for-delivery order offers a Track action', (
@@ -68,14 +68,6 @@ void main() {
       );
 
       expect(find.text('Track'), findsOneWidget);
-    });
-
-    testWidgets('shows a pending amount when the order has no total yet', (
-      tester,
-    ) async {
-      await pumpScreen(tester, _screen(orders: [_order(totalAmount: null)]));
-
-      expect(find.text('To be confirmed'), findsOneWidget);
     });
 
     testWidgets('shows an error state with retry when the load fails', (

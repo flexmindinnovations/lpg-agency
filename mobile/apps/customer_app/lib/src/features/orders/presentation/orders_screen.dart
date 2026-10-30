@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,99 +51,43 @@ class OrdersScreen extends ConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(ordersProvider.future),
-            child: ListView.separated(
+            child: ListView(
               // Bottom padding clears the floating "New order" button.
               padding: LpgSpacing.page.copyWith(
                 bottom: LpgSizes.touchTarget * 2,
               ),
-              itemCount: orders.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: LpgSpacing.smd),
-              itemBuilder: (context, index) => LpgFadeSlideIn(
-                index: index,
-                child: _OrderCard(order: orders[index]),
-              ),
+              children: [
+                LpgGroupedList(
+                  children: [
+                    for (final order in orders)
+                      LpgListTile(
+                        leadingIcon: order.statusIcon,
+                        leadingTone: order.statusSeverity.tone,
+                        title: order.reference,
+                        subtitle:
+                            '${order.statusLabel}  ·  ${order.cylinderCount} '
+                            '${order.cylinderCount == 1 ? 'cylinder' : 'cylinders'}',
+                        trailing: order.isTrackable
+                            ? LpgButton(
+                                label: 'Track',
+                                icon: LpgIcons.navigate,
+                                variant: LpgButtonVariant.text,
+                                onPressed: () =>
+                                    context.push('/orders/${order.id}/track'),
+                              )
+                            : Text(
+                                LpgFormat.shortDate(order.requestedDate),
+                                style: context.lpgText.bodySmall,
+                              ),
+                        showChevron: !order.isTrackable,
+                        onTap: () => context.push('/orders/${order.id}'),
+                      ),
+                  ],
+                ),
+              ],
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order});
-
-  final OrderResponse order;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = context.lpgText;
-    return LpgCard(
-      onTap: () => context.push('/orders/${order.id}'),
-      padding: const EdgeInsets.all(LpgSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              LpgIconBox(
-                icon: order.statusIcon,
-                tone: order.statusSeverity.tone,
-              ),
-              const SizedBox(width: LpgSpacing.smd),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(order.reference, style: text.titleSmall),
-                    const SizedBox(height: LpgSpacing.xs / 2),
-                    Text(
-                      '${order.cylinderCount} '
-                      '${order.cylinderCount == 1 ? 'cylinder' : 'cylinders'}'
-                      ' · for ${LpgFormat.date(order.requestedDate)}',
-                      style: text.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              LpgStatusBadge(
-                label: order.statusLabel,
-                severity: order.statusSeverity,
-              ),
-            ],
-          ),
-          const SizedBox(height: LpgSpacing.md),
-          const Divider(),
-          const SizedBox(height: LpgSpacing.smd),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Amount', style: text.labelMedium),
-                    const SizedBox(height: LpgSpacing.xs / 2),
-                    Text(order.amountLabel, style: text.titleMedium),
-                  ],
-                ),
-              ),
-              if (order.isTrackable)
-                LpgButton(
-                  label: 'Track',
-                  onPressed: () => context.push('/orders/${order.id}/track'),
-                  icon: LpgIcons.navigate,
-                )
-              else
-                LpgButton(
-                  label: 'Details',
-                  onPressed: () => context.push('/orders/${order.id}'),
-                  variant: LpgButtonVariant.text,
-                  trailingIcon: LpgIcons.chevronRight,
-                ),
-            ],
-          ),
-        ],
       ),
     );
   }

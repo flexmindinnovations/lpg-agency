@@ -73,56 +73,61 @@ class NotificationsScreen extends ConsumerWidget {
           }
           return RefreshIndicator(
             onRefresh: () => ref.refresh(adminNotificationsProvider.future),
-            child: ListView.separated(
+            child: ListView(
               padding: LpgSpacing.page,
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: LpgSpacing.sm),
-              itemBuilder: (context, i) {
-                final item = items[i];
-                return LpgCard(
-                  // Unread items sit on a tinted card so they stand out
-                  // without relying on the dot alone.
-                  variant: item.isRead
-                      ? LpgCardVariant.outlined
-                      : LpgCardVariant.tonal,
-                  padding: EdgeInsets.zero,
-                  child: LpgListTile(
-                    onTap: () => _open(context, ref, item),
-                    leadingIcon: switch (item.referenceType) {
-                      'order' => LpgIcons.orders,
-                      'route' => LpgIcons.truck,
-                      _ => LpgIcons.notifications,
-                    },
-                    title: item.title,
-                    subtitle: item.body,
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          LpgFormat.relative(item.createdAt),
-                          style: context.lpgText.bodySmall,
-                        ),
-                        if (!item.isRead)
-                          Padding(
-                            padding: const EdgeInsets.only(top: LpgSpacing.xs),
-                            child: Semantics(
-                              label: 'Unread',
-                              child: Container(
-                                width: LpgSpacing.sm,
-                                height: LpgSpacing.sm,
-                                decoration: BoxDecoration(
-                                  color: colors.accent,
-                                  shape: BoxShape.circle,
-                                ),
+              children: [
+                LpgGroupedList(
+                  children: [
+                    for (final item in items)
+                      // Unread rows sit on a faint tint so they stand out
+                      // without relying on the dot alone.
+                      ColoredBox(
+                        color: item.isRead
+                            ? Colors.transparent
+                            : colors.actionPrimaryContainer.withValues(
+                                alpha: 0.45,
                               ),
-                            ),
+                        child: LpgListTile(
+                          onTap: () => _open(context, ref, item),
+                          leadingIcon: switch (item.referenceType) {
+                            'order' => LpgIcons.orders,
+                            'route' => LpgIcons.truck,
+                            _ => LpgIcons.notifications,
+                          },
+                          title: item.title,
+                          subtitle: item.body,
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                LpgFormat.relative(item.createdAt),
+                                style: context.lpgText.bodySmall,
+                              ),
+                              if (!item.isRead)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: LpgSpacing.xs,
+                                  ),
+                                  child: Semantics(
+                                    label: 'Unread',
+                                    child: Container(
+                                      width: LpgSpacing.sm,
+                                      height: LpgSpacing.sm,
+                                      decoration: BoxDecoration(
+                                        color: colors.accent,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
           );
         },

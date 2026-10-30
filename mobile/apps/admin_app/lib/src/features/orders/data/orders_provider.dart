@@ -219,3 +219,24 @@ final routeWeighmentsProvider = FutureProvider.autoDispose
           .listForRoute(routeId);
       return unwrap(result);
     });
+
+/// What the other orders still waiting on a trip need loaded, by cylinder
+/// type. [orderIds] is comma-joined so the family key is a plain string.
+final tripCompanionNeedsProvider =
+    FutureProvider.family<Map<String, int>, String>((ref, orderIds) async {
+      final api = ref.watch(orderApiProvider);
+      final results = await Future.wait([
+        for (final id in orderIds.split(','))
+          if (id.isNotEmpty) api.getOrder(id),
+      ]);
+      final needs = <String, int>{};
+      for (final result in results) {
+        if (result case Success<OrderResponse>(:final value)) {
+          for (final line in value.lines) {
+            needs[line.cylinderTypeId] =
+                (needs[line.cylinderTypeId] ?? 0) + line.quantityPending;
+          }
+        }
+      }
+      return needs;
+    });

@@ -93,21 +93,16 @@ class SupportScreen extends ConsumerWidget {
                 return [
                   SliverPadding(
                     padding: LpgSpacing.page.copyWith(top: 0),
-                    sliver: SliverList.separated(
-                      itemCount: complaints.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: LpgSpacing.sm),
-                      itemBuilder: (context, index) {
-                        final item = complaints[index];
-                        final severity = complaintStatusSeverity(item.status);
-                        return LpgFadeSlideIn(
-                          index: index + 1,
-                          child: LpgCard(
-                            padding: EdgeInsets.zero,
-                            onTap: () => context.push('/support/${item.id}'),
-                            child: LpgListTile(
+                    sliver: SliverToBoxAdapter(
+                      child: LpgGroupedList(
+                        staggerFrom: 1,
+                        children: [
+                          for (final item in complaints)
+                            LpgListTile(
                               leadingIcon: LpgIcons.complaint,
-                              leadingTone: severity.tone,
+                              leadingTone: complaintStatusSeverity(
+                                item.status,
+                              ).tone,
                               title: [
                                 complaintCategoryLabel(item.category),
                                 ?item.complaintNumber,
@@ -118,12 +113,13 @@ class SupportScreen extends ConsumerWidget {
                                 label: humanizePascalCase(
                                   item.status,
                                 ).toUpperCase(),
-                                severity: severity,
+                                severity: complaintStatusSeverity(item.status),
                               ),
+                              showChevron: true,
+                              onTap: () => context.push('/support/${item.id}'),
                             ),
-                          ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
                   ),
                 ];

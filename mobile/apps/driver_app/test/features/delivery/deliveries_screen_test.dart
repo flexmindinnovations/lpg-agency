@@ -57,7 +57,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Current route'), findsOneWidget);
-      expect(find.text('Stop 1'), findsOneWidget);
+      expect(find.textContaining('Stop 1'), findsOneWidget);
     });
 
     testWidgets('shows a note when there is no active route', (tester) async {

@@ -213,6 +213,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       }
     }
 
+    // A booked order has no price until the agency confirms it.
+    final priced = order.status != 'booked' || (order.totalAmount ?? 0) > 0;
     final note = orderProgressNote(order.status, tripLabel: tripLabel);
     final progress = orderProgressIndex(order.status);
 
@@ -320,10 +322,16 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         ),
                       ),
                       Text(
-                        LpgFormat.currency(
-                          (line.unitPrice ?? 0.0) * line.quantityOrdered,
-                        ),
-                        style: text.titleSmall,
+                        priced
+                            ? LpgFormat.currency(
+                                (line.unitPrice ?? 0.0) * line.quantityOrdered,
+                              )
+                            : 'Priced on confirmation',
+                        style: priced
+                            ? text.titleSmall
+                            : text.bodySmall?.copyWith(
+                                color: colors.textSecondary,
+                              ),
                       ),
                     ],
                   ),
@@ -336,10 +344,16 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 children: [
                   Text('Total amount', style: text.titleMedium),
                   Text(
-                    LpgFormat.currency(order.totalAmount ?? 0.0),
-                    style: text.headlineSmall?.copyWith(
-                      color: colors.actionPrimary,
-                    ),
+                    priced
+                        ? LpgFormat.currency(order.totalAmount ?? 0.0)
+                        : 'On confirmation',
+                    style: priced
+                        ? text.headlineSmall?.copyWith(
+                            color: colors.actionPrimary,
+                          )
+                        : text.bodyMedium?.copyWith(
+                            color: colors.textSecondary,
+                          ),
                   ),
                 ],
               ),

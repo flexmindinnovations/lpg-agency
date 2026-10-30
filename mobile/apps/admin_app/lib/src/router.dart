@@ -12,19 +12,26 @@ import 'features/dispatch/presentation/trip_detail_screen.dart';
 import 'features/fleet/presentation/driver_form_screen.dart';
 import 'features/fleet/presentation/fleet_screen.dart';
 import 'features/fleet/presentation/vehicle_form_screen.dart';
+import 'features/more/presentation/more_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/orders/presentation/create_order_screen.dart';
 import 'features/orders/presentation/order_detail_screen.dart';
 import 'features/orders/presentation/order_list_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/search/presentation/search_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
 import 'login_screen.dart';
 import 'splash_screen.dart';
+
+/// Screens that sit above the tab bar (search, alerts, the fleet forms, ...)
+/// are pushed on this navigator so the bottom bar hides while they are open.
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authController = ref.watch(authControllerProvider);
 
   return GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: authController,
     redirect: (context, state) {
@@ -75,7 +82,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/orders',
                 name: 'orders',
-                builder: (context, state) => const OrderListScreen(),
+                builder: (context, state) => OrderListScreen(
+                  key: ValueKey(state.uri.query),
+                  initialFilter: state.uri.queryParameters['filter'],
+                  initialSearch: state.uri.queryParameters['q'],
+                ),
                 routes: [
                   GoRoute(
                     path: 'new',
@@ -107,27 +118,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                       tripId: state.pathParameters['tripId']!,
                     ),
                   ),
-                  GoRoute(
-                    path: 'fleet',
-                    name: 'fleet',
-                    builder: (context, state) => FleetScreen(
-                      initialTab: state.uri.queryParameters['tab'] == 'vans'
-                          ? 1
-                          : 0,
-                    ),
-                    routes: [
-                      GoRoute(
-                        path: 'driver-new',
-                        name: 'fleet_driver_new',
-                        builder: (context, state) => const DriverFormScreen(),
-                      ),
-                      GoRoute(
-                        path: 'van-new',
-                        name: 'fleet_vehicle_new',
-                        builder: (context, state) => const VehicleFormScreen(),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ],
@@ -135,29 +125,56 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/approvals',
-                name: 'approvals',
-                builder: (context, state) => const ApprovalsScreen(),
+                path: '/more',
+                name: 'more',
+                builder: (context, state) => const MoreScreen(),
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/alerts',
-                name: 'alerts',
-                builder: (context, state) => const NotificationsScreen(),
-              ),
-            ],
+        ],
+      ),
+      GoRoute(
+        path: '/search',
+        name: 'search',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            SearchScreen(initialQuery: state.uri.queryParameters['q'] ?? ''),
+      ),
+      GoRoute(
+        path: '/alerts',
+        name: 'alerts',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/approvals',
+        name: 'approvals',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ApprovalsScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/fleet',
+        name: 'fleet',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => FleetScreen(
+          initialTab: state.uri.queryParameters['tab'] == 'vans' ? 1 : 0,
+        ),
+        routes: [
+          GoRoute(
+            path: 'driver-new',
+            name: 'fleet_driver_new',
+            builder: (context, state) => const DriverFormScreen(),
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/profile',
-                name: 'profile',
-                builder: (context, state) => const ProfileScreen(),
-              ),
-            ],
+          GoRoute(
+            path: 'van-new',
+            name: 'fleet_vehicle_new',
+            builder: (context, state) => const VehicleFormScreen(),
           ),
         ],
       ),

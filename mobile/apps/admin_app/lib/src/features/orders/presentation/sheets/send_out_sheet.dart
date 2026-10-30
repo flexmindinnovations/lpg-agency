@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../api_result.dart';
 import '../../../../providers.dart';
+import '../../../dispatch/data/dispatch_provider.dart';
+import '../../../dispatch/domain/trip_status.dart';
 import '../../data/orders_provider.dart';
 import '../../domain/order_flow.dart';
 import 'weighment_section.dart';
@@ -73,9 +75,9 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
         '$orders ${orders == 1 ? 'order' : 'orders'}';
   }
 
-  Future<void> _submit(RouteSummary? existing) async {
-    final warehouseId = _warehouseId;
-    if (warehouseId == null) return;
+  /// [warehouseId] is the godown the sheet is showing, which is the first
+  /// active one until the user picks another.
+  Future<void> _submit(RouteSummary? existing, String warehouseId) async {
     setState(() {
       _busy = true;
       _error = null;
@@ -219,8 +221,11 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
     final trip = _selectedTrip(trips);
     final isNewTrip = trip == null;
 
-    final busyDrivers = {for (final t in trips) t.driverId};
-    final busyVehicles = {for (final t in trips) t.vehicleId};
+    // A driver or van can only be on one open trip anywhere, so who is busy
+    // comes from every branch's trips, not just this order's branch.
+    final everyTrip = ref.watch(dispatchTripsProvider).value ?? trips;
+    final busyDrivers = {for (final t in everyTrip) t.driverId};
+    final busyVehicles = {for (final t in everyTrip) t.vehicleId};
     final drivers = {
       for (final d in fleet.drivers)
         if (d.isActive &&
@@ -259,15 +264,34 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
         : ref.watch(filledStockProvider(('warehouse', warehouseId)));
     final godownStock = godownStockAsync?.value;
 
-    final rows = [
+    // The trip is loaded as a whole, so the load sheet counts the other
+    // orders waiting on it too, not just this one.
+    final companionIds = trip != null && trip.status == 'planned'
+        ? [
+            for (final s in trip.stops)
+              if (s.status == 'pending' && s.orderId != _order.id) s.orderId,
+          ]
+        : const <String>[];
+    final companionNeeds = companionIds.isEmpty
+        ? const <String, int>{}
+        : ref.watch(tripCompanionNeedsProvider(companionIds.join(','))).value ??
+              const <String, int>{};
+    final needsByType = <String, int>{
       for (final line in _order.lines)
+        line.cylinderTypeId: _onTrip
+            ? line.quantityPending
+            : line.quantityOrdered,
+    };
+    companionNeeds.forEach((type, qty) {
+      needsByType[type] = (needsByType[type] ?? 0) + qty;
+    });
+    final rows = [
+      for (final entry in needsByType.entries)
         _LoadRow.of(
-          name: names[line.cylinderTypeId] ?? 'Cylinder',
-          forOrder: _onTrip ? line.quantityPending : line.quantityOrdered,
-          onVan: vanStock[line.cylinderTypeId] ?? 0,
-          inGodown: godownStock == null
-              ? null
-              : godownStock[line.cylinderTypeId] ?? 0,
+          name: names[entry.key] ?? 'Cylinder',
+          forOrder: entry.value,
+          onVan: vanStock[entry.key] ?? 0,
+          inGodown: godownStock == null ? null : godownStock[entry.key] ?? 0,
         ),
     ];
     final short = rows.any((r) => r.short);
@@ -344,8 +368,7 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
               ),
               if (drivers.isEmpty || vehicles.isEmpty) ...[
                 const SizedBox(height: LpgSpacing.md),
-                LpgBanner(
-                  tone: LpgTone.warning,
+                _FleetBlockers(
                   message: _fleetGap(
                     fleet,
                     drivers: drivers.isEmpty,
@@ -353,15 +376,26 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
                     busyDrivers: busyDrivers,
                     busyVehicles: busyVehicles,
                   ),
-                  actionLabel: drivers.isEmpty
-                      ? 'Manage drivers'
-                      : 'Manage vans',
-                  onAction: () {
-                    final tab = drivers.isEmpty ? 'drivers' : 'vans';
-                    final router = GoRouter.of(context);
-                    Navigator.of(context).pop();
-                    router.pushNamed('fleet', queryParameters: {'tab': tab});
-                  },
+                  needDriver: drivers.isEmpty,
+                  needVan: vehicles.isEmpty,
+                  busyTrips: [
+                    for (final t in everyTrip)
+                      if ((drivers.isEmpty &&
+                              fleet.drivers.any(
+                                (d) =>
+                                    d.id == t.driverId &&
+                                    d.branchId == _order.branchId,
+                              )) ||
+                          (vehicles.isEmpty &&
+                              fleet.vehicles.any(
+                                (v) =>
+                                    v.id == t.vehicleId &&
+                                    v.branchId == _order.branchId,
+                              )))
+                        t,
+                  ],
+                  fleet: fleet,
+                  hasOpenTrips: _openTrips(trips).isNotEmpty,
                 ),
               ],
             ],
@@ -386,7 +420,7 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
             const LpgBanner(
               tone: LpgTone.danger,
               message:
-                  "The godown doesn't have enough filled cylinders for this order. Receive stock or pick another godown.",
+                  "The godown doesn't have enough filled cylinders for this trip. Receive stock or pick another godown.",
             ),
           ],
           if (companions > 0) ...[
@@ -416,7 +450,7 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
             icon: LpgIcons.truck,
             isLoading: _busy,
             expand: true,
-            onPressed: canSubmit ? () => _submit(trip) : null,
+            onPressed: canSubmit ? () => _submit(trip, warehouseId) : null,
           ),
         ],
       ),
@@ -489,6 +523,109 @@ class _LoadRowTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// What to do when every driver or van is taken: who is holding them, a
+/// shortcut to open that trip, and one-tap ways to add a driver or a van.
+class _FleetBlockers extends StatelessWidget {
+  const _FleetBlockers({
+    required this.message,
+    required this.needDriver,
+    required this.needVan,
+    required this.busyTrips,
+    required this.fleet,
+    required this.hasOpenTrips,
+  });
+
+  final String message;
+  final bool needDriver;
+  final bool needVan;
+  final List<RouteSummary> busyTrips;
+  final FleetData fleet;
+  final bool hasOpenTrips;
+
+  /// Closes the sheet, then opens [open] on the router that outlives it.
+  void _go(BuildContext context, void Function(GoRouter router) open) {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    open(router);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.lpgText;
+    final colors = context.lpgColors;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LpgBanner(tone: LpgTone.warning, message: message),
+        if (hasOpenTrips) ...[
+          const SizedBox(height: LpgSpacing.sm),
+          Text(
+            'Quickest way: pick an open trip in "Trip" above and this order '
+            'joins it.',
+            style: text.bodySmall?.copyWith(color: colors.textSecondary),
+          ),
+        ],
+        if (busyTrips.isNotEmpty) ...[
+          const SizedBox(height: LpgSpacing.md),
+          Text('Who is holding them', style: text.titleSmall),
+          const SizedBox(height: LpgSpacing.xs),
+          for (final trip in busyTrips)
+            Padding(
+              padding: const EdgeInsets.only(bottom: LpgSpacing.xs),
+              child: LpgListTile(
+                title:
+                    '${fleet.vehicleName(trip.vehicleId)} · '
+                    '${fleet.driverName(trip.driverId)}',
+                subtitle:
+                    '${tripStatusLabel(trip.status)} · '
+                    '${trip.stops.length} '
+                    '${trip.stops.length == 1 ? 'stop' : 'stops'}',
+                onTap: () => _go(
+                  context,
+                  (router) => router.pushNamed(
+                    'trip_detail',
+                    pathParameters: {'tripId': trip.id},
+                  ),
+                ),
+              ),
+            ),
+        ],
+        const SizedBox(height: LpgSpacing.sm),
+        Row(
+          children: [
+            if (needDriver)
+              Expanded(
+                child: LpgButton(
+                  label: 'Add a driver',
+                  icon: LpgIcons.add,
+                  variant: LpgButtonVariant.secondary,
+                  onPressed: () => _go(
+                    context,
+                    (router) => router.pushNamed('fleet_driver_new'),
+                  ),
+                ),
+              ),
+            if (needDriver && needVan) const SizedBox(width: LpgSpacing.sm),
+            if (needVan)
+              Expanded(
+                child: LpgButton(
+                  label: 'Add a van',
+                  icon: LpgIcons.add,
+                  variant: LpgButtonVariant.secondary,
+                  onPressed: () => _go(
+                    context,
+                    (router) => router.pushNamed('fleet_vehicle_new'),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

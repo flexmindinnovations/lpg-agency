@@ -63,66 +63,77 @@ class NotificationsScreen extends ConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(notificationsProvider.future),
-            child: ListView.separated(
+            child: ListView(
               padding: LpgSpacing.page,
-              itemCount: notifications.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: LpgSpacing.sm),
-              itemBuilder: (context, index) {
-                final item = notifications[index];
-                final (icon, tone) = switch (item.notificationType) {
-                  'ORDER_UPDATE' => (LpgIcons.orders, LpgTone.primary),
-                  'PROMOTIONAL' => (LpgIcons.announcement, LpgTone.accent),
-                  'SYSTEM' => (LpgIcons.settings, LpgTone.neutral),
-                  _ => (LpgIcons.notifications, LpgTone.info),
-                };
-
-                return LpgFadeSlideIn(
-                  index: index,
-                  child: LpgCard(
-                    // Unread items sit on a tinted card so they stand out
-                    // without relying on the dot alone.
-                    variant: item.isRead
-                        ? LpgCardVariant.outlined
-                        : LpgCardVariant.tonal,
-                    padding: EdgeInsets.zero,
-                    child: LpgListTile(
-                      leadingIcon: icon,
-                      leadingTone: tone,
-                      title: item.title,
-                      subtitle: item.body,
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            LpgFormat.relative(item.createdAt),
-                            style: context.lpgText.bodySmall,
-                          ),
-                          if (!item.isRead)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: LpgSpacing.xs,
+              children: [
+                LpgGroupedList(
+                  children: [
+                    for (final item in notifications)
+                      // Unread rows sit on a faint tint so they stand out
+                      // without relying on the dot alone.
+                      ColoredBox(
+                        color: item.isRead
+                            ? Colors.transparent
+                            : colors.actionPrimaryContainer.withValues(
+                                alpha: 0.45,
                               ),
-                              child: Semantics(
-                                label: 'Unread',
-                                child: Container(
-                                  width: LpgSpacing.sm,
-                                  height: LpgSpacing.sm,
-                                  decoration: BoxDecoration(
-                                    color: colors.accent,
-                                    shape: BoxShape.circle,
+                        child: Builder(
+                          builder: (context) {
+                            final (
+                              icon,
+                              tone,
+                            ) = switch (item.notificationType) {
+                              'ORDER_UPDATE' => (
+                                LpgIcons.orders,
+                                LpgTone.primary,
+                              ),
+                              'PROMOTIONAL' => (
+                                LpgIcons.announcement,
+                                LpgTone.accent,
+                              ),
+                              'SYSTEM' => (LpgIcons.settings, LpgTone.neutral),
+                              _ => (LpgIcons.notifications, LpgTone.info),
+                            };
+                            return LpgListTile(
+                              leadingIcon: icon,
+                              leadingTone: tone,
+                              title: item.title,
+                              subtitle: item.body,
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    LpgFormat.relative(item.createdAt),
+                                    style: context.lpgText.bodySmall,
                                   ),
-                                ),
+                                  if (!item.isRead)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: LpgSpacing.xs,
+                                      ),
+                                      child: Semantics(
+                                        label: 'Unread',
+                                        child: Container(
+                                          width: LpgSpacing.sm,
+                                          height: LpgSpacing.sm,
+                                          decoration: BoxDecoration(
+                                            color: colors.accent,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ),
-                        ],
+                              onTap: () => _handleTap(context, ref, item),
+                            );
+                          },
+                        ),
                       ),
-                      onTap: () => _handleTap(context, ref, item),
-                    ),
-                  ),
-                );
-              },
+                  ],
+                ),
+              ],
             ),
           );
         },

@@ -10,6 +10,7 @@ import 'package:driver_app/src/features/delivery/data/active_route_provider.dart
 import 'package:driver_app/src/features/notifications/data/notifications_provider.dart';
 import 'package:driver_app/src/local_database_provider.dart';
 import 'package:driver_app/src/push/push_notification_service.dart';
+import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -115,7 +116,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('LPG Agency'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(LpgSplash), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
 
