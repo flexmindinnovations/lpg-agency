@@ -60,4 +60,48 @@ void main() {
       expect(record!.passesLoadOut, isFalse);
     });
   });
+  group('WeighmentApi receipt sample', () {
+    test('recordReceiptSample sends the batch and the sample', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/goods-receipt-notes/g-1/weighment');
+        expect(options.data, {
+          'scale_id': 's-1',
+          'cylinder_type_id': 'c-1',
+          'total_cylinders_in_batch': 40,
+          'cylinders_checked': 4,
+          'underweight_cylinder_count': 0,
+        });
+        return jsonResponse({
+          'id': 'w-1',
+          'scale_id': 's-1',
+          'context': 'goods_receipt_sample',
+          'reference_type': 'grn',
+          'reference_id': 'g-1',
+          'cylinder_type_id': 'c-1',
+          'total_cylinders_in_batch': 40,
+          'cylinders_checked': 4,
+          'underweight_cylinder_count': 0,
+          'tolerance_grams_applied': 0,
+          'result': 'pass',
+          'recorded_by': 'u-1',
+          'recorded_at': '2026-10-30T09:00:00Z',
+        }, 201);
+      });
+
+      final result = await WeighmentApi(client.dio).recordReceiptSample(
+        'g-1',
+        scaleId: 's-1',
+        cylinderTypeId: 'c-1',
+        batch: 40,
+        checked: 4,
+        underweight: 0,
+      );
+
+      expect(
+        result.when(onSuccess: (_) => true, onFailure: (_) => false),
+        isTrue,
+      );
+    });
+  });
 }

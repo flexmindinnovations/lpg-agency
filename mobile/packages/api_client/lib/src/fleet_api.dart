@@ -368,6 +368,86 @@ final class FleetApi {
     return ComplianceDocument.fromJson(response.data!);
   });
 
+  /// The status moves the server allows (`GET /inventory/status-transitions`).
+  Future<Result<StatusTransitions>> getStatusTransitions() => _guard(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/inventory/status-transitions',
+    );
+    return StatusTransitions.fromJson(response.data!);
+  });
+
+  /// Moves cylinders from one status to another at a godown or van, such as
+  /// filled to leaking (`POST .../status-changes`). Needs `inventory:load`;
+  /// `409 INVALID_STATUS_TRANSITION` when the pair is not allowed.
+  Future<Result<void>> changeStatus(
+    String locationType,
+    String locationId, {
+    required String cylinderTypeId,
+    required String fromStatus,
+    required String toStatus,
+    required int quantity,
+  }) => _guard(() async {
+    await _dio.post<dynamic>(
+      '/api/v1/inventory-locations/$locationType/$locationId/status-changes',
+      data: {
+        'cylinder_type_id': cylinderTypeId,
+        'from_status': fromStatus,
+        'to_status': toStatus,
+        'quantity': quantity,
+      },
+    );
+  });
+
+  /// A manual correction of the books (`POST .../adjustments`), with the
+  /// [reason] kept on record. Needs `inventory:adjust`.
+  Future<Result<void>> adjustStock(
+    String locationType,
+    String locationId, {
+    required String cylinderTypeId,
+    required String fromStatus,
+    required String toStatus,
+    required int quantity,
+    required String reason,
+  }) => _guard(() async {
+    await _dio.post<dynamic>(
+      '/api/v1/inventory-locations/$locationType/$locationId/adjustments',
+      data: {
+        'cylinder_type_id': cylinderTypeId,
+        'from_status': fromStatus,
+        'to_status': toStatus,
+        'quantity': quantity,
+        'reason': reason,
+      },
+    );
+  });
+
+  /// Sends empties, or defective cylinders, back to the oil company's plant
+  /// (`POST /warehouses/{id}/omc-returns`). [status] is `empty`, `damaged`,
+  /// `leakage` or `quarantine`; `409 INSUFFICIENT_STOCK` when the godown
+  /// holds fewer.
+  Future<Result<OmcReturn>> returnToOmc(
+    String warehouseId, {
+    required String cylinderTypeId,
+    required int quantity,
+    required String destinationOmc,
+    String status = 'empty',
+    String? challanNumber,
+    String? truckNumber,
+  }) => _guard(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/warehouses/$warehouseId/omc-returns',
+      data: {
+        'cylinder_type_id': cylinderTypeId,
+        'quantity': quantity,
+        'destination_omc': destinationOmc,
+        'status': status,
+        'challan_number': ?challanNumber,
+        'truck_number': ?truckNumber,
+      },
+    );
+    return OmcReturn.fromJson(response.data!);
+  });
+
   /// Registers a van (`POST /vehicles`). The RC scan ([rcDocumentRef], from
   /// [uploadDocument]) and its expiry are required.
   Future<Result<FleetVehicle>> registerVehicle({

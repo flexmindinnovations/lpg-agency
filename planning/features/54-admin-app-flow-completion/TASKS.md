@@ -11,8 +11,12 @@
 - [x] F2.2 Order screen: Delivery section (when, collected at the door, location, signature and photo) and Payment and invoice section (invoice summary, link to the invoice)
 - [x] F2.3 Tests, emulator run, PR
 
-## F3 Stock moves
-- [ ] Not started
+## F3 Stock moves (done)
+- [x] F3.1 API client: status rules, change status, manual correction, return to the OMC, receipt weighment sample (+ tests)
+- [x] F3.2 Stock screen: Change status, Correct stock, Return to OMC (with the server's status rules and the system's quantity shown)
+- [x] F3.3 Weighment sample offered after Receive stock (optional, skippable)
+- [x] F3.4 Stock on each van
+- [x] F3.5 Tests, emulator run, PR
 
 ## F4 Open bugs
 - [ ] Not started

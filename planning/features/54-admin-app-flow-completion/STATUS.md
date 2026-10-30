@@ -1,6 +1,6 @@
 # Status
 
-Branch `feat/admin-app-order-proof`, 2026-10-30, on top of `feat/admin-app-create-customer` (PR #87), which stacks on #86, #85, #84, #83, #82; none merged yet. F1 and F2 built.
+Branch `feat/admin-app-stock-moves`, 2026-10-30, on top of `feat/admin-app-order-proof` (PR #88), which stacks on #87, #86, #85, #84, #83, #82; none merged yet. F1, F2 and F3 built.
 
 ## F1 Create customers
 Built on `POST /customers`, `POST /customers/{id}/approve`, `POST /customers/{id}/addresses` and `POST /customers/{id}/kyc/{docId}/verify`; no backend change.
@@ -18,4 +18,13 @@ Built on `GET /orders/{id}/proof-of-delivery` and `GET /invoices?order_id=`; no 
 Tried on the emulator against the local backend, on ORD000061 (closed): both sections, and the invoice row opening INV-2026-000013. That order's driver took no signature or photo, so the pictures were not seen on a device (widget tests cover them being absent; the image-loading path is not exercised).
 **It makes the open GST question visible:** the order total is Rs 905.50 and the invoice total Rs 950.78. The screen shows both as the backend states them; it does not decide which is right.
 Not tried: an order whose invoice still has a balance (the one used had been settled earlier), an order delivered without an invoice.
+
+## F3 Stock moves
+Built on the existing inventory endpoints; no backend change. On the Stock screen, under "Other stock actions":
+- **Change status** (filled to leaking or damaged, and so on) and **Correct stock** (a fix to the books, with a reason kept on record). The options come from the server's own transition rules, so a move it would refuse is never offered; the sheet shows how many the system holds and will not accept more.
+- **Return to OMC:** empties or defective cylinders back to the plant, with the plant, challan and truck, producing a return number.
+- **Weigh a sample** is offered after every Receive stock (a tenth of the batch suggested, a scale chosen from those at the godown, underweight found). It is optional, never holds up the receipt, and says so when the godown has no scale (scales are registered on the web).
+- **On the vans:** what each active van in the godown's branch is carrying.
+Tried on the emulator against the local backend: the vans list (TS09UA3320 carrying 10 Commercial 19kg and 30 Domestic 14.2kg), Change status (1 Domestic 5kg filled to leaking: showed as "Moved between statuses", only Damaged and Leaking offered for filled), then Correct stock (leaking back to filled with a reason: "Corrected by hand"); the dev godown's filled total is back to 808.
+Not tried on the emulator: Return to OMC (it would change dev stock; covered by an API test and the sheet's checks by widget tests) and the weighment sample (no scale is registered at the dev godown; the no-scale message and the checks are widget-tested).
 
