@@ -1,0 +1,15 @@
+/*
+ * PrimeNG pins the count chip to the corner of the button's box, but the bell
+ * glyph sits well inside a rounded, padded button, so the chip floated clear
+ * of it. Pull it onto the glyph's upper-right edge, where a notification
+ * count normally sits, and make it a pill (a true circle for one digit).
+ */
+:host ::ng-deep .p-overlaybadge .p-badge {
+  inset-block-start: var(--spacing-sm);
+  inset-inline-end: var(--spacing-sm);
+  border-radius: 9999px;
+  min-inline-size: 1.25rem;
+  block-size: 1.25rem;
+  padding-inline: var(--spacing-xs);
+  line-height: 1.25rem;
+}

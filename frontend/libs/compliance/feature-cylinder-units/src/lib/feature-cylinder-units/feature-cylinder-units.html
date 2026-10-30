@@ -145,14 +145,14 @@
         </lpg-form-field>
 
         @if (registerForm.controls.custody_type.value === 'warehouse') {
-        <lpg-form-field label="Warehouse" for="custody_ref_id">
+        <lpg-form-field label="Godown" for="custody_ref_id">
           <p-select
             inputId="custody_ref_id"
             formControlName="custody_ref_id"
             [options]="warehouseOptions()"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select Warehouse"
+            placeholder="Select Godown"
             appendTo="body"
             [fluid]="true"
           ></p-select>
@@ -567,14 +567,14 @@
           </lpg-form-field>
 
           @if (custodyForm.controls.custody_type.value === 'warehouse') {
-          <lpg-form-field label="Destination Warehouse" for="move_custody_ref_id">
+          <lpg-form-field label="Destination Godown" for="move_custody_ref_id">
             <p-select
               inputId="move_custody_ref_id"
               formControlName="custody_ref_id"
               [options]="warehouseOptions()"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select Warehouse"
+              placeholder="Select Godown"
               appendTo="body"
               [fluid]="true"
             ></p-select>

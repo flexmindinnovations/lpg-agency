@@ -273,7 +273,7 @@ export class ShellLayout {
           condition: can('inventory:read'),
         },
         {
-          label: 'Warehouses',
+          label: 'Godowns',
           icon: 'pi pi-warehouse',
           route: '/admin/warehouses',
           condition: can('tenant:configure'),

@@ -3,7 +3,7 @@
     <ng-template lpgHeaderTitlePortal>
       <lpg-page-header
         title="Inventory"
-        subtitle="View and manage cylinder stock for a warehouse or vehicle."
+        subtitle="View and manage cylinder stock for a godown or vehicle."
       />
     </ng-template>
   </div>
@@ -127,7 +127,7 @@
         ariaLabel="Location Type"
         inputId="location_type"
         [options]="[
-          { label: 'Warehouse', value: 'warehouse' },
+          { label: 'Godown', value: 'warehouse' },
           { label: 'Vehicle', value: 'vehicle' }
         ]"
         optionLabel="label"
@@ -136,7 +136,7 @@
         (ngModelChange)="onLocationTypeChange($event)"
       ></p-select>
       <p-select
-        [ariaLabel]="locationType() === 'warehouse' ? 'Warehouse' : 'Vehicle'"
+        [ariaLabel]="locationType() === 'warehouse' ? 'Godown' : 'Vehicle'"
         inputId="location_ref"
         [options]="locationOptions()"
         optionLabel="label"
@@ -260,7 +260,7 @@
     ariaLabel="Inventory transaction history"
   />
   } @else {
-  <p class="empty-hint">Select a warehouse or vehicle to view its inventory.</p>
+  <p class="empty-hint">Select a godown or vehicle to view its inventory.</p>
   }
 
   <!-- Goods Receipt Modal -->
@@ -377,7 +377,7 @@
           [messages]="fieldMessages.scale_id"
           [hint]="
           activeScalesForWarehouse().length === 0
-            ? 'No active certified scale registered at this warehouse yet.'
+            ? 'No active certified scale registered at this godown yet.'
             : ''
         "
         >
@@ -455,7 +455,7 @@
     <form [formGroup]="transferForm" (ngSubmit)="onSubmitTransfer()" class="dialog-form">
       <div class="dialog-form__fields">
         <lpg-form-field
-          label="Warehouse"
+          label="Godown"
           for="transfer_warehouse"
           [control]="transferForm.controls.warehouse_id"
           [messages]="fieldMessages.warehouse_id"
@@ -1058,11 +1058,11 @@
     <form [formGroup]="reorderPolicyForm" (ngSubmit)="onSubmitReorderPolicy()" class="dialog-form">
       <div class="dialog-form__fields">
         <p class="page-lede">
-          Set the filled-stock level a warehouse x cylinder type combination should trigger a
-          low-stock alert at. Selecting an existing pair edits it in place.
+          Set the filled-stock level a godown x cylinder type combination should trigger a low-stock
+          alert at. Selecting an existing pair edits it in place.
         </p>
         <lpg-form-field
-          label="Warehouse"
+          label="Godown"
           for="rp_warehouse"
           [control]="reorderPolicyForm.controls.warehouse_id"
           [messages]="fieldMessages.warehouse_id"

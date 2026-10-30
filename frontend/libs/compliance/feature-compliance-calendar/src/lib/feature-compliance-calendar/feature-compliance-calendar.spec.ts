@@ -69,11 +69,11 @@ describe('FeatureComplianceCalendar', () => {
     flushInit();
   });
 
-  it('auto-selects the first warehouse and loads its documents on init', () => {
+  it('auto-selects the first godown and loads its documents on init', () => {
     flushInit({
       warehouses: [
-        { id: 'w1', branch_id: 'b1', name: 'Warehouse 1', address_line: 'Line 1' },
-        { id: 'w2', branch_id: 'b1', name: 'Warehouse 2', address_line: 'Line 2' },
+        { id: 'w1', branch_id: 'b1', name: 'Godown 1', address_line: 'Line 1' },
+        { id: 'w2', branch_id: 'b1', name: 'Godown 2', address_line: 'Line 2' },
       ],
     });
 
@@ -113,7 +113,7 @@ describe('FeatureComplianceCalendar', () => {
       ['Driver · Ravi Kumar', 'Driving licence', 'overdue'],
       ['Vehicle · MH12AB1234', 'Fitness certificate', 'due_soon'],
       ['Agency', 'Agency insurance', 'upcoming'],
-      ['Warehouse · Main godown', 'PESO Form F', 'upcoming'],
+      ['Godown · Main godown', 'PESO Form F', 'upcoming'],
     ]);
     expect(component['overdueCount']()).toBe(1);
   });

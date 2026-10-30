@@ -19,7 +19,11 @@ describe('PaymentSettings', () => {
   };
 
   function create() {
-    const service = { get: jest.fn(() => of(profile)), save: jest.fn(() => of(profile)) };
+    const service = {
+      get: jest.fn(() => of(profile)),
+      save: jest.fn(() => of(profile)),
+      verify: jest.fn(() => of({})),
+    };
     TestBed.configureTestingModule({
       imports: [PaymentSettings],
       providers: [{ provide: PaymentProfileService, useValue: service }, MessageService],
@@ -48,6 +52,58 @@ describe('PaymentSettings', () => {
   it('saves a valid profile', () => {
     const { component, service } = create();
     component.form.patchValue({ ifsc: 'hdfc0001234' });
+    component.form.markAsDirty();
+    (component as unknown as { save(): void }).save();
+    expect(service.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('fills a blank bank and branch from a verified IFSC, but never overwrites typed ones', () => {
+    const { component, service } = create();
+    service.verify.mockReturnValue(
+      of({ ifsc: { status: 'verified', bank: 'ICICI Bank', branch: 'MG ROAD', city: 'PUNE' } }),
+    );
+    component.form.patchValue({ ifsc: 'ICIC0000001', bank_name: '', branch: 'Own branch' });
+    (component as unknown as { verifyIfsc(): void }).verifyIfsc();
+    expect(service.verify).toHaveBeenCalledWith({ ifsc: 'ICIC0000001' });
+    expect(component.form.getRawValue().bank_name).toBe('ICICI Bank');
+    expect(component.form.getRawValue().branch).toBe('Own branch');
+  });
+
+  it('blocks saving an IFSC that no bank branch holds', () => {
+    const { component, service } = create();
+    service.verify.mockReturnValue(of({ ifsc: { status: 'not_found' } }));
+    component.form.patchValue({ ifsc: 'ABCD0123456' });
+    component.form.markAsDirty();
+    (component as unknown as { verifyIfsc(): void }).verifyIfsc();
+    expect(component.form.controls.ifsc.errors).toHaveProperty('notFound');
+    (component as unknown as { save(): void }).save();
+    expect(service.save).not.toHaveBeenCalled();
+  });
+
+  it('does not ask the server to verify a malformed IFSC or UPI ID', () => {
+    const { component, service } = create();
+    component.form.patchValue({ ifsc: 'HDFC123', upi_id: 'no-handle' });
+    (component as unknown as { verifyIfsc(): void }).verifyIfsc();
+    (component as unknown as { verifyUpi(): void }).verifyUpi();
+    expect(service.verify).not.toHaveBeenCalled();
+  });
+
+  it('asks for a changed account number twice, and only a matching pair saves', () => {
+    const { component, service } = create();
+    component.form.patchValue({ account_number: '60200987654321' });
+    component.form.markAsDirty();
+    (component as unknown as { save(): void }).save();
+    expect(component.form.controls.account_number_confirm.errors).toHaveProperty('mismatch');
+    expect(service.save).not.toHaveBeenCalled();
+
+    component.form.patchValue({ account_number_confirm: '6020 0987 654321' });
+    (component as unknown as { save(): void }).save();
+    expect(service.save).toHaveBeenCalledTimes(1);
+    expect(service.save.mock.calls[0][0]).not.toHaveProperty('account_number_confirm');
+  });
+
+  it('does not ask to re-type an account number that is already saved', () => {
+    const { component, service } = create();
     component.form.markAsDirty();
     (component as unknown as { save(): void }).save();
     expect(service.save).toHaveBeenCalledTimes(1);

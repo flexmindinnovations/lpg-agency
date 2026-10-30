@@ -77,8 +77,10 @@ function toIsoDay(date: Date): string {
         <p-datepicker
           [ngModel]="pickedDate()"
           (ngModelChange)="setDay($event)"
-          dateFormat="dd/mm/yy"
+          inputId="cash_book_date"
+          iconDisplay="input"
           [showIcon]="true"
+          [showOnFocus]="false"
           [maxDate]="today"
           ariaLabel="Cash book date"
           appendTo="body"

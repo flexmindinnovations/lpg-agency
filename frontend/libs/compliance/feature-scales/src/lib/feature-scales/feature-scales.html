@@ -63,7 +63,7 @@
     >
       <div class="dialog-form__fields">
         <lpg-form-field
-          label="Warehouse"
+          label="Godown"
           for="warehouse_id"
           [control]="registerForm.controls.warehouse_id"
           [messages]="fieldMessages.warehouse_id"
@@ -178,7 +178,7 @@
           <span class="detail-value">{{ scale.asset_tag }}</span>
         </div>
         <div class="detail-item">
-          <span class="detail-label">Warehouse</span>
+          <span class="detail-label">Godown</span>
           <span class="detail-value"
             >{{ warehouseNameById().get(scale.warehouse_id) ?? scale.warehouse_id }}</span
           >

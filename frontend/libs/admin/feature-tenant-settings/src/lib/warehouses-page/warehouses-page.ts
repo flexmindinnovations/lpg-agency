@@ -83,8 +83,8 @@ class WarehouseStatusCell {
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
           <lpg-page-header
-            title="Warehouses"
-            subtitle="Manage warehouse locations and branch assignments."
+            title="Godowns"
+            subtitle="Manage godown locations and branch assignments."
           />
         </ng-template>
       </div>
@@ -92,7 +92,7 @@ class WarehouseStatusCell {
       @if (warehouses().length > 0) {
         <ng-template lpgPageActions>
           <button pButton (click)="openCreateDrawer()">
-            <i class="pi pi-plus"></i><span>Add Warehouse</span>
+            <i class="pi pi-plus"></i><span>Add Godown</span>
           </button>
         </ng-template>
         <div class="data-toolbar">
@@ -102,7 +102,7 @@ class WarehouseStatusCell {
               <input
                 pInputText
                 type="text"
-                placeholder="Search warehouses..."
+                placeholder="Search godowns..."
                 class="w-full"
                 [value]="searchQuery()"
                 (input)="searchQuery.set($any($event.target).value)"
@@ -117,12 +117,10 @@ class WarehouseStatusCell {
       @if (!loading() && !loadError() && warehouses().length === 0) {
         <div class="empty-state">
           <i class="pi pi-building empty-state__icon"></i>
-          <p class="empty-state__title">No warehouses found</p>
-          <p class="empty-state__description">
-            Get started by adding your first warehouse location.
-          </p>
+          <p class="empty-state__title">No godowns found</p>
+          <p class="empty-state__description">Get started by adding your first godown location.</p>
           <button pButton class="mt-4" (click)="openCreateDrawer()">
-            <i class="pi pi-plus"></i><span>Add Warehouse</span>
+            <i class="pi pi-plus"></i><span>Add Godown</span>
           </button>
         </div>
       } @else {
@@ -134,7 +132,7 @@ class WarehouseStatusCell {
             [error]="loadError()"
             (retry)="reload()"
             [searchQuery]="searchQuery()"
-            ariaLabel="Warehouses"
+            ariaLabel="Godowns"
           />
         </section>
       }
@@ -145,7 +143,7 @@ class WarehouseStatusCell {
         position="right"
         [modal]="true"
         [closeOnEscape]="true"
-        header="Add a warehouse"
+        header="Add a godown"
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
@@ -158,7 +156,7 @@ class WarehouseStatusCell {
         >
           <div class="dialog-form__fields">
             <p class="page-lede">
-              Create a new warehouse location and assign it to an operating branch.
+              Create a new godown location and assign it to an operating branch.
             </p>
 
             <lpg-form-field
@@ -183,7 +181,7 @@ class WarehouseStatusCell {
               label="Name"
               for="warehouse-name"
               [control]="form.controls.name"
-              [messages]="{ required: 'Warehouse name is required.' }"
+              [messages]="{ required: 'Godown name is required.' }"
             >
               <input
                 pInputText
@@ -224,7 +222,7 @@ class WarehouseStatusCell {
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
-              Save warehouse
+              Save godown
             </button>
           </div>
         </form>
@@ -335,7 +333,7 @@ export class WarehousesPage implements OnInit {
     this.warehouseService.createWarehouse(branchId, name, addressLine).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.notify.success(`Warehouse "${name}" added.`);
+        this.notify.success(`Godown "${name}" added.`);
         this.createDrawerVisible.set(false);
         this.form.reset();
         this.reload();

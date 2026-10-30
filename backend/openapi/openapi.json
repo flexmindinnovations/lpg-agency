@@ -4717,6 +4717,64 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IfscCheckResponse": {
+        "properties": {
+          "address": {
+            "default": "",
+            "title": "Address",
+            "type": "string"
+          },
+          "bank": {
+            "default": "",
+            "title": "Bank",
+            "type": "string"
+          },
+          "branch": {
+            "default": "",
+            "title": "Branch",
+            "type": "string"
+          },
+          "city": {
+            "default": "",
+            "title": "City",
+            "type": "string"
+          },
+          "state": {
+            "default": "",
+            "title": "State",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "verified",
+              "not_found",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supports_imps": {
+            "default": false,
+            "title": "Supports Imps",
+            "type": "boolean"
+          },
+          "supports_neft": {
+            "default": false,
+            "title": "Supports Neft",
+            "type": "boolean"
+          },
+          "supports_upi": {
+            "default": false,
+            "title": "Supports Upi",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "IfscCheckResponse",
+        "type": "object"
+      },
       "InventoryBalanceLine": {
         "properties": {
           "cylinder_type_id": {
@@ -12133,6 +12191,45 @@
         "title": "UpdateVehicleStatusRequest",
         "type": "object"
       },
+      "UpiCheckResponse": {
+        "properties": {
+          "account_confirmed": {
+            "default": false,
+            "title": "Account Confirmed",
+            "type": "boolean"
+          },
+          "format_valid": {
+            "title": "Format Valid",
+            "type": "boolean"
+          },
+          "handle": {
+            "default": "",
+            "title": "Handle",
+            "type": "string"
+          },
+          "handle_known": {
+            "default": false,
+            "title": "Handle Known",
+            "type": "boolean"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "required": [
+          "format_valid"
+        ],
+        "title": "UpiCheckResponse",
+        "type": "object"
+      },
       "UpiQrResponse": {
         "description": "What a payer needs to pay by UPI: the deep link, and the same link as\na QR image the app can show as is.",
         "properties": {
@@ -12375,6 +12472,51 @@
           "status"
         ],
         "title": "VerifyKycDocumentRequest",
+        "type": "object"
+      },
+      "VerifyPaymentDetailsRequest": {
+        "description": "Either or both; a blank one is skipped.",
+        "properties": {
+          "ifsc": {
+            "default": "",
+            "maxLength": 11,
+            "title": "Ifsc",
+            "type": "string"
+          },
+          "upi_id": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Upi Id",
+            "type": "string"
+          }
+        },
+        "title": "VerifyPaymentDetailsRequest",
+        "type": "object"
+      },
+      "VerifyPaymentDetailsResponse": {
+        "properties": {
+          "ifsc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IfscCheckResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upi": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UpiCheckResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "VerifyPaymentDetailsResponse",
         "type": "object"
       },
       "WarehouseResponse": {
@@ -21538,6 +21680,48 @@
           }
         },
         "summary": "Set Payment Profile",
+        "tags": [
+          "Payment Profile"
+        ]
+      }
+    },
+    "/api/v1/payment-profile/verify": {
+      "post": {
+        "description": "The IFSC is looked up in the bank-branch directory. The UPI ID is checked\nfor shape and a known handle only: that the ID exists, and whose it is,\nneeds a payment-provider account, so `account_confirmed` is always false.",
+        "operationId": "verify_payment_details_api_v1_payment_profile_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyPaymentDetailsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyPaymentDetailsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check an IFSC and a UPI ID before saving them",
         "tags": [
           "Payment Profile"
         ]

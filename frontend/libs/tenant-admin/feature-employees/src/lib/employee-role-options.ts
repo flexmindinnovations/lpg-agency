@@ -6,7 +6,7 @@ export const ROLE_OPTIONS: { label: string; value: string }[] = [
   { label: 'Agency Admin', value: 'agency_admin' },
   { label: 'Manager', value: 'manager' },
   { label: 'Dispatcher', value: 'dispatcher' },
-  { label: 'Warehouse Staff', value: 'warehouse_staff' },
+  { label: 'Godown Staff', value: 'warehouse_staff' },
   { label: 'Accountant', value: 'accountant' },
   { label: 'Driver', value: 'driver' },
 ];

@@ -62,7 +62,7 @@ function formatDateForApi(value: unknown): string | undefined {
 function errorMessageFor(error: unknown): string {
   switch (isAppError(error) ? error.errorCode : null) {
     case 'DUPLICATE_SCALE_ASSET_TAG':
-      return 'A scale with this asset tag is already registered at this warehouse.';
+      return 'A scale with this asset tag is already registered at this godown.';
     case 'PERMISSION_DENIED':
       return "You don't have permission to do that.";
     default:
@@ -168,7 +168,7 @@ export class FeatureScales implements OnInit {
     },
     {
       field: 'warehouse_id',
-      header: 'Warehouse',
+      header: 'Godown',
       sortable: true,
       valueFormatter: (value) => this.warehouseNameById().get(value as string) ?? (value as string),
     },
@@ -209,7 +209,7 @@ export class FeatureScales implements OnInit {
   });
 
   protected readonly fieldMessages = {
-    warehouse_id: { required: 'Select a warehouse.' },
+    warehouse_id: { required: 'Select a godown.' },
     asset_tag: { required: 'Asset tag is required.' },
     least_count_grams: {
       required: 'Enter the scale’s least count.',
@@ -235,7 +235,7 @@ export class FeatureScales implements OnInit {
   protected loadWarehouses(): void {
     this.warehouseService.listWarehouses().subscribe({
       next: (warehouses) => this.warehouses.set(warehouses),
-      error: () => this.errorMessage.set('Failed to load warehouses.'),
+      error: () => this.errorMessage.set('Failed to load godowns.'),
     });
   }
 

@@ -2,7 +2,9 @@
 
 - `GET /payment-profile` — any signed-in user; bank and UPI details are
   printed on every invoice anyway, and the apps show them beside the QR.
-- `PUT /payment-profile` — `tenant:configure`.
+- `PUT /payment-profile` — `tenant:configure`. Refuses an IFSC no bank branch holds.
+- `POST /payment-profile/verify` — `tenant:configure`. Checks an IFSC against the
+  bank-branch directory and a UPI ID's handle, without saving anything.
 - `GET /payments/upi-qr?order_id=|invoice_id=` — the UPI link and QR for what
   is still owed. Customers see only their own orders and invoices; branch
   staff only their branch's orders (the same scope as online payments).
@@ -26,14 +28,22 @@ from lpg.api.v1.dependencies.admin import (
 from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.order import get_order_repository
-from lpg.api.v1.dependencies.payments import get_online_payment_repository, get_payment_gateway
+from lpg.api.v1.dependencies.payments import (
+    get_ifsc_directory,
+    get_online_payment_repository,
+    get_payment_gateway,
+)
 from lpg.api.v1.dependencies.printing import get_printing_engine
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.routers.online_payment import _resolve_scope
 from lpg.api.v1.schemas.payment_profile import (
+    IfscCheckResponse,
     PaymentProfileResponse,
     SetPaymentProfileRequest,
+    UpiCheckResponse,
     UpiQrResponse,
+    VerifyPaymentDetailsRequest,
+    VerifyPaymentDetailsResponse,
 )
 from lpg.application.accounting.online_payments import (
     CreateOrderPaymentLinkCommand,
@@ -45,6 +55,13 @@ from lpg.application.accounting.payment_profile import (
     PaymentProfile,
     SetPaymentProfileUseCase,
     build_upi_uri,
+    is_valid_ifsc,
+    is_valid_vpa,
+)
+from lpg.application.accounting.payment_verification import (
+    IfscDirectory,
+    check_ifsc,
+    check_upi_id,
 )
 from lpg.application.accounting.ports import InvoiceRepository, OnlinePaymentRepository
 from lpg.application.common.errors import ConflictError, NotFoundError, ValidationError
@@ -85,13 +102,65 @@ async def set_payment_profile(
         TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
     ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    ifsc_directory: Annotated[IfscDirectory, Depends(get_ifsc_directory)],
 ) -> PaymentProfileResponse:
     """Replaces the whole profile. Each save is a new historised row."""
     profile = PaymentProfile.validated(**body.model_dump())
+    if profile.ifsc and (await check_ifsc(ifsc_directory, profile.ifsc)).status == "not_found":
+        msg = "No bank branch has this IFSC. Check the code on your cheque book or passbook."
+        raise ValidationError(msg, field="ifsc")
     saved = await SetPaymentProfileUseCase(repository, unit_of_work).execute(
         principal.tenant_id, profile
     )
     return _to_response(saved)
+
+
+@router.post(
+    "/payment-profile/verify",
+    response_model=VerifyPaymentDetailsResponse,
+    dependencies=[Depends(require_permission("tenant:configure"))],
+    summary="Check an IFSC and a UPI ID before saving them",
+)
+async def verify_payment_details(
+    body: VerifyPaymentDetailsRequest,
+    ifsc_directory: Annotated[IfscDirectory, Depends(get_ifsc_directory)],
+) -> VerifyPaymentDetailsResponse:
+    """The IFSC is looked up in the bank-branch directory. The UPI ID is checked
+    for shape and a known handle only: that the ID exists, and whose it is,
+    needs a payment-provider account, so `account_confirmed` is always false.
+    """
+    result = VerifyPaymentDetailsResponse()
+    ifsc = body.ifsc.strip().upper()
+    if ifsc:
+        if not is_valid_ifsc(ifsc):
+            msg = "IFSC must be 11 characters, like HDFC0001234."
+            raise ValidationError(msg, field="ifsc")
+        check = await check_ifsc(ifsc_directory, ifsc)
+        details = check.details
+        result.ifsc = IfscCheckResponse(
+            status=check.status,
+            bank=details.bank if details else "",
+            branch=details.branch if details else "",
+            city=details.city if details else "",
+            state=details.state if details else "",
+            address=details.address if details else "",
+            supports_upi=details.upi if details else False,
+            supports_neft=details.neft if details else False,
+            supports_imps=details.imps if details else False,
+        )
+    upi_id = body.upi_id.strip().lower()
+    if upi_id:
+        if not is_valid_vpa(upi_id):
+            result.upi = UpiCheckResponse(format_valid=False)
+        else:
+            upi = check_upi_id(upi_id)
+            result.upi = UpiCheckResponse(
+                format_valid=True,
+                handle=upi.handle,
+                provider=upi.provider,
+                handle_known=upi.handle_known,
+            )
+    return result
 
 
 @router.get(

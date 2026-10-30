@@ -44,5 +44,5 @@ export const Collapsed: Story = {
 };
 
 export const NoEmailFallback: Story = {
-  args: { email: null, role: 'Warehouse Staff' },
+  args: { email: null, role: 'Godown Staff' },
 };

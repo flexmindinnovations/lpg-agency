@@ -1547,6 +1547,8 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Consequences:** Any agency can print invoices with pay-by-UPI, and see what each driver carries. Real Razorpay keys switch the provider without code changes.
 
+**Amendment (2026-10-29):** The profile is now checked before it is trusted. `POST /payment-profile/verify` looks an IFSC up in Razorpay's public IFSC directory (keyless, not tied to the agency's account) and checks a UPI ID's handle against a list of known banks and apps; saving refuses an IFSC no branch holds, and does not block when the directory is unreachable. Confirming that a UPI ID or account exists, and whose it is, needs a payment-provider account and is deliberately not claimed. "Set up payments" is a step in the Home setup checklist (`payments`: a UPI ID or bank account is saved). Feature: `planning/features/51-payment-setup-verification`.
+
 ## Summary Table
 
 | ADR | Decision | Status |
