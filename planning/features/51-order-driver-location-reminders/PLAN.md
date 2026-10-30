@@ -17,3 +17,14 @@ Dashboard order page (`/orders/:id`):
   Refused for finished orders and for customers with no app login (409).
 
 Not done: the admin mobile app order page does not have these yet.
+
+## Remind driver (added 2026-10-30)
+
+- `POST /orders/{id}/reminders` takes `audience` (`customer` default, or `driver`). Driver
+  presets: start the trip, please hurry, turn on live location, call the office, plus custom.
+  Delivered to the driver of the order's trip as `order_reminder_driver` (in-app + push).
+- Stored in the same table; driver reminders use a `driver_` preset key (no migration).
+  The 2-minute gap and 5-per-day limits count per audience.
+- 409 when the order is finished, is not on a trip yet, or the driver has no Driver App login.
+- Order page: "Remind driver" button next to "Remind customer" once a driver is assigned;
+  the timeline says who got each reminder.
