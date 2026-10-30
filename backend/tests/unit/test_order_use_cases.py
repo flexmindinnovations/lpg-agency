@@ -40,6 +40,7 @@ from lpg.application.common.errors import (
     ValidationError,
 )
 from lpg.application.delivery.ports import RouteStopOwner
+from lpg.application.order.gst_snapshot import GstSnapshot
 from lpg.application.order.ports import CancellationRecordEntry, ProofOfDeliveryEntry
 from lpg.application.order.use_cases import (
     ApproveOrderCancellationCommand,
@@ -477,6 +478,117 @@ class TestConfirmOrderUseCase:
         cap_policy.evaluate.assert_called_once()
         credit_evaluator.evaluate.assert_called_once()
         mock_uow.commit.assert_called_once()
+
+    async def test_confirm_snapshots_gst_so_the_customer_pays_price_plus_tax(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        cylinder_type_id = uuid.uuid4()
+        order = _make_order(
+            lines=[
+                OrderLine(
+                    line_id=uuid.uuid4(), cylinder_type_id=cylinder_type_id, quantity_ordered=1
+                )
+            ]
+        )
+        order.submit(changed_by=uuid.uuid4())
+        mock_order_repo.get_by_id.return_value = order
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(
+            return_value=_make_customer(customer_id=order.customer_id)
+        )
+        price_list_repo = MagicMock()
+        price_list_repo.list_for_tenant_and_cylinder_type = AsyncMock(
+            return_value=[
+                PriceListEntry(
+                    entry_id=uuid.uuid4(),
+                    tenant_id=order.tenant_id,
+                    cylinder_type_id=cylinder_type_id,
+                    customer_type="domestic",
+                    price=Decimal("905.50"),
+                    effective_from=datetime(2020, 1, 1, tzinfo=UTC),
+                )
+            ]
+        )
+        cap_policy = MagicMock()
+        cap_policy.evaluate = AsyncMock()
+        credit_evaluator = MagicMock()
+        credit_evaluator.evaluate = AsyncMock()
+        snapshotter = MagicMock()
+        snapshotter.snapshot = AsyncMock(
+            return_value=GstSnapshot(
+                rates={cylinder_type_id: Decimal("5")}, prices_include_gst=False
+            )
+        )
+
+        result = await ConfirmOrderUseCase(
+            mock_order_repo,
+            customer_repo,
+            price_list_repo,
+            cap_policy,
+            credit_evaluator,
+            mock_uow,
+            _permissive_orderable(),
+            snapshotter,
+        ).execute(ConfirmOrderCommand(order_id=order.id, changed_by=uuid.uuid4()))
+
+        assert result.total_amount == Decimal("905.50")
+        assert result.tax_amount == Decimal("45.28")
+        assert result.payable_amount == Decimal("950.78")
+        assert result.lines[0].gst_rate_percent == Decimal("5")
+        assert result.prices_include_gst is False
+
+    async def test_confirm_without_a_gst_rate_still_confirms_untaxed(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        cylinder_type_id = uuid.uuid4()
+        order = _make_order(
+            lines=[
+                OrderLine(
+                    line_id=uuid.uuid4(), cylinder_type_id=cylinder_type_id, quantity_ordered=1
+                )
+            ]
+        )
+        order.submit(changed_by=uuid.uuid4())
+        mock_order_repo.get_by_id.return_value = order
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(
+            return_value=_make_customer(customer_id=order.customer_id)
+        )
+        price_list_repo = MagicMock()
+        price_list_repo.list_for_tenant_and_cylinder_type = AsyncMock(
+            return_value=[
+                PriceListEntry(
+                    entry_id=uuid.uuid4(),
+                    tenant_id=order.tenant_id,
+                    cylinder_type_id=cylinder_type_id,
+                    customer_type="domestic",
+                    price=Decimal("905.50"),
+                    effective_from=datetime(2020, 1, 1, tzinfo=UTC),
+                )
+            ]
+        )
+        cap_policy = MagicMock()
+        cap_policy.evaluate = AsyncMock()
+        credit_evaluator = MagicMock()
+        credit_evaluator.evaluate = AsyncMock()
+        snapshotter = MagicMock()
+        # What the real snapshotter returns when a cylinder type has no rate.
+        snapshotter.snapshot = AsyncMock(return_value=None)
+
+        result = await ConfirmOrderUseCase(
+            mock_order_repo,
+            customer_repo,
+            price_list_repo,
+            cap_policy,
+            credit_evaluator,
+            mock_uow,
+            _permissive_orderable(),
+            snapshotter,
+        ).execute(ConfirmOrderCommand(order_id=order.id, changed_by=uuid.uuid4()))
+
+        assert result.status == "confirmed"
+        assert result.tax_amount is None
+        assert result.payable_amount == Decimal("905.50")
 
     async def test_missing_price_raises_and_saves_nothing(
         self, mock_order_repo: MagicMock, mock_uow: MagicMock
