@@ -1,8 +1,10 @@
-"""Staff reminders to a customer about their order.
+"""Staff reminders to a customer or the driver about an order.
 
 A reminder is a short message (one of a few presets, or free text) pushed to
-the customer's app. Every one is recorded against the order, which is what
-the order page's timeline shows and what the rate limit counts.
+the customer's or the driver's app. Every one is recorded against the order,
+which is what the order page's timeline shows and what the rate limit counts.
+Driver reminders are stored with a `driver_` preset key; the limits apply per
+audience, so nudging the driver does not use up the customer's allowance.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ MAX_PER_DAY = 5
 MAX_CUSTOM_LENGTH = 300
 
 CUSTOM = "custom"
+DRIVER_PREFIX = "driver_"
 
 #: Preset key -> (label shown to staff, message sent to the customer).
 #: `{order}` is the order number, `{driver}` the driver's first name.
@@ -45,6 +48,30 @@ PRESETS: Mapping[str, tuple[str, str]] = {
         "A payment is pending for {order}. You can pay in the app or at the door.",
     ),
 }
+
+#: Same shape, for the driver. `{order}` is the order number.
+DRIVER_PRESETS: Mapping[str, tuple[str, str]] = {
+    "driver_start": (
+        "Start the trip",
+        "{order} is waiting. Please start your trip.",
+    ),
+    "driver_hurry": (
+        "Please hurry",
+        "The customer is waiting for {order}. Please deliver as soon as you can.",
+    ),
+    "driver_location": (
+        "Turn on live location",
+        "Please turn on Share live location in the app so the office can follow {order}.",
+    ),
+    "driver_call": (
+        "Call the office",
+        "Please call the office about {order}.",
+    ),
+}
+
+
+def audience_of(preset: str) -> str:
+    return "driver" if preset.startswith(DRIVER_PREFIX) else "customer"
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +95,12 @@ class Notifier(Protocol):
 
 
 def compose_message(
-    preset: str, custom_text: str | None, *, order_ref: str, driver_name: str | None
+    preset: str,
+    custom_text: str | None,
+    *,
+    order_ref: str,
+    driver_name: str | None,
+    audience: str = "customer",
 ) -> str:
     if preset == CUSTOM:
         text = " ".join((custom_text or "").split())
@@ -79,7 +111,7 @@ def compose_message(
             msg = f"Keep the message under {MAX_CUSTOM_LENGTH} characters."
             raise ValidationError(msg, errors={"message": [msg]})
         return text
-    found = PRESETS.get(preset)
+    found = (DRIVER_PRESETS if audience == "driver" else PRESETS).get(preset)
     if found is None:
         msg = "Choose one of the ready-made messages, or write your own."
         raise ValidationError(msg, errors={"preset": [msg]})
@@ -87,7 +119,11 @@ def compose_message(
     return found[1].format(order=order_ref, driver=first_name)
 
 
-def check_rate_limit(history: list[OrderReminder], now: datetime) -> None:
+def check_rate_limit(
+    history: list[OrderReminder], now: datetime, audience: str = "customer"
+) -> None:
+    history = [r for r in history if audience_of(r.preset) == audience]
+    who = "driver" if audience == "driver" else "customer"
     if history:
         latest = max(r.sent_at for r in history)
         wait = latest + MIN_GAP - now
@@ -98,7 +134,7 @@ def check_rate_limit(history: list[OrderReminder], now: datetime) -> None:
     if len(in_day) >= MAX_PER_DAY:
         oldest = min(r.sent_at for r in in_day)
         retry = int((oldest + timedelta(days=1) - now).total_seconds()) + 1
-        msg = f"This customer has already had {MAX_PER_DAY} reminders for this order today."
+        msg = f"This {who} has already had {MAX_PER_DAY} reminders for this order today."
         raise RateLimitExceededError(msg, retry_after_seconds=retry)
 
 

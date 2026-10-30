@@ -9718,6 +9718,14 @@
       },
       "ReminderPresetResponse": {
         "properties": {
+          "audience": {
+            "enum": [
+              "customer",
+              "driver"
+            ],
+            "title": "Audience",
+            "type": "string"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -9729,13 +9737,22 @@
         },
         "required": [
           "key",
-          "label"
+          "label",
+          "audience"
         ],
         "title": "ReminderPresetResponse",
         "type": "object"
       },
       "ReminderResponse": {
         "properties": {
+          "audience": {
+            "enum": [
+              "customer",
+              "driver"
+            ],
+            "title": "Audience",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -9763,6 +9780,7 @@
         "required": [
           "id",
           "sent_by",
+          "audience",
           "preset",
           "message",
           "sent_at"
@@ -10630,6 +10648,15 @@
       },
       "SendReminderRequest": {
         "properties": {
+          "audience": {
+            "default": "customer",
+            "enum": [
+              "customer",
+              "driver"
+            ],
+            "title": "Audience",
+            "type": "string"
+          },
           "message": {
             "anyOf": [
               {
@@ -10648,6 +10675,10 @@
               "on_the_way",
               "empty_ready",
               "payment_due",
+              "driver_start",
+              "driver_hurry",
+              "driver_location",
+              "driver_call",
               "custom"
             ],
             "title": "Preset",
@@ -21456,7 +21487,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Reminders sent to the customer about this order",
+        "summary": "Reminders sent to the customer or driver about this order",
         "tags": [
           "Orders"
         ]
@@ -21497,7 +21528,7 @@
             "description": "Successful Response"
           },
           "409": {
-            "description": "The order is finished or the customer has no app login."
+            "description": "The order is finished or the recipient has no app login."
           },
           "422": {
             "content": {
@@ -21513,7 +21544,7 @@
             "description": "Too many reminders for this order."
           }
         },
-        "summary": "Send the customer a reminder about this order",
+        "summary": "Send the customer or the driver a reminder about this order",
         "tags": [
           "Orders"
         ]

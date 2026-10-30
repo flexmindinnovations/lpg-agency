@@ -110,12 +110,23 @@
       pButton
       type="button"
       severity="secondary"
-      (click)="openReminderDrawer()"
+      (click)="openReminderDrawer('customer')"
     >
       <i class="pi pi-bell"></i>
       <span>Remind customer</span>
     </button>
-    } @if (canCancelFree() || requiresCancelApproval()) {
+    @if (tracking()?.driver) {
+    <button
+      *lpgHasPermission="'orders:dispatch'"
+      pButton
+      type="button"
+      severity="secondary"
+      (click)="openReminderDrawer('driver')"
+    >
+      <i class="pi pi-bell"></i>
+      <span>Remind driver</span>
+    </button>
+    } } @if (canCancelFree() || requiresCancelApproval()) {
     <button
       *lpgHasPermission="'orders:cancel'"
       pButton
@@ -455,7 +466,8 @@
       <span class="timeline__reason">{{ item.entry.reason }}</span>
       } } @else {
       <span class="timeline__transition"
-        ><i class="pi pi-bell"></i> Reminder sent to the customer</span
+        ><i class="pi pi-bell"></i> Reminder sent to the {{ item.entry.audience === 'driver' ?
+        'driver' : 'customer' }}</span
       >
       <span class="timeline__when">{{ item.at | lpgDateTime }}</span>
       <span class="timeline__reason">{{ item.entry.message }}</span>
@@ -1103,7 +1115,7 @@
 
   <!-- Remind customer Drawer -->
   <p-drawer
-    header="Remind customer"
+    [header]="reminderAudience() === 'driver' ? 'Remind driver' : 'Remind customer'"
     [(visible)]="showReminderDrawer"
     position="right"
     [modal]="true"
@@ -1113,8 +1125,9 @@
     <form [formGroup]="reminderForm" (ngSubmit)="onSendReminder()" class="dialog-form" novalidate>
       <div class="dialog-form__fields">
         <p-message severity="info" icon="pi pi-info-circle"
-          >The customer gets this as a notification in the Customer App. It is saved on the order's
-          timeline.</p-message
+          >{{ reminderAudience() === 'driver' ? 'The driver' : 'The customer' }} gets this as a
+          notification in the {{ reminderAudience() === 'driver' ? 'Driver' : 'Customer' }} App. It
+          is saved on the order's timeline.</p-message
         >
         @if (reminderError(); as error) {
         <p-message severity="error">{{ error }}</p-message>

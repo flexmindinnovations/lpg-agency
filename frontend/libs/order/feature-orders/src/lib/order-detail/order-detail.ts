@@ -304,19 +304,22 @@ export class OrderDetail implements OnInit {
     });
   }
 
-  // ---- Reminders to the customer -------------------------------------------
+  // ---- Reminders to the customer or the driver -------------------------------------------
 
   protected readonly reminders = signal<ReminderResponse[]>([]);
   protected readonly reminderPresets = signal<ReminderPresetResponse[]>([]);
   protected readonly showReminderDrawer = signal(false);
   protected readonly reminderBusy = signal(false);
   protected readonly reminderError = signal<string | null>(null);
+  protected readonly reminderAudience = signal<'customer' | 'driver'>('customer');
   protected readonly reminderForm = this.fb.group({
     preset: ['delivery_today', [Validators.required]],
     message: ['', [Validators.maxLength(300)]],
   });
   protected readonly reminderOptions = computed(() => [
-    ...this.reminderPresets().map((p) => ({ label: p.label, value: p.key })),
+    ...this.reminderPresets()
+      .filter((p) => p.audience === this.reminderAudience())
+      .map((p) => ({ label: p.label, value: p.key })),
     { label: 'Write my own', value: 'custom' },
   ]);
   protected readonly isCustomReminder = computed(() => this.reminderPresetValue() === 'custom');
@@ -336,9 +339,11 @@ export class OrderDetail implements OnInit {
     return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
   });
 
-  protected openReminderDrawer(): void {
-    this.reminderForm.reset({ preset: 'delivery_today', message: '' });
-    this.reminderPresetValue.set('delivery_today');
+  protected openReminderDrawer(audience: 'customer' | 'driver'): void {
+    const first = audience === 'driver' ? 'driver_start' : 'delivery_today';
+    this.reminderAudience.set(audience);
+    this.reminderForm.reset({ preset: first, message: '' });
+    this.reminderPresetValue.set(first);
     this.reminderError.set(null);
     this.showReminderDrawer.set(true);
   }
@@ -361,6 +366,7 @@ export class OrderDetail implements OnInit {
     this.reminderError.set(null);
     this.orderService
       .sendOrderReminder(order.id, {
+        audience: this.reminderAudience(),
         preset: preset as SendReminderRequest['preset'],
         message: preset === 'custom' ? text : null,
       })
@@ -368,7 +374,11 @@ export class OrderDetail implements OnInit {
         next: () => {
           this.reminderBusy.set(false);
           this.showReminderDrawer.set(false);
-          this.notify.success('Reminder sent to the customer.');
+          this.notify.success(
+            this.reminderAudience() === 'driver'
+              ? 'Reminder sent to the driver.'
+              : 'Reminder sent to the customer.',
+          );
           this.orderService.listOrderReminders(order.id).subscribe({
             next: (list) => this.reminders.set(list),
           });

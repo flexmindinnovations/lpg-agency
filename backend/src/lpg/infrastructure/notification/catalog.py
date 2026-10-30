@@ -168,6 +168,13 @@ SPECS: dict[str, NotificationSpec] = {
         audience=Audience.CUSTOMER,
         push=True,
     ),
+    # The driver's version of the above, sent from the same place.
+    "order_reminder_driver": NotificationSpec(
+        title="Message from the office",
+        body=lambda f: f.get("message") or f"An update on {_order(f)}.",
+        audience=Audience.DRIVER,
+        push=True,
+    ),
     "delivery_confirmed": NotificationSpec(
         title="Delivered",
         body=lambda f: f"{_order_cap(f)} has been delivered. Thank you!",

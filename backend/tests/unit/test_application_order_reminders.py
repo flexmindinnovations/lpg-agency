@@ -68,3 +68,29 @@ def test_notification_body_is_the_message() -> None:
     assert spec is not None
     assert spec.body({"message": "Hello"}) == "Hello"
     assert spec.push is True
+
+
+def test_driver_presets_are_separate_from_customer_ones() -> None:
+    text = compose_message(
+        "driver_hurry", None, order_ref="ORD000033", driver_name=None, audience="driver"
+    )
+    assert "ORD000033" in text
+    with pytest.raises(ValidationError):
+        compose_message("driver_hurry", None, order_ref="O", driver_name=None)
+    with pytest.raises(ValidationError):
+        compose_message("on_the_way", None, order_ref="O", driver_name=None, audience="driver")
+
+
+def test_rate_limit_counts_each_audience_on_its_own() -> None:
+    driver_sent = _sent(1)
+    object.__setattr__(driver_sent, "preset", "driver_hurry")
+    check_rate_limit([driver_sent], NOW, "customer")
+    with pytest.raises(RateLimitExceededError):
+        check_rate_limit([driver_sent], NOW, "driver")
+
+
+def test_driver_notification_goes_to_the_driver_with_push() -> None:
+    spec = spec_for("order_reminder_driver")
+    assert spec is not None
+    assert spec.body({"message": "Hello"}) == "Hello"
+    assert spec.push is True
