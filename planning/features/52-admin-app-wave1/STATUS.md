@@ -1,6 +1,6 @@
 # Status
 
-Branch `feat/admin-app-wave1`, 2026-10-29. Phase A done except the wider look-and-feel pass; Phase B (Customers, Invoices, Complaints, Stock, Cash book) not started.
+Branch `feat/admin-app-wave1`, 2026-10-29. Phase A done except the wider look-and-feel pass; Phase B (Customers, Invoices, Complaints, Cash book, Stock) built; Wave 2 not started.
 
 ## End-to-end run (three apps, one emulator, local backend, debug builds)
 Customer books (cash on delivery) -> Admin confirms -> Send out blocked (no free driver) -> Admin adds a van and a driver (with app login) from the blocker panel -> Admin sends out -> Driver signs in by OTP, confirms van load, starts the delivery, records it with the customer's delivery code -> invoice created automatically -> Admin closes the order -> Driver declares cash (note count) -> Admin reviews and accepts. Every step worked after the fixes below.
@@ -14,6 +14,13 @@ Customer books (cash on delivery) -> Admin confirms -> Send out blocked (no free
 
 ## Complaints (2026-10-30)
 Tried on the emulator: list with overdue deadlines in red, detail, assign to a staff member (status moved to Assigned, history recorded) and resolve with an outcome and note (status Resolved, outcome card shown). Not tried: Reassign, the Compensated and Rejected outcomes, Call, the per-customer list from a customer page, and raising a complaint on a customer's behalf (not built).
+
+## Stock (2026-10-30)
+Built on the existing inventory endpoints (balance, reorder signals, transactions, goods receipt, counts with approve/reject); no backend change. Tried on the emulator against the local backend, godown "Gachibowli West Depot": stock by cylinder type with the other statuses, Receive stock (10 Domestic 5kg from IOCL moved filled 800 to 810 and showed as "Received from OMC +10"), Count stock (counted 128 against 130, listed under counts waiting with -2), Approve count (filled 808, movement "Count booked -2"). Switching godown uses a dropdown.
+Not tried on the emulator: the low-stock banner (no reorder point is set on the dev data; covered by a widget test), Reject count, self-approval refusal for a non-admin, the other godowns. Left for later, as on the web: weighment sample after a receipt, returns to the OMC, change status, manual adjustment, stock register, setting reorder points, stock on each van.
+
+## Pickers (2026-10-30)
+Chips were wrong for open-ended lists (cylinder types grow). `LpgDropdownField` is no longer Flutter's stock popup menu: the field looks like a text field and opens a themed bottom sheet (title, big rows, optional icons, tick on the current choice, a search box past 7 options). Same API, so every existing dropdown in the three apps picked it up. Rule now: chips only for a switch between 2 or 3 options (On now/Past, address type, priority, complaint outcome, what-next); anything with 4 or more, or fed from data, is a dropdown. Converted: Receive stock (cylinder, From), Count stock (cylinder, status), failed-delivery reason, record payment method, order payment (admin), booking source, customer payment preference, driver payment method. Looked at on the emulator: Receive stock and the cylinder sheet. Not looked at: the other converted screens (covered by widget tests).
 
 ## Cash book (2026-10-30)
 Built on the existing cash-book and cash-in-hand endpoints (no backend change). Tried on the emulator: today and the previous day (Rs 905.50 collected, one handover Rs 0.50 short, accepted Rs 905.00), cash with the driver (Rs 2,716.50), the "Still to check" row opening Approvals. Amounts are shown to the paisa, not rounded, so a Rs 0.50 shortfall is not hidden. Not tried: the date-picker dialog (tap the date), a day with disputed handovers.

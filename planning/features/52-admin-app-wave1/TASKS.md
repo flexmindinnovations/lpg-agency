@@ -12,9 +12,15 @@
 - [x] B1 Customers: search list, detail (outstanding, cylinders held, recent orders and invoices, contact and addresses), Call, New order prefilled for the customer
 - [x] B2 Invoices: list with search, status and customer filters; detail with GST split and payments; record payment (cash, UPI, card, cheque, bank transfer); UPI QR; send/remind
 - [x] B3 Complaints: list with status filters and overdue marking, detail with deadline, customer and order links, assign/reassign, resolve with outcome and note; dashboard tile, attention card and More badge
-- [ ] B4 Stock
+- [x] B4 Stock
+  - [x] B4.1 API client: reorder signals, transactions, goods receipt, reject count, pending-count filter (+ model tests)
+  - [x] B4.2 Stock screen: godown picker, low-stock banner, filled and other statuses per cylinder type, latest movements; More item, dashboard low-stock tile opens it
+  - [x] B4.3 Receive stock (goods receipt note)
+  - [x] B4.4 Count stock, and approve / reject counts waiting
+  - [x] B4.5 Tests, emulator run, PR
 - [x] B5 Cash book: day picker (step or pick, never past today), collected by method, driver handovers (expected / handed over / short / excess), office check (accepted / disputed / still to check, linking to Approvals), cash each driver holds now; More item and the dashboard cash tile open it
 
 ## Discovered / deferred
+- [ ] Stock, left on the web for now: weighment sample after a goods receipt (optional there too), returns to the OMC, change status, manual adjustment, stock register, reorder-point setting, stock on each van, load transfer outside Send out.
 - [ ] Font change (Inter is bundled and kept); a different typeface needs a font file to be added to the repo.
 - [ ] Wave 2: pricing, users and roles, employees, compliance alerts.

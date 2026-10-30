@@ -254,14 +254,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   ),
               ],
               const SizedBox(height: LpgSpacing.lg),
-              Text('Booking', style: text.titleMedium),
-              const SizedBox(height: LpgSpacing.sm),
-              LpgChoiceChips<String>(
-                options: bookingSources,
-                selected: _source,
-                onSelected: (v) {
-                  if (!_submitting && v != null) setState(() => _source = v);
-                },
+              LpgDropdownField<String>(
+                label: 'Booked through',
+                value: _source,
+                items: bookingSources,
+                onChanged: _submitting
+                    ? null
+                    : (v) {
+                        if (v != null) setState(() => _source = v);
+                      },
               ),
               const SizedBox(height: LpgSpacing.md),
               LpgCard(

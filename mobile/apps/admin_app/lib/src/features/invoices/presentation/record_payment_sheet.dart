@@ -121,19 +121,20 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
             style: text.bodyMedium?.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: LpgSpacing.md),
-          Text('How was it paid?', style: text.titleSmall),
-          const SizedBox(height: LpgSpacing.sm),
-          LpgChoiceChips<String>(
-            options: _methods,
+          LpgDropdownField<String>(
+            label: 'How was it paid?',
+            value: _method,
+            items: _methods,
             icons: _methodIcons,
-            selected: _method,
-            onSelected: (v) {
-              if (_busy || v == null) return;
-              setState(() {
-                _method = v;
-                _error = null;
-              });
-            },
+            onChanged: _busy
+                ? null
+                : (v) {
+                    if (v == null) return;
+                    setState(() {
+                      _method = v;
+                      _error = null;
+                    });
+                  },
           ),
           const SizedBox(height: LpgSpacing.md),
           LpgTextField(

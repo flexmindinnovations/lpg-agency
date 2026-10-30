@@ -627,6 +627,113 @@ void main() {
       );
       expect(find.text('Domestic 14.2kg'), findsOneWidget);
     });
+
+    testWidgets('opens a sheet with every option and ticks the current one', (
+      tester,
+    ) async {
+      String? changed = 'unchanged';
+      await tester.pumpWidget(
+        _wrap(
+          LpgDropdownField<String>(
+            label: 'From',
+            value: 'bpcl',
+            placeholder: 'Not sure',
+            items: const {'iocl': 'Indane', 'bpcl': 'Bharatgas'},
+            onChanged: (v) => changed = v,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Bharatgas'));
+      await tester.pumpAndSettle();
+      expect(find.text('Indane'), findsOneWidget);
+      expect(find.text('Not sure'), findsOneWidget);
+      expect(find.byIcon(LpgIcons.check), findsOneWidget);
+      expect(find.byType(TextField), findsNothing); // too short to search
+
+      await tester.tap(find.text('Not sure'));
+      await tester.pumpAndSettle();
+      expect(changed, isNull); // choosing "nothing" is a real choice
+    });
+
+    testWidgets('dismissing the sheet changes nothing', (tester) async {
+      var calls = 0;
+      await tester.pumpWidget(
+        _wrap(
+          LpgDropdownField<String>(
+            value: 'a',
+            items: const {'a': 'One', 'b': 'Two'},
+            onChanged: (_) => calls++,
+          ),
+        ),
+      );
+      await tester.tap(find.text('One'));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      expect(calls, 0);
+      expect(find.text('Two'), findsNothing);
+    });
+
+    testWidgets('a long list can be searched', (tester) async {
+      String? changed;
+      await tester.pumpWidget(
+        _wrap(
+          LpgDropdownField<String>(
+            value: '',
+            placeholder: 'Pick one',
+            items: {for (var i = 1; i <= 9; i++) 'k$i': 'Godown $i'},
+            onChanged: (v) => changed = v,
+          ),
+        ),
+      );
+      await tester.tap(find.text('Pick one'));
+      await tester.pumpAndSettle();
+      // Nothing is chosen, so there is nothing to clear: no placeholder row.
+      expect(find.widgetWithText(LpgListTile, 'Pick one'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), '7');
+      await tester.pumpAndSettle();
+      expect(find.text('Godown 6'), findsNothing);
+      await tester.tap(find.text('Godown 7'));
+      await tester.pumpAndSettle();
+      expect(changed, 'k7');
+    });
+
+    testWidgets('does nothing when disabled', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const LpgDropdownField<String>(
+            value: 'a',
+            items: {'a': 'One', 'b': 'Two'},
+            onChanged: null,
+          ),
+        ),
+      );
+      await tester.tap(find.text('One'));
+      await tester.pumpAndSettle();
+      expect(find.text('Two'), findsNothing);
+    });
+
+    testWidgets('shows a validator message under the field', (tester) async {
+      final formKey = GlobalKey<FormState>();
+      await tester.pumpWidget(
+        _wrap(
+          Form(
+            key: formKey,
+            child: LpgDropdownField<String>(
+              value: '',
+              items: const {'a': 'One'},
+              validator: (v) => v == null ? 'Choose one.' : null,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      formKey.currentState!.validate();
+      await tester.pump();
+      expect(find.text('Choose one.'), findsOneWidget);
+    });
   });
 
   group('LpgGroupedList', () {

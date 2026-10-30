@@ -417,6 +417,7 @@ class _Body extends StatelessWidget {
               icon: LpgIcons.warehouse,
               tone: LpgTone.danger,
               attention: ops.lowStockCount > 0,
+              onTap: () => context.pushNamed('stock'),
             ),
           ],
         ),
