@@ -92,34 +92,34 @@ class _CountStockSheetState extends ConsumerState<CountStockSheet> {
             style: text.bodyMedium?.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: LpgSpacing.md),
-          Text('Cylinder', style: text.titleSmall),
-          const SizedBox(height: LpgSpacing.sm),
           catalog.when(
-            loading: () => const LpgSkeleton(height: 40),
+            loading: () => const LpgSkeleton(height: 56),
             error: (_, _) => Text(
               'Could not load the cylinder list.',
               style: text.bodyMedium?.copyWith(color: colors.statusDanger),
             ),
-            data: (types) => LpgChoiceChips<String>(
-              options: {
+            data: (types) => LpgDropdownField<String>(
+              label: 'Cylinder',
+              prefixIcon: LpgIcons.cylinder,
+              placeholder: 'Choose the cylinder',
+              value: _typeId ?? '',
+              items: {
                 for (final t in types)
                   if (t.isActive) t.id: t.name,
               },
-              selected: _typeId,
-              onSelected: (v) {
-                if (!_busy) setState(() => _typeId = v);
-              },
+              onChanged: _busy ? null : (v) => setState(() => _typeId = v),
             ),
           ),
           const SizedBox(height: LpgSpacing.md),
-          Text('Which cylinders', style: text.titleSmall),
-          const SizedBox(height: LpgSpacing.sm),
-          LpgChoiceChips<String>(
-            options: stockStatusLabels,
-            selected: _status,
-            onSelected: (v) {
-              if (!_busy && v != null) setState(() => _status = v);
-            },
+          LpgDropdownField<String>(
+            label: 'Which cylinders',
+            value: _status,
+            items: stockStatusLabels,
+            onChanged: _busy
+                ? null
+                : (v) {
+                    if (v != null) setState(() => _status = v);
+                  },
           ),
           const SizedBox(height: LpgSpacing.md),
           LpgTextField(

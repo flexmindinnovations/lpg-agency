@@ -247,8 +247,10 @@ void main() {
       await tester.pump();
       expect(find.text('Choose which cylinder arrived.'), findsOneWidget);
 
+      await tester.tap(find.text('Choose the cylinder'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Domestic 14.2 kg'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Add to stock'));
       await tester.pump();
       expect(

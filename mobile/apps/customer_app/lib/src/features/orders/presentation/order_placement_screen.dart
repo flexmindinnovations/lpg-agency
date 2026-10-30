@@ -310,18 +310,18 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
             const LpgFieldLabel('Requested Date'),
             _DateField(value: _requestedDate, onTap: () => _pickDate(context)),
             const SizedBox(height: LpgSpacing.lg),
-            const LpgFieldLabel('Payment Method (optional)'),
-            LpgChoiceChips<String>(
-              options: _paymentMethods,
+            LpgDropdownField<String>(
+              label: 'Payment Method (optional)',
+              placeholder: 'No preference',
+              value: _paymentMethod ?? '',
+              items: _paymentMethods,
               icons: const {
                 'cash': LpgIcons.cash,
                 'upi': LpgIcons.wallet,
                 'card': LpgIcons.payment,
                 'online_gateway': LpgIcons.security,
               },
-              selected: _paymentMethod,
-              allowDeselect: true,
-              onSelected: (v) => setState(() => _paymentMethod = v),
+              onChanged: (v) => setState(() => _paymentMethod = v),
             ),
           ];
 

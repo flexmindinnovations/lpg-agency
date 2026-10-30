@@ -270,14 +270,15 @@ class _FailedDeliverySheetState extends ConsumerState<FailedDeliverySheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Why did it fail?', style: text.titleSmall),
-          const SizedBox(height: LpgSpacing.sm),
-          LpgChoiceChips<String>(
-            options: failedDeliveryReasons,
-            selected: _reason,
-            onSelected: (value) {
-              if (!_busy && value != null) setState(() => _reason = value);
-            },
+          LpgDropdownField<String>(
+            label: 'Why did it fail?',
+            value: _reason,
+            items: failedDeliveryReasons,
+            onChanged: _busy
+                ? null
+                : (value) {
+                    if (value != null) setState(() => _reason = value);
+                  },
           ),
           const SizedBox(height: LpgSpacing.md),
           Text('What next?', style: text.titleSmall),

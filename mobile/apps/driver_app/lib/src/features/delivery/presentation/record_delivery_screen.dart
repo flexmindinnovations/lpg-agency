@@ -268,8 +268,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                   ),
                 ),
               const _Section(icon: LpgIcons.payment, title: 'Payment'),
-              LpgChoiceChips<String>(
-                options: {
+              LpgDropdownField<String>(
+                value: _paymentMethod,
+                items: {
                   for (final (value, label) in _paymentMethods) value: label,
                 },
                 icons: const {
@@ -279,8 +280,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                   'online_gateway': LpgIcons.security,
                   'credit': LpgIcons.invoice,
                 },
-                selected: _paymentMethod,
-                onSelected: (v) {
+                onChanged: (v) {
                   if (v != null) setState(() => _paymentMethod = v);
                 },
               ),

@@ -283,14 +283,15 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
             ),
           ],
           const SizedBox(height: LpgSpacing.md),
-          Text('Payment', style: text.titleSmall),
-          const SizedBox(height: LpgSpacing.sm),
-          LpgChoiceChips<String>(
-            options: paymentMethods,
-            selected: _method,
-            onSelected: (value) {
-              if (!_busy && value != null) setState(() => _method = value);
-            },
+          LpgDropdownField<String>(
+            label: 'Payment',
+            value: _method,
+            items: paymentMethods,
+            onChanged: _busy
+                ? null
+                : (value) {
+                    if (value != null) setState(() => _method = value);
+                  },
           ),
           const SizedBox(height: LpgSpacing.md),
           LpgTextField(

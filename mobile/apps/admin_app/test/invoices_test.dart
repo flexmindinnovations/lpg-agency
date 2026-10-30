@@ -119,8 +119,10 @@ void main() {
     ) async {
       await tester.pumpWidget(_host(RecordPaymentSheet(invoice: _invoice())));
 
+      await tester.tap(find.text('Cash').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cheque'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Save payment'));
       await tester.pump();
 
