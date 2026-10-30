@@ -522,4 +522,79 @@ void main() {
       },
     );
   });
+  group('FleetApi compliance documents', () {
+    Map<String, Object?> doc({String? expiry = '2026-11-10'}) => {
+      'id': 'd-1',
+      'owner_type': 'vehicle',
+      'owner_id': 'v-1',
+      'doc_type': 'vehicle_insurance',
+      'document_number': 'POL-123',
+      'file_url': null,
+      'issue_date': '2025-11-11',
+      'expiry_date': expiry,
+      'verification_status': 'pending',
+      'rejection_reason': null,
+      'verified_at': null,
+    };
+
+    test(
+      'listComplianceDocuments asks for what is overdue or due soon',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          expect(options.path, '/api/v1/compliance-documents');
+          expect(options.queryParameters, {'expiry': 'upcoming', 'limit': 200});
+          return jsonResponse({
+            'items': [doc(), doc(expiry: null)],
+            'total': 2,
+          }, 200);
+        });
+
+        final result = await FleetApi(client.dio).listComplianceDocuments();
+
+        final docs = result.when(onSuccess: (d) => d, onFailure: (_) => null)!;
+        expect(docs, hasLength(2));
+        expect(docs.first.docType, 'vehicle_insurance');
+        expect(docs.first.ownerType, 'vehicle');
+        expect(docs.first.expiryDate, DateTime.parse('2026-11-10'));
+        expect(docs.last.expiryDate, isNull);
+      },
+    );
+
+    test('daysLeft counts calendar days and goes negative once lapsed', () {
+      final d = ComplianceDocument.fromJson(doc(expiry: '2026-11-10'));
+      expect(d.daysLeft(DateTime(2026, 10, 30, 23, 59)), 11);
+      expect(d.daysLeft(DateTime(2026, 11, 10)), 0);
+      expect(d.daysLeft(DateTime(2026, 11, 12)), -2);
+      expect(ComplianceDocument.fromJson(doc(expiry: null)).daysLeft(), isNull);
+    });
+
+    test('renewDocument sends the new scan, number and dates', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.method, 'PUT');
+        expect(options.path, '/api/v1/compliance-documents/d-1');
+        expect(options.data, {
+          'document_number': 'POL-456',
+          'file_ref': 'blob/abc',
+          'issue_date': '2026-10-30',
+          'expiry_date': '2027-10-29',
+        });
+        return jsonResponse(doc(expiry: '2027-10-29'), 200);
+      });
+
+      final result = await FleetApi(client.dio).renewDocument(
+        'd-1',
+        documentNumber: 'POL-456',
+        fileRef: 'blob/abc',
+        issueDate: DateTime(2026, 10, 30),
+        expiryDate: DateTime(2027, 10, 29),
+      );
+
+      expect(
+        result.when(onSuccess: (d) => d.expiryDate, onFailure: (_) => null),
+        DateTime.parse('2027-10-29'),
+      );
+    });
+  });
 }

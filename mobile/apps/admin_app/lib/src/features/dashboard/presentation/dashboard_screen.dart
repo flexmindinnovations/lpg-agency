@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../compliance/data/compliance_provider.dart';
 import '../../../api_result.dart';
 import '../../../shared/admin_app_bar.dart';
 import '../../../shared/metric_tile.dart';
@@ -59,6 +60,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     ref.invalidate(dispatchTripsProvider);
     ref.invalidate(fleetProvider);
     ref.invalidate(pendingCashHandoversProvider);
+    ref.invalidate(complianceDueCountProvider);
   }
 
   void _orders(String filter) =>
@@ -103,6 +105,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ops: ops,
                 fleet: fleet,
                 trips: trips,
+                complianceDue: ref.watch(complianceDueCountProvider).value ?? 0,
                 onOrders: _orders,
               ),
             ),
@@ -154,10 +157,12 @@ class _Body extends StatelessWidget {
     required this.ops,
     required this.fleet,
     required this.trips,
+    required this.complianceDue,
     required this.onOrders,
   });
 
   final OperationsSnapshotResponse ops;
+  final int complianceDue;
   final FleetData? fleet;
   final List<RouteSummary>? trips;
   final void Function(String filter) onOrders;
@@ -269,6 +274,15 @@ class _Body extends StatelessWidget {
                     '${ops.openComplaints} open ${ops.openComplaints == 1 ? 'complaint' : 'complaints'} to handle',
                 action: 'Open',
                 onTap: () => context.pushNamed('complaints'),
+              ),
+            if (complianceDue > 0)
+              _AttentionItem(
+                icon: LpgIcons.badge,
+                tone: LpgTone.danger,
+                title:
+                    '$complianceDue ${complianceDue == 1 ? 'licence or paper needs' : 'licences or papers need'} renewing',
+                action: 'Renew',
+                onTap: () => context.pushNamed('compliance'),
               ),
             if ((cash?.handoversAwaitingReview ?? 0) > 0)
               _AttentionItem(

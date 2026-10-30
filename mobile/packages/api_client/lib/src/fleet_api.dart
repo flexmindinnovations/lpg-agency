@@ -322,6 +322,52 @@ final class FleetApi {
     return GoodsReceipt.fromJson(response.data!);
   });
 
+  /// Documents on file across the agency (`GET /compliance-documents`),
+  /// soonest expiry first. [expiry] is `expiring` (within 30 days), `expired`
+  /// or `upcoming` (overdue or due within 90 days, the compliance calendar);
+  /// every document when `null`. [ownerType] narrows to `driver`, `vehicle`,
+  /// `warehouse` or `tenant`.
+  Future<Result<List<ComplianceDocument>>> listComplianceDocuments({
+    String? expiry = 'upcoming',
+    String? ownerType,
+    int limit = 200,
+  }) => _guard(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/compliance-documents',
+      queryParameters: {
+        'expiry': ?expiry,
+        'owner_type': ?ownerType,
+        'limit': limit,
+      },
+    );
+    return [
+      for (final e in response.data?['items'] as List<dynamic>? ?? const [])
+        ComplianceDocument.fromJson(e as Map<String, dynamic>),
+    ];
+  });
+
+  /// Replaces a document with its renewal (`PUT /compliance-documents/{id}`);
+  /// the new scan ([fileRef], from [uploadDocument]) goes back to pending
+  /// verification. Needs `drivers:manage`.
+  Future<Result<ComplianceDocument>> renewDocument(
+    String documentId, {
+    required String documentNumber,
+    required String fileRef,
+    DateTime? issueDate,
+    DateTime? expiryDate,
+  }) => _guard(() async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/api/v1/compliance-documents/$documentId',
+      data: {
+        'document_number': documentNumber,
+        'file_ref': fileRef,
+        'issue_date': issueDate == null ? null : _day(issueDate),
+        'expiry_date': expiryDate == null ? null : _day(expiryDate),
+      },
+    );
+    return ComplianceDocument.fromJson(response.data!);
+  });
+
   /// Registers a van (`POST /vehicles`). The RC scan ([rcDocumentRef], from
   /// [uploadDocument]) and its expiry are required.
   Future<Result<FleetVehicle>> registerVehicle({
