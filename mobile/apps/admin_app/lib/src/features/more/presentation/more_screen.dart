@@ -34,6 +34,23 @@ class MoreScreen extends ConsumerWidget {
 
     final groups = <(String, List<_MoreItem>)>[
       (
+        'Customers and billing',
+        [
+          const _MoreItem(
+            icon: LpgIcons.customers,
+            label: 'Customers',
+            hint: 'Search, balances and cylinders held',
+            routeName: 'customers',
+          ),
+          const _MoreItem(
+            icon: LpgIcons.invoice,
+            label: 'Invoices',
+            hint: 'Dues, payments and reminders',
+            routeName: 'invoices',
+          ),
+        ],
+      ),
+      (
         'Team and money',
         [
           _MoreItem(

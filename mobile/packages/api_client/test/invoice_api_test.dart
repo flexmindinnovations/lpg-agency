@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_http_client_adapter.dart';
@@ -78,6 +79,108 @@ void main() {
       expect(invoice, isNotNull);
       expect(invoice!.payments, hasLength(1));
       expect(invoice.amountPaid, 905.5);
+    });
+
+    test('parses the balance, customer name and GST split', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
+          'invoice_id': 'invoice-1',
+          'tenant_id': 'tenant-1',
+          'customer_id': 'customer-1',
+          'order_id': 'order-1',
+          'status': 'partially_paid',
+          'issued_at': '2026-08-01T00:00:00Z',
+          'lines': <Map<String, dynamic>>[],
+          'subtotal': 905.5,
+          'tax_amount': 45.28,
+          'total_amount': 950.78,
+          'version': 2,
+          'amount_paid': 905.5,
+          'balance_due': '45.28',
+          'customer_name': 'E2E Customer',
+          'customer_gstin': '36ABCDE1234F1Z5',
+          'is_inter_state': false,
+          'cgst_amount': '22.64',
+          'sgst_amount': '22.64',
+          'igst_amount': '0',
+        }, 200),
+      );
+
+      final result = await InvoiceApi(client.dio).getInvoice('invoice-1');
+
+      final invoice = result.when(onSuccess: (i) => i, onFailure: (_) => null)!;
+      expect(invoice.balanceDue, 45.28);
+      expect(invoice.customerName, 'E2E Customer');
+      expect(invoice.cgstAmount, 22.64);
+      expect(invoice.isInterState, isFalse);
+      expect(invoice.isSettled, isFalse);
+    });
+
+    test('recordPayment posts the method, amount and reference', () async {
+      RequestOptions? seen;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        seen = options;
+        return jsonResponse({
+          'invoice_id': 'invoice-1',
+          'tenant_id': 'tenant-1',
+          'customer_id': 'customer-1',
+          'order_id': 'order-1',
+          'status': 'paid',
+          'issued_at': '2026-08-01T00:00:00Z',
+          'lines': <Map<String, dynamic>>[],
+          'subtotal': 900.0,
+          'tax_amount': 0.0,
+          'total_amount': 900.0,
+          'version': 3,
+          'amount_paid': 900.0,
+          'balance_due': '0',
+        }, 201);
+      });
+
+      final result = await InvoiceApi(client.dio).recordPayment(
+        'invoice-1',
+        method: 'upi',
+        amount: 900,
+        reference: 'UTR123',
+      );
+
+      expect(seen!.method, 'POST');
+      expect(seen!.path, '/api/v1/invoices/invoice-1/payments');
+      expect(seen!.data, {
+        'method': 'upi',
+        'amount': '900.00',
+        'reference': 'UTR123',
+      });
+      expect(
+        result.when(onSuccess: (i) => i.isSettled, onFailure: (_) => false),
+        isTrue,
+      );
+    });
+
+    test('getMyInvoices narrows by customer and search', () async {
+      RequestOptions? seen;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        seen = options;
+        return jsonResponse({
+          'items': <Map<String, dynamic>>[],
+          'total': 0,
+          'page': 1,
+          'page_size': 50,
+        }, 200);
+      });
+
+      await InvoiceApi(client.dio).getMyInvoices(
+        customerId: 'customer-1',
+        search: 'INV-9',
+        status: 'issued',
+      );
+
+      expect(seen!.queryParameters['customer_id'], 'customer-1');
+      expect(seen!.queryParameters['search'], 'INV-9');
+      expect(seen!.queryParameters['status'], 'issued');
     });
   });
 }

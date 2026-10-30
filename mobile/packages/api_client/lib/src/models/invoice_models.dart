@@ -81,6 +81,13 @@ class InvoiceResponse {
     required this.version,
     this.payments = const [],
     this.amountPaid = 0,
+    this.balanceDue = 0,
+    this.customerName,
+    this.customerGstin,
+    this.isInterState = false,
+    this.cgstAmount = 0,
+    this.sgstAmount = 0,
+    this.igstAmount = 0,
   });
 
   factory InvoiceResponse.fromJson(Map<String, dynamic> json) =>
@@ -109,6 +116,13 @@ class InvoiceResponse {
                 .toList() ??
             const [],
         amountPaid: asDoubleOrNull(json['amount_paid']) ?? 0,
+        balanceDue: asDoubleOrNull(json['balance_due']) ?? 0,
+        customerName: json['customer_name'] as String?,
+        customerGstin: json['customer_gstin'] as String?,
+        isInterState: json['is_inter_state'] as bool? ?? false,
+        cgstAmount: asDoubleOrNull(json['cgst_amount']) ?? 0,
+        sgstAmount: asDoubleOrNull(json['sgst_amount']) ?? 0,
+        igstAmount: asDoubleOrNull(json['igst_amount']) ?? 0,
       );
 
   final String invoiceId;
@@ -127,6 +141,20 @@ class InvoiceResponse {
   final int version;
   final List<PaymentResponse> payments;
   final double amountPaid;
+
+  /// What is still owed (total less payments).
+  final double balanceDue;
+  final String? customerName;
+  final String? customerGstin;
+
+  /// CGST and SGST when the supplier and the place of supply are in one
+  /// state, IGST when they differ.
+  final bool isInterState;
+  final double cgstAmount;
+  final double sgstAmount;
+  final double igstAmount;
+
+  bool get isSettled => balanceDue <= 0 && status == 'paid';
 }
 
 /// `GET /invoices` pagination wrapper — mirrors the backend's

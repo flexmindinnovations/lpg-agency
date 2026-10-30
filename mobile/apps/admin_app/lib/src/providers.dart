@@ -27,10 +27,22 @@ final orderApiProvider = Provider<OrderApi>((ref) {
   return OrderApi(apiClient.dio);
 });
 
+/// Provides the [PaymentApi] client (UPI QR, online payments).
+final paymentApiProvider = Provider<PaymentApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return PaymentApi(apiClient.dio);
+});
+
 /// Provides the [InvoiceApi] client.
 final invoiceApiProvider = Provider<InvoiceApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return InvoiceApi(apiClient.dio);
+});
+
+/// Provides the [CylinderLedgerApi] client.
+final cylinderLedgerApiProvider = Provider<CylinderLedgerApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return CylinderLedgerApi(apiClient.dio);
 });
 
 /// Provides the [CustomerApi] client.

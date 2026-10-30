@@ -12,6 +12,10 @@ Customer books (cash on delivery) -> Admin confirms -> Send out blocked (no free
 - Send out: the load sheet ignored the other orders already on the chosen trip, so a shortage showed as an unexplained server error.
 - Booked orders showed a total of Rs 0.00 instead of "priced on confirmation".
 
+## Customers and Invoices (2026-10-30)
+Built and tried on the emulator against the local backend: customer list and detail, filtered invoice list, invoice detail with the CGST/SGST split, and a cash payment of the Rs 45.28 balance that moved INV-2026-000013 from Partially paid to Paid. This also gives the office the way to settle the GST remainder behind the invoice-total finding below.
+Not tried on the emulator: UPI QR sheet, cheque/bank-transfer payments, "Send reminder", and Call. Cylinders-held shows a quiet note for roles without `ledger:read`.
+
 ## Look and feel (2026-10-29, later)
 - Shared animated gradient splash (`LpgSplash`) in all three apps; native Android launch background and Android 12 splash in brand navy; adaptive icon rescaled so Android's circular mask no longer clips the badge. Checked on the emulator for the Admin app; Customer and Driver use the same widget and built cleanly but were not looked at.
 - Admin Orders list, Dispatch queue, search results and trip cards now use the Customer app's "Recent orders" row style (status icon, number, customer and status, amount and date), with a staggered entrance.

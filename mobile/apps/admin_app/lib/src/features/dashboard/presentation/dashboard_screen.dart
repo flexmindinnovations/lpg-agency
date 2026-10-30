@@ -383,6 +383,7 @@ class _Body extends StatelessWidget {
               value: LpgFormat.currencyWhole(inv?.outstandingAmount ?? 0),
               caption: '${inv?.outstandingCount ?? 0} invoices',
               icon: LpgIcons.invoice,
+              onTap: () => context.pushNamed('invoices'),
             ),
             MetricTile(
               label: 'Overdue',
@@ -391,6 +392,7 @@ class _Body extends StatelessWidget {
               icon: LpgIcons.clock,
               tone: LpgTone.danger,
               attention: (inv?.overdueCount ?? 0) > 0,
+              onTap: () => context.pushNamed('invoices'),
             ),
             MetricTile(
               label: 'Open complaints',
