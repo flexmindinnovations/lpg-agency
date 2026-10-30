@@ -126,8 +126,7 @@
       <i class="pi pi-bell"></i>
       <span>Remind driver</span>
     </button>
-    }
-    } @if (canCancelFree() || requiresCancelApproval()) {
+    } } @if (canCancelFree() || requiresCancelApproval()) {
     <button
       *lpgHasPermission="'orders:cancel'"
       pButton
@@ -467,8 +466,8 @@
       <span class="timeline__reason">{{ item.entry.reason }}</span>
       } } @else {
       <span class="timeline__transition"
-        ><i class="pi pi-bell"></i>
-        Reminder sent to the {{ item.entry.audience === 'driver' ? 'driver' : 'customer' }}</span
+        ><i class="pi pi-bell"></i> Reminder sent to the {{ item.entry.audience === 'driver' ?
+        'driver' : 'customer' }}</span
       >
       <span class="timeline__when">{{ item.at | lpgDateTime }}</span>
       <span class="timeline__reason">{{ item.entry.message }}</span>
