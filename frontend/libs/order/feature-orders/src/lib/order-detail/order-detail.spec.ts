@@ -33,6 +33,52 @@ describe('OrderDetail', () => {
     expect(component).toBeTruthy();
   });
 
+  describe('Driver and vehicle', () => {
+    it('shows the driver, van and last known position while out for delivery', () => {
+      const fixture = TestBed.createComponent(OrderDetail);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      http.expectOne('http://test/api/v1/orders/order-1').flush({
+        id: 'order-1',
+        order_number: 'ORD000033',
+        branch_id: 'branch-1',
+        status: 'out_for_delivery',
+        route_stop_id: 'stop-1',
+        booking_source: 'staff',
+        requested_date: '2026-10-29T00:00:00Z',
+        delivery_address: { address_line: 'Somewhere' },
+        lines: [],
+      });
+      http.expectOne('http://test/api/v1/orders/order-1/tracking').flush({
+        order_id: 'order-1',
+        status: 'out_for_delivery',
+        destination_latitude: 17.4,
+        destination_longitude: 78.4,
+        destination_label: 'Somewhere',
+        route_status: 'in_progress',
+        route_id: 'route-1',
+        driver_location: {
+          latitude: 17.41,
+          longitude: 78.41,
+          recorded_at: new Date().toISOString(),
+        },
+        driver: {
+          name: 'Ravi Kumar',
+          phone_number: '+919999999999',
+          vehicle_number: 'TS09AB1234',
+          vehicle_model: null,
+        },
+      });
+      fixture.detectChanges();
+      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(text).toContain('Driver and vehicle');
+      expect(text).toContain('Ravi Kumar');
+      expect(text).toContain('TS09AB1234');
+      expect(text).toContain('Updated just now');
+      expect(fixture.nativeElement.querySelector('iframe')).not.toBeNull();
+    });
+  });
+
   describe('Approve Cancellation', () => {
     const outForDelivery = {
       id: 'order-1',

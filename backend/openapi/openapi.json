@@ -7122,6 +7122,18 @@
             "title": "Order Id",
             "type": "string"
           },
+          "route_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Id"
+          },
           "route_status": {
             "anyOf": [
               {
@@ -9704,6 +9716,60 @@
         "title": "RelocateWarehouseRequest",
         "type": "object"
       },
+      "ReminderPresetResponse": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "ReminderPresetResponse",
+        "type": "object"
+      },
+      "ReminderResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "preset": {
+            "title": "Preset",
+            "type": "string"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          },
+          "sent_by": {
+            "format": "uuid",
+            "title": "Sent By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sent_by",
+          "preset",
+          "message",
+          "sent_at"
+        ],
+        "title": "ReminderResponse",
+        "type": "object"
+      },
       "RenameBranchRequest": {
         "properties": {
           "name": {
@@ -10560,6 +10626,38 @@
           }
         },
         "title": "ScheduleFeatureFlagRequest",
+        "type": "object"
+      },
+      "SendReminderRequest": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 600,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "preset": {
+            "enum": [
+              "delivery_today",
+              "on_the_way",
+              "empty_ready",
+              "payment_due",
+              "custom"
+            ],
+            "title": "Preset",
+            "type": "string"
+          }
+        },
+        "required": [
+          "preset"
+        ],
+        "title": "SendReminderRequest",
         "type": "object"
       },
       "SetBranchActiveRequest": {
@@ -20304,6 +20402,31 @@
         ]
       }
     },
+    "/api/v1/orders/reminder-presets": {
+      "get": {
+        "operationId": "list_reminder_presets_api_v1_orders_reminder_presets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReminderPresetResponse"
+                  },
+                  "title": "Response List Reminder Presets Api V1 Orders Reminder Presets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The ready-made reminder messages",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
     "/api/v1/orders/{order_id}": {
       "get": {
         "operationId": "get_order_api_v1_orders__order_id__get",
@@ -21287,6 +21410,110 @@
           }
         },
         "summary": "Get Proof Of Delivery",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/reminders": {
+      "get": {
+        "operationId": "list_order_reminders_api_v1_orders__order_id__reminders_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReminderResponse"
+                  },
+                  "title": "Response List Order Reminders Api V1 Orders  Order Id  Reminders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reminders sent to the customer about this order",
+        "tags": [
+          "Orders"
+        ]
+      },
+      "post": {
+        "operationId": "send_order_reminder_api_v1_orders__order_id__reminders_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendReminderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The order is finished or the customer has no app login."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many reminders for this order."
+          }
+        },
+        "summary": "Send the customer a reminder about this order",
         "tags": [
           "Orders"
         ]

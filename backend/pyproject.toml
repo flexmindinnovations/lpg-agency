@@ -346,6 +346,9 @@ ignore_imports = [
     # record and proof-of-delivery repositories, plus (for bulk-cancel's
     # fresh-transaction-per-order factory) the inventory location repository.
     "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.order",
+    # Staff reminders to a customer (planning/features/51).
+    "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.order_reminder",
+    "lpg.api.v1.dependencies.order -> lpg.infrastructure.notification.delivery",
     "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.inventory",
     # get_cancel_order_use_case_factory (Phase 12) also needs a fresh route
     # repository per order, same reasoning as the inventory one above.

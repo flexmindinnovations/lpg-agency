@@ -159,6 +159,15 @@ SPECS: dict[str, NotificationSpec] = {
         sms=SmsTemplate.OUT_FOR_DELIVERY,
         push=True,
     ),
+    # Sent by hand from the order page; the wording is chosen there (see
+    # `lpg.application.order.reminders`). In-app and push only — SMS needs a
+    # DLT-registered template, which free text cannot match.
+    "order_reminder": NotificationSpec(
+        title="Update on your order",
+        body=lambda f: f.get("message") or f"An update on {_order(f)}.",
+        audience=Audience.CUSTOMER,
+        push=True,
+    ),
     "delivery_confirmed": NotificationSpec(
         title="Delivered",
         body=lambda f: f"{_order_cap(f)} has been delivered. Thank you!",
