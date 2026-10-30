@@ -58,6 +58,24 @@ final class OrderApi {
     }
   }
 
+  /// The delivery record of a delivered order
+  /// (`GET /orders/{id}/proof-of-delivery`); `null` until it is delivered.
+  Future<Result<ProofOfDelivery?>> getProofOfDelivery(String orderId) async {
+    try {
+      final response = await _dio.get<dynamic>(
+        '/api/v1/orders/$orderId/proof-of-delivery',
+      );
+      final data = response.data;
+      return Success(
+        data is Map<String, dynamic> ? ProofOfDelivery.fromJson(data) : null,
+      );
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Fetch the order-tracking view: delivery destination, route status, and
   /// the driver's last-known position (`driverLocation` null until sharing
   /// starts). Live movement arrives separately over `/ws`

@@ -449,3 +449,49 @@ class OrderStatusHistoryEntry {
   final DateTime changedAt;
   final String? reason;
 }
+
+/// The record of a delivery, mirroring `ProofOfDeliveryResponse`: when the
+/// customer's code was checked, where, what was collected and how, with
+/// short-lived links to the signature and photo when the driver took them.
+class ProofOfDelivery {
+  const ProofOfDelivery({
+    required this.id,
+    required this.recordedAt,
+    required this.paymentMethod,
+    required this.amountCollected,
+    required this.gpsLat,
+    required this.gpsLng,
+    this.dacCode,
+    this.signatureUrl,
+    this.photoUrl,
+  });
+
+  factory ProofOfDelivery.fromJson(Map<String, dynamic> json) =>
+      ProofOfDelivery(
+        id: json['id'] as String,
+        recordedAt: DateTime.parse(json['recorded_at'] as String),
+        paymentMethod: json['payment_method'] as String,
+        amountCollected: asDouble(json['amount_collected']),
+        gpsLat: asDouble(json['gps_lat']),
+        gpsLng: asDouble(json['gps_lng']),
+        dacCode: json['dac_code'] as String?,
+        signatureUrl: json['signature_url'] as String?,
+        photoUrl: json['photo_url'] as String?,
+      );
+
+  final String id;
+  final DateTime recordedAt;
+
+  /// `cash`, `upi`, `card`, `credit`, and so on.
+  final String paymentMethod;
+  final double amountCollected;
+  final double gpsLat;
+  final double gpsLng;
+
+  /// The oil company's own delivery authentication code, when given.
+  final String? dacCode;
+
+  /// Links that expire after a few minutes; load them when shown.
+  final String? signatureUrl;
+  final String? photoUrl;
+}

@@ -8,6 +8,7 @@ import '../../../api_result.dart';
 import '../../../providers.dart';
 import '../data/orders_provider.dart';
 import '../domain/order_flow.dart';
+import 'order_settlement.dart';
 import 'sheets/deliver_sheet.dart';
 import 'sheets/order_action_sheets.dart';
 import 'sheets/send_out_sheet.dart';
@@ -358,6 +359,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 ],
               ),
             ),
+            if (order.status == 'delivered' || order.status == 'closed')
+              OrderSettlement(order: order),
             const SizedBox(height: LpgSpacing.xl),
             ..._buildActions(order, actions, trip),
             const SizedBox(height: LpgSpacing.xl),

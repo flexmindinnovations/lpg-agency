@@ -1,6 +1,6 @@
 # Status
 
-Branch `feat/admin-app-create-customer`, 2026-10-30, stacked on `feat/admin-app-pricing` (PR #86, which stacks on #85, #84, #83, #82; none merged yet). F1 in progress.
+Branch `feat/admin-app-order-proof`, 2026-10-30, on top of `feat/admin-app-create-customer` (PR #87), which stacks on #86, #85, #84, #83, #82; none merged yet. F1 and F2 built.
 
 ## F1 Create customers
 Built on `POST /customers`, `POST /customers/{id}/approve`, `POST /customers/{id}/addresses` and `POST /customers/{id}/kyc/{docId}/verify`; no backend change.
@@ -10,4 +10,12 @@ Built on `POST /customers`, `POST /customers/{id}/approve`, `POST /customers/{id
 Tried on the emulator against the local backend: Add customer (Sunita Walk-in Test, domestic, Kondhwa branch, Pune address) landed on the new customer's page showing "Not approved yet"; Approve made them Active with consumer number CN-000112. That customer is left in the dev database.
 Not tried on the emulator: the New order picker entry, a business customer, Add address, and verifying or rejecting a KYC document (the review sheet and the two API calls are covered by tests; no dev customer has a submitted document). Whether a KYC photo shows depends on the backend returning a fetchable URL.
 `CustomerResponse` now carries `gstin`. The customer-type labels moved to a shared file used by Pricing and Add customer.
+
+## F2 Order screen: payment, invoice, proof of delivery
+Built on `GET /orders/{id}/proof-of-delivery` and `GET /invoices?order_id=`; no backend change. A delivered or closed order now shows two sections under its total.
+- **Delivery:** when it was delivered, what was collected at the door and how, a link to the place on the map, the OMC delivery code when there is one, and the signature and photo (tap to see full size) when the driver took them.
+- **Payment and invoice:** the order's invoice as a row (opens the invoice) with total, paid so far and still due. When something is still due after a collection at the door, a note says what the driver collected against the invoice and points to the invoice to record a payment.
+Tried on the emulator against the local backend, on ORD000061 (closed): both sections, and the invoice row opening INV-2026-000013. That order's driver took no signature or photo, so the pictures were not seen on a device (widget tests cover them being absent; the image-loading path is not exercised).
+**It makes the open GST question visible:** the order total is Rs 905.50 and the invoice total Rs 950.78. The screen shows both as the backend states them; it does not decide which is right.
+Not tried: an order whose invoice still has a balance (the one used had been settled earlier), an order delivered without an invoice.
 

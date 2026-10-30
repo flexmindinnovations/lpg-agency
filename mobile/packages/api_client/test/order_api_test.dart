@@ -480,4 +480,57 @@ void main() {
       expect(result, isA<Success<OrderResponse>>());
     });
   });
+  group('OrderApi proof of delivery', () {
+    test('reads the collected amount, the place and the photo links', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/orders/o-1/proof-of-delivery');
+        return jsonResponse({
+          'id': 'p-1',
+          'tenant_id': 't',
+          'order_id': 'o-1',
+          'otp_verified_at': '2026-10-30T09:00:00Z',
+          'gps_lat': '18.5204',
+          'gps_lng': '73.8567',
+          'payment_method': 'cash',
+          'amount_collected': '905.50',
+          'recorded_by': 'u-1',
+          'recorded_at': '2026-10-30T09:01:00Z',
+          'dac_code': '123456',
+          'signature_url': 'https://files.test/sig.png',
+          'photo_url': null,
+        }, 200);
+      });
+
+      final result = await OrderApi(client.dio).getProofOfDelivery('o-1');
+
+      final pod = result.when(onSuccess: (p) => p, onFailure: (_) => null)!;
+      expect(pod.amountCollected, 905.5);
+      expect(pod.paymentMethod, 'cash');
+      expect(pod.gpsLat, 18.5204);
+      expect(pod.dacCode, '123456');
+      expect(pod.signatureUrl, 'https://files.test/sig.png');
+      expect(pod.photoUrl, isNull);
+    });
+
+    test('an order not yet delivered has no record', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => ResponseBody.fromString(
+          'null',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        ),
+      );
+
+      final result = await OrderApi(client.dio).getProofOfDelivery('o-1');
+
+      expect(
+        result.when(onSuccess: (p) => p == null, onFailure: (_) => false),
+        isTrue,
+      );
+    });
+  });
 }
