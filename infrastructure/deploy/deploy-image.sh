@@ -169,6 +169,11 @@ print(json.dumps(sa, separators=(",", ":")))
   log "Deploying $sha"
   # Pull BEFORE touching .env: a tag that was never published must fail here,
   # leaving both the running stack and .env exactly as they were.
+  # Old release images pile up (one tag per merge) and filled the droplet disk
+  # (deploy 40940590585: "no space left on device"). Images in use by running
+  # containers are kept, so the running release stays available for rollback.
+  docker image prune -af >/dev/null || true
+  docker builder prune -af >/dev/null || true
   IMAGE_TAG="$sha" "${compose[@]}" pull backend web
   set_tag "$sha"
   if [[ -n "${fcm_b64:-}" ]]; then
