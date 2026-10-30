@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/admin_app_bar.dart';
 import '../../approvals/data/approvals_provider.dart';
+import '../../compliance/data/compliance_provider.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 
 /// One row of the More menu.
@@ -32,6 +33,7 @@ class MoreScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pending = ref.watch(pendingCashHandoversProvider).value?.length ?? 0;
+    final lapsing = ref.watch(complianceDueCountProvider).value ?? 0;
     final openComplaints =
         ref.watch(operationsSnapshotProvider).value?.openComplaints ?? 0;
 
@@ -61,13 +63,20 @@ class MoreScreen extends ConsumerWidget {
         ],
       ),
       (
-        'Godown',
+        'Godown and papers',
         [
           const _MoreItem(
             icon: LpgIcons.warehouse,
             label: 'Stock',
             hint: 'Cylinders in the godown, receipts and counts',
             routeName: 'stock',
+          ),
+          _MoreItem(
+            icon: LpgIcons.badge,
+            label: 'Licences and papers',
+            hint: 'Licences, insurance and PESO papers that are expiring',
+            routeName: 'compliance',
+            badge: lapsing,
           ),
         ],
       ),

@@ -14,20 +14,21 @@ class DocumentPhotoField extends ConsumerStatefulWidget {
   const DocumentPhotoField({
     super.key,
     required this.label,
-    required this.docKind,
     required this.onUploaded,
-    required this.onRecognized,
+    this.docKind,
+    this.onRecognized,
     this.errorText,
   });
 
   final String label;
 
-  /// `driving_licence` or `vehicle_rc`.
-  final String docKind;
+  /// `driving_licence` or `vehicle_rc` to read the photo for a head start;
+  /// `null` for any other document, which is just stored.
+  final String? docKind;
 
   /// The staged blob ref, or null when the photo was removed or failed.
   final ValueChanged<String?> onUploaded;
-  final ValueChanged<RecognizedComplianceDocument> onRecognized;
+  final ValueChanged<RecognizedComplianceDocument>? onRecognized;
   final String? errorText;
 
   @override
@@ -80,14 +81,16 @@ class _DocumentPhotoFieldState extends ConsumerState<DocumentPhotoField> {
           _hasPhoto = true;
         });
         widget.onUploaded(value);
-        final recognized = await api.recognizeDocument(value, widget.docKind);
+        final docKind = widget.docKind;
+        if (docKind == null) return;
+        final recognized = await api.recognizeDocument(value, docKind);
         if (!mounted) return;
         // Reading the photo is a nice-to-have; a failure just means the
         // details are typed in.
         if (recognized case Success<RecognizedComplianceDocument>(
           :final value,
         )) {
-          widget.onRecognized(value);
+          widget.onRecognized?.call(value);
           setState(() {
             _hint = value.confidence >= 0.5
                 ? 'Filled in from the photo. Please check the details.'

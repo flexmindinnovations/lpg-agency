@@ -346,3 +346,67 @@ class GoodsReceipt {
   final String cylinderTypeId;
   final int quantity;
 }
+
+/// A licence, certificate or policy kept on file for a driver, van, godown
+/// or the agency, mirroring `ComplianceDocumentResponse`.
+class ComplianceDocument {
+  const ComplianceDocument({
+    required this.id,
+    required this.ownerType,
+    required this.ownerId,
+    required this.docType,
+    required this.documentNumber,
+    required this.verificationStatus,
+    this.fileUrl,
+    this.issueDate,
+    this.expiryDate,
+    this.rejectionReason,
+  });
+
+  factory ComplianceDocument.fromJson(Map<String, dynamic> json) {
+    DateTime? date(String key) =>
+        json[key] == null ? null : DateTime.tryParse(json[key] as String);
+    return ComplianceDocument(
+      id: json['id'] as String,
+      ownerType: json['owner_type'] as String,
+      ownerId: json['owner_id'] as String,
+      docType: json['doc_type'] as String,
+      documentNumber: json['document_number'] as String,
+      fileUrl: json['file_url'] as String?,
+      issueDate: date('issue_date'),
+      expiryDate: date('expiry_date'),
+      verificationStatus: json['verification_status'] as String,
+      rejectionReason: json['rejection_reason'] as String?,
+    );
+  }
+
+  final String id;
+
+  /// `driver`, `vehicle`, `warehouse` or `tenant`.
+  final String ownerType;
+  final String ownerId;
+
+  /// `driving_licence`, `vehicle_insurance`, `peso_form_f`, and so on.
+  final String docType;
+  final String documentNumber;
+  final String? fileUrl;
+  final DateTime? issueDate;
+  final DateTime? expiryDate;
+
+  /// `pending`, `verified` or `rejected`.
+  final String verificationStatus;
+  final String? rejectionReason;
+
+  /// Whole days from [today] to the expiry date (negative once it has
+  /// lapsed); `null` when the document carries no expiry.
+  int? daysLeft([DateTime? today]) {
+    final expiry = expiryDate;
+    if (expiry == null) return null;
+    final now = today ?? DateTime.now();
+    return DateTime.utc(
+      expiry.year,
+      expiry.month,
+      expiry.day,
+    ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
+  }
+}

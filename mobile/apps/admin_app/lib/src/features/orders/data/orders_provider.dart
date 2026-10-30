@@ -147,6 +147,13 @@ class FleetData {
     }
     return 'the van';
   }
+
+  String warehouseName(String id) {
+    for (final w in warehouses) {
+      if (w.id == id) return w.name;
+    }
+    return 'the godown';
+  }
 }
 
 final fleetProvider = FutureProvider<FleetData>((ref) async {
