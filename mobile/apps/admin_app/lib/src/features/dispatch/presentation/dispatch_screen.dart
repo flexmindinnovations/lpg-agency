@@ -8,6 +8,8 @@ import 'package:core/core.dart';
 
 import '../../../api_result.dart';
 import '../../../providers.dart';
+import '../../../shared/admin_app_bar.dart';
+import '../../../shared/order_row.dart';
 import '../../orders/data/orders_provider.dart';
 import '../../orders/presentation/sheets/send_out_sheet.dart';
 import '../data/dispatch_provider.dart';
@@ -93,8 +95,8 @@ class _DispatchScreenState extends ConsumerState<DispatchScreen> {
     final names = ref.watch(cylinderNamesProvider).value ?? const {};
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dispatch'),
+      appBar: AdminAppBar(
+        title: 'Dispatch',
         actions: [
           IconButton(
             tooltip: 'Drivers and vans',
@@ -149,57 +151,25 @@ class _DispatchScreenState extends ConsumerState<DispatchScreen> {
                     ),
                   );
                 }
-                return Column(
+                return LpgGroupedList(
                   children: [
-                    for (final order in orders) ...[
-                      LpgCard(
+                    for (final order in orders)
+                      OrderTile(
+                        order: order,
+                        subtitle:
+                            '${order.customerName ?? 'Customer'}  ·  '
+                            '${[for (final l in order.lines) '${l.quantityOrdered} × ${names[l.cylinderTypeId] ?? 'Cylinder'}'].join(', ')}',
                         onTap: () => context.goNamed(
                           'order_detail',
                           pathParameters: {'orderId': order.id},
                         ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    LpgFormat.orderNumber(
-                                      order.orderNumber,
-                                      order.id,
-                                    ),
-                                    style: text.titleSmall,
-                                  ),
-                                  Text(
-                                    order.customerName ?? 'Customer',
-                                    style: text.bodyMedium?.copyWith(
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                  Text(
-                                    [
-                                      for (final l in order.lines)
-                                        '${l.quantityOrdered} × '
-                                            '${names[l.cylinderTypeId] ?? 'Cylinder'}',
-                                    ].join(', '),
-                                    style: text.bodySmall?.copyWith(
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            LpgButton(
-                              label: 'Send out',
-                              icon: LpgIcons.truck,
-                              variant: LpgButtonVariant.tonal,
-                              onPressed: () => _sendOut(context, ref, order),
-                            ),
-                          ],
+                        trailing: LpgButton(
+                          label: 'Send out',
+                          icon: LpgIcons.truck,
+                          variant: LpgButtonVariant.text,
+                          onPressed: () => _sendOut(context, ref, order),
                         ),
                       ),
-                      const SizedBox(height: LpgSpacing.sm),
-                    ],
                   ],
                 );
               },
@@ -230,89 +200,14 @@ class _DispatchScreenState extends ConsumerState<DispatchScreen> {
                     icon: LpgIcons.truck,
                   );
                 }
-                return Column(
+                return LpgGroupedList(
                   children: [
-                    for (final trip in trips) ...[
-                      LpgCard(
-                        onTap: () => context.pushNamed(
-                          'trip_detail',
-                          pathParameters: {'tripId': trip.id},
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    fleet == null
-                                        ? 'Trip'
-                                        : '${fleet.driverName(trip.driverId)} · '
-                                              '${fleet.vehicleName(trip.vehicleId)}',
-                                    style: text.titleSmall,
-                                  ),
-                                ),
-                                LpgStatusBadge(
-                                  label: tripStatusLabel(trip.status),
-                                  severity: tripStatusSeverity(trip.status),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: LpgSpacing.xs),
-                            if (trip.stops.isEmpty)
-                              Text(
-                                'No orders on this trip yet.',
-                                style: text.bodySmall?.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            for (final stop in trip.stops)
-                              InkWell(
-                                onTap: () => context.goNamed(
-                                  'order_detail',
-                                  pathParameters: {'orderId': stop.orderId},
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: LpgSpacing.xs,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        LpgFormat.orderNumber(
-                                          stop.orderNumber,
-                                          stop.orderId,
-                                        ),
-                                        style: text.bodyMedium,
-                                      ),
-                                      Text(
-                                        LpgFormat.statusLabel(stop.status),
-                                        style: text.bodySmall?.copyWith(
-                                          color: colors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            if (trip.status == 'planned' ||
-                                trip.status == 'loaded')
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: LpgButton(
-                                  label: 'Cancel trip',
-                                  variant: LpgButtonVariant.text,
-                                  onPressed: () => _cancelTrip(trip),
-                                ),
-                              ),
-                          ],
-                        ),
+                    for (final trip in trips)
+                      _TripTile(
+                        trip: trip,
+                        fleet: fleet,
+                        onCancel: () => _cancelTrip(trip),
                       ),
-                      const SizedBox(height: LpgSpacing.sm),
-                    ],
                   ],
                 );
               },
@@ -321,6 +216,84 @@ class _DispatchScreenState extends ConsumerState<DispatchScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// One trip as a row of the trips list: van and driver, how far through its
+/// stops it is, and the shortcut to cancel it while it has not left.
+class _TripTile extends StatelessWidget {
+  const _TripTile({
+    required this.trip,
+    required this.fleet,
+    required this.onCancel,
+  });
+
+  final RouteSummary trip;
+  final FleetData? fleet;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lpgColors;
+    final total = trip.stops.length;
+    final done = trip.stops.where((s) => s.status != 'pending').length;
+    final severity = tripStatusSeverity(trip.status);
+    final title = fleet == null
+        ? 'Trip'
+        : '${fleet!.vehicleName(trip.vehicleId)} · '
+              '${fleet!.driverName(trip.driverId)}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LpgListTile(
+          leadingIcon: LpgIcons.truck,
+          leadingTone: severity.tone,
+          title: title,
+          subtitle: total == 0
+              ? 'No orders on this trip yet'
+              : '$done of $total ${total == 1 ? 'stop' : 'stops'} done',
+          trailing: LpgStatusBadge(
+            label: tripStatusLabel(trip.status),
+            severity: severity,
+          ),
+          showChevron: true,
+          onTap: () => context.pushNamed(
+            'trip_detail',
+            pathParameters: {'tripId': trip.id},
+          ),
+        ),
+        if (total > 0)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              LpgSpacing.md,
+              0,
+              LpgSpacing.md,
+              LpgSpacing.smd,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(LpgRadius.full),
+              child: LinearProgressIndicator(
+                value: done / total,
+                minHeight: 6,
+                backgroundColor: colors.borderDefault,
+              ),
+            ),
+          ),
+        if (trip.status == 'planned' || trip.status == 'loaded')
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: LpgSpacing.sm),
+              child: LpgButton(
+                label: 'Cancel trip',
+                variant: LpgButtonVariant.text,
+                onPressed: onCancel,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

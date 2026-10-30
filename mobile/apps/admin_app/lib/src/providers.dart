@@ -27,6 +27,12 @@ final orderApiProvider = Provider<OrderApi>((ref) {
   return OrderApi(apiClient.dio);
 });
 
+/// Provides the [InvoiceApi] client.
+final invoiceApiProvider = Provider<InvoiceApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return InvoiceApi(apiClient.dio);
+});
+
 /// Provides the [CustomerApi] client.
 final customerApiProvider = Provider<CustomerApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);

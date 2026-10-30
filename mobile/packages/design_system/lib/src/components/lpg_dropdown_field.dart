@@ -10,7 +10,8 @@ import 'lpg_text_field.dart';
 /// `inputDecorationTheme`).
 ///
 /// [items] maps each value to its display text. [placeholder], when given,
-/// adds a leading `null` entry so "nothing selected" is a real choice.
+/// adds a leading `null` entry so "nothing selected" is a real choice. A
+/// [value] that is not among [items] counts as "nothing selected".
 class LpgDropdownField<T> extends StatelessWidget {
   const LpgDropdownField({
     super.key,
@@ -37,8 +38,11 @@ class LpgDropdownField<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
 
+    // A value that is not one of the items (a screen's "nothing chosen yet"
+    // sentinel such as '') shows the placeholder instead of failing
+    // Flutter's "exactly one item with this value" assertion.
     final field = DropdownButtonFormField<T>(
-      initialValue: value,
+      initialValue: items.containsKey(value) ? value : null,
       isExpanded: true,
       validator: validator,
       icon: Icon(LpgIcons.chevronDown, color: colors.textSecondary),

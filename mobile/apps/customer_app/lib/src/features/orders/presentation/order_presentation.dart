@@ -15,7 +15,7 @@ extension OrderPresentation on OrderResponse {
   LpgStatusSeverity get statusSeverity => orderStatusSeverity(status);
 
   IconData get statusIcon => switch (status) {
-    'delivered' => LpgIcons.success,
+    'delivered' || 'closed' => LpgIcons.success,
     'cancelled' || 'failed_delivery' => LpgIcons.cancel,
     'out_for_delivery' => LpgIcons.truck,
     'ready_for_dispatch' => LpgIcons.package,
@@ -38,7 +38,7 @@ extension OrderPresentation on OrderResponse {
 }
 
 LpgStatusSeverity orderStatusSeverity(String status) => switch (status) {
-  'delivered' => LpgStatusSeverity.success,
+  'delivered' || 'closed' => LpgStatusSeverity.success,
   'cancelled' || 'failed_delivery' => LpgStatusSeverity.danger,
   'out_for_delivery' || 'ready_for_dispatch' => LpgStatusSeverity.warning,
   _ => LpgStatusSeverity.info,

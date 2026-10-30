@@ -66,8 +66,6 @@ class _DriversTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.lpgColors;
-    final text = context.lpgText;
     final driversAsync = ref.watch(fleetDriversProvider);
     final branches = ref.watch(fleetBranchesProvider).value ?? const [];
 
@@ -111,46 +109,26 @@ class _DriversTab extends ConsumerWidget {
           return ListView(
             padding: LpgSpacing.page.copyWith(bottom: 96),
             children: [
-              for (final d in drivers) ...[
-                LpgCard(
-                  onTap: () => showDriverSheet(context, ref, d.id),
-                  child: Row(
-                    children: [
-                      LpgAvatar(name: d.name),
-                      const SizedBox(width: LpgSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(d.name, style: text.titleSmall),
-                            Text(
-                              [
-                                branchName(branches, d.branchId),
-                                if (d.phoneNumber != null) d.phoneNumber!,
-                              ].join(' · '),
-                              style: text.bodySmall?.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                            if (!d.hasLogin)
-                              Text(
-                                'No Driver App login yet',
-                                style: text.bodySmall?.copyWith(
-                                  color: colors.statusWarning,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      LpgStatusBadge(
+              LpgGroupedList(
+                children: [
+                  for (final d in drivers)
+                    LpgListTile(
+                      leading: LpgAvatar(name: d.name),
+                      title: d.name,
+                      subtitle: [
+                        branchName(branches, d.branchId),
+                        if (d.phoneNumber != null) d.phoneNumber!,
+                        if (!d.hasLogin) 'No Driver App login yet',
+                      ].join(' · '),
+                      trailing: LpgStatusBadge(
                         label: fleetStatusLabel(d.status),
                         severity: fleetStatusSeverity(d.status),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: LpgSpacing.sm),
-              ],
+                      showChevron: true,
+                      onTap: () => showDriverSheet(context, ref, d.id),
+                    ),
+                ],
+              ),
             ],
           );
         },
@@ -164,8 +142,6 @@ class _VehiclesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.lpgColors;
-    final text = context.lpgText;
     final vehiclesAsync = ref.watch(fleetVehiclesProvider);
     final branches = ref.watch(fleetBranchesProvider).value ?? const [];
 
@@ -209,41 +185,27 @@ class _VehiclesTab extends ConsumerWidget {
           return ListView(
             padding: LpgSpacing.page.copyWith(bottom: 96),
             children: [
-              for (final v in vehicles) ...[
-                LpgCard(
-                  onTap: () => showVehicleSheet(context, ref, v.id),
-                  child: Row(
-                    children: [
-                      const LpgIconBox(icon: LpgIcons.truck),
-                      const SizedBox(width: LpgSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(v.registrationNumber, style: text.titleSmall),
-                            Text(
-                              [
-                                if ('${v.make} ${v.model}'.trim().isNotEmpty)
-                                  '${v.make} ${v.model}'.trim(),
-                                'holds ${v.capacityUnits}',
-                                branchName(branches, v.branchId),
-                              ].join(' · '),
-                              style: text.bodySmall?.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      LpgStatusBadge(
+              LpgGroupedList(
+                children: [
+                  for (final v in vehicles)
+                    LpgListTile(
+                      leadingIcon: LpgIcons.truck,
+                      title: v.registrationNumber,
+                      subtitle: [
+                        if ('${v.make} ${v.model}'.trim().isNotEmpty)
+                          '${v.make} ${v.model}'.trim(),
+                        'holds ${v.capacityUnits}',
+                        branchName(branches, v.branchId),
+                      ].join(' · '),
+                      trailing: LpgStatusBadge(
                         label: fleetStatusLabel(v.status),
                         severity: fleetStatusSeverity(v.status),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: LpgSpacing.sm),
-              ],
+                      showChevron: true,
+                      onTap: () => showVehicleSheet(context, ref, v.id),
+                    ),
+                ],
+              ),
             ],
           );
         },

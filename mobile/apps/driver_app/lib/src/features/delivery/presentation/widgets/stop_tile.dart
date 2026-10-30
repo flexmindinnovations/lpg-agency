@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../offline/pending_sync.dart';
 
-/// One row in the route's stop list — order ref + status, tappable through
-/// to the stop detail. Shared by the Today "next stop" card and the
+/// One row of an `LpgGroupedList` for a stop on the route: order ref and
+/// status, tappable through to the stop detail. Shared by the Today "next stop" card and the
 /// Deliveries list. Shows a "pending sync" hint while this stop's last
 /// action is still queued.
 class StopTile extends ConsumerWidget {
@@ -32,32 +32,21 @@ class StopTile extends ConsumerWidget {
       _ => (LpgIcons.location, LpgTone.primary),
     };
 
-    return LpgCard(
-      padding: EdgeInsets.zero,
+    return LpgListTile(
+      leadingIcon: icon,
+      leadingTone: tone,
+      title: 'Order ${LpgFormat.orderNumber(stop.orderNumber, stop.orderId)}',
+      subtitle:
+          'Stop ${stop.sequenceNumber}  ·  ${LpgFormat.statusLabel(stop.status)}',
+      trailing: pending
+          ? const LpgStatusBadge(
+              label: 'PENDING SYNC',
+              severity: LpgStatusSeverity.info,
+              icon: LpgIcons.upload,
+            )
+          : null,
+      showChevron: onTap != null && !pending,
       onTap: onTap,
-      child: LpgListTile(
-        leadingIcon: icon,
-        leadingTone: tone,
-        title: 'Stop ${stop.sequenceNumber}',
-        subtitle:
-            'Order ${LpgFormat.orderNumber(stop.orderNumber, stop.orderId)}',
-        trailing: pending
-            ? const LpgStatusBadge(
-                label: 'PENDING SYNC',
-                severity: LpgStatusSeverity.info,
-                icon: LpgIcons.upload,
-              )
-            : LpgStatusBadge(
-                label: LpgFormat.statusLabel(stop.status),
-                severity: switch (stop.status) {
-                  'delivered' => LpgStatusSeverity.success,
-                  'failed' => LpgStatusSeverity.danger,
-                  'en_route' => LpgStatusSeverity.warning,
-                  _ => LpgStatusSeverity.neutral,
-                },
-              ),
-        showChevron: onTap != null,
-      ),
     );
   }
 }

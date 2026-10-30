@@ -8,21 +8,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../api_result.dart';
+import '../../../shared/admin_app_bar.dart';
+import '../../../shared/order_row.dart';
 import '../data/orders_provider.dart';
 import '../domain/order_flow.dart';
 
 class OrderListScreen extends ConsumerStatefulWidget {
-  const OrderListScreen({super.key});
+  const OrderListScreen({super.key, this.initialFilter, this.initialSearch});
+
+  /// The label of the filter chip to start on ("Booked"); the dashboard tiles
+  /// open the list this way.
+  final String? initialFilter;
+  final String? initialSearch;
 
   @override
   ConsumerState<OrderListScreen> createState() => _OrderListScreenState();
 }
 
 class _OrderListScreenState extends ConsumerState<OrderListScreen> {
-  OrderFilter _selectedFilter = orderFilters.first;
-  final _searchController = TextEditingController();
+  late OrderFilter _selectedFilter = orderFilters.firstWhere(
+    (f) => f.label == widget.initialFilter,
+    orElse: () => orderFilters.first,
+  );
+  late final _searchController = TextEditingController(
+    text: widget.initialSearch ?? '',
+  );
   Timer? _debounce;
-  String _search = '';
+  late String _search = (widget.initialSearch ?? '').trim();
 
   /// How many pages of 50 are on screen; "Load more" adds one.
   int _pages = 1;
@@ -60,9 +72,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.lpgColors;
-    final text = context.lpgText;
-
     final query = _query;
     final pages = [
       for (var p = 1; p <= _pages; p++)
@@ -83,8 +92,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final hasMore = !last.isLoading && !last.hasError && loadedCount < total;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Orders'),
+      appBar: AdminAppBar(
+        title: 'Orders',
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -158,78 +167,31 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     _refresh();
                     await ref.read(adminOrdersProvider((query, 1)).future);
                   },
-                  child: ListView.separated(
+                  child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: LpgSpacing.page,
-                    itemCount: orders.length + 1,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: LpgSpacing.sm),
-                    itemBuilder: (context, index) {
-                      if (index == orders.length) {
-                        return _ListFooter(
-                          loading: last.isLoading,
-                          error: last.hasError
-                              ? errorMessage(last.error!)
-                              : null,
-                          hasMore: hasMore,
-                          onMore: () => setState(() => _pages++),
-                          onRetry: _refresh,
-                        );
-                      }
-                      final order = orders[index];
-                      return LpgCard(
-                        onTap: () => context.goNamed(
-                          'order_detail',
-                          pathParameters: {'orderId': order.id},
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  LpgFormat.orderNumber(
-                                    order.orderNumber,
-                                    order.id,
-                                  ),
-                                  style: text.titleMedium,
-                                ),
-                                LpgStatusBadge(
-                                  label: LpgFormat.statusLabel(order.status),
-                                  severity: orderStatusSeverity(order.status),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: LpgSpacing.xs),
-                            Text(
-                              order.customerName ?? 'Customer',
-                              style: text.bodyMedium?.copyWith(
-                                color: colors.textSecondary,
+                    children: [
+                      LpgGroupedList(
+                        children: [
+                          for (final order in orders)
+                            OrderTile(
+                              order: order,
+                              onTap: () => context.goNamed(
+                                'order_detail',
+                                pathParameters: {'orderId': order.id},
                               ),
                             ),
-                            const SizedBox(height: LpgSpacing.xs),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  LpgFormat.date(order.requestedDate),
-                                  style: text.bodySmall?.copyWith(
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                                Text(
-                                  LpgFormat.currency(order.totalAmount ?? 0.0),
-                                  style: text.titleSmall?.copyWith(
-                                    color: colors.actionPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                        ],
+                      ),
+                      const SizedBox(height: LpgSpacing.md),
+                      _ListFooter(
+                        loading: last.isLoading,
+                        error: last.hasError ? errorMessage(last.error!) : null,
+                        hasMore: hasMore,
+                        onMore: () => setState(() => _pages++),
+                        onRetry: _refresh,
+                      ),
+                    ],
                   ),
                 );
               },

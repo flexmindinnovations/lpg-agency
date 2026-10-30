@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:realtime/realtime.dart';
 
+import '../../approvals/data/approvals_provider.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../../dispatch/data/dispatch_provider.dart';
 import '../../notifications/data/notifications_provider.dart';
 import '../../orders/data/orders_provider.dart';
 
-/// The always-mounted shell. It owns the Alerts-tab badge and listens to the
+/// The always-mounted shell: four tabs (Home, Orders, Dispatch, More; Alerts
+/// and Search live in each screen's app bar). It listens to the
 /// live `/ws` feed for the whole session: an order that changes anywhere
 /// (the driver departs or delivers, another staff member confirms) refreshes
 /// the order screens, and a new notification shows a toast and updates the
@@ -90,7 +92,8 @@ class AppShell extends ConsumerWidget {
       ref.invalidate(adminNotificationsProvider);
     });
 
-    final unread = ref.watch(unreadNotificationCountProvider).value ?? 0;
+    final pendingApprovals =
+        ref.watch(pendingCashHandoversProvider).value?.length ?? 0;
 
     return LpgAdaptiveShell(
       body: navigationShell,
@@ -112,21 +115,11 @@ class AppShell extends ConsumerWidget {
           selectedIcon: LpgIcons.truckFilled,
           label: 'Dispatch',
         ),
-        const LpgNavDestination(
-          icon: LpgIcons.support,
-          selectedIcon: LpgIcons.supportFilled,
-          label: 'Approvals',
-        ),
         LpgNavDestination(
-          icon: LpgIcons.notifications,
-          selectedIcon: LpgIcons.notificationsFilled,
-          label: 'Alerts',
-          badgeCount: unread,
-        ),
-        const LpgNavDestination(
-          icon: LpgIcons.profile,
-          selectedIcon: LpgIcons.profileFilled,
-          label: 'Profile',
+          icon: LpgIcons.more,
+          selectedIcon: LpgIcons.moreFilled,
+          label: 'More',
+          badgeCount: pendingApprovals,
         ),
       ],
     );

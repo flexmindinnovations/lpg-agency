@@ -142,4 +142,13 @@ abstract final class LpgIcons {
   static const IconData chat = LucideIcons.messageCircle;
   static const IconData grid = LucideIcons.layoutGrid;
   static const IconData empty = LucideIcons.inbox;
+
+  // Admin app: the "More" tab, customers, approvals and arrows.
+  static const IconData more = LucideIcons.layoutGrid;
+  static const IconData moreFilled = LucideIcons600.layoutGrid;
+  static const IconData customers = LucideIcons.users;
+  static const IconData approvals = LucideIcons.clipboardCheck;
+  static const IconData chevronUp = LucideIcons.chevronUp;
+  static const IconData trendUp = LucideIcons.trendingUp;
+  static const IconData liveDot = LucideIcons.radio;
 }

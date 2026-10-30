@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -593,4 +595,109 @@ void main() {
       );
     });
   });
+
+  group('LpgDropdownField', () {
+    testWidgets('shows the placeholder when the value is not an item', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          LpgDropdownField<String>(
+            value: '',
+            placeholder: 'Select a cylinder type',
+            items: const {'a': 'Domestic 14.2kg'},
+            onChanged: (_) {},
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('Select a cylinder type'), findsOneWidget);
+    });
+
+    testWidgets('shows the chosen item', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          LpgDropdownField<String>(
+            value: 'a',
+            placeholder: 'Select',
+            items: const {'a': 'Domestic 14.2kg'},
+            onChanged: (_) {},
+          ),
+        ),
+      );
+      expect(find.text('Domestic 14.2kg'), findsOneWidget);
+    });
+  });
+
+  group('LpgGroupedList', () {
+    testWidgets('puts every row in one card with a divider between rows', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const LpgGroupedList(
+            children: [
+              LpgListTile(title: 'Order ORD1', subtitle: 'Closed'),
+              LpgListTile(title: 'Order ORD2', subtitle: 'Out for delivery'),
+              LpgListTile(title: 'Order ORD3', subtitle: 'Ready for dispatch'),
+            ],
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.byType(LpgCard), findsOneWidget);
+      expect(find.byType(LpgListTile), findsNWidgets(3));
+      expect(find.byType(Divider), findsNWidgets(2));
+    });
+  });
+
+  group('LpgSplash', () {
+    testWidgets('shows the name, tagline and badge once it has played', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LpgTheme.light,
+          home: LpgSplash(
+            logo: MemoryImage(_transparentPixel),
+            title: 'LPG Agency Admin',
+            tagline: 'Operations & agency control',
+            badge: 'Admin Console',
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('LPG Agency Admin'), findsOneWidget);
+      expect(find.text('Operations & agency control'), findsOneWidget);
+      expect(find.text('Admin Console'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('draws the finished frame at once under reduce-motion', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LpgTheme.light,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
+          home: LpgSplash(
+            logo: MemoryImage(_transparentPixel),
+            title: 'LPG Agency',
+            tagline: 'Your gas, delivered safely.',
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('LPG Agency'), findsOneWidget);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+  });
 }
+
+/// A 1x1 transparent PNG, so the splash has a real image to decode.
+final _transparentPixel = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
