@@ -29,7 +29,7 @@ _HDFC = {
 
 
 class _Directory:
-    def __init__(self, answer: IfscDetails | None | Exception) -> None:
+    def __init__(self, answer: IfscDetails | Exception | None) -> None:
         self._answer = answer
 
     async def lookup(self, ifsc: str) -> IfscDetails | None:  # noqa: ARG002
