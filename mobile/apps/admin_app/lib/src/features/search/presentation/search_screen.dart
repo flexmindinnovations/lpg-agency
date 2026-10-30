@@ -152,12 +152,21 @@ class _Results extends ConsumerWidget {
               ),
             ],
             if (r.customers.isNotEmpty) ...[
-              heading('Customers', r.customerTotal, null),
+              heading(
+                'Customers',
+                r.customerTotal,
+                () => context.pushNamed('customers'),
+              ),
               for (final c in r.customers)
                 Padding(
                   padding: const EdgeInsets.only(bottom: LpgSpacing.xs),
                   child: LpgListTile(
                     leadingIcon: LpgIcons.user,
+                    showChevron: true,
+                    onTap: () => context.pushNamed(
+                      'customer_detail',
+                      pathParameters: {'customerId': c.id},
+                    ),
                     title: c.fullName,
                     subtitle:
                         '${c.phoneNumber}'
@@ -166,12 +175,21 @@ class _Results extends ConsumerWidget {
                 ),
             ],
             if (r.invoices.isNotEmpty) ...[
-              heading('Invoices', r.invoiceTotal, null),
+              heading(
+                'Invoices',
+                r.invoiceTotal,
+                () => context.pushNamed('invoices'),
+              ),
               for (final i in r.invoices)
                 Padding(
                   padding: const EdgeInsets.only(bottom: LpgSpacing.xs),
                   child: LpgListTile(
                     leadingIcon: LpgIcons.invoice,
+                    showChevron: true,
+                    onTap: () => context.pushNamed(
+                      'invoice_detail',
+                      pathParameters: {'invoiceId': i.invoiceId},
+                    ),
                     title: i.invoiceNumber ?? 'Invoice',
                     subtitle:
                         '${LpgFormat.currency(i.totalAmount)}  •  '

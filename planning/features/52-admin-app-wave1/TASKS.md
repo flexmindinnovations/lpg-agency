@@ -9,8 +9,8 @@
 - [x] A6 Admin app icon (adaptive) and in-app logo
 
 ## B. Wave 1 modules
-- [ ] B1 Customers + ledger
-- [ ] B2 Invoices (view, send, UPI QR, record payment)
+- [x] B1 Customers: search list, detail (outstanding, cylinders held, recent orders and invoices, contact and addresses), Call, New order prefilled for the customer
+- [x] B2 Invoices: list with search, status and customer filters; detail with GST split and payments; record payment (cash, UPI, card, cheque, bank transfer); UPI QR; send/remind
 - [ ] B3 Complaints
 - [ ] B4 Stock
 - [ ] B5 Cash book

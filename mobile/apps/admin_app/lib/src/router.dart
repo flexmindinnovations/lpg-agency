@@ -6,12 +6,16 @@ import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
 import 'features/approvals/presentation/approvals_screen.dart';
+import 'features/customers/presentation/customer_detail_screen.dart';
+import 'features/customers/presentation/customers_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/dispatch/presentation/dispatch_screen.dart';
 import 'features/dispatch/presentation/trip_detail_screen.dart';
 import 'features/fleet/presentation/driver_form_screen.dart';
 import 'features/fleet/presentation/fleet_screen.dart';
 import 'features/fleet/presentation/vehicle_form_screen.dart';
+import 'features/invoices/presentation/invoice_detail_screen.dart';
+import 'features/invoices/presentation/invoices_screen.dart';
 import 'features/more/presentation/more_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/orders/presentation/create_order_screen.dart';
@@ -91,7 +95,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'new',
                     name: 'order_new',
-                    builder: (context, state) => const CreateOrderScreen(),
+                    builder: (context, state) => CreateOrderScreen(
+                      initialCustomerId: state.uri.queryParameters['customer'],
+                    ),
                   ),
                   GoRoute(
                     path: ':orderId',
@@ -157,6 +163,40 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'profile',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/customers',
+        name: 'customers',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const CustomersScreen(),
+        routes: [
+          GoRoute(
+            path: ':customerId',
+            name: 'customer_detail',
+            builder: (context, state) => CustomerDetailScreen(
+              customerId: state.pathParameters['customerId']!,
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/invoices',
+        name: 'invoices',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => InvoicesScreen(
+          key: ValueKey(state.uri.query),
+          customerId: state.uri.queryParameters['customer'],
+          initialStatus: state.uri.queryParameters['status'],
+        ),
+        routes: [
+          GoRoute(
+            path: ':invoiceId',
+            name: 'invoice_detail',
+            builder: (context, state) => InvoiceDetailScreen(
+              invoiceId: state.pathParameters['invoiceId']!,
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/fleet',

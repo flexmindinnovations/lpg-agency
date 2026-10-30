@@ -17,7 +17,10 @@ import '../domain/order_booking.dart';
 /// does: a customer, one of their addresses, how the booking arrived, the
 /// delivery day and one or more cylinder lines from what can be booked now.
 class CreateOrderScreen extends ConsumerStatefulWidget {
-  const CreateOrderScreen({super.key});
+  const CreateOrderScreen({super.key, this.initialCustomerId});
+
+  /// Books for this customer straight away (from a customer's page).
+  final String? initialCustomerId;
 
   @override
   ConsumerState<CreateOrderScreen> createState() => _CreateOrderScreenState();
@@ -49,6 +52,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       builder: (_) => const _CustomerPickerSheet(),
     );
     if (picked == null || !mounted) return;
+    _select(picked);
+  }
+
+  void _select(CustomerResponse picked) {
     setState(() {
       _customer = picked;
       _addressId = defaultAddress(picked)?.id;
@@ -56,6 +63,19 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       _serverError = null;
       _idempotencyKey = const Uuid().v4();
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final id = widget.initialCustomerId;
+    if (id != null) _preselect(id);
+  }
+
+  Future<void> _preselect(String id) async {
+    final result = await ref.read(customerApiProvider).getCustomer(id);
+    if (!mounted) return;
+    if (result case Success<CustomerResponse>(:final value)) _select(value);
   }
 
   Future<void> _pickDay() async {

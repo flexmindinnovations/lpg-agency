@@ -21,6 +21,7 @@ final class InvoiceApi {
     int pageSize = 50,
     String? search,
     String? status,
+    String? customerId,
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -30,6 +31,7 @@ final class InvoiceApi {
           'page_size': pageSize,
           if (search != null && search.isNotEmpty) 'search': search,
           'status': ?status,
+          'customer_id': ?customerId,
         },
       );
       if (response.data == null) {
@@ -48,6 +50,48 @@ final class InvoiceApi {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/invoices/$invoiceId',
       );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(InvoiceResponse.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// Records a payment received at the office (`POST /invoices/{id}/payments`).
+  /// [method] is `cash`, `upi`, `card`, `cheque` or `bank_transfer`;
+  /// [reference] is required for cheque and bank transfer. Partial payments
+  /// are fine; more than the balance due is refused.
+  Future<Result<InvoiceResponse>> recordPayment(
+    String invoiceId, {
+    required String method,
+    required double amount,
+    String? reference,
+  }) => _invoice(
+    () => _dio.post<Map<String, dynamic>>(
+      '/api/v1/invoices/$invoiceId/payments',
+      data: {
+        'method': method,
+        'amount': amount.toStringAsFixed(2),
+        if (reference != null && reference.isNotEmpty) 'reference': reference,
+      },
+    ),
+  );
+
+  /// Sends the invoice to the customer by e-mail and push; safe to repeat as
+  /// a reminder (`POST /invoices/{id}/send`).
+  Future<Result<InvoiceResponse>> sendInvoice(String invoiceId) => _invoice(
+    () => _dio.post<Map<String, dynamic>>('/api/v1/invoices/$invoiceId/send'),
+  );
+
+  Future<Result<InvoiceResponse>> _invoice(
+    Future<Response<Map<String, dynamic>>> Function() request,
+  ) async {
+    try {
+      final response = await request();
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));
       }

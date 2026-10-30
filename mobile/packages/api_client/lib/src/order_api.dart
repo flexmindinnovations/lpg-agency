@@ -17,6 +17,7 @@ final class OrderApi {
     int size = 50,
     String? status,
     String? search,
+    String? customerId,
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -26,6 +27,7 @@ final class OrderApi {
           'limit': size,
           'status': ?status,
           if (search != null && search.isNotEmpty) 'search': search,
+          'customer_id': ?customerId,
         },
       );
       if (response.data == null) {
