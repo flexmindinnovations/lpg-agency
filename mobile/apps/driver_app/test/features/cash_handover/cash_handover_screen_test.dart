@@ -199,7 +199,11 @@ void main() {
       await _count(tester, 200, 2);
       await _count(tester, 5, 1);
 
-      expect(find.textContaining('Matches the expected'), findsOneWidget);
+      // Rs 905 against Rs 905.50: close enough to need no reason, but not
+      // a match, and the screen must not say it is.
+      expect(find.textContaining('Matches the expected'), findsNothing);
+      expect(find.textContaining('Short by ₹0.50'), findsOneWidget);
+      expect(find.textContaining('no reason is needed'), findsOneWidget);
       expect(find.textContaining('Why does it differ?'), findsNothing);
     });
 

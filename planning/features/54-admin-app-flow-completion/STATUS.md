@@ -1,6 +1,6 @@
 # Status
 
-Branch `feat/admin-app-stock-moves`, 2026-10-30, on top of `feat/admin-app-order-proof` (PR #88), which stacks on #87, #86, #85, #84, #83, #82; none merged yet. F1, F2 and F3 built.
+Branch `feat/admin-app-flow-bugs`, 2026-10-30, on top of `feat/admin-app-stock-moves` (PR #89), which stacks on #88, #87, #86, #85, #84, #83, #82; none merged yet. F1 to F4 built.
 
 ## F1 Create customers
 Built on `POST /customers`, `POST /customers/{id}/approve`, `POST /customers/{id}/addresses` and `POST /customers/{id}/kyc/{docId}/verify`; no backend change.
@@ -27,4 +27,12 @@ Built on the existing inventory endpoints; no backend change. On the Stock scree
 - **On the vans:** what each active van in the godown's branch is carrying.
 Tried on the emulator against the local backend: the vans list (TS09UA3320 carrying 10 Commercial 19kg and 30 Domestic 14.2kg), Change status (1 Domestic 5kg filled to leaking: showed as "Moved between statuses", only Damaged and Leaking offered for filled), then Correct stock (leaking back to filled with a reason: "Corrected by hand"); the dev godown's filled total is back to 808.
 Not tried on the emulator: Return to OMC (it would change dev stock; covered by an API test and the sheet's checks by widget tests) and the weighment sample (no scale is registered at the dev godown; the no-scale message and the checks are widget-tested).
+
+## F4 Open bugs
+- **Add driver / Add van button under the gesture bar: not reproduced.** On the emulator, with the form scrolled to the end and again after typing in a field and closing the keyboard, the button sat about 250 px above the gesture bar. No code change. If it shows up on a particular phone, the screenshot and the phone model would help.
+- **"Matches the expected" for a short count: fixed.** A difference under a rupee still needs no reason (that mirrors the server), but the label now says "Short by Rs 0.50. Under a rupee, so no reason is needed." and only an exact count says "Matches". Test updated.
+- **Driver Today not refreshing: hardened, cause not pinned down.** I could not reproduce it without running a full delivery. After a delivery the cash to declare and the cash in hand are now invalidated along with the route; confirming the van load also refreshes the load; pull to refresh now reloads the whole screen. Worth watching in the end-to-end run (F5).
+- **Unhandled WebSocketChannelException: fixed.** When the socket could not connect, the connection's `ready` future failed with no listener and escaped as an unhandled exception even though the client reconnects correctly. It is now handled at the source. A test that connects to a closed port failed before the fix and passes after.
+- **Customer app stale after being in the background: hardened.** The shell now reloads orders, invoices and notifications when the app returns to the foreground, as the Driver shell already did. No widget test for this one (the shell needs a router to build); analyze and the existing tests pass.
+- Left open on purpose: stale dev trips (dev data) and the GST price question (needs a decision).
 

@@ -412,10 +412,18 @@ class _DeltaLine extends StatelessWidget {
 
     final diff = value - expected;
     final (String label, LpgTone tone, IconData icon) = switch (diff) {
-      _ when !needsVarianceReason(expected, value) => (
+      _ when diff.abs() < 0.005 => (
         'Matches the expected ${_money(expected)}',
         LpgTone.success,
         LpgIcons.successFilled,
+      ),
+      // A few paise of rounding needs no explanation, but it is still a
+      // difference and the label says so rather than claiming a match.
+      _ when !needsVarianceReason(expected, value) => (
+        '${diff < 0 ? 'Short' : 'Over'} by ${_money(diff.abs())}. '
+            'Under a rupee, so no reason is needed.',
+        LpgTone.info,
+        LpgIcons.info,
       ),
       _ when diff < 0 => (
         'Short by ${_money(-diff)}',

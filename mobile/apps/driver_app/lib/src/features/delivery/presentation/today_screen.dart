@@ -22,7 +22,13 @@ class TodayScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Today')),
       body: RefreshIndicator(
-        onRefresh: () => ref.refresh(activeRouteProvider.future),
+        onRefresh: () {
+          ref.invalidate(routeHistoryProvider);
+          ref.invalidate(pendingCashHandoversProvider);
+          ref.invalidate(myCashInHandProvider);
+          ref.invalidate(pendingLoadProvider);
+          return ref.refresh(activeRouteProvider.future);
+        },
         child: routeAsync.when(
           loading: () => const LpgSkeletonList(itemCount: 4),
           // Wrapped in a ListView so pull-to-refresh still works from the

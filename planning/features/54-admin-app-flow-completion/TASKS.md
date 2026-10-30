@@ -18,8 +18,14 @@
 - [x] F3.4 Stock on each van
 - [x] F3.5 Tests, emulator run, PR
 
-## F4 Open bugs
-- [ ] Not started
+## F4 Open bugs (done, with two left open on purpose)
+- [x] Add driver / Add van submit button under the gesture bar: not reproduced (see STATUS)
+- [x] Driver cash screen says "Matches the expected" for a count that is Rs 0.50 short
+- [x] Driver Today does not refresh after the last delivery, and keeps the "Check your van load" card
+- [x] Unhandled WebSocketChannelException when the socket cannot connect (all three apps)
+- [x] Customer app shows a stale order status after being in the background
+- [ ] Stale dev trips hold the only seeded van: dev data, not code; clean it in the dev database or by settling those trips
+- [ ] Invoice total (Rs 950.78) against the price quoted and collected (Rs 905.50): needs the owner's decision on whether the price includes GST
 
 ## F5 Clean end-to-end run
 - [ ] Not started
