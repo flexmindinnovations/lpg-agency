@@ -385,7 +385,7 @@ class _Body extends StatelessWidget {
               icon: LpgIcons.cash,
               tone: LpgTone.accent,
               attention: (cash?.handoversAwaitingReview ?? 0) > 0,
-              onTap: () => context.pushNamed('approvals'),
+              onTap: () => context.pushNamed('cash_book'),
             ),
             MetricTile(
               label: 'Outstanding',

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
 import 'features/approvals/presentation/approvals_screen.dart';
+import 'features/cash_book/presentation/cash_book_screen.dart';
 import 'features/complaints/presentation/complaint_detail_screen.dart';
 import 'features/complaints/presentation/complaints_screen.dart';
 import 'features/customers/presentation/customer_detail_screen.dart';
@@ -159,6 +160,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'approvals',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ApprovalsScreen(),
+      ),
+      GoRoute(
+        path: '/cash-book',
+        name: 'cash_book',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const CashBookScreen(),
       ),
       GoRoute(
         path: '/profile',

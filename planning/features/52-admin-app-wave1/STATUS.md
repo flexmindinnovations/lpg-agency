@@ -15,6 +15,9 @@ Customer books (cash on delivery) -> Admin confirms -> Send out blocked (no free
 ## Complaints (2026-10-30)
 Tried on the emulator: list with overdue deadlines in red, detail, assign to a staff member (status moved to Assigned, history recorded) and resolve with an outcome and note (status Resolved, outcome card shown). Not tried: Reassign, the Compensated and Rejected outcomes, Call, the per-customer list from a customer page, and raising a complaint on a customer's behalf (not built).
 
+## Cash book (2026-10-30)
+Built on the existing cash-book and cash-in-hand endpoints (no backend change). Tried on the emulator: today and the previous day (Rs 905.50 collected, one handover Rs 0.50 short, accepted Rs 905.00), cash with the driver (Rs 2,716.50), the "Still to check" row opening Approvals. Amounts are shown to the paisa, not rounded, so a Rs 0.50 shortfall is not hidden. Not tried: the date-picker dialog (tap the date), a day with disputed handovers.
+
 ## Customers and Invoices (2026-10-30)
 Built and tried on the emulator against the local backend: customer list and detail, filtered invoice list, invoice detail with the CGST/SGST split, and a cash payment of the Rs 45.28 balance that moved INV-2026-000013 from Partially paid to Paid. This also gives the office the way to settle the GST remainder behind the invoice-total finding below.
 Not tried on the emulator: UPI QR sheet, cheque/bank-transfer payments, "Send reminder", and Call. Cylinders-held shows a quiet note for roles without `ledger:read`.
