@@ -62,6 +62,44 @@ final class CustomerApi {
     }
   }
 
+  /// Registers a customer on their behalf (`POST /customers`), for someone
+  /// who booked by phone or walked in. Needs `customers:create`.
+  Future<Result<CustomerResponse>> registerCustomer(
+    RegisterCustomerRequest request,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/customers',
+        data: request.toJson(),
+      );
+      return Success(CustomerResponse.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// Approves a customer still onboarding (`POST /customers/{id}/approve`).
+  /// With no [consumerNumber] the next one in the agency's series is
+  /// assigned. Needs `customers:manage`.
+  Future<Result<void>> approveCustomer(
+    String customerId, {
+    String? consumerNumber,
+  }) async {
+    try {
+      await _dio.post<dynamic>(
+        '/api/v1/customers/$customerId/approve',
+        data: {'consumer_number': consumerNumber},
+      );
+      return const Success(null);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   Future<Result<String>> addCustomerAddress(
     String customerId,
     AddCustomerAddressRequest request,

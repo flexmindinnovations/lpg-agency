@@ -491,6 +491,19 @@ class _CustomerPickerSheetState extends ConsumerState<_CustomerPickerSheet> {
             autofocus: true,
           ),
           const SizedBox(height: LpgSpacing.sm),
+          LpgListTile(
+            leadingIcon: LpgIcons.add,
+            title: 'Add a new customer',
+            subtitle: 'For someone who booked by phone or walked in',
+            onTap: () async {
+              final created = await context.pushNamed<CustomerResponse>(
+                'customer_new',
+              );
+              if (created != null && context.mounted) {
+                Navigator.of(context).pop(created);
+              }
+            },
+          ),
           Expanded(
             child: async.when(
               loading: () => const LpgSkeletonList(itemCount: 4),

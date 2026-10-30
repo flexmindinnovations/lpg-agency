@@ -10,6 +10,7 @@ import 'features/cash_book/presentation/cash_book_screen.dart';
 import 'features/complaints/presentation/complaint_detail_screen.dart';
 import 'features/compliance/presentation/compliance_screen.dart';
 import 'features/complaints/presentation/complaints_screen.dart';
+import 'features/customers/presentation/add_customer_screen.dart';
 import 'features/customers/presentation/customer_detail_screen.dart';
 import 'features/customers/presentation/customers_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
@@ -201,6 +202,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const CustomersScreen(),
         routes: [
+          GoRoute(
+            path: 'new',
+            name: 'customer_new',
+            builder: (context, state) => const AddCustomerScreen(),
+          ),
           GoRoute(
             path: ':customerId',
             name: 'customer_detail',

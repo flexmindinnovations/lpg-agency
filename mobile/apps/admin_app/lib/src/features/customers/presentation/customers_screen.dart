@@ -52,6 +52,16 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
 
   void _refresh() => ref.invalidate(customersProvider);
 
+  Future<void> _add() async {
+    final created = await context.pushNamed<CustomerResponse>('customer_new');
+    if (created == null || !mounted) return;
+    _refresh();
+    context.pushNamed(
+      'customer_detail',
+      pathParameters: {'customerId': created.id},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -69,6 +79,11 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
       appBar: AppBar(
         title: const Text('Customers'),
         actions: [
+          IconButton(
+            tooltip: 'Add customer',
+            icon: const Icon(LpgIcons.add),
+            onPressed: _add,
+          ),
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(LpgIcons.sync),

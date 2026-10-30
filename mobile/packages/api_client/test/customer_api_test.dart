@@ -85,4 +85,82 @@ void main() {
       );
     });
   });
+  group('CustomerApi staff registration', () {
+    Map<String, Object?> customer({String status = 'onboarding'}) => {
+      'id': 'cu-1',
+      'tenant_id': 't',
+      'branch_id': 'b-1',
+      'consumer_number': null,
+      'full_name': 'Meena Iyer',
+      'phone_number': '+919876543210',
+      'contact_person': null,
+      'alternate_mobile': null,
+      'email': null,
+      'date_of_birth': null,
+      'customer_type': 'domestic',
+      'kyc_status': 'pending',
+      'status': status,
+      'lpg_subsidy_id': null,
+      'gstin': null,
+      'addresses': <Object>[],
+    };
+
+    test(
+      'registerCustomer sends the profile and the first address flat',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          expect(options.method, 'POST');
+          expect(options.path, '/api/v1/customers');
+          expect(options.data, {
+            'branch_id': 'b-1',
+            'full_name': 'Meena Iyer',
+            'phone_number': '+919876543210',
+            'customer_type': 'domestic',
+            'line_1': 'Flat 4, Shanti Apartments',
+            'city': 'Pune',
+            'pincode': '411038',
+            'address_type': 'delivery',
+          });
+          return jsonResponse(customer(), 200);
+        });
+
+        final result = await CustomerApi(client.dio).registerCustomer(
+          const RegisterCustomerRequest(
+            branchId: 'b-1',
+            fullName: 'Meena Iyer',
+            phoneNumber: '+919876543210',
+            address: AddCustomerAddressRequest(
+              line1: 'Flat 4, Shanti Apartments',
+              city: 'Pune',
+              pincode: '411038',
+            ),
+          ),
+        );
+
+        final created = result.when(
+          onSuccess: (c) => c,
+          onFailure: (_) => null,
+        )!;
+        expect(created.fullName, 'Meena Iyer');
+        expect(created.status, 'onboarding');
+      },
+    );
+
+    test('approveCustomer lets the server pick the consumer number', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/customers/cu-1/approve');
+        expect(options.data, {'consumer_number': null});
+        return jsonResponse(<String, Object>{}, 200);
+      });
+
+      final result = await CustomerApi(client.dio).approveCustomer('cu-1');
+
+      expect(
+        result.when(onSuccess: (_) => true, onFailure: (_) => false),
+        isTrue,
+      );
+    });
+  });
 }
