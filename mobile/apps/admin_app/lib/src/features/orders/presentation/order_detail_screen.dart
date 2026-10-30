@@ -340,21 +340,41 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               ),
             const SizedBox(height: LpgSpacing.sm),
             LpgCard(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  Text('Total amount', style: text.titleMedium),
-                  Text(
-                    priced
-                        ? LpgFormat.currency(order.totalAmount ?? 0.0)
-                        : 'On confirmation',
-                    style: priced
-                        ? text.headlineSmall?.copyWith(
-                            color: colors.actionPrimary,
-                          )
-                        : text.bodyMedium?.copyWith(
-                            color: colors.textSecondary,
-                          ),
+                  if (priced && order.taxAmount != null) ...[
+                    LpgKeyValueRow(
+                      label: 'Price before GST',
+                      value: LpgFormat.currency(order.totalAmount ?? 0.0),
+                    ),
+                    LpgKeyValueRow(
+                      label: 'GST',
+                      value: LpgFormat.currency(order.taxAmount!),
+                    ),
+                    const Divider(),
+                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        priced && order.taxAmount != null
+                            ? 'Total to pay'
+                            : 'Total amount',
+                        style: text.titleMedium,
+                      ),
+                      Text(
+                        priced
+                            ? LpgFormat.currency(order.amountToPay ?? 0.0)
+                            : 'On confirmation',
+                        style: priced
+                            ? text.headlineSmall?.copyWith(
+                                color: colors.actionPrimary,
+                              )
+                            : text.bodyMedium?.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                      ),
+                    ],
                   ),
                 ],
               ),

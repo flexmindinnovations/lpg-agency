@@ -44,7 +44,7 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
   Uint8List? _photoBytes;
 
   String _initialAmount() {
-    final total = widget.order.totalAmount ?? 0;
+    final total = widget.order.amountToPay ?? 0;
     return total == total.roundToDouble()
         ? total.toStringAsFixed(0)
         : total.toStringAsFixed(2);

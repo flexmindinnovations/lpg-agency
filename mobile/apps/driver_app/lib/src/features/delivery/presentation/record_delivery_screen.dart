@@ -113,8 +113,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
       final ordered = line.quantityOrdered;
       _quantities[line.cylinderTypeId] = (ordered, ordered);
     }
-    if (order.totalAmount != null) {
-      _amountController.text = order.totalAmount!.toStringAsFixed(2);
+    // What the customer pays: the price plus GST.
+    if (order.amountToPay != null) {
+      _amountController.text = order.amountToPay!.toStringAsFixed(2);
     }
   }
 

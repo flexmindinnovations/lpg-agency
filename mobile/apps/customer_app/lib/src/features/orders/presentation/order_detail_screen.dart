@@ -402,6 +402,26 @@ class _TotalCard extends ConsumerWidget {
     final String label;
     final String value;
     String? note;
+    // GST worked out: show the price, the GST and what to pay, rather than
+    // a price with "+ GST" left for the customer to add up.
+    final tax = order.taxAmount;
+    if (total != null && tax != null) {
+      return LpgCard(
+        variant: LpgCardVariant.tonal,
+        child: Column(
+          children: [
+            LpgKeyValueRow(label: 'Price', value: LpgFormat.currency(total)),
+            LpgKeyValueRow(label: 'GST', value: LpgFormat.currency(tax)),
+            const Divider(),
+            LpgKeyValueRow(
+              label: 'You pay',
+              value: LpgFormat.currency(order.amountToPay ?? total + tax),
+              emphasize: true,
+            ),
+          ],
+        ),
+      );
+    }
     if (total != null) {
       label = 'Total Amount';
       value = '${LpgFormat.currency(total)} + GST';

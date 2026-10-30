@@ -533,4 +533,55 @@ void main() {
       );
     });
   });
+  group('OrderResponse GST', () {
+    Map<String, dynamic> order({
+      Object? tax = '45.28',
+      Object? payable = '950.78',
+    }) => {
+      'id': 'o-1',
+      'tenant_id': 't',
+      'branch_id': 'b',
+      'customer_id': 'c',
+      'address_id': 'a',
+      'delivery_address': {'address_line': '12 MG Road'},
+      'status': 'confirmed',
+      'booking_source': 'staff',
+      'requested_date': '2026-10-30T00:00:00Z',
+      'metadata': <String, dynamic>{},
+      'total_amount': '905.50',
+      'tax_amount': ?tax,
+      'payable_amount': ?payable,
+      'lines': [
+        {
+          'id': 'l-1',
+          'cylinder_type_id': 'c-1',
+          'quantity_ordered': 1,
+          'quantity_delivered': 0,
+          'quantity_pending': 0,
+          'quantity_collected_empty': 0,
+          'is_backordered': false,
+          'unit_price': '905.50',
+          'gst_rate_percent': '5.00',
+        },
+      ],
+    };
+
+    test('reads the price, the GST on it and what the customer pays', () {
+      final o = OrderResponse.fromJson(order());
+
+      expect(o.totalAmount, 905.5);
+      expect(o.taxAmount, 45.28);
+      expect(o.payableAmount, 950.78);
+      expect(o.amountToPay, 950.78);
+      expect(o.lines.single.gstRatePercent, 5);
+    });
+
+    test('an answer without the new fields still has an amount to pay', () {
+      final o = OrderResponse.fromJson(order(tax: null, payable: null));
+
+      expect(o.taxAmount, isNull);
+      expect(o.payableAmount, isNull);
+      expect(o.amountToPay, 905.5);
+    });
+  });
 }

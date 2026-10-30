@@ -20,7 +20,12 @@ import 'package:maps/maps_testing.dart';
 
 import '../../support/offline_harness.dart';
 
-OrderResponse _order({String status = 'out_for_delivery'}) => OrderResponse(
+OrderResponse _order({
+  String status = 'out_for_delivery',
+  double total = 950,
+  double? tax,
+  double? payable,
+}) => OrderResponse(
   id: 'abcdef01aaaabbbb',
   orderNumber: 'ORD000042',
   tenantId: 't1',
@@ -32,7 +37,9 @@ OrderResponse _order({String status = 'out_for_delivery'}) => OrderResponse(
   bookingSource: 'mobile_app',
   requestedDate: DateTime(2026, 9, 1),
   metadata: const {},
-  totalAmount: 950,
+  totalAmount: total,
+  taxAmount: tax,
+  payableAmount: payable,
   lines: const [
     OrderLineResponse(
       id: 'l1',
@@ -135,6 +142,29 @@ Future<void> _pump(WidgetTester tester, ProviderContainer container) async {
 
 void main() {
   group('StopDetailScreen', () {
+    testWidgets('tells the driver to collect the price plus GST', (
+      tester,
+    ) async {
+      final container = ProviderContainer(
+        overrides: [
+          ..._mapOverrides,
+          stopOrderProvider.overrideWith(
+            (ref, id) async =>
+                _order(total: 905.5, tax: 45.28, payable: 950.78),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      expect(
+        find.text('Collect ₹950.78 (includes GST ₹45.28)'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('₹905.50'), findsNothing);
+    });
+
     testWidgets('shows the order summary and delivery actions', (tester) async {
       final container = ProviderContainer(
         overrides: [

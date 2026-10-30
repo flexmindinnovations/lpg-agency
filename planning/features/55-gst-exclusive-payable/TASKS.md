@@ -7,11 +7,11 @@
 - [x] G4 API: `tax_amount`, `payable_amount` on the order response, `gst_rate_percent` on its lines; OpenAPI spec regenerated
 
 ## Apps
-- [ ] G5 api_client models
-- [ ] G6 Driver app: Collect and the amount prefill are GST-inclusive
-- [ ] G7 Admin app: order screen shows price, GST and total; deliver sheet and lists use the payable amount
-- [ ] G8 Customer app: what the customer owes includes GST
-- [ ] G9 End-to-end check: order, QR, cash and invoice all say the same amount
+- [x] G5 api_client models
+- [x] G6 Driver app: Collect and the amount prefill are GST-inclusive
+- [x] G7 Admin app: order screen shows price, GST and total; deliver sheet and lists use the payable amount
+- [x] G8 Customer app: what the customer owes includes GST
+- [x] G9 End-to-end check: order, QR, cash and invoice all say the same amount
 
 ## Deferred
 - [ ] Angular dashboard order screens
