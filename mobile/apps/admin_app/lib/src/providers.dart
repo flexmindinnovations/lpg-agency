@@ -75,6 +75,12 @@ final cashHandoverApiProvider = Provider<CashHandoverApi>((ref) {
   return CashHandoverApi(apiClient.dio);
 });
 
+/// Provides the [PriceListApi] client.
+final priceListApiProvider = Provider<PriceListApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return PriceListApi(apiClient.dio);
+});
+
 /// Provides the [ComplaintApi] client.
 final complaintApiProvider = Provider<ComplaintApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);

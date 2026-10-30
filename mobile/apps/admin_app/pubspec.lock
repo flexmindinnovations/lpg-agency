@@ -190,7 +190,7 @@ packages:
     source: path
     version: "0.2.0"
   dio:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: dio
       sha256: "852ec3b48cc431ac04fff978413c541502b67ffc3e26921e74e3d994694192c1"
