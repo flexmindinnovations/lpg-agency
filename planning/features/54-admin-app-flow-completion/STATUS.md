@@ -36,3 +36,25 @@ Not tried on the emulator: Return to OMC (it would change dev stock; covered by 
 - **Customer app stale after being in the background: hardened.** The shell now reloads orders, invoices and notifications when the app returns to the foreground, as the Driver shell already did. No widget test for this one (the shell needs a router to build); analyze and the existing tests pass.
 - Left open on purpose: stale dev trips (dev data) and the GST price question (needs a decision).
 
+## F5 Clean end-to-end run (2026-10-30, one emulator, three apps, local backend, web dashboard not used)
+Steps run, in order, and what happened:
+1. **Admin: Add customer** "Fresh Flow Customer" at the Gachibowli West branch (the first customer, at Kondhwa, could not book: that branch has no stock). New, not yet approved: could book straight away.
+2. **Admin: New order** from the customer's page, Domestic 14.2kg at Rs 905.50. **Crashed** (see below). After the fix: booked as ORD000062, confirmed.
+3. **Admin: Send out** found no driver or van in that branch (the Wave 1 blocker panel). **Added a driver** (Meera Joshi, licence photo from the gallery, with Driver App login) and **a van** (TS09XY7777) from the panel's own buttons, then "Load and send out": order Ready for dispatch.
+4. **Driver app:** signed out the previous driver and signed in as Meera with the code (the Driver App login made in step 3 worked). Confirmed the van load, started the delivery, recorded it with the customer's code, a signature and Rs 905.50 cash. **Today showed "Cash in hand" and "Cash reconciliation pending" immediately**, no restart.
+5. **Driver app: cash handover:** counted Rs 905 against Rs 905.50: "Short by Rs 0.50. Under a rupee, so no reason is needed." Declared CSH000007.
+6. **Admin:** the order showed Delivered with the Delivery section (when, Rs 905.50 cash, map link, signature) and Payment and invoice (INV-2026-000014, partially paid, Rs 45.28 due, with the explanation). Closed the order. Approvals: accepted the handover (a note was required for the Rs 0.50 shortfall). Stock showed "Sent out on a van -1" and the new van.
+
+**Found and fixed in this run**
+- **Admin: opening New order from a customer's page crashed** (red screen, a navigator assertion). The form lived in the Orders tab's navigator but was pushed from a page above the tabs. It is now a full-screen route above the tabs.
+- **Admin: booking an order crashed the same way** on the way to the new order's page. It now goes to the order with `go`, so Back returns to the Orders list. (The booking itself had succeeded both times; only the screen after it failed.)
+- **Driver: "Check your van load" stayed after confirming** (the earlier report, now understood). The Driver app queues its actions, and the route was re-read before the queued confirmation reached the server; nothing read it again once the queue drained. The route, history and cash reads now repeat whenever the queue's size changes. Checked live: the cash cards appeared at once after the last delivery. The van-load card itself was not re-tested on a fresh order (the load was confirmed before the new build); a unit test covers the refetch-on-drain mechanism.
+
+**Open, needs a decision or is a limit of the dev setup**
+- **Every order ends "partially paid".** The customer is quoted and pays Rs 905.50 but the invoice is Rs 950.78 (5% GST on top). The order screen now shows both honestly with Rs 45.28 due. Whether the price includes GST decides which number changes.
+- **Rs 0.50 shortfall:** the Driver app says no reason is needed (under a rupee), the office screen still asks for a note to accept it.
+- **"Nothing can be booked for this customer"** does not say that the customer's branch has no stock or no price. A customer registered at a branch without a godown cannot book, and the message does not help.
+- **The signature picture did not load on the emulator:** the dev file server link is `http://localhost:59000/...`, which the emulator cannot reach. The screen shows a placeholder. Not verifiable here; works if the link is reachable.
+- **The Admin app signed out partway** (session lifetime); signing back in worked.
+- **Not part of this run:** a booking that starts in the Customer app (covered in the earlier run), Return to OMC, KYC verification, Add address.
+

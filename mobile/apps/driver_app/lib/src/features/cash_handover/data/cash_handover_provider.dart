@@ -71,6 +71,7 @@ extension on RouteCashHandover {
 final myCashInHandProvider = FutureProvider.autoDispose<DriverCashInHand?>((
   ref,
 ) async {
+  ref.watch(pendingSyncCountProvider);
   final result = await ref.watch(cashHandoverApiProvider).getMyCashInHand();
   if (result case Success(:final value)) {
     return value.drivers.isEmpty ? null : value.drivers.first;

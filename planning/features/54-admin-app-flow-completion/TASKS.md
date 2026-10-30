@@ -27,5 +27,9 @@
 - [ ] Stale dev trips hold the only seeded van: dev data, not code; clean it in the dev database or by settling those trips
 - [ ] Invoice total (Rs 950.78) against the price quoted and collected (Rs 905.50): needs the owner's decision on whether the price includes GST
 
-## F5 Clean end-to-end run
-- [ ] Not started
+## F5 Clean end-to-end run (done; findings below)
+- [x] Run the flow with the web dashboard closed: create customer, book, confirm, add driver and van, send out, driver signs in and delivers, cash declared, order closed, cash accepted
+- [x] Fix what broke: New order crash from a customer page, crash after booking, Driver Today stale after a queued action
+- [ ] Decide whether the price includes GST (every order ends "partially paid" until then)
+- [ ] Decide whether the office should need a note for a shortfall under a rupee (the Driver app says none is needed)
+- [ ] Say which branch lacks stock or a price when "Nothing can be booked" appears

@@ -149,10 +149,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           'Order booked for ${customer.fullName}.',
           tone: LpgTone.success,
         );
-        context.pushReplacementNamed(
-          'order_detail',
-          pathParameters: {'orderId': value.id},
-        );
+        // `go`, not a replacement: the order page lives in the Orders tab
+        // while this form sits above the tabs, so a replacement would mix
+        // two navigators. Back from the order then returns to the list.
+        context.goNamed('order_detail', pathParameters: {'orderId': value.id});
       case FailureResult<OrderResponse>(:final failure):
         if (failure.errorCode == 'CYLINDER_NOT_ORDERABLE') {
           // Stock or prices moved since the form loaded: show what is

@@ -102,6 +102,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'new',
                     name: 'order_new',
+                    // A full-screen form that is also opened from other
+                    // screens (a customer's page, the dashboard), so it
+                    // sits above the tab bar rather than inside one tab.
+                    parentNavigatorKey: _rootNavigatorKey,
                     builder: (context, state) => CreateOrderScreen(
                       initialCustomerId: state.uri.queryParameters['customer'],
                     ),
