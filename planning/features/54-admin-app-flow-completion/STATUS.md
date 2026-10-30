@@ -58,3 +58,12 @@ Steps run, in order, and what happened:
 - **The Admin app signed out partway** (session lifetime); signing back in worked.
 - **Not part of this run:** a booking that starts in the Customer app (covered in the earlier run), Return to OMC, KYC verification, Add address.
 
+## Driver cash handover: cash and UPI only (2026-10-30)
+Asked for by the owner: the Driver app's handover screen made the driver count notes and coins, which is not how an agency works. Now:
+- **No note counter.** The screen shows the cash to hand over and the UPI collected side by side ("UPI went straight to the agency, nothing to hand over"), and one amount field already filled with the cash expected. A driver who hands over everything types nothing. A difference of a rupee or more still asks why; under a rupee says how far off it is.
+- The handover is sent without a note breakdown (the backend already treats that as optional). Older receipts that have one still show it.
+- Cash is handed to the agency once the order is fulfilled; there is no QR on this screen. The QR is for a customer paying by UPI at the door, on Record delivery, and it comes from the agency's payment settings (the UPI ID and payee name set under Payment settings), not from the bank account number.
+- Tests rewritten for the amount-only form (8 pass). Not seen on a device: the new screen needs a completed route with no handover yet, and the dev data had none left; the previous run's route is already handed over.
+
+**The door QR shows a different amount from the one the driver is asked to collect.** With a test UPI ID set on the dev agency, the QR for an out-for-delivery order is for Rs 950.78 (the invoice total, 5% GST on top) while the order total, the driver's "Collect" amount and the cash path are Rs 905.50. A customer paying by UPI would pay Rs 45.28 more than one paying cash. This is the same open price/GST question as the invoice: it needs a decision, not a screen change. The dev agency now has a fake UPI ID (`devagency@okicici`, payee "Dev LPG Agency") so the QR can be generated locally.
+
