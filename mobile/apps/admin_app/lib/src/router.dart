@@ -27,6 +27,7 @@ import 'features/orders/presentation/order_list_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/search/presentation/search_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
+import 'features/stock/presentation/stock_screen.dart';
 import 'login_screen.dart';
 import 'splash_screen.dart';
 
@@ -160,6 +161,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'approvals',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ApprovalsScreen(),
+      ),
+      GoRoute(
+        path: '/stock',
+        name: 'stock',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            StockScreen(initialGodownId: state.uri.queryParameters['godown']),
       ),
       GoRoute(
         path: '/cash-book',

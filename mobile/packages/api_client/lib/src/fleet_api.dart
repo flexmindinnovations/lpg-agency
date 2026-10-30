@@ -5,8 +5,9 @@ import 'package:http_parser/http_parser.dart';
 import 'models/models.dart';
 import 'failure_mapper.dart';
 
-/// Hand-written wrapper for what the office needs to send an order out:
-/// drivers, vans, godowns and the filled stock at a godown or on a van.
+/// Hand-written wrapper for what the office needs to send an order out and
+/// keep stock straight: drivers, vans, godowns, the stock at a godown or on a
+/// van, and the receipts and counts that change it.
 final class FleetApi {
   const FleetApi(this._dio);
 
@@ -204,13 +205,16 @@ final class FleetApi {
   });
 
   /// Counts already on file for a location, newest first
-  /// (`GET /inventory-locations/{type}/{id}/reconciliation-records`).
+  /// (`GET /inventory-locations/{type}/{id}/reconciliation-records`); only
+  /// those in [state] (`pending`, `approved`, `rejected`) when given.
   Future<Result<List<ReconciliationRecord>>> listReconciliations(
     String locationType,
-    String locationId,
-  ) => _guard(() async {
+    String locationId, {
+    String? state,
+  }) => _guard(() async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/v1/inventory-locations/$locationType/$locationId/reconciliation-records',
+      queryParameters: {'state': ?state},
     );
     return [
       for (final e in response.data?['items'] as List<dynamic>? ?? const [])
@@ -248,6 +252,75 @@ final class FleetApi {
         );
         return ReconciliationRecord.fromJson(response.data!);
       });
+
+  /// Closes a pending count without changing stock
+  /// (`POST /reconciliation-records/{id}/reject`), e.g. when it needs a
+  /// recount. [reason] is at least three characters.
+  Future<Result<ReconciliationRecord>> rejectCount(
+    String recordId, {
+    required String reason,
+  }) => _guard(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/reconciliation-records/$recordId/reject',
+      data: {'reason': reason},
+    );
+    return ReconciliationRecord.fromJson(response.data!);
+  });
+
+  /// Cylinder types at or below their reorder point
+  /// (`GET /inventory/reorder-signals`), across every godown.
+  Future<Result<List<ReorderSignal>>> listReorderSignals() => _guard(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/inventory/reorder-signals',
+    );
+    return [
+      for (final e in response.data?['items'] as List<dynamic>? ?? const [])
+        ReorderSignal.fromJson(e as Map<String, dynamic>),
+    ];
+  });
+
+  /// The latest movements at a `warehouse` or `vehicle`, newest first
+  /// (`GET /inventory-locations/{type}/{id}/transactions`).
+  Future<Result<List<InventoryTransaction>>> listTransactions(
+    String locationType,
+    String locationId, {
+    int limit = 20,
+  }) => _guard(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/inventory-locations/$locationType/$locationId/transactions',
+      queryParameters: {'limit': limit},
+    );
+    return [
+      for (final e in response.data?['items'] as List<dynamic>? ?? const [])
+        InventoryTransaction.fromJson(e as Map<String, dynamic>),
+    ];
+  });
+
+  /// Records filled cylinders arriving at a godown
+  /// (`POST /warehouses/{id}/goods-receipt-notes`). [sourceOmc] is `iocl`,
+  /// `bpcl`, `hpcl` or `other`.
+  Future<Result<GoodsReceipt>> recordGoodsReceipt(
+    String warehouseId, {
+    required String cylinderTypeId,
+    required int quantity,
+    String? sourceOmc,
+    String? challanNumber,
+    String? invoiceNumber,
+    String? truckNumber,
+  }) => _guard(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/warehouses/$warehouseId/goods-receipt-notes',
+      data: {
+        'cylinder_type_id': cylinderTypeId,
+        'quantity_received': quantity,
+        'source_omc': ?sourceOmc,
+        'challan_number': ?challanNumber,
+        'invoice_number': ?invoiceNumber,
+        'truck_number': ?truckNumber,
+      },
+    );
+    return GoodsReceipt.fromJson(response.data!);
+  });
 
   /// Registers a van (`POST /vehicles`). The RC scan ([rcDocumentRef], from
   /// [uploadDocument]) and its expiry are required.

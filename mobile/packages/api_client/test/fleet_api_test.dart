@@ -373,4 +373,153 @@ void main() {
       );
     });
   });
+  group('FleetApi stock', () {
+    test('listReorderSignals reads the godown, stock and thresholds', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/inventory/reorder-signals');
+        return jsonResponse({
+          'items': [
+            {
+              'policy_id': 'p-1',
+              'inventory_location_id': 'l-1',
+              'location_ref_id': 'w-1',
+              'cylinder_type_id': 'c-1',
+              'on_hand': 4,
+              'reorder_point': 20,
+              'safety_stock': 5,
+              'last_reorder_notified_at': null,
+            },
+          ],
+        }, 200);
+      });
+
+      final result = await FleetApi(client.dio).listReorderSignals();
+
+      final signal = result
+          .when(onSuccess: (s) => s, onFailure: (_) => null)!
+          .single;
+      expect(signal.warehouseId, 'w-1');
+      expect(signal.onHand, 4);
+      expect(signal.reorderPoint, 20);
+      expect(signal.isCritical, isTrue);
+    });
+
+    test('listTransactions asks for a page and parses each movement', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(
+          options.path,
+          '/api/v1/inventory-locations/warehouse/w-1/transactions',
+        );
+        expect(options.queryParameters['limit'], 5);
+        return jsonResponse({
+          'items': [
+            {
+              'id': 't-1',
+              'tenant_id': 'x',
+              'inventory_location_id': 'l-1',
+              'cylinder_type_id': 'c-1',
+              'transaction_type': 'grn_receipt',
+              'from_status': null,
+              'to_status': 'filled',
+              'quantity': 40,
+              'reference_order_id': null,
+              'reason': null,
+              'performed_by': 'u-1',
+              'performed_at': '2026-10-30T05:30:00Z',
+            },
+          ],
+          'next_cursor': null,
+        }, 200);
+      });
+
+      final result = await FleetApi(
+        client.dio,
+      ).listTransactions('warehouse', 'w-1', limit: 5);
+
+      final t = result
+          .when(onSuccess: (r) => r, onFailure: (_) => null)!
+          .single;
+      expect(t.type, 'grn_receipt');
+      expect(t.fromStatus, isNull);
+      expect(t.toStatus, 'filled');
+      expect(t.quantity, 40);
+    });
+
+    test('recordGoodsReceipt sends only what was filled in', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.method, 'POST');
+        expect(options.path, '/api/v1/warehouses/w-1/goods-receipt-notes');
+        expect(options.data, {
+          'cylinder_type_id': 'c-1',
+          'quantity_received': 40,
+          'source_omc': 'iocl',
+          'truck_number': 'MH12AB1234',
+        });
+        return jsonResponse({
+          'id': 'g-1',
+          'grn_number': 'GRN-2026-000007',
+          'tenant_id': 'x',
+          'warehouse_id': 'w-1',
+          'cylinder_type_id': 'c-1',
+          'quantity_received': 40,
+          'source_omc': 'iocl',
+          'received_by': 'u-1',
+          'received_at': '2026-10-30T05:30:00Z',
+        }, 201);
+      });
+
+      final result = await FleetApi(client.dio).recordGoodsReceipt(
+        'w-1',
+        cylinderTypeId: 'c-1',
+        quantity: 40,
+        sourceOmc: 'iocl',
+        truckNumber: 'MH12AB1234',
+      );
+
+      final grn = result.when(onSuccess: (g) => g, onFailure: (_) => null)!;
+      expect(grn.grnNumber, 'GRN-2026-000007');
+      expect(grn.quantity, 40);
+    });
+
+    test(
+      'listReconciliations filters by state and rejectCount posts why',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        final seen = <String>[];
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          seen.add('${options.method} ${options.path}');
+          if (options.method == 'GET') {
+            expect(options.queryParameters, {'state': 'pending'});
+            return jsonResponse({'items': <Object>[]}, 200);
+          }
+          expect(options.data, {'reason': 'Count again'});
+          return jsonResponse({
+            'id': 'r-1',
+            'cylinder_type_id': 'c-1',
+            'status': 'filled',
+            'expected_quantity': 42,
+            'actual_quantity': 40,
+            'variance': -2,
+            'state': 'rejected',
+          }, 200);
+        });
+        final api = FleetApi(client.dio);
+
+        await api.listReconciliations('warehouse', 'w-1', state: 'pending');
+        final rejected = await api.rejectCount('r-1', reason: 'Count again');
+
+        expect(seen, [
+          'GET /api/v1/inventory-locations/warehouse/w-1/reconciliation-records',
+          'POST /api/v1/reconciliation-records/r-1/reject',
+        ]);
+        expect(
+          rejected.when(onSuccess: (r) => r.state, onFailure: (_) => null),
+          'rejected',
+        );
+      },
+    );
+  });
 }

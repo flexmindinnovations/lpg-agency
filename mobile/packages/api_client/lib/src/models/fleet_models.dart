@@ -255,3 +255,94 @@ class ReconciliationRecord {
 
   bool get isPending => state == 'pending';
 }
+
+/// A cylinder type that has fallen to or below its reorder point at a godown
+/// — mirrors `ReorderSignalResponse` (`GET /inventory/reorder-signals`).
+class ReorderSignal {
+  const ReorderSignal({
+    required this.warehouseId,
+    required this.cylinderTypeId,
+    required this.onHand,
+    required this.reorderPoint,
+    required this.safetyStock,
+  });
+
+  factory ReorderSignal.fromJson(Map<String, dynamic> json) => ReorderSignal(
+    warehouseId: json['location_ref_id'] as String,
+    cylinderTypeId: json['cylinder_type_id'] as String,
+    onHand: (json['on_hand'] as num).toInt(),
+    reorderPoint: (json['reorder_point'] as num).toInt(),
+    safetyStock: (json['safety_stock'] as num).toInt(),
+  );
+
+  final String warehouseId;
+  final String cylinderTypeId;
+
+  /// Filled cylinders now at the godown.
+  final int onHand;
+  final int reorderPoint;
+  final int safetyStock;
+
+  /// At or below the safety stock: not just time to reorder, but nearly out.
+  bool get isCritical => onHand <= safetyStock;
+}
+
+/// One movement in a location's history — mirrors
+/// `InventoryTransactionResponse`.
+class InventoryTransaction {
+  const InventoryTransaction({
+    required this.id,
+    required this.cylinderTypeId,
+    required this.type,
+    required this.toStatus,
+    required this.quantity,
+    required this.performedAt,
+    this.fromStatus,
+    this.reason,
+  });
+
+  factory InventoryTransaction.fromJson(Map<String, dynamic> json) =>
+      InventoryTransaction(
+        id: json['id'] as String,
+        cylinderTypeId: json['cylinder_type_id'] as String,
+        type: json['transaction_type'] as String,
+        fromStatus: json['from_status'] as String?,
+        toStatus: json['to_status'] as String,
+        quantity: (json['quantity'] as num).toInt(),
+        reason: json['reason'] as String?,
+        performedAt: DateTime.parse(json['performed_at'] as String),
+      );
+
+  final String id;
+  final String cylinderTypeId;
+
+  /// `grn_receipt`, `load`, `delivery`, `adjustment`, `reconciliation`, …
+  final String type;
+  final String? fromStatus;
+  final String toStatus;
+  final int quantity;
+  final String? reason;
+  final DateTime performedAt;
+}
+
+/// A recorded goods receipt note — mirrors `GoodsReceiptResponse`.
+class GoodsReceipt {
+  const GoodsReceipt({
+    required this.id,
+    required this.cylinderTypeId,
+    required this.quantity,
+    this.grnNumber,
+  });
+
+  factory GoodsReceipt.fromJson(Map<String, dynamic> json) => GoodsReceipt(
+    id: json['id'] as String,
+    grnNumber: json['grn_number'] as String?,
+    cylinderTypeId: json['cylinder_type_id'] as String,
+    quantity: (json['quantity_received'] as num).toInt(),
+  );
+
+  final String id;
+  final String? grnNumber;
+  final String cylinderTypeId;
+  final int quantity;
+}

@@ -61,6 +61,17 @@ class MoreScreen extends ConsumerWidget {
         ],
       ),
       (
+        'Godown',
+        [
+          const _MoreItem(
+            icon: LpgIcons.warehouse,
+            label: 'Stock',
+            hint: 'Cylinders in the godown, receipts and counts',
+            routeName: 'stock',
+          ),
+        ],
+      ),
+      (
         'Team and money',
         [
           _MoreItem(
