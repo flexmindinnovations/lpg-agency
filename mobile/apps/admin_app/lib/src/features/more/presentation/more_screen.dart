@@ -71,6 +71,12 @@ class MoreScreen extends ConsumerWidget {
             badge: pending,
           ),
           const _MoreItem(
+            icon: LpgIcons.wallet,
+            label: 'Cash book',
+            hint: 'Daily collections and cash with drivers',
+            routeName: 'cash_book',
+          ),
+          const _MoreItem(
             icon: LpgIcons.van,
             label: 'Drivers and vans',
             hint: 'Add, edit and check documents',
