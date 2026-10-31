@@ -142,6 +142,9 @@ import { visibleSettingsGroups } from './settings-sections';
         overflow-y: auto;
         padding-inline-start: var(--spacing-sm);
         padding-inline-end: var(--spacing-xl);
+        /* Room for the 1px outline PrimeNG draws around p-message banners; the
+           scroll container otherwise clips it along the top edge. */
+        padding-block-start: var(--spacing-xs);
         padding-block-end: var(--spacing-xl);
         --card-border: none;
         --card-shadow: none;
