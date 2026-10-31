@@ -9,8 +9,10 @@
   so a missed or not-yet-delivered webhook never leaves an order unpaid).
 - `GET /online-payments/availability` — whether online payment can be
   offered at all, so the apps hide "Pay Online" instead of failing with 503.
-- `POST /payments/razorpay/webhook` — Razorpay's server-to-server callback.
-  Unauthenticated by design; trusted only after its HMAC signature verifies.
+- `POST /payments/razorpay/webhook` — Razorpay's server-to-server callback for
+  the platform's shared account; `…/webhook/{token}` is the per-agency URL
+  (ADR-067). Unauthenticated by design; trusted only after the HMAC signature
+  verifies against the right account's webhook secret.
 """
 
 from __future__ import annotations
@@ -31,10 +33,16 @@ from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.order import get_order_repository
 from lpg.api.v1.dependencies.payments import (
+    CredentialScopeFactory,
+    GatewayBuilder,
     WebhookUseCaseFactory,
+    get_gateway_builder,
     get_online_payment_repository,
+    get_payment_credential_scope_factory,
     get_payment_gateway,
+    get_payment_webhook_tenant_resolver,
     get_payment_webhook_use_case_factory,
+    get_platform_gateway,
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.online_payment import (
@@ -53,9 +61,11 @@ from lpg.application.accounting.online_payments import (
     RefreshOnlinePaymentUseCase,
     SimulateOnlinePaymentPaidUseCase,
 )
+from lpg.application.accounting.payment_credentials import WebhookTenantResolver
 from lpg.application.accounting.payment_gateway import (
     InvalidWebhookSignatureError,
     PaymentGateway,
+    PaymentLinkStatus,
 )
 from lpg.application.accounting.ports import InvoiceRepository, OnlinePaymentRepository
 from lpg.application.common.errors import NotFoundError
@@ -302,29 +312,16 @@ async def mock_checkout_page(link_id: str) -> HTMLResponse:  # noqa: ARG001
     )
 
 
-@router.post(
-    "/payments/razorpay/webhook",
-    response_model=WebhookAck,
-    summary="Razorpay webhook receiver",
-    responses={400: {"description": "Signature missing or invalid."}},
-)
-async def razorpay_webhook(
-    request: Request,
-    gateway: Annotated[PaymentGateway, Depends(get_payment_gateway)],
-    use_case_factory: Annotated[
-        WebhookUseCaseFactory, Depends(get_payment_webhook_use_case_factory)
-    ],
+async def _apply_webhook_event(
+    status: PaymentLinkStatus | None,
+    use_case_factory: WebhookUseCaseFactory,
+    *,
+    expected_tenant_id: uuid.UUID | None,
 ) -> WebhookAck:
-    """Answers 200 for every verified event, including ones it ignores, so
-    Razorpay does not keep retrying them; only a bad signature is refused.
+    """Applies a signature-verified event. `expected_tenant_id` is the tenant
+    the per-agency webhook URL named: the event must belong to it, so one
+    agency's webhook secret can never settle another agency's payments.
     """
-    body = await request.body()
-    try:
-        status = gateway.parse_webhook(body, request.headers.get("X-Razorpay-Signature"))
-    except InvalidWebhookSignatureError:
-        _logger.warning("payment_webhook_signature_invalid")
-        raise HTTPException(status_code=400, detail="Invalid webhook signature.") from None
-
     if status is None:
         return WebhookAck(received=True)
 
@@ -333,7 +330,79 @@ async def razorpay_webhook(
     except ValueError:
         _logger.warning("payment_webhook_without_tenant", link_id=status.link_id)
         return WebhookAck(received=True)
+    if expected_tenant_id is not None and tenant_id != expected_tenant_id:
+        _logger.warning("payment_webhook_tenant_mismatch", link_id=status.link_id)
+        return WebhookAck(received=True)
 
     async with use_case_factory(tenant_id) as use_case:
         await use_case.execute(status)
     return WebhookAck(received=True)
+
+
+@router.post(
+    "/payments/razorpay/webhook",
+    response_model=WebhookAck,
+    summary="Razorpay webhook receiver (platform default account)",
+    responses={400: {"description": "Signature missing or invalid."}},
+)
+async def razorpay_webhook(
+    request: Request,
+    gateway: Annotated[PaymentGateway, Depends(get_platform_gateway)],
+    use_case_factory: Annotated[
+        WebhookUseCaseFactory, Depends(get_payment_webhook_use_case_factory)
+    ],
+) -> WebhookAck:
+    """For agencies on the platform's shared Razorpay account (the
+    `LPG_RAZORPAY_*` environment). Answers 200 for every verified event,
+    including ones it ignores, so Razorpay does not keep retrying them; only
+    a bad signature is refused.
+    """
+    body = await request.body()
+    try:
+        status = gateway.parse_webhook(body, request.headers.get("X-Razorpay-Signature"))
+    except InvalidWebhookSignatureError:
+        _logger.warning("payment_webhook_signature_invalid")
+        raise HTTPException(status_code=400, detail="Invalid webhook signature.") from None
+    return await _apply_webhook_event(status, use_case_factory, expected_tenant_id=None)
+
+
+@router.post(
+    "/payments/razorpay/webhook/{token}",
+    response_model=WebhookAck,
+    summary="Razorpay webhook receiver for one agency's own account",
+    responses={
+        400: {"description": "Signature missing or invalid."},
+        404: {"description": "Unknown webhook URL."},
+    },
+)
+async def razorpay_agency_webhook(
+    token: str,
+    request: Request,
+    tenant_resolver: Annotated[WebhookTenantResolver, Depends(get_payment_webhook_tenant_resolver)],
+    build_gateway: Annotated[GatewayBuilder, Depends(get_gateway_builder)],
+    credential_scope: Annotated[
+        CredentialScopeFactory, Depends(get_payment_credential_scope_factory)
+    ],
+    use_case_factory: Annotated[
+        WebhookUseCaseFactory, Depends(get_payment_webhook_use_case_factory)
+    ],
+) -> WebhookAck:
+    """The opaque `token` names the agency; that agency's own webhook secret
+    then verifies the signature (ADR-067).
+    """
+    tenant_id = await tenant_resolver.resolve(token)
+    if tenant_id is None:
+        raise HTTPException(status_code=404, detail="Unknown webhook URL.")
+    async with credential_scope(tenant_id) as repository:
+        credentials = await repository.get()
+    if credentials is None:
+        raise HTTPException(status_code=404, detail="Unknown webhook URL.")
+
+    gateway = build_gateway(credentials)
+    body = await request.body()
+    try:
+        status = gateway.parse_webhook(body, request.headers.get("X-Razorpay-Signature"))
+    except InvalidWebhookSignatureError:
+        _logger.warning("payment_webhook_signature_invalid", tenant_id=str(tenant_id))
+        raise HTTPException(status_code=400, detail="Invalid webhook signature.") from None
+    return await _apply_webhook_event(status, use_case_factory, expected_tenant_id=tenant_id)

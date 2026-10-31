@@ -414,6 +414,11 @@ ignore_imports = [
     # the online-payment repository, and the webhook's own tenant-scoped
     # Unit of Work (a webhook has no JWT to resolve a tenant from).
     "lpg.api.v1.dependencies.payments -> lpg.infrastructure.payments.factory",
+    # ADR-067: per-agency Razorpay credentials — gateway built from them, the
+    # webhook token -> tenant lookup, and the encryptor their secrets use.
+    "lpg.api.v1.dependencies.payments -> lpg.infrastructure.payments.credentials",
+    "lpg.api.v1.dependencies.payments -> lpg.infrastructure.payments.tenant_resolver",
+    "lpg.api.v1.dependencies.payments -> lpg.infrastructure.security.field_encryption",
     "lpg.api.v1.dependencies.payments -> lpg.infrastructure.persistence.repositories.accounting",
     "lpg.api.v1.dependencies.payments -> lpg.infrastructure.persistence.unit_of_work",
     # R5: dependencies/complaint.py wires the complaint repository, unwrapping

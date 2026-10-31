@@ -60,6 +60,7 @@ describe('SettingsShell', () => {
       'Agency',
       'Configuration',
       'Payments',
+      'Online Payments',
       'Feature Flags',
       'License',
       'Linked Devices',

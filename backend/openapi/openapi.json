@@ -7302,6 +7302,96 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "PaymentGatewaySettingsResponse": {
+        "description": "Never carries a secret: a masked key id and \"is it set\" flags only.",
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "has_key_secret": {
+            "default": false,
+            "title": "Has Key Secret",
+            "type": "boolean"
+          },
+          "has_webhook_secret": {
+            "default": false,
+            "title": "Has Webhook Secret",
+            "type": "boolean"
+          },
+          "key_id_masked": {
+            "default": "",
+            "title": "Key Id Masked",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "test",
+                  "live"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "source": {
+            "enum": [
+              "agency",
+              "platform",
+              "demo",
+              "none"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "webhook_path": {
+            "default": "",
+            "title": "Webhook Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured",
+          "source"
+        ],
+        "title": "PaymentGatewaySettingsResponse",
+        "type": "object"
+      },
+      "PaymentGatewayTestResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ],
+        "title": "PaymentGatewayTestResponse",
+        "type": "object"
+      },
       "PaymentProfileResponse": {
         "properties": {
           "account_holder": {
@@ -10823,6 +10913,32 @@
           "plan_tier"
         ],
         "title": "SetLicensePlanTierRequest",
+        "type": "object"
+      },
+      "SetPaymentGatewayRequest": {
+        "properties": {
+          "key_id": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Key Id",
+            "type": "string"
+          },
+          "key_secret": {
+            "default": "",
+            "format": "password",
+            "title": "Key Secret",
+            "type": "string",
+            "writeOnly": true
+          },
+          "webhook_secret": {
+            "default": "",
+            "format": "password",
+            "title": "Webhook Secret",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "title": "SetPaymentGatewayRequest",
         "type": "object"
       },
       "SetPaymentProfileRequest": {
@@ -21655,6 +21771,113 @@
         ]
       }
     },
+    "/api/v1/payment-gateway": {
+      "delete": {
+        "operationId": "remove_payment_gateway_api_v1_payment_gateway_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Remove the agency's Razorpay key; the platform default applies again",
+        "tags": [
+          "Online Payments"
+        ]
+      },
+      "get": {
+        "operationId": "get_payment_gateway_settings_api_v1_payment_gateway_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentGatewaySettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The agency's Razorpay setup (no secrets)",
+        "tags": [
+          "Online Payments"
+        ]
+      },
+      "put": {
+        "operationId": "set_payment_gateway_api_v1_payment_gateway_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPaymentGatewayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentGatewaySettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Malformed key id or missing secret."
+          }
+        },
+        "summary": "Save the agency's Razorpay key",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
+    "/api/v1/payment-gateway/rotate-webhook-token": {
+      "post": {
+        "operationId": "rotate_payment_webhook_token_api_v1_payment_gateway_rotate_webhook_token_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentGatewaySettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Issue a new webhook URL (the old one stops working at once)",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
+    "/api/v1/payment-gateway/test": {
+      "post": {
+        "operationId": "test_payment_gateway_api_v1_payment_gateway_test_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentGatewayTestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Check the saved key with Razorpay",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
     "/api/v1/payment-profile": {
       "get": {
         "operationId": "get_payment_profile_api_v1_payment_profile_get",
@@ -21760,7 +21983,7 @@
     },
     "/api/v1/payments/razorpay/webhook": {
       "post": {
-        "description": "Answers 200 for every verified event, including ones it ignores, so\nRazorpay does not keep retrying them; only a bad signature is refused.",
+        "description": "For agencies on the platform's shared Razorpay account (the\n`LPG_RAZORPAY_*` environment). Answers 200 for every verified event,\nincluding ones it ignores, so Razorpay does not keep retrying them; only\na bad signature is refused.",
         "operationId": "razorpay_webhook_api_v1_payments_razorpay_webhook_post",
         "responses": {
           "200": {
@@ -21777,7 +22000,56 @@
             "description": "Signature missing or invalid."
           }
         },
-        "summary": "Razorpay webhook receiver",
+        "summary": "Razorpay webhook receiver (platform default account)",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
+    "/api/v1/payments/razorpay/webhook/{token}": {
+      "post": {
+        "description": "The opaque `token` names the agency; that agency's own webhook secret\nthen verifies the signature (ADR-067).",
+        "operationId": "razorpay_agency_webhook_api_v1_payments_razorpay_webhook__token__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Signature missing or invalid."
+          },
+          "404": {
+            "description": "Unknown webhook URL."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Razorpay webhook receiver for one agency's own account",
         "tags": [
           "Online Payments"
         ]

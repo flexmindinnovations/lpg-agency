@@ -161,6 +161,8 @@ export type { OtpVerifyRequest } from './models/otp-verify-request';
 export type { PaginatedNotificationResponse } from './models/paginated-notification-response';
 export type { PasswordForgotRequest } from './models/password-forgot-request';
 export type { PasswordResetRequest } from './models/password-reset-request';
+export type { PaymentGatewaySettingsResponse } from './models/payment-gateway-settings-response';
+export type { PaymentGatewayTestResponse } from './models/payment-gateway-test-response';
 export type { PaymentProfileResponse } from './models/payment-profile-response';
 export type { PaymentResponse } from './models/payment-response';
 export type { PendingCancellationResponse } from './models/pending-cancellation-response';
@@ -242,6 +244,7 @@ export type { SetFeatureFlagRolloutPercentageRequest } from './models/set-featur
 export type { SetLicenseDeviceCapRequest } from './models/set-license-device-cap-request';
 export type { SetLicenseFeatureOverrideRequest } from './models/set-license-feature-override-request';
 export type { SetLicensePlanTierRequest } from './models/set-license-plan-tier-request';
+export type { SetPaymentGatewayRequest } from './models/set-payment-gateway-request';
 export type { SetPaymentProfileRequest } from './models/set-payment-profile-request';
 export type { SetPriceRequest } from './models/set-price-request';
 export type { SetReorderPolicyRequest } from './models/set-reorder-policy-request';

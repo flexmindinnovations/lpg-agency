@@ -75,6 +75,11 @@ class PaymentGateway(Protocol):
         instead of sending an unauthenticated request.
         """
 
+    async def verify_credentials(self) -> None:
+        """Make one cheap authenticated call. Raises `PaymentGatewayError`
+        if the gateway refuses the credentials or cannot be reached.
+        """
+
     async def create_payment_link(self, request: PaymentLinkRequest) -> PaymentLink: ...
 
     async def fetch_payment_link(self, link_id: str) -> PaymentLinkStatus: ...

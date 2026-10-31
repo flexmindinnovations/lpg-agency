@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import Select, func, or_, select, text
 from sqlalchemy.orm import selectinload
 
+from lpg.application.accounting.payment_credentials import StoredPaymentCredentials
 from lpg.application.accounting.ports import (
     CashBook,
     CashBookCollection,
@@ -31,6 +32,7 @@ from lpg.infrastructure.persistence.models.accounting import (
     InvoiceLineModel,
     InvoiceModel,
     OnlinePaymentModel,
+    PaymentGatewayCredentialModel,
     PaymentModel,
 )
 from lpg.infrastructure.persistence.models.customer import CustomerModel
@@ -38,6 +40,7 @@ from lpg.infrastructure.persistence.models.customer import CustomerModel
 if TYPE_CHECKING:
     from datetime import datetime
 
+    from lpg.application.customer.ports import FieldEncryptor
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 
@@ -902,3 +905,87 @@ class SqlAlchemyOnlinePaymentRepository(OnlinePaymentRepository):
         )
         models = (await self._session.execute(stmt)).scalars().all()
         return [self._to_domain(model) for model in models]
+
+
+class SqlAlchemyPaymentCredentialRepository:
+    """`PaymentCredentialRepository` over `accounting.payment_gateway_credential`
+    (ADR-067). Secrets are Fernet-encrypted on the way in and decrypted on
+    the way out; RLS confines every call to the unit of work's tenant.
+    """
+
+    def __init__(self, uow: SqlAlchemyUnitOfWork, encryptor: FieldEncryptor) -> None:
+        self._uow = uow
+        self._session = uow.session
+        self._encryptor = encryptor
+
+    async def _row(self) -> PaymentGatewayCredentialModel | None:
+        return (
+            await self._session.execute(select(PaymentGatewayCredentialModel))
+        ).scalar_one_or_none()
+
+    async def get(self) -> StoredPaymentCredentials | None:
+        row = await self._row()
+        if row is None:
+            return None
+        return StoredPaymentCredentials(
+            tenant_id=row.tenant_id,
+            key_id=row.key_id,
+            key_secret=self._encryptor.decrypt(row.key_secret_encrypted),
+            webhook_secret=(
+                self._encryptor.decrypt(row.webhook_secret_encrypted)
+                if row.webhook_secret_encrypted
+                else None
+            ),
+            webhook_token=row.webhook_token,
+            updated_at=row.updated_at,
+            updated_by=row.updated_by,
+        )
+
+    async def save(self, credentials: StoredPaymentCredentials) -> None:
+        row = await self._row()
+        encrypted_secret = self._encryptor.encrypt(credentials.key_secret)
+        encrypted_webhook = (
+            self._encryptor.encrypt(credentials.webhook_secret)
+            if credentials.webhook_secret
+            else None
+        )
+        if row is None:
+            self._session.add(
+                PaymentGatewayCredentialModel(
+                    id=uuid.uuid4(),
+                    tenant_id=credentials.tenant_id,
+                    provider="razorpay",
+                    key_id=credentials.key_id,
+                    key_secret_encrypted=encrypted_secret,
+                    webhook_secret_encrypted=encrypted_webhook,
+                    webhook_token=credentials.webhook_token,
+                    updated_at=credentials.updated_at,
+                    updated_by=credentials.updated_by,
+                )
+            )
+        else:
+            # Fernet is non-deterministic: re-encrypting an unchanged secret
+            # would make every save look like a secret change in the audit log.
+            if self._encryptor.decrypt(row.key_secret_encrypted) != credentials.key_secret:
+                row.key_secret_encrypted = encrypted_secret
+            current_webhook = (
+                self._encryptor.decrypt(row.webhook_secret_encrypted)
+                if row.webhook_secret_encrypted
+                else None
+            )
+            if current_webhook != credentials.webhook_secret:
+                row.webhook_secret_encrypted = encrypted_webhook
+            row.key_id = credentials.key_id
+            row.webhook_token = credentials.webhook_token
+            row.updated_at = credentials.updated_at
+            row.updated_by = credentials.updated_by
+            row.version += 1
+        await self._session.flush()
+
+    async def delete(self) -> bool:
+        row = await self._row()
+        if row is None:
+            return False
+        await self._session.delete(row)
+        await self._session.flush()
+        return True

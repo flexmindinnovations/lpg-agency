@@ -109,6 +109,9 @@ def _label(
         if name and number:
             return f"{name} ({number})"
         return name or number
+    if table == "payment_gateway_credential":
+        key_id = _text(values.get("key_id"))
+        return f"Razorpay {key_id}" if key_id else "Razorpay"
     if table == "employee":
         return _person(values) or _text(values.get("employee_code"))
     if table == "identity_user":

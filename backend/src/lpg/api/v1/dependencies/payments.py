@@ -18,20 +18,53 @@ from fastapi import Depends
 
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.accounting.online_payments import HandlePaymentWebhookUseCase
+from lpg.application.accounting.payment_credentials import (
+    PaymentCredentialRepository,
+    Source,
+    StoredPaymentCredentials,
+    WebhookTenantResolver,
+)
 from lpg.application.accounting.payment_gateway import PaymentGateway
 from lpg.application.accounting.payment_verification import IfscDirectory
 from lpg.application.accounting.ports import OnlinePaymentRepository
 from lpg.application.common.ports import UnitOfWork
+from lpg.application.customer.ports import FieldEncryptor
 
 if typing.TYPE_CHECKING:
     import uuid
 
 
-def get_payment_gateway() -> PaymentGateway:
+def get_field_encryptor() -> FieldEncryptor:
     from lpg.config.settings import get_settings
-    from lpg.infrastructure.payments.factory import get_payment_gateway as build_gateway
+    from lpg.infrastructure.security.field_encryption import FernetFieldEncryptor
 
-    return build_gateway(get_settings())
+    return FernetFieldEncryptor(get_settings())
+
+
+def get_payment_credential_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    encryptor: Annotated[FieldEncryptor, Depends(get_field_encryptor)],
+) -> PaymentCredentialRepository:
+    from lpg.infrastructure.persistence.repositories.accounting import (
+        SqlAlchemyPaymentCredentialRepository,
+    )
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+    return SqlAlchemyPaymentCredentialRepository(
+        typing.cast("SqlAlchemyUnitOfWork", unit_of_work), encryptor
+    )
+
+
+async def get_payment_gateway(
+    repository: Annotated[PaymentCredentialRepository, Depends(get_payment_credential_repository)],
+) -> PaymentGateway:
+    """The signed-in agency's own Razorpay account if it saved a key, else the
+    platform default (ADR-067).
+    """
+    from lpg.config.settings import get_settings
+    from lpg.infrastructure.payments.credentials import resolve_payment_gateway
+
+    return await resolve_payment_gateway(get_settings(), repository)
 
 
 @lru_cache(maxsize=1)
@@ -92,3 +125,77 @@ def get_payment_webhook_use_case_factory() -> WebhookUseCaseFactory:
                 )
 
     return _factory
+
+
+CredentialScopeFactory = Callable[
+    ["uuid.UUID"], AbstractAsyncContextManager[PaymentCredentialRepository]
+]
+
+
+def get_payment_credential_scope_factory() -> CredentialScopeFactory:
+    """Mint a credential repository bound to a fresh read session for a
+    tenant the webhook URL named — RLS confines it to that tenant's row.
+    """
+    from lpg.api.app import get_app_state
+    from lpg.application.common.tenant import RequestTenantContext
+    from lpg.infrastructure.persistence.repositories.accounting import (
+        SqlAlchemyPaymentCredentialRepository,
+    )
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+    state = get_app_state()
+    database = state.database
+    if database is None:
+        msg = "Database is not connected — the application lifespan has not run."
+        raise RuntimeError(msg)
+
+    @asynccontextmanager
+    async def _factory(tenant_id: uuid.UUID) -> AsyncGenerator[PaymentCredentialRepository]:
+        tenant_context = RequestTenantContext(tenant_id=tenant_id)
+        async for session in database.open_session(tenant_id=tenant_id):
+            uow = SqlAlchemyUnitOfWork(
+                session, tenant_context, event_dispatcher=state.event_dispatcher
+            )
+            async with uow:
+                yield SqlAlchemyPaymentCredentialRepository(uow, get_field_encryptor())
+
+    return _factory
+
+
+def get_payment_webhook_tenant_resolver() -> WebhookTenantResolver:
+    from lpg.api.app import get_app_state
+    from lpg.infrastructure.payments.tenant_resolver import PaymentCredentialTenantResolver
+
+    database = get_app_state().database
+    if database is None:
+        msg = "Database is not connected — the application lifespan has not run."
+        raise RuntimeError(msg)
+    return PaymentCredentialTenantResolver(database)
+
+
+GatewayBuilder = Callable[[StoredPaymentCredentials], PaymentGateway]
+
+
+def get_gateway_builder() -> GatewayBuilder:
+    """Builds a Razorpay gateway from one agency's decrypted credentials."""
+    from lpg.config.settings import get_settings
+    from lpg.infrastructure.payments.credentials import gateway_from_credentials
+
+    settings = get_settings()
+    return lambda credentials: gateway_from_credentials(settings, credentials)
+
+
+def get_platform_gateway() -> PaymentGateway:
+    """The platform-wide default account (`LPG_RAZORPAY_*`), no agency key."""
+    from lpg.config.settings import get_settings
+    from lpg.infrastructure.payments.factory import get_payment_gateway as build_gateway
+
+    return build_gateway(get_settings())
+
+
+def get_gateway_fallback() -> Source:
+    """What an agency without its own key gets, for the Settings page."""
+    from lpg.config.settings import get_settings
+    from lpg.infrastructure.payments.credentials import platform_fallback
+
+    return platform_fallback(get_settings())

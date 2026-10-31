@@ -26,12 +26,18 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from lpg.application.common.tenant import RequestTenantContext
 from lpg.application.whatsapp.ports import InboundWhatsAppMessage
 from lpg.application.whatsapp.use_cases import HandleInboundWhatsAppMessageUseCase
 from lpg.config.logging import get_logger
 from lpg.config.settings import get_settings
 from lpg.infrastructure.ai.factory import get_model_gateway
+from lpg.infrastructure.payments.credentials import resolve_payment_gateway
 from lpg.infrastructure.payments.factory import get_payment_gateway
+from lpg.infrastructure.persistence.repositories.accounting import (
+    SqlAlchemyPaymentCredentialRepository,
+)
+from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 from lpg.infrastructure.security.field_encryption import FernetFieldEncryptor
 from lpg.infrastructure.whatsapp.payment_links import (
     GatewayPaymentLinks,
@@ -42,11 +48,34 @@ from lpg.infrastructure.whatsapp.tenant_resolver import SqlAlchemyWhatsAppTenant
 from lpg.infrastructure.whatsapp.webhook import HANDLE_MESSAGE_JOB
 
 if TYPE_CHECKING:
+    from lpg.application.accounting.payment_gateway import PaymentGateway
+    from lpg.application.customer.ports import FieldEncryptor
     from lpg.application.whatsapp.ports import PaymentLinkPort
     from lpg.application.whatsapp.tools import WhatsAppScopeFactory
+    from lpg.config.settings import Settings
     from lpg.infrastructure.persistence.database import Database
 
 _logger = get_logger(__name__)
+
+
+async def _resolve_tenant_gateway(
+    database: Database,
+    tenant_id: uuid.UUID,
+    field_encryptor: FieldEncryptor,
+    settings: Settings,
+) -> PaymentGateway:
+    """The agency's own Razorpay account if it saved a key, else the platform
+    default (ADR-067)."""
+    tenant_context = RequestTenantContext(tenant_id=tenant_id)
+    async for session in database.open_session(tenant_id=tenant_id):
+        async with SqlAlchemyUnitOfWork(session, tenant_context) as uow:
+            return await resolve_payment_gateway(
+                settings,
+                SqlAlchemyPaymentCredentialRepository(uow, field_encryptor),
+                fallback=get_payment_gateway,
+            )
+    msg = "Unreachable"
+    raise RuntimeError(msg)
 
 
 async def handle_whatsapp_message(ctx: dict[str, Any], message: dict[str, Any]) -> str:
@@ -85,7 +114,7 @@ async def handle_whatsapp_message(ctx: dict[str, Any], message: dict[str, Any]) 
             actor_id=actor_id,
         )
 
-    payment_gateway = get_payment_gateway(settings)
+    payment_gateway = await _resolve_tenant_gateway(database, tenant_id, field_encryptor, settings)
     payment_links: PaymentLinkPort = (
         GatewayPaymentLinks(
             tenant_id=tenant_id,
