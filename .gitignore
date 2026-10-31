@@ -215,7 +215,8 @@ logs/
 # One-off debug/fix scripts, not part of the build
 backend/scratch/
 
-# Stray local artifacts
+# Local artifacts that must never be committed
 dump.rdb
 *.rdb
-actionlint*.tar.gz
+*.tar.gz
+*.artifact.md

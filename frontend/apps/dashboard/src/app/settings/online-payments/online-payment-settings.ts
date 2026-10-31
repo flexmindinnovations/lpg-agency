@@ -137,7 +137,7 @@ const KEY_ID_PATTERN = /^\s*rzp_(test|live)_[A-Za-z0-9]{6,40}\s*$/;
               [hint]="
                 settings()?.has_webhook_secret
                   ? 'Saved. Leave blank to keep it.'
-                  : 'The secret you type when adding the webhook below.'
+                  : 'Needed for payments to update automatically. Use the same text as in the webhook below.'
               "
             >
               <input
@@ -150,13 +150,10 @@ const KEY_ID_PATTERN = /^\s*rzp_(test|live)_[A-Za-z0-9]{6,40}\s*$/;
               />
             </lpg-form-field>
           </div>
-          <div class="gateway__actions">
-            <button pButton type="submit" [disabled]="saving() || form.pristine">
-              @if (saving()) {
-                <i class="pi pi-spin pi-spinner"></i>
-              }
-              Save keys
-            </button>
+          @if (testResult(); as result) {
+            <p-message [severity]="result.ok ? 'success' : 'error'">{{ result.message }}</p-message>
+          }
+          <div class="modal-actions">
             @if (settings()?.configured) {
               <button
                 pButton
@@ -181,10 +178,13 @@ const KEY_ID_PATTERN = /^\s*rzp_(test|live)_[A-Za-z0-9]{6,40}\s*$/;
                 Remove keys
               </button>
             }
+            <button pButton type="submit" [disabled]="saving() || form.pristine">
+              @if (saving()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Save keys
+            </button>
           </div>
-          @if (testResult(); as result) {
-            <p-message [severity]="result.ok ? 'success' : 'error'">{{ result.message }}</p-message>
-          }
         </lpg-section-card>
       </form>
 
@@ -225,7 +225,7 @@ const KEY_ID_PATTERN = /^\s*rzp_(test|live)_[A-Za-z0-9]{6,40}\s*$/;
               customer returns to the app, not automatically.
             </p-message>
           }
-          <div class="gateway__actions">
+          <div class="modal-actions">
             <button
               pButton
               type="button"
@@ -262,13 +262,6 @@ const KEY_ID_PATTERN = /^\s*rzp_(test|live)_[A-Za-z0-9]{6,40}\s*$/;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
         gap: var(--spacing-md);
-      }
-      .gateway__actions {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: var(--spacing-md);
-        margin-block-start: var(--spacing-md);
       }
       .gateway__steps {
         display: flex;
