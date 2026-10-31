@@ -21,6 +21,7 @@ export 'src/kyc_api.dart';
 export 'src/notification_api.dart';
 export 'src/order_api.dart';
 export 'src/payment_api.dart';
+export 'src/price_list_api.dart';
 export 'src/route_api.dart';
 export 'src/weighment_api.dart';
 export 'src/admin_api.dart';

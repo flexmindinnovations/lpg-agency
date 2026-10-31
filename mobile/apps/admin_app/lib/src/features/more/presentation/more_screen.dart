@@ -53,6 +53,12 @@ class MoreScreen extends ConsumerWidget {
             hint: 'Dues, payments and reminders',
             routeName: 'invoices',
           ),
+          const _MoreItem(
+            icon: LpgIcons.rupee,
+            label: 'Pricing',
+            hint: 'Cylinder prices and OMC rate changes',
+            routeName: 'pricing',
+          ),
           _MoreItem(
             icon: LpgIcons.complaint,
             label: 'Complaints',
