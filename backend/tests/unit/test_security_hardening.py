@@ -81,7 +81,7 @@ class FakeStorage:
 
 async def test_scoped_storage_blocks_other_tenants_and_traversal() -> None:
     tenant, other = uuid.uuid4(), uuid.uuid4()
-    storage = TenantScopedFileStorage(FakeStorage(), tenant)  # type: ignore[arg-type]
+    storage = TenantScopedFileStorage(FakeStorage(), tenant)
     assert await storage.download(f"tenant/{tenant}/kyc/a.png") == b"x"
     for bad in (f"tenant/{other}/kyc/a.png", f"tenant/{tenant}/../{other}/a.png", "kyc/a.png"):
         with pytest.raises(NotFoundError):
