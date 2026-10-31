@@ -38,6 +38,8 @@ main() {
   IFS= read -r fcm_b64 || true
   # Optional line 3: base64 LPG_STORAGE_* KEY=VALUE lines (empty = keep as is).
   IFS= read -r storage_b64 || true
+  # Optional line 4: base64 LPG_RAZORPAY_* / LPG_PAYMENTS_* KEY=VALUE lines (empty = keep as is).
+  IFS= read -r payments_b64 || true
 
   [[ -f .env ]] || { echo "missing .env - run ./generate-env.sh first" >&2; exit 1; }
   compose=(docker compose -f docker-compose.prod.yml)
@@ -153,6 +155,34 @@ print(json.dumps(sa, separators=(",", ":")))
     echo "storage: object storage settings installed"
   }
 
+  # Writes the Razorpay settings into integrations.env, replacing earlier (or
+  # commented-out) lines for the same keys. Only the known keys are accepted,
+  # and a value with a quote, backslash, space or $ is refused.
+  install_payments_settings() {
+    local decoded line key value tmp
+    decoded="$(printf '%s' "$1" | base64 -d 2>/dev/null)" \
+      || { echo "!! payments settings are not valid base64 - left unchanged" >&2; return 0; }
+    touch integrations.env && chmod 600 integrations.env
+    tmp="$(mktemp integrations.env.XXXXXX)"
+    cp integrations.env "$tmp"
+    while IFS= read -r line; do
+      [[ -n "$line" ]] || continue
+      key="${line%%=*}"; value="${line#*=}"
+      case "$key" in
+        LPG_PAYMENTS_PROVIDER|LPG_PAYMENTS_ALLOW_TEST_KEYS|LPG_RAZORPAY_KEY_ID|LPG_RAZORPAY_KEY_SECRET|LPG_RAZORPAY_WEBHOOK_SECRET) ;;
+        *) echo "!! unexpected payments key - settings left unchanged" >&2; rm -f "$tmp"; return 0 ;;
+      esac
+      if [[ -z "$value" || "$value" =~ [[:space:]\"\'\\\$] ]]; then
+        echo "!! invalid value for $key - settings left unchanged" >&2; rm -f "$tmp"; return 0
+      fi
+      grep -vE "^[[:space:]]*#?[[:space:]]*${key}=" "$tmp" > "$tmp.new" || true
+      printf '%s=%s\n' "$key" "$value" >> "$tmp.new"
+      mv "$tmp.new" "$tmp"
+    done <<<"$decoded"
+    chmod 600 "$tmp" && mv "$tmp" integrations.env
+    echo "payments: Razorpay settings installed"
+  }
+
   # Which push channel the worker built at startup (no secrets in these lines).
   report_push_status() {
     local status
@@ -184,6 +214,10 @@ print(json.dumps(sa, separators=(",", ":")))
     install_storage_settings "$storage_b64"
   fi
   unset storage_b64
+  if [[ -n "${payments_b64:-}" ]]; then
+    install_payments_settings "$payments_b64"
+  fi
+  unset payments_b64
   "${compose[@]}" up -d --remove-orphans
 
   if healthy; then

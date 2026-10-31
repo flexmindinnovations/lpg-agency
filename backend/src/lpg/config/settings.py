@@ -346,6 +346,10 @@ class Settings(BaseSettings):
     #: Explicit opt-in for `payments_provider="mock"` in production (demo
     #: before real Razorpay keys exist). Ignored by every other provider.
     payments_allow_mock: bool = False
+    #: Explicit opt-in to run `rzp_test_…` keys in production (Razorpay test
+    #: mode before go-live: payment links work, no real money moves). Switch
+    #: it off, and use `rzp_live_…` keys, to take real payments.
+    payments_allow_test_keys: bool = False
     razorpay_key_id: str = ""
     razorpay_key_secret: SecretStr | None = None
     razorpay_webhook_secret: SecretStr | None = None
@@ -479,8 +483,15 @@ class Settings(BaseSettings):
                 "because staff can mark its links paid without any money moving"
             )
             raise ValueError(msg)
-        if self.is_production and self.razorpay_key_id.startswith("rzp_test_"):
-            msg = "A Razorpay test key (rzp_test_…) is not permitted in production"
+        if (
+            self.is_production
+            and self.razorpay_key_id.startswith("rzp_test_")
+            and not self.payments_allow_test_keys
+        ):
+            msg = (
+                "A Razorpay test key (rzp_test_…) needs LPG_PAYMENTS_ALLOW_TEST_KEYS=true "
+                "in production"
+            )
             raise ValueError(msg)
 
         # Matches `db_password`'s existing precedent: an unset secret isn't
