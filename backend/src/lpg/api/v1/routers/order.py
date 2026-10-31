@@ -126,6 +126,7 @@ from lpg.api.v1.schemas.order import (
     RescheduleOrderRequest,
     TrackingDriverInfo,
 )
+from lpg.api.v1.uploads import read_upload
 from lpg.application.common.errors import NotFoundError, PermissionDeniedError, ValidationError
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
@@ -1224,9 +1225,9 @@ async def upload_pod_attachment(
     await _require_own_driver_order(
         order_id, principal, order_repository, driver_repository, route_repository
     )
-    key = f"tenant/{principal.tenant_id}/orders/{order_id}/pod/{uuid.uuid4()}_{file.filename}"
-    data = await file.read()
-    await file_storage.upload(key, data, content_type=file.content_type)
+    data, filename, content_type = await read_upload(file)
+    key = f"tenant/{principal.tenant_id}/orders/{order_id}/pod/{uuid.uuid4()}_{filename}"
+    await file_storage.upload(key, data, content_type=content_type)
     return PodAttachmentResponse(blob_ref=key)
 
 

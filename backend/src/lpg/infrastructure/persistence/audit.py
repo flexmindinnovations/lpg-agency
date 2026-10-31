@@ -70,11 +70,14 @@ def _jsonable(value: object) -> object:
 #: A column whose name ends like this holds a secret (ciphertext). The audit
 #: trail records that it changed, never what it held.
 _REDACTED_SUFFIX = "_encrypted"
+#: Other credential-bearing columns: password hashes, token hashes, and the
+#: unguessable per-agency webhook URL token.
+_REDACTED_KEYS = frozenset({"password_hash", "token_hash", "webhook_token"})
 _REDACTED = "[redacted]"
 
 
 def _audit_value(key: str, value: object) -> object:
-    if key.endswith(_REDACTED_SUFFIX) and value is not None:
+    if (key.endswith(_REDACTED_SUFFIX) or key in _REDACTED_KEYS) and value is not None:
         return _REDACTED
     return _jsonable(value)
 

@@ -21,6 +21,7 @@ from lpg.api.v1.schemas.document import (
     RecognizeComplianceDocumentRequest,
     RecognizeComplianceDocumentResponse,
 )
+from lpg.api.v1.uploads import read_upload
 from lpg.application.common.ports import DocumentOcrPort, FileStorage
 from lpg.application.delivery.compliance_use_cases import (
     RecognizeComplianceDocumentCommand,
@@ -45,9 +46,9 @@ async def upload_document_attachment(
     """Pre-upload a document image, staged under a tenant-scoped key so it can
     be captured and OCR'd before the owning record exists (same reasoning as
     `upload_kyc_attachment`)."""
-    key = f"tenant/{principal.tenant_id}/compliance-staging/{uuid.uuid4()}_{file.filename}"
-    data = await file.read()
-    await file_storage.upload(key, data, content_type=file.content_type)
+    data, filename, content_type = await read_upload(file)
+    key = f"tenant/{principal.tenant_id}/compliance-staging/{uuid.uuid4()}_{filename}"
+    await file_storage.upload(key, data, content_type=content_type)
     return DocumentAttachmentResponse(blob_ref=key)
 
 

@@ -16,9 +16,10 @@ from lpg.api.v1.dependencies.admin import (
 )
 from lpg.api.v1.dependencies.cylinder_ledger import get_cylinder_ledger_repository
 from lpg.api.v1.dependencies.identity import get_current_principal
+from lpg.api.v1.dependencies.tenant import get_tenant_context
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work, get_unit_of_work_factory
 from lpg.application.accounting.ports import InvoiceRepository
-from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
+from lpg.application.common.ports import FileStorage, JobQueuePort, TenantContext, UnitOfWork
 from lpg.application.cylinder_ledger.ports import CylinderLedgerRepository
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.application.order.booking_policies import (
@@ -205,12 +206,18 @@ def get_delivery_code_store() -> DeliveryCodeStore:
     return RedisDeliveryCodeStore(state.redis)
 
 
-def get_file_storage() -> FileStorage:
+def get_file_storage(
+    tenant_context: Annotated[TenantContext, Depends(get_tenant_context)],
+) -> FileStorage:
+    """Storage limited to the caller's own `tenant/{id}/` prefix, so a
+    client-supplied blob reference can never reach another agency's files."""
+    from lpg.infrastructure.storage.scoped import TenantScopedFileStorage
+
     state, _settings = _get_app_state_and_settings()
     if state.storage is None:
         msg = "FileStorage is not configured — the application lifespan has not run."
         raise RuntimeError(msg)
-    return state.storage
+    return TenantScopedFileStorage(state.storage, tenant_context.tenant_id)
 
 
 def get_cancel_order_use_case_factory(

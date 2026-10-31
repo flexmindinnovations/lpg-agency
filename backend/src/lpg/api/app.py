@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from lpg.api.middleware.correlation import CorrelationIdMiddleware
 from lpg.api.middleware.problem_details import register_exception_handlers
+from lpg.api.middleware.security_headers import SecurityHeadersMiddleware
 from lpg.api.v1.routers import (
     admin,
     ai,
@@ -302,6 +303,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Middleware executes in reverse registration order, so CORS is registered
     # last to run first — a rejected pre-flight should not allocate a
     # correlation ID or touch the logging context.
+    app.add_middleware(SecurityHeadersMiddleware, hsts=not settings.is_local)
     app.add_middleware(
         CorrelationIdMiddleware,
         header_name=settings.correlation_id_header,
