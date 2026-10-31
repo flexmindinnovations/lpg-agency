@@ -7,7 +7,7 @@ GST when prices are exclusive) is fixed when the order is priced
 have no snapshot and keep reporting their total as before.
 
 Revision ID: b7c4e91d3a58
-Revises: d2b8f4a60c17
+Revises: e3a7c1d9b5f2
 Create Date: 2026-10-30
 """
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 revision: str = "b7c4e91d3a58"
-down_revision: str | None = "d2b8f4a60c17"
+down_revision: str | None = "e3a7c1d9b5f2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
