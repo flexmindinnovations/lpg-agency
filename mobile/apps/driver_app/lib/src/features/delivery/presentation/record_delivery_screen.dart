@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 
+import '../../cash_handover/data/cash_handover_provider.dart';
 import '../../../api_provider.dart';
 import '../../../dev_otp_provider.dart';
 import '../../../offline/delivery_mutations.dart';
@@ -112,8 +113,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
       final ordered = line.quantityOrdered;
       _quantities[line.cylinderTypeId] = (ordered, ordered);
     }
-    if (order.totalAmount != null) {
-      _amountController.text = order.totalAmount!.toStringAsFixed(2);
+    // What the customer pays: the price plus GST.
+    if (order.amountToPay != null) {
+      _amountController.text = order.amountToPay!.toStringAsFixed(2);
     }
   }
 
@@ -201,6 +203,10 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
         case DeliverSynced() || DeliverQueued():
           ref.invalidate(activeRouteProvider);
           ref.invalidate(routeHistoryProvider);
+          // The cash to declare and the cash in hand come from the route the
+          // delivery may just have completed.
+          ref.invalidate(pendingCashHandoversProvider);
+          ref.invalidate(myCashInHandProvider);
           LpgFeedback.showToast(
             context,
             outcome is DeliverQueued

@@ -183,4 +183,25 @@ void main() {
       expect(seen!.queryParameters['status'], 'issued');
     });
   });
+  group('InvoiceApi by order', () {
+    test('getMyInvoices can be limited to one order', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.queryParameters['order_id'], 'o-1');
+        return jsonResponse({
+          'items': <Object>[],
+          'total': 0,
+          'page': 1,
+          'page_size': 50,
+        }, 200);
+      });
+
+      final result = await InvoiceApi(client.dio).getMyInvoices(orderId: 'o-1');
+
+      expect(
+        result.when(onSuccess: (_) => true, onFailure: (_) => false),
+        isTrue,
+      );
+    });
+  });
 }

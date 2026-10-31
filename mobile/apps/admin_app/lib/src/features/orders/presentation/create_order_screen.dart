@@ -149,10 +149,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           'Order booked for ${customer.fullName}.',
           tone: LpgTone.success,
         );
-        context.pushReplacementNamed(
-          'order_detail',
-          pathParameters: {'orderId': value.id},
-        );
+        // `go`, not a replacement: the order page lives in the Orders tab
+        // while this form sits above the tabs, so a replacement would mix
+        // two navigators. Back from the order then returns to the list.
+        context.goNamed('order_detail', pathParameters: {'orderId': value.id});
       case FailureResult<OrderResponse>(:final failure):
         if (failure.errorCode == 'CYLINDER_NOT_ORDERABLE') {
           // Stock or prices moved since the form loaded: show what is
@@ -491,6 +491,19 @@ class _CustomerPickerSheetState extends ConsumerState<_CustomerPickerSheet> {
             autofocus: true,
           ),
           const SizedBox(height: LpgSpacing.sm),
+          LpgListTile(
+            leadingIcon: LpgIcons.add,
+            title: 'Add a new customer',
+            subtitle: 'For someone who booked by phone or walked in',
+            onTap: () async {
+              final created = await context.pushNamed<CustomerResponse>(
+                'customer_new',
+              );
+              if (created != null && context.mounted) {
+                Navigator.of(context).pop(created);
+              }
+            },
+          ),
           Expanded(
             child: async.when(
               loading: () => const LpgSkeletonList(itemCount: 4),

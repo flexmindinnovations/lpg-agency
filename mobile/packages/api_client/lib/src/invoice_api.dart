@@ -22,6 +22,7 @@ final class InvoiceApi {
     String? search,
     String? status,
     String? customerId,
+    String? orderId,
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -32,6 +33,7 @@ final class InvoiceApi {
           if (search != null && search.isNotEmpty) 'search': search,
           'status': ?status,
           'customer_id': ?customerId,
+          'order_id': ?orderId,
         },
       );
       if (response.data == null) {

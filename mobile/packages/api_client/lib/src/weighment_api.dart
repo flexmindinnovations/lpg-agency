@@ -78,4 +78,35 @@ final class WeighmentApi {
       return FailureResult(Failure(message: e.toString()));
     }
   }
+
+  /// Logs the sample weighed when a truck was received
+  /// (`POST /goods-receipt-notes/{id}/weighment`): [checked] of the
+  /// [batch] were weighed and [underweight] came up short. It never blocks
+  /// the receipt itself.
+  Future<Result<WeighmentRecord>> recordReceiptSample(
+    String goodsReceiptId, {
+    required String scaleId,
+    required String cylinderTypeId,
+    required int batch,
+    required int checked,
+    required int underweight,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/goods-receipt-notes/$goodsReceiptId/weighment',
+        data: {
+          'scale_id': scaleId,
+          'cylinder_type_id': cylinderTypeId,
+          'total_cylinders_in_batch': batch,
+          'cylinders_checked': checked,
+          'underweight_cylinder_count': underweight,
+        },
+      );
+      return Success(WeighmentRecord.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
 }

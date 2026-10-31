@@ -63,3 +63,16 @@ final customerInvoicesProvider =
             .getMyInvoices(customerId: customerId, pageSize: 100),
       );
     });
+
+/// The customer's identity documents. A role without `kyc:read` gets an
+/// error, which the page treats as "not for you" and hides the section.
+final customerKycProvider =
+    FutureProvider.family<List<KycDocumentResponse>, String>((
+      ref,
+      customerId,
+    ) async {
+      final page = unwrap(
+        await ref.watch(kycApiProvider).getMyDocuments(customerId),
+      );
+      return page.items;
+    });

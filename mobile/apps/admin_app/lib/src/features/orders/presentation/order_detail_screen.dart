@@ -8,6 +8,7 @@ import '../../../api_result.dart';
 import '../../../providers.dart';
 import '../data/orders_provider.dart';
 import '../domain/order_flow.dart';
+import 'order_settlement.dart';
 import 'sheets/deliver_sheet.dart';
 import 'sheets/order_action_sheets.dart';
 import 'sheets/send_out_sheet.dart';
@@ -339,25 +340,47 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               ),
             const SizedBox(height: LpgSpacing.sm),
             LpgCard(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  Text('Total amount', style: text.titleMedium),
-                  Text(
-                    priced
-                        ? LpgFormat.currency(order.totalAmount ?? 0.0)
-                        : 'On confirmation',
-                    style: priced
-                        ? text.headlineSmall?.copyWith(
-                            color: colors.actionPrimary,
-                          )
-                        : text.bodyMedium?.copyWith(
-                            color: colors.textSecondary,
-                          ),
+                  if (priced && order.taxAmount != null) ...[
+                    LpgKeyValueRow(
+                      label: 'Price before GST',
+                      value: LpgFormat.currency(order.totalAmount ?? 0.0),
+                    ),
+                    LpgKeyValueRow(
+                      label: 'GST',
+                      value: LpgFormat.currency(order.taxAmount!),
+                    ),
+                    const Divider(),
+                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        priced && order.taxAmount != null
+                            ? 'Total to pay'
+                            : 'Total amount',
+                        style: text.titleMedium,
+                      ),
+                      Text(
+                        priced
+                            ? LpgFormat.currency(order.amountToPay ?? 0.0)
+                            : 'On confirmation',
+                        style: priced
+                            ? text.headlineSmall?.copyWith(
+                                color: colors.actionPrimary,
+                              )
+                            : text.bodyMedium?.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+            if (order.status == 'delivered' || order.status == 'closed')
+              OrderSettlement(order: order),
             const SizedBox(height: LpgSpacing.xl),
             ..._buildActions(order, actions, trip),
             const SizedBox(height: LpgSpacing.xl),

@@ -11,6 +11,7 @@ class OrderLineResponse {
     required this.quantityCollectedEmpty,
     required this.isBackordered,
     this.unitPrice,
+    this.gstRatePercent,
   });
 
   factory OrderLineResponse.fromJson(Map<String, dynamic> json) =>
@@ -23,6 +24,7 @@ class OrderLineResponse {
         quantityCollectedEmpty: json['quantity_collected_empty'] as int,
         isBackordered: json['is_backordered'] as bool,
         unitPrice: asDoubleOrNull(json['unit_price']),
+        gstRatePercent: asDoubleOrNull(json['gst_rate_percent']),
       );
 
   final String id;
@@ -32,7 +34,13 @@ class OrderLineResponse {
   final int quantityPending;
   final int quantityCollectedEmpty;
   final bool isBackordered;
+
+  /// The price before GST.
   final double? unitPrice;
+
+  /// The GST rate quoted with the price; `null` on an order priced before it
+  /// was recorded.
+  final double? gstRatePercent;
 }
 
 class OrderResponse {
@@ -51,6 +59,8 @@ class OrderResponse {
     required this.metadata,
     this.routeStopId,
     this.totalAmount,
+    this.taxAmount,
+    this.payableAmount,
     this.customerName,
     required this.lines,
   });
@@ -72,6 +82,8 @@ class OrderResponse {
     metadata: json['metadata'] as Map<String, dynamic>,
     routeStopId: json['route_stop_id'] as String?,
     totalAmount: asDoubleOrNull(json['total_amount']),
+    taxAmount: asDoubleOrNull(json['tax_amount']),
+    payableAmount: asDoubleOrNull(json['payable_amount']),
     customerName:
         (json['customer'] as Map<String, dynamic>?)?['full_name'] as String?,
     lines: (json['lines'] as List<dynamic>)
@@ -98,7 +110,20 @@ class OrderResponse {
   final DateTime requestedDate;
   final Map<String, dynamic> metadata;
   final String? routeStopId;
+
+  /// The price of what was ordered, before GST.
   final double? totalAmount;
+
+  /// GST on it; `null` on an order priced before GST was recorded on orders.
+  final double? taxAmount;
+
+  /// What the customer pays: the price plus GST. The server sends it for every
+  /// priced order, equal to [totalAmount] where no GST was recorded.
+  final double? payableAmount;
+
+  /// The amount to collect or to put on the QR: [payableAmount], or the total
+  /// for an answer from an older server that does not send it.
+  double? get amountToPay => payableAmount ?? totalAmount;
 
   /// The customer's name (`null` when the server did not embed it).
   final String? customerName;
@@ -448,4 +473,50 @@ class OrderStatusHistoryEntry {
   final String toStatus;
   final DateTime changedAt;
   final String? reason;
+}
+
+/// The record of a delivery, mirroring `ProofOfDeliveryResponse`: when the
+/// customer's code was checked, where, what was collected and how, with
+/// short-lived links to the signature and photo when the driver took them.
+class ProofOfDelivery {
+  const ProofOfDelivery({
+    required this.id,
+    required this.recordedAt,
+    required this.paymentMethod,
+    required this.amountCollected,
+    required this.gpsLat,
+    required this.gpsLng,
+    this.dacCode,
+    this.signatureUrl,
+    this.photoUrl,
+  });
+
+  factory ProofOfDelivery.fromJson(Map<String, dynamic> json) =>
+      ProofOfDelivery(
+        id: json['id'] as String,
+        recordedAt: DateTime.parse(json['recorded_at'] as String),
+        paymentMethod: json['payment_method'] as String,
+        amountCollected: asDouble(json['amount_collected']),
+        gpsLat: asDouble(json['gps_lat']),
+        gpsLng: asDouble(json['gps_lng']),
+        dacCode: json['dac_code'] as String?,
+        signatureUrl: json['signature_url'] as String?,
+        photoUrl: json['photo_url'] as String?,
+      );
+
+  final String id;
+  final DateTime recordedAt;
+
+  /// `cash`, `upi`, `card`, `credit`, and so on.
+  final String paymentMethod;
+  final double amountCollected;
+  final double gpsLat;
+  final double gpsLng;
+
+  /// The oil company's own delivery authentication code, when given.
+  final String? dacCode;
+
+  /// Links that expire after a few minutes; load them when shown.
+  final String? signatureUrl;
+  final String? photoUrl;
 }

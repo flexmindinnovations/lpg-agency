@@ -28,12 +28,9 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
   final _amountController = TextEditingController();
   final _reasonController = TextEditingController();
 
-  /// Note value -> how many the driver counted.
-  final Map<int, int> _counts = {};
-
-  /// Typing the total instead of counting notes (kept for when counting is
-  /// impractical; the handover is then recorded without a note breakdown).
-  bool _manual = false;
+  /// The amount field starts at the cash expected, so a driver who hands
+  /// over what they collected has nothing to type.
+  bool _seeded = false;
   bool _submitting = false;
   String? _error;
 
@@ -44,11 +41,7 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
     super.dispose();
   }
 
-  double get _countedTotal =>
-      _counts.entries.fold(0.0, (sum, entry) => sum + entry.key * entry.value);
-
-  double? get _entered =>
-      _manual ? double.tryParse(_amountController.text.trim()) : _countedTotal;
+  double? get _entered => double.tryParse(_amountController.text.trim());
 
   Future<void> _declare(RouteCashHandover view) async {
     final amount = _entered;
@@ -85,7 +78,6 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
             routeId: widget.routeId,
             driverId: view.driverId,
             actualAmount: amount,
-            denominations: _manual ? null : Map<int, int>.of(_counts),
             varianceReason: reason.isEmpty ? null : reason,
           );
     } catch (e) {
@@ -147,24 +139,18 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
               tone: LpgTone.warning,
             );
           }
+          if (!_seeded) {
+            _seeded = true;
+            _amountController.text = view.expectedAmount.toStringAsFixed(2);
+          }
           return _DeclareForm(
             view: view,
             amountController: _amountController,
             reasonController: _reasonController,
-            counts: _counts,
-            manual: _manual,
             entered: _entered,
             error: _error,
             submitting: _submitting,
             onChanged: () => setState(() => _error = null),
-            onCount: (value, count) => setState(() {
-              _error = null;
-              _counts[value] = count;
-            }),
-            onToggleManual: () => setState(() {
-              _manual = !_manual;
-              _error = null;
-            }),
             onDeclare: () => _declare(view),
           );
         },
@@ -198,28 +184,20 @@ class _DeclareForm extends StatelessWidget {
     required this.view,
     required this.amountController,
     required this.reasonController,
-    required this.counts,
-    required this.manual,
     required this.entered,
     required this.error,
     required this.submitting,
     required this.onChanged,
-    required this.onCount,
-    required this.onToggleManual,
     required this.onDeclare,
   });
 
   final RouteCashHandover view;
   final TextEditingController amountController;
   final TextEditingController reasonController;
-  final Map<int, int> counts;
-  final bool manual;
   final double? entered;
   final String? error;
   final bool submitting;
   final VoidCallback onChanged;
-  final void Function(int value, int count) onCount;
-  final VoidCallback onToggleManual;
   final VoidCallback onDeclare;
 
   @override
@@ -245,7 +223,7 @@ class _DeclareForm extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Expected cash · ${LpgFormat.date(view.routeDate)} route',
+                  'Cash to hand over · ${LpgFormat.date(view.routeDate)} route',
                   style: text.titleSmall?.copyWith(color: colors.onHero),
                 ),
                 const SizedBox(height: LpgSpacing.sm),
@@ -263,36 +241,35 @@ class _DeclareForm extends StatelessWidget {
             ),
           ),
         ),
-        if (view.upiAmount > 0) ...[
-          const SizedBox(height: LpgSpacing.md),
-          LpgBanner(
-            tone: LpgTone.info,
-            icon: LpgIcons.wallet,
-            message:
-                '${_money(view.upiAmount)} was paid by UPI straight to the '
-                'agency. It is not part of this cash.',
-          ),
-        ],
-        const SizedBox(height: LpgSpacing.lg),
-        if (manual)
-          LpgTextField(
-            label: 'Amount handed over',
-            isRequired: true,
-            prefixIcon: LpgIcons.rupee,
-            controller: amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (_) => onChanged(),
-          )
-        else
-          _NoteCounter(counts: counts, onCount: onCount),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: onToggleManual,
-            child: Text(
-              manual ? 'Count notes instead' : 'Enter the total instead',
+        const SizedBox(height: LpgSpacing.md),
+        LpgGroupedList(
+          children: [
+            LpgListTile(
+              leadingIcon: LpgIcons.cash,
+              title: 'Cash',
+              subtitle: 'Hand this to the office',
+              trailing: Text(
+                _money(view.expectedAmount),
+                style: text.titleSmall,
+              ),
             ),
-          ),
+            LpgListTile(
+              leadingIcon: LpgIcons.wallet,
+              leadingTone: LpgTone.info,
+              title: 'UPI',
+              subtitle: 'Paid straight to the agency. Nothing to hand over.',
+              trailing: Text(_money(view.upiAmount), style: text.titleSmall),
+            ),
+          ],
+        ),
+        const SizedBox(height: LpgSpacing.lg),
+        LpgTextField(
+          label: 'Cash you are handing over',
+          isRequired: true,
+          prefixIcon: LpgIcons.rupee,
+          controller: amountController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (_) => onChanged(),
         ),
         const SizedBox(height: LpgSpacing.xs),
         _DeltaLine(expected: view.expectedAmount, entered: entered),
@@ -319,78 +296,6 @@ class _DeclareForm extends StatelessWidget {
   }
 }
 
-/// Count the cash by note and coin: a stepper per value, the total adds up
-/// as the driver counts. This is how a cashier's tally is done, and it gives
-/// the office the breakdown to check against.
-class _NoteCounter extends StatelessWidget {
-  const _NoteCounter({required this.counts, required this.onCount});
-
-  final Map<int, int> counts;
-  final void Function(int value, int count) onCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.lpgColors;
-    final text = context.lpgText;
-    final total = counts.entries.fold<double>(
-      0,
-      (sum, entry) => sum + entry.key * entry.value,
-    );
-
-    return LpgCard(
-      variant: LpgCardVariant.outlined,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Count the cash', style: text.titleSmall),
-          const SizedBox(height: LpgSpacing.xs),
-          Text(
-            'Tap + for each note or coin you are handing over.',
-            style: text.bodySmall?.copyWith(color: colors.textSecondary),
-          ),
-          const SizedBox(height: LpgSpacing.sm),
-          for (final value in cashDenominations)
-            Padding(
-              key: ValueKey('denomination-$value'),
-              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 64,
-                    child: Text('₹$value', style: text.titleMedium),
-                  ),
-                  Expanded(
-                    child: Text(
-                      (counts[value] ?? 0) > 0
-                          ? _money((value * (counts[value] ?? 0)).toDouble())
-                          : '',
-                      style: text.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  LpgQuantityStepper(
-                    value: counts[value] ?? 0,
-                    semanticLabel: '₹$value notes',
-                    onChanged: (count) => onCount(value, count),
-                  ),
-                ],
-              ),
-            ),
-          const Divider(height: LpgSpacing.xl),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Counted total', style: text.titleSmall),
-              Text(_money(total), style: text.titleLarge),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DeltaLine extends StatelessWidget {
   const _DeltaLine({required this.expected, required this.entered});
 
@@ -412,10 +317,18 @@ class _DeltaLine extends StatelessWidget {
 
     final diff = value - expected;
     final (String label, LpgTone tone, IconData icon) = switch (diff) {
-      _ when !needsVarianceReason(expected, value) => (
+      _ when diff.abs() < 0.005 => (
         'Matches the expected ${_money(expected)}',
         LpgTone.success,
         LpgIcons.successFilled,
+      ),
+      // A few paise of rounding needs no explanation, but it is still a
+      // difference and the label says so rather than claiming a match.
+      _ when !needsVarianceReason(expected, value) => (
+        '${diff < 0 ? 'Short' : 'Over'} by ${_money(diff.abs())}. '
+            'Under a rupee, so no reason is needed.',
+        LpgTone.info,
+        LpgIcons.info,
       ),
       _ when diff < 0 => (
         'Short by ${_money(-diff)}',

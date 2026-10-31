@@ -44,6 +44,7 @@ class VanLoadScreen extends ConsumerWidget {
     await ref.read(deliveryMutationsProvider).confirmLoad(routeId);
     ref.invalidate(activeRouteProvider);
     ref.invalidate(pendingLoadProvider);
+    ref.invalidate(routeLoadProvider(routeId));
     if (!context.mounted) return;
     LpgFeedback.showToast(
       context,

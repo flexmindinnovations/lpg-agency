@@ -21,7 +21,7 @@ import 'package:signature/signature.dart';
 
 import '../../support/offline_harness.dart';
 
-OrderResponse _order() => OrderResponse(
+OrderResponse _order({double? tax, double? payable}) => OrderResponse(
   id: 'order-1',
   orderNumber: 'ORD000042',
   tenantId: 't1',
@@ -34,6 +34,8 @@ OrderResponse _order() => OrderResponse(
   requestedDate: DateTime(2026, 9, 1),
   metadata: const {},
   totalAmount: 905.5,
+  taxAmount: tax,
+  payableAmount: payable,
   lines: const [
     OrderLineResponse(
       id: 'l1',
@@ -205,6 +207,7 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
   Map<String, int> queuedEmpties = const {},
   String? devCode,
   DriverGeolocator geolocator = const _FakeGeolocator(),
+  OrderResponse? order,
 }) {
   final harness = OfflineHarness(
     ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
@@ -213,7 +216,7 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
   final container = ProviderContainer(
     overrides: [
       ...harness.overrides,
-      stopOrderProvider.overrideWith((ref, id) async => _order()),
+      stopOrderProvider.overrideWith((ref, id) async => order ?? _order()),
       imagePickerProvider.overrideWithValue(_FakePicker()),
       driverGeolocatorProvider.overrideWithValue(geolocator),
       activeRouteProvider.overrideWith((ref) async => route),
@@ -253,6 +256,21 @@ void main() {
       expect(find.text('Confirm delivery'), findsOneWidget);
       // Amount prefilled from the order total.
       expect(find.text('905.50'), findsOneWidget);
+    });
+
+    testWidgets('prefills the amount with the price plus GST', (tester) async {
+      final (:container, :harness) = _container(
+        _RecordingAdapter(),
+        order: _order(tax: 45.28, payable: 950.78),
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      // Rs 905.50 plus Rs 45.28 GST: what the customer pays, and what the
+      // UPI QR (built from the invoice) asks for.
+      expect(find.text('950.78'), findsOneWidget);
+      expect(find.text('905.50'), findsNothing);
     });
 
     testWidgets('delivers without a signature or photo', (tester) async {

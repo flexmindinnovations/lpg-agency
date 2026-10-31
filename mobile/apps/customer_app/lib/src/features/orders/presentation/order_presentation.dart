@@ -29,7 +29,7 @@ extension OrderPresentation on OrderResponse {
   /// an order cancelled before it was priced, otherwise "To be confirmed"
   /// (the agency prices an order when confirming it).
   String get amountLabel {
-    if (totalAmount case final total?) return LpgFormat.currency(total);
+    if (amountToPay case final total?) return LpgFormat.currency(total);
     return status == 'cancelled' ? 'Not charged' : 'To be confirmed';
   }
 

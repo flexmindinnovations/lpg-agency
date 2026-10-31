@@ -247,6 +247,7 @@ class SqlAlchemyOrderRepository:
                 quantity_pending=line.quantity_pending,
                 quantity_collected_empty=line.quantity_collected_empty,
                 is_backordered=line.is_backordered,
+                gst_rate_percent=line.gst_rate_percent,
             )
             for line in row.lines
         ]
@@ -266,6 +267,7 @@ class SqlAlchemyOrderRepository:
             status=row.status,
             route_stop_id=row.route_stop_id,
             total_amount=row.total_amount,
+            prices_include_gst=row.prices_include_gst,
             version=row.version,
         )
         self._uow.register_aggregate(order)
@@ -298,6 +300,7 @@ class SqlAlchemyOrderRepository:
                 metadata_json=order.metadata,
                 route_stop_id=order.route_stop_id,
                 total_amount=order.total_amount,
+                prices_include_gst=order.prices_include_gst,
             )
             self._uow.session.add(row)
             # Flush now so the order row is INSERTed before any line/history
@@ -308,6 +311,7 @@ class SqlAlchemyOrderRepository:
             row.status = order.status
             row.route_stop_id = order.route_stop_id
             row.total_amount = order.total_amount
+            row.prices_include_gst = order.prices_include_gst
             row.metadata_json = order.metadata
             # Editable before the order is put on a trip (`Order.amend()`,
             # `Order.reschedule_to()`).
@@ -347,6 +351,7 @@ class SqlAlchemyOrderRepository:
                         quantity_collected_empty=line.quantity_collected_empty,
                         is_backordered=line.is_backordered,
                         unit_price=line.unit_price,
+                        gst_rate_percent=line.gst_rate_percent,
                     )
                 )
             else:
@@ -356,6 +361,7 @@ class SqlAlchemyOrderRepository:
                 line_row.quantity_collected_empty = line.quantity_collected_empty
                 line_row.is_backordered = line.is_backordered
                 line_row.unit_price = line.unit_price
+                line_row.gst_rate_percent = line.gst_rate_percent
 
         for entry in order.pending_status_history:
             self._uow.session.add(

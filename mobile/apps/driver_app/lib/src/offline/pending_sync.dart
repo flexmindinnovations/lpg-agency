@@ -57,3 +57,15 @@ final queuedEmptiesByTypeProvider = StreamProvider<Map<String, int>>((ref) {
     return totals;
   });
 });
+
+/// How many driver actions are waiting to reach the server. Anything read
+/// from the server must be read again when this changes: an action queued a
+/// moment ago has not happened yet as far as the server is concerned, so a
+/// read made straight after it shows the old state, and nothing else will
+/// ask again once the queue drains.
+///
+/// A plain `int`, so a provider that watches it rebuilds only when the count
+/// really changes, not on every emission of the queue stream.
+final pendingSyncCountProvider = Provider<int>(
+  (ref) => ref.watch(pendingSyncAggregatesProvider).value?.length ?? 0,
+);

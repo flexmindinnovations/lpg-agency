@@ -63,6 +63,8 @@ class OrderLineResponse(BaseModel):
     quantity_collected_empty: int
     is_backordered: bool
     unit_price: Decimal | None
+    #: The GST rate quoted with the price; `null` before GST was recorded.
+    gst_rate_percent: Decimal | None = None
 
 
 class DriverLocationSnapshot(BaseModel):
@@ -127,7 +129,15 @@ class OrderResponse(BaseModel):
     requested_date: datetime
     metadata: dict[str, Any]
     route_stop_id: uuid.UUID | None
+    #: The price of what was ordered, before GST.
     total_amount: Decimal | None
+    #: GST on it, worked out as the invoice works it out; `null` for an order
+    #: priced before GST was recorded on orders.
+    tax_amount: Decimal | None = None
+    #: What the customer pays: the price plus GST (or the price itself when the
+    #: agency's prices include GST). Equals `total_amount` where there is no
+    #: GST recorded. This is the amount to collect and the amount on the QR.
+    payable_amount: Decimal | None = None
     lines: list[OrderLineResponse]
     #: Filled on the order list and order detail reads; `null` elsewhere.
     customer: OrderCustomerResponse | None = None

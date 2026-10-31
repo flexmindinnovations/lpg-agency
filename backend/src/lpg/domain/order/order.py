@@ -23,6 +23,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
+from lpg.domain.common.gst import compute_line_tax, split_inclusive, to_cents
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -342,6 +343,7 @@ class OrderLine:
         quantity_pending: int = 0,
         quantity_collected_empty: int = 0,
         is_backordered: bool = False,
+        gst_rate_percent: Decimal | None = None,
     ) -> None:
         if quantity_ordered < 1:
             msg = f"Quantity ordered must be at least 1, got {quantity_ordered}."
@@ -358,6 +360,34 @@ class OrderLine:
         self.quantity_pending = quantity_pending
         self.quantity_collected_empty = quantity_collected_empty
         self.is_backordered = is_backordered
+        #: The GST rate quoted with the price, snapshotted with it so a later
+        #: rate change does not move an order already quoted. `None` on an
+        #: order priced before GST was snapshotted.
+        self.gst_rate_percent = gst_rate_percent
+
+    def set_gst_rate(self, rate_percent: Decimal) -> None:
+        if rate_percent < 0:
+            msg = f"GST rate cannot be negative, got {rate_percent}."
+            raise InvariantViolation(msg)
+        self.gst_rate_percent = rate_percent
+
+    def taxed_amounts(self, *, prices_include_gst: bool) -> tuple[Decimal, Decimal] | None:
+        """`(tax, payable)` for the quantity ordered, worked out exactly as the
+        invoice works out a line (per line, half-up to the paisa), so the
+        amount quoted and the amount invoiced agree. `None` until the line is
+        priced. A line with no GST rate snapshot carries no tax.
+        """
+        if self.unit_price is None:
+            return None
+        gross = self.unit_price * self.quantity_ordered
+        if self.gst_rate_percent is None:
+            return Decimal("0.00"), to_cents(gross)
+        if prices_include_gst:
+            _, tax = split_inclusive(gross, self.gst_rate_percent)
+            return tax, to_cents(gross)
+        subtotal = to_cents(gross)
+        tax = compute_line_tax(subtotal, self.gst_rate_percent)
+        return tax, subtotal + tax
 
     def set_unit_price(self, price: Decimal) -> None:
         if price <= 0:
@@ -433,6 +463,7 @@ class Order(AggregateRoot):
         "_payment_method_preference",
         "_pending_failed_delivery_entries",
         "_pending_status_history",
+        "_prices_include_gst",
         "_requested_date",
         "_route_stop_id",
         "_status",
@@ -458,6 +489,7 @@ class Order(AggregateRoot):
         status: str = "draft",
         route_stop_id: uuid.UUID | None = None,
         total_amount: Decimal | None = None,
+        prices_include_gst: bool | None = None,
         version: int = 1,
     ) -> None:
         super().__init__(order_id, version=version)
@@ -498,6 +530,7 @@ class Order(AggregateRoot):
         self._status = status
         self._route_stop_id = route_stop_id
         self._total_amount = total_amount
+        self._prices_include_gst = prices_include_gst
         self._lines = list(lines)
         self._pending_status_history: list[OrderStatusHistoryEntry] = []
         self._pending_failed_delivery_entries: list[FailedDeliveryEntry] = []
@@ -557,6 +590,41 @@ class Order(AggregateRoot):
     @property
     def total_amount(self) -> Decimal | None:
         return self._total_amount
+
+    @property
+    def prices_include_gst(self) -> bool | None:
+        """Whether the unit prices on this order already included GST when it
+        was priced; `None` for an order priced before this was recorded."""
+        return self._prices_include_gst
+
+    def _taxed_lines(self) -> list[tuple[Decimal, Decimal]] | None:
+        if self._total_amount is None or self._prices_include_gst is None:
+            return None
+        amounts = [
+            line.taxed_amounts(prices_include_gst=self._prices_include_gst) for line in self._lines
+        ]
+        if any(a is None for a in amounts):
+            return None
+        return [a for a in amounts if a is not None]
+
+    @property
+    def tax_amount(self) -> Decimal | None:
+        """GST on the order as quoted; `None` if it was priced before GST was
+        snapshotted (the invoice still taxes it when it is issued)."""
+        taxed = self._taxed_lines()
+        return None if taxed is None else sum((t for t, _ in taxed), Decimal("0.00"))
+
+    @property
+    def payable_amount(self) -> Decimal | None:
+        """What the customer pays for the quantities ordered: the price plus
+        GST (or the price itself when prices include GST). For an order priced
+        before GST was snapshotted it is the total as it always was."""
+        if self._total_amount is None:
+            return None
+        taxed = self._taxed_lines()
+        if taxed is None:
+            return self._total_amount
+        return sum((p for _, p in taxed), Decimal("0.00"))
 
     @property
     def lines(self) -> list[OrderLine]:
@@ -620,7 +688,14 @@ class Order(AggregateRoot):
             )
         )
 
-    def confirm(self, *, unit_prices: dict[uuid.UUID, Decimal], changed_by: uuid.UUID) -> None:
+    def confirm(
+        self,
+        *,
+        unit_prices: dict[uuid.UUID, Decimal],
+        changed_by: uuid.UUID,
+        gst_rates: dict[uuid.UUID, Decimal] | None = None,
+        prices_include_gst: bool | None = None,
+    ) -> None:
         """`booked -> confirmed`. Snapshots each line's price — never
         re-resolved retroactively — and computes `total_amount`. BR-04
         (cylinder cap) / BR-19 (credit limit) are checked by the use case
@@ -639,8 +714,12 @@ class Order(AggregateRoot):
                     msg, order_id=str(self.id), cylinder_type_id=str(line.cylinder_type_id)
                 )
             line.set_unit_price(price)
+            rate = (gst_rates or {}).get(line.cylinder_type_id)
+            if rate is not None:
+                line.set_gst_rate(rate)
             total += price * line.quantity_ordered
         self._total_amount = total
+        self._prices_include_gst = prices_include_gst if gst_rates else None
 
         self._apply_transition("confirmed", changed_by=changed_by)
         self.record_event(
@@ -812,6 +891,8 @@ class Order(AggregateRoot):
         payment_method_preference: str | None,
         changed_by: uuid.UUID,
         unit_prices: dict[uuid.UUID, Decimal] | None = None,
+        gst_rates: dict[uuid.UUID, Decimal] | None = None,
+        prices_include_gst: bool | None = None,
     ) -> None:
         """Change a booking before it is put on a trip (DO-13). A confirmed
         order is re-priced with `unit_prices` (the prices in effect now),
@@ -852,7 +933,11 @@ class Order(AggregateRoot):
                         msg, order_id=str(self.id), cylinder_type_id=str(line.cylinder_type_id)
                     )
                 line.set_unit_price(price)
+                rate = (gst_rates or {}).get(line.cylinder_type_id)
+                if rate is not None:
+                    line.set_gst_rate(rate)
                 total += price * line.quantity_ordered
+            self._prices_include_gst = prices_include_gst if gst_rates else None
 
         self._lines = list(lines)
         self._total_amount = total

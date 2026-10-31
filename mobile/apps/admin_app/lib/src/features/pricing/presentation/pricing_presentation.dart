@@ -1,17 +1,9 @@
 import 'package:api_client/api_client.dart';
 
-/// The kinds of customer a price can be set for, in the order the office
-/// thinks of them.
-const customerTypeLabels = <String, String>{
-  'domestic': 'Domestic',
-  'commercial': 'Commercial',
-  'industrial': 'Industrial',
-  'government': 'Government',
-};
+import '../../../shared/customer_types.dart';
 
-String customerTypeLabel(String type) =>
-    customerTypeLabels[type] ??
-    '${type.substring(0, 1).toUpperCase()}${type.substring(1)}';
+export '../../../shared/customer_types.dart'
+    show customerTypeLabel, customerTypeLabels;
 
 /// Prices more than this far from the old one ask for a second look before
 /// saving, so a slipped decimal point cannot go out unnoticed.

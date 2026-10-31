@@ -25,6 +25,7 @@ from lpg.application.order.booking_policies import (
     LedgerCylinderCapPolicy,
     OutstandingBalanceCreditLimitEvaluator,
 )
+from lpg.application.order.gst_snapshot import OrderGstSnapshotter
 from lpg.application.order.orderable import OrderableCylinderTypes
 from lpg.application.order.ports import (
     BranchStockReader,
@@ -120,6 +121,15 @@ def get_orderable_cylinder_types(
     stock: Annotated[BranchStockReader, Depends(get_branch_stock_reader)],
 ) -> OrderableCylinderTypes:
     return OrderableCylinderTypes(cylinder_types, price_lists, stock)
+
+
+def get_order_gst_snapshotter(
+    cylinder_types: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    configuration: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+) -> OrderGstSnapshotter:
+    return OrderGstSnapshotter(cylinder_types, configuration)
 
 
 def get_customer_open_order_reader(

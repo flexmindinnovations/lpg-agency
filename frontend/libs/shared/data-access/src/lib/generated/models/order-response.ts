@@ -18,10 +18,12 @@ export interface OrderResponse {
 [key: string]: any;
 };
   order_number?: (string | null);
+  payable_amount?: (string | null);
   payment_method_preference: ('cash' | 'upi' | 'card' | 'online_gateway' | 'credit' | null);
   requested_date: string;
   route_stop_id: (string | null);
   status: 'draft' | 'booked' | 'confirmed' | 'assigned' | 'ready_for_dispatch' | 'out_for_delivery' | 'delivered' | 'failed_delivery' | 'cancelled' | 'closed';
+  tax_amount?: (string | null);
   tenant_id: string;
   total_amount: (string | null);
 }
