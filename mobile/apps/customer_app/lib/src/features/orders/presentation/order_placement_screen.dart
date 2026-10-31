@@ -21,11 +21,11 @@ class ReorderDraft {
   final int quantity;
 }
 
-const _paymentMethods = <String, String>{
-  'cash': 'Cash on Delivery',
-  'upi': 'UPI',
-  'card': 'Card',
-  'online_gateway': 'Online Payment',
+/// The icon for each payment method code the agency may offer.
+const _paymentMethodIcons = {
+  'cash': LpgIcons.cash,
+  'upi': LpgIcons.wallet,
+  'online_gateway': LpgIcons.security,
 };
 
 /// Real order-placement flow: cylinder type, quantity, delivery address,
@@ -168,6 +168,8 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
     final cylinderTypesAsync = ref.watch(orderableCylinderTypesProvider);
+    final paymentMethods =
+        ref.watch(paymentMethodsProvider).value ?? PaymentMethods.cashOnly;
     // Keep the customer's choice only while it is still on offer; otherwise
     // default to the first orderable type.
     final orderableTypes = cylinderTypesAsync.value ?? const [];
@@ -313,14 +315,11 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
             LpgDropdownField<String>(
               label: 'Payment Method (optional)',
               placeholder: 'No preference',
-              value: _paymentMethod ?? '',
-              items: _paymentMethods,
-              icons: const {
-                'cash': LpgIcons.cash,
-                'upi': LpgIcons.wallet,
-                'card': LpgIcons.payment,
-                'online_gateway': LpgIcons.security,
-              },
+              value: paymentMethods.booking.any((m) => m.code == _paymentMethod)
+                  ? _paymentMethod!
+                  : '',
+              items: {for (final m in paymentMethods.booking) m.code: m.label},
+              icons: _paymentMethodIcons,
               onChanged: (v) => setState(() => _paymentMethod = v),
             ),
           ];

@@ -2,6 +2,8 @@
 
 - `GET /payment-profile` — any signed-in user; bank and UPI details are
   printed on every invoice anyway, and the apps show them beside the QR.
+- `GET /payments/methods` — any signed-in user; the ways of paying the agency
+  offers, worked out from its UPI ID, bank details and connected gateway.
 - `PUT /payment-profile` — `tenant:configure`. Refuses an IFSC no bank branch holds.
 - `POST /payment-profile/verify` — `tenant:configure`. Checks an IFSC against the
   bank-branch directory and a UPI ID's handle, without saving anything.
@@ -38,6 +40,8 @@ from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.routers.online_payment import _resolve_scope
 from lpg.api.v1.schemas.payment_profile import (
     IfscCheckResponse,
+    PaymentMethodOptionResponse,
+    PaymentMethodsResponse,
     PaymentProfileResponse,
     SetPaymentProfileRequest,
     UpiCheckResponse,
@@ -50,6 +54,10 @@ from lpg.application.accounting.online_payments import (
     CreateOrderPaymentLinkUseCase,
 )
 from lpg.application.accounting.payment_gateway import PaymentGateway
+from lpg.application.accounting.payment_methods import (
+    ListPaymentMethodsUseCase,
+    PaymentMethodOption,
+)
 from lpg.application.accounting.payment_profile import (
     GetPaymentProfileUseCase,
     PaymentProfile,
@@ -92,6 +100,28 @@ async def get_payment_profile(
 ) -> PaymentProfileResponse:
     profile = await GetPaymentProfileUseCase(repository).execute(principal.tenant_id)
     return _to_response(profile)
+
+
+def _options(options: tuple[PaymentMethodOption, ...]) -> list[PaymentMethodOptionResponse]:
+    return [PaymentMethodOptionResponse(code=o.code, label=o.label) for o in options]
+
+
+@router.get("/payments/methods", response_model=PaymentMethodsResponse)
+async def list_payment_methods(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+    gateway: Annotated[PaymentGateway, Depends(get_payment_gateway)],
+) -> PaymentMethodsResponse:
+    offered = await ListPaymentMethodsUseCase(repository).execute(
+        principal.tenant_id, online_available=gateway.is_configured
+    )
+    return PaymentMethodsResponse(
+        booking=_options(offered.booking),
+        delivery=_options(offered.delivery),
+        office=_options(offered.office),
+    )
 
 
 @router.put("/payment-profile", response_model=PaymentProfileResponse)

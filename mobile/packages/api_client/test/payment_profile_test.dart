@@ -80,4 +80,35 @@ void main() {
     expect(book.shortfallTotal, 100.0);
     expect(book.pendingCount, 1);
   });
+  test(
+    'getPaymentMethods reads what the agency offers in each place',
+    () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      String? path;
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        path = options.uri.path;
+        return jsonResponse({
+          'booking': [
+            {'code': 'cash', 'label': 'Cash'},
+            {'code': 'upi', 'label': 'UPI'},
+          ],
+          'delivery': [
+            {'code': 'cash', 'label': 'Cash'},
+          ],
+          'office': [
+            {'code': 'cheque', 'label': 'Cheque'},
+          ],
+        }, 200);
+      });
+
+      final result = await PaymentApi(client.dio).getPaymentMethods();
+
+      expect(path, '/api/v1/payments/methods');
+      final methods = result.when(onSuccess: (m) => m, onFailure: (_) => null);
+      expect(methods!.booking.map((o) => o.code), ['cash', 'upi']);
+      expect(methods.booking.last.label, 'UPI');
+      expect(methods.delivery.single.code, 'cash');
+      expect(methods.office.single.label, 'Cheque');
+    },
+  );
 }

@@ -77,6 +77,23 @@ final class PaymentApi {
     }
   }
 
+  /// The ways of paying the agency offers (`GET /payments/methods`).
+  Future<Result<PaymentMethods>> getPaymentMethods() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/payments/methods',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(PaymentMethods.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Replace the agency's bank and UPI details (`PUT /payment-profile`,
   /// needs `tenant:configure`). The server validates IFSC, account number
   /// and UPI ID and answers 422 with a readable message.

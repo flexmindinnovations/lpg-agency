@@ -143,3 +143,57 @@ class UpiQr {
 
   Uint8List get png => base64Decode(qrPngBase64);
 }
+
+/// One way of paying, as the agency offers it.
+class PaymentMethodOption {
+  const PaymentMethodOption({required this.code, required this.label});
+
+  factory PaymentMethodOption.fromJson(Map<String, dynamic> json) =>
+      PaymentMethodOption(
+        code: json['code'] as String,
+        label: json['label'] as String,
+      );
+
+  /// The backend's code (`cash`, `upi`, `online_gateway`, ...).
+  final String code;
+  final String label;
+}
+
+/// The ways of paying the agency offers (`GET /payments/methods`), worked out
+/// by the server from its UPI ID, bank details and connected gateway.
+class PaymentMethods {
+  const PaymentMethods({
+    required this.booking,
+    required this.delivery,
+    required this.office,
+  });
+
+  factory PaymentMethods.fromJson(Map<String, dynamic> json) {
+    List<PaymentMethodOption> options(String key) => [
+      for (final o in json[key] as List<dynamic>? ?? const [])
+        PaymentMethodOption.fromJson(o as Map<String, dynamic>),
+    ];
+    return PaymentMethods(
+      booking: options('booking'),
+      delivery: options('delivery'),
+      office: options('office'),
+    );
+  }
+
+  /// Cash only, for when the agency's set-up could not be read: cash needs no
+  /// provider, so it is always safe to offer.
+  static const cashOnly = PaymentMethods(
+    booking: [PaymentMethodOption(code: 'cash', label: 'Cash')],
+    delivery: [PaymentMethodOption(code: 'cash', label: 'Cash')],
+    office: [PaymentMethodOption(code: 'cash', label: 'Cash')],
+  );
+
+  /// What a customer may prefer when booking.
+  final List<PaymentMethodOption> booking;
+
+  /// What the driver may record at the door.
+  final List<PaymentMethodOption> delivery;
+
+  /// What the office may record against an invoice.
+  final List<PaymentMethodOption> office;
+}

@@ -9,7 +9,6 @@ import 'package:signature/signature.dart';
 
 import '../../../../providers.dart';
 import '../../data/orders_provider.dart';
-import '../../domain/order_flow.dart';
 
 /// Records the delivery for an order that is out for delivery: the code the
 /// customer reads out, what was handed over and collected, and the payment.
@@ -33,7 +32,22 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
     for (final l in widget.order.lines) l.quantityPending,
   ];
   late final List<int> _collected = [for (final _ in widget.order.lines) 0];
-  String _method = 'cash';
+  String _chosenMethod = 'cash';
+
+  /// What the agency has set up for payment at the door (UPI ID, connected
+  /// gateway, credit limit), straight from its payment configuration.
+  List<PaymentMethodOption> get _offeredMethods =>
+      (ref.read(paymentMethodsProvider).value ?? PaymentMethods.cashOnly)
+          .delivery;
+
+  /// The chosen method, or the first one offered if it is not offered.
+  String get _method {
+    final offered = _offeredMethods;
+    return offered.any((m) => m.code == _chosenMethod)
+        ? _chosenMethod
+        : offered.first.code;
+  }
+
   String? _error;
   String? _codeError;
   bool _busy = false;
@@ -218,6 +232,7 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
   Widget build(BuildContext context) {
     final text = context.lpgText;
     final names = ref.watch(cylinderNamesProvider).value ?? const {};
+    ref.watch(paymentMethodsProvider); // rebuild when it arrives
     final lines = widget.order.lines;
 
     return SingleChildScrollView(
@@ -286,11 +301,11 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
           LpgDropdownField<String>(
             label: 'Payment',
             value: _method,
-            items: paymentMethods,
+            items: {for (final m in _offeredMethods) m.code: m.label},
             onChanged: _busy
                 ? null
                 : (value) {
-                    if (value != null) setState(() => _method = value);
+                    if (value != null) setState(() => _chosenMethod = value);
                   },
           ),
           const SizedBox(height: LpgSpacing.md),

@@ -142,14 +142,6 @@ const failedDeliveryResolutions = {
   'return_stock': 'Return the stock',
 };
 
-/// Payment methods the office can record, keyed by backend code.
-const paymentMethods = {
-  'cash': 'Cash',
-  'upi': 'UPI',
-  'card': 'Card',
-  'credit': 'On credit',
-};
-
 /// Failure messages in the order page's words; [code] is the API error code.
 String? sendOutErrorMessage(String? code) => switch (code) {
   'INSUFFICIENT_STOCK' =>

@@ -7428,6 +7428,57 @@
         "title": "PaymentGatewayTestResponse",
         "type": "object"
       },
+      "PaymentMethodOptionResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "PaymentMethodOptionResponse",
+        "type": "object"
+      },
+      "PaymentMethodsResponse": {
+        "description": "The ways of paying this agency offers, from its own payment set-up.",
+        "properties": {
+          "booking": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentMethodOptionResponse"
+            },
+            "title": "Booking",
+            "type": "array"
+          },
+          "delivery": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentMethodOptionResponse"
+            },
+            "title": "Delivery",
+            "type": "array"
+          },
+          "office": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentMethodOptionResponse"
+            },
+            "title": "Office",
+            "type": "array"
+          }
+        },
+        "required": [
+          "booking",
+          "delivery",
+          "office"
+        ],
+        "title": "PaymentMethodsResponse",
+        "type": "object"
+      },
       "PaymentProfileResponse": {
         "properties": {
           "account_holder": {
@@ -22012,6 +22063,27 @@
           }
         },
         "summary": "Check an IFSC and a UPI ID before saving them",
+        "tags": [
+          "Payment Profile"
+        ]
+      }
+    },
+    "/api/v1/payments/methods": {
+      "get": {
+        "operationId": "list_payment_methods_api_v1_payments_methods_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentMethodsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Payment Methods",
         "tags": [
           "Payment Profile"
         ]

@@ -163,6 +163,8 @@ export type { PasswordForgotRequest } from './models/password-forgot-request';
 export type { PasswordResetRequest } from './models/password-reset-request';
 export type { PaymentGatewaySettingsResponse } from './models/payment-gateway-settings-response';
 export type { PaymentGatewayTestResponse } from './models/payment-gateway-test-response';
+export type { PaymentMethodOptionResponse } from './models/payment-method-option-response';
+export type { PaymentMethodsResponse } from './models/payment-methods-response';
 export type { PaymentProfileResponse } from './models/payment-profile-response';
 export type { PaymentResponse } from './models/payment-response';
 export type { PendingCancellationResponse } from './models/pending-cancellation-response';
