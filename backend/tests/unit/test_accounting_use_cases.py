@@ -244,6 +244,50 @@ class TestGenerateInvoiceForOrderUseCase:
         assert line.total_amount == Decimal("472.00")
         assert invoice.total_amount == Decimal("472.00")
 
+    async def test_bills_at_the_rate_the_order_was_quoted_with(
+        self,
+        mock_invoice_repo: MagicMock,
+        mock_order_repo: MagicMock,
+        mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
+    ) -> None:
+        """The order was quoted 5% (Rs 905.50 -> Rs 950.78); the cylinder type
+        has since moved to 18%. The invoice keeps the quoted 5% so it agrees
+        with what the customer was told to pay, and keeps the quoted basis
+        (exclusive) whatever the tenant setting says now.
+        """
+        line = _make_order_line(quantity_delivered=1, unit_price=Decimal("905.50"))
+        line.gst_rate_percent = Decimal("5.00")
+        order = _make_order(lines=[line])
+        order.prices_include_gst = False
+        mock_order_repo.get_by_id = AsyncMock(return_value=order)
+        include_entry = _make_tenant_config_entry("true")
+        include_entry.config_key = "prices_include_gst"
+        include_entry.effective_from = datetime(2020, 1, 1, tzinfo=UTC)
+        include_entry.effective_to = None
+        mock_tenant_config_repo.list_for_tenant_and_key = AsyncMock(
+            side_effect=lambda _t, key: [include_entry] if key == "prices_include_gst" else []
+        )
+        use_case = GenerateInvoiceForOrderUseCase(
+            invoice_repository=mock_invoice_repo,
+            order_repository=mock_order_repo,
+            tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(Decimal("18")),
+            tenant_repository=_tenant_repo(),
+        )
+        await use_case.execute(uuid.uuid4(), order.id, datetime.now(UTC))
+
+        invoice_line = mock_invoice_repo.add.call_args[0][0].lines[0]
+        assert invoice_line.gst_rate_percent == Decimal("5.00")
+        assert (invoice_line.subtotal, invoice_line.tax_amount, invoice_line.total_amount) == (
+            Decimal("905.50"),
+            Decimal("45.28"),
+            Decimal("950.78"),
+        )
+
     @pytest.mark.parametrize(
         ("flag", "subtotal", "tax", "total"),
         [

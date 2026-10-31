@@ -27,4 +27,6 @@ Not run: the cash path of a GST order (cash handed over then accepted), the Cust
 ## Still true after this change
 - Orders confirmed before this change have no GST snapshot, so their payable amount equals their total as before; the invoice still adds GST when it is issued. Only new and re-confirmed orders show the split.
 - The invoice resolves the GST rate when it is issued, not from the order's snapshot.
+## Dashboard (done 2026-10-31)
+The Angular dashboard now shows the amount to pay: the order page lists Price before GST, GST and Total to pay (an order priced before GST was recorded keeps "+ GST"); the order queue has a Total to pay column beside the price; the dispatch cards and the customer's order list show the payable amount. Tests in `order-detail.spec.ts`.
 

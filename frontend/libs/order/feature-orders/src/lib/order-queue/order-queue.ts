@@ -259,9 +259,18 @@ export class OrderQueue implements OnInit {
     },
     {
       field: 'total_amount',
-      header: 'Total (excl. GST)',
+      header: 'Price (excl. GST)',
       numeric: true,
       valueFormatter: (value) => (value ? formatCurrencyInr(value) : '—'),
+    },
+    {
+      field: 'payable_amount',
+      header: 'Total to pay',
+      numeric: true,
+      valueFormatter: (value, row) => {
+        const payable = value ?? row.total_amount;
+        return payable ? formatCurrencyInr(payable) : '—';
+      },
     },
   ];
 

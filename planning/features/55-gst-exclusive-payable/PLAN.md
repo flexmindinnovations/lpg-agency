@@ -14,6 +14,6 @@ Prices are GST-exclusive. GST is calculated and the customer pays price plus GST
 - The apps show the GST-inclusive amount wherever the customer is asked to pay or sees what they owe, and the split (price, GST, total) on the order screen.
 
 ## Out of scope
-- The Angular dashboard's order screens still show `total_amount`.
+- ~~The Angular dashboard's order screens still show `total_amount`.~~ Done 2026-10-31 (see STATUS).
 - The invoice keeps resolving the GST rate when it is issued rather than reading the order's snapshot; a rate changed between confirmation and delivery would make the two differ. Noted, not changed.
 - Partial deliveries: the amount to collect is for the quantities ordered, as the app already did.
