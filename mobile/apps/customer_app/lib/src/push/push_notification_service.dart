@@ -128,14 +128,8 @@ class PushNotificationService {
   }
 
   Future<void> _sendToken(String token) async {
-    final result = await _notificationApi.registerDevice(
-      token: token,
-      platform: _platform,
-    );
-    result.when(
-      onSuccess: (_) {},
-      onFailure: (_) {},
-    );
+    // Best effort: a failed registration is retried on the next app start.
+    await _notificationApi.registerDevice(token: token, platform: _platform);
   }
 
   Future<void> _showForeground(RemoteMessage message) async {
