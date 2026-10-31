@@ -214,3 +214,9 @@ logs/
 
 # One-off debug/fix scripts, not part of the build
 backend/scratch/
+
+# Local artifacts that must never be committed
+dump.rdb
+*.rdb
+*.tar.gz
+*.artifact.md
