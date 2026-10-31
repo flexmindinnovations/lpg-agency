@@ -137,6 +137,9 @@ class _FakeGateway:
         self.status = PaymentLinkStatus(link_id="", status="created")
         self.fail = False
 
+    async def verify_credentials(self) -> None:
+        return None
+
     async def create_payment_link(self, request: PaymentLinkRequest) -> PaymentLink:
         if self.fail:
             msg = "boom"

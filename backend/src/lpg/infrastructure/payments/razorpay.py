@@ -130,6 +130,9 @@ class RazorpayPaymentGateway:
         body: dict[str, Any] = response.json()
         return body
 
+    async def verify_credentials(self) -> None:
+        await self._request("GET", "/payment_links?count=1")
+
     async def create_payment_link(self, request: PaymentLinkRequest) -> PaymentLink:
         payload: dict[str, Any] = {
             "amount": to_paise(request.amount),

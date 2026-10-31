@@ -223,3 +223,33 @@ class OnlinePaymentModel(Base):
         DateTime(timezone=True), server_default=text("now()"), onupdate=text("now()")
     )
     version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+
+
+class PaymentGatewayCredentialModel(Base):
+    """An agency's own Razorpay credentials (ADR-067) — see `e3a7c1d9b5f2`.
+
+    The `*_encrypted` columns hold Fernet ciphertext; the audit hook redacts
+    them (`audit.py`), so the audit log records that a secret changed, never
+    its value or even its ciphertext.
+    """
+
+    __tablename__ = "payment_gateway_credential"
+    __table_args__ = {"schema": "accounting"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE"), unique=True
+    )
+    provider: Mapped[str] = mapped_column(String(), server_default=text("'razorpay'"))
+    key_id: Mapped[str] = mapped_column(String())
+    key_secret_encrypted: Mapped[str] = mapped_column(String())
+    webhook_secret_encrypted: Mapped[str | None] = mapped_column(String(), nullable=True)
+    webhook_token: Mapped[str] = mapped_column(String(), unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))

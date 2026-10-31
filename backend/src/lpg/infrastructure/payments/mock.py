@@ -25,6 +25,9 @@ class MockPaymentGateway:
     def __init__(self, *, public_base_url: str) -> None:
         self._public_base_url = public_base_url.rstrip("/")
 
+    async def verify_credentials(self) -> None:
+        return None
+
     async def create_payment_link(self, request: PaymentLinkRequest) -> PaymentLink:  # noqa: ARG002
         link_id = f"mock_{uuid.uuid4().hex[:16]}"
         return PaymentLink(

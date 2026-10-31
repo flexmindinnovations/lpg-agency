@@ -67,10 +67,24 @@ def _jsonable(value: object) -> object:
     return value
 
 
+#: A column whose name ends like this holds a secret (ciphertext). The audit
+#: trail records that it changed, never what it held.
+_REDACTED_SUFFIX = "_encrypted"
+_REDACTED = "[redacted]"
+
+
+def _audit_value(key: str, value: object) -> object:
+    if key.endswith(_REDACTED_SUFFIX) and value is not None:
+        return _REDACTED
+    return _jsonable(value)
+
+
 def _snapshot(obj: Base) -> dict[str, Any]:
     """Current values of every mapped column, as a JSON-able dict."""
     mapper = inspect(obj).mapper
-    return {column.key: _jsonable(getattr(obj, column.key)) for column in mapper.columns}
+    return {
+        column.key: _audit_value(column.key, getattr(obj, column.key)) for column in mapper.columns
+    }
 
 
 def _snapshot_before(obj: Base) -> dict[str, Any]:
@@ -86,7 +100,7 @@ def _snapshot_before(obj: Base) -> dict[str, Any]:
     for attr in state.mapper.column_attrs:
         history = state.attrs[attr.key].history
         if history.deleted:
-            result[attr.key] = _jsonable(history.deleted[0])
+            result[attr.key] = _audit_value(attr.key, history.deleted[0])
     return result
 
 

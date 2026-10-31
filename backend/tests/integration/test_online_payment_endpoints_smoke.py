@@ -86,12 +86,13 @@ async def client(
     monkeypatch.setenv("LPG_REDIS_URL", str(integration_settings.redis_url))
 
     from lpg.api.app import create_app
-    from lpg.api.v1.dependencies.payments import get_payment_gateway
+    from lpg.api.v1.dependencies.payments import get_payment_gateway, get_platform_gateway
     from lpg.config.settings import get_settings
 
     get_settings.cache_clear()
     app: FastAPI = create_app(integration_settings)
     app.dependency_overrides[get_payment_gateway] = lambda: gateway
+    app.dependency_overrides[get_platform_gateway] = lambda: gateway
     async with LifespanManager(app):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:

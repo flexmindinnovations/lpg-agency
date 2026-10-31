@@ -1549,6 +1549,21 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Amendment (2026-10-29):** The profile is now checked before it is trusted. `POST /payment-profile/verify` looks an IFSC up in Razorpay's public IFSC directory (keyless, not tied to the agency's account) and checks a UPI ID's handle against a list of known banks and apps; saving refuses an IFSC no branch holds, and does not block when the directory is unreachable. Confirming that a UPI ID or account exists, and whose it is, needs a payment-provider account and is deliberately not claimed. "Set up payments" is a step in the Home setup checklist (`payments`: a UPI ID or bank account is saved). Feature: `planning/features/51-payment-setup-verification`.
 
+## ADR-067: Per-Agency Razorpay Credentials
+
+**Status:** Accepted
+
+**Context:** ADR-053 read one Razorpay key pair and webhook secret from server environment variables. The platform is multi-agency and each agency collects into its own Razorpay account, so a single environment key sends every agency's money to one account and cannot be edited per agency without a deploy.
+
+**Decision:**
+- Each agency saves its own key id, key secret and webhook secret in `accounting.payment_gateway_credential` (one row per tenant, row-level security like every tenant table). Agency admins (`tenant:configure`) edit them in Settings > Online Payments.
+- Secrets are Fernet-encrypted at rest with the existing `LPG_KYC_ENCRYPTION_KEY` (already provisioned in every non-local environment), so no new server secret is needed. They are write-only: the API returns a masked key id, `rzp_test_`/`rzp_live_` mode and "is set" flags, never a secret. The audit hook redacts `*_encrypted` columns, so the audit log records who changed credentials and when, not their values.
+- Payment-link creation, refresh, availability, the UPI QR order quote and the WhatsApp assistant resolve the gateway per tenant: the agency's own key if saved, else the platform default (`LPG_RAZORPAY_*` or the demo gateway). Existing deployments keep working unchanged.
+- Each agency has its own webhook URL, `POST /payments/razorpay/webhook/{token}`. The opaque token (24 random bytes, unique, rotatable) maps to the tenant through the `SECURITY DEFINER` function `accounting.payment_credential_resolve_tenant`, then that agency's own webhook secret verifies the signature. An event whose `notes.tenant_id` differs from the token's tenant is ignored, so one agency's secret can never settle another's payments. The old shared URL still serves agencies on the platform account.
+- Agency test keys (`rzp_test_`) are accepted in any environment and shown as "Test mode" in the dashboard: they cannot move money, and an agency trying the integration is the normal path. The server-level `LPG_PAYMENTS_ALLOW_TEST_KEYS` guard for the platform key (PR #93) is unchanged.
+
+**Consequences:** Agencies onboard themselves to Razorpay without a deploy. Losing `LPG_KYC_ENCRYPTION_KEY` now also loses saved Razorpay secrets (agencies re-enter them). A payment link created under one account is refreshed with whichever account the agency has at that moment, so changing keys while links are open leaves those links unrefreshable until they expire. Feature: `planning/features/54-per-agency-razorpay`.
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1615,6 +1630,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 064 | Standard dashboard page layout (amends 063) | Accepted |
 | 065 | Incremental deploy pipeline | Accepted |
 | 066 | Payment profile, UPI QR and cash controls | Accepted |
+| 067 | Per-agency Razorpay credentials | Accepted |
 
 ## Deferred Decisions
 

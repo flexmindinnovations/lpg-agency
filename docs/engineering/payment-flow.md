@@ -10,6 +10,8 @@ Customer, Delivery Driver, Accountant/Cashier, Payment Gateway (external), Syste
 
 > **Implemented 2026-10-17 (ADR-053)** with Razorpay payment links. Prepayment is possible once the order is confirmed (prices fixed) and is held as an `OnlinePayment`, then applied to the invoice generated at delivery — the "advance against the invoice" option recommended in the gap below.
 
+> **Per-agency accounts (ADR-067, 2026-10-31).** Each agency saves its own Razorpay key id, key secret and webhook secret in Settings > Online Payments; payment links, refresh and the WhatsApp assistant use that agency's account, falling back to the platform-wide `LPG_RAZORPAY_*` keys (or the demo gateway) when none is saved. Each agency registers its own webhook URL, `/api/v1/payments/razorpay/webhook/{token}` (shown on that page), verified with that agency's webhook secret.
+
 1. Customer selects "Pay Online" during booking (`workflows/customer-booking.md` step 6).
 2. System redirects to/invokes the integrated Payment Gateway.
 3. Customer completes payment via the gateway's supported methods.
