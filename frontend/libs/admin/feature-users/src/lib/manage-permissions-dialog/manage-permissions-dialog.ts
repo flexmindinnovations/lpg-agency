@@ -186,7 +186,9 @@ export class ManagePermissionsDialogComponent {
       if (!map.has(moduleName)) {
         map.set(moduleName, []);
       }
-      map.get(moduleName)!.push(p);
+      const bucket = map.get(moduleName) ?? [];
+      bucket.push(p);
+      map.set(moduleName, bucket);
     }
     map.forEach((permissions, module) => {
       groups.push({ module, permissions });
@@ -220,7 +222,7 @@ export class ManagePermissionsDialogComponent {
         this.availablePermissions.set(allPerms);
 
         // Create form controls for each permission
-        const group: Record<string, any> = {};
+        const group: Record<string, [boolean]> = {};
         allPerms.forEach((perm) => {
           group[perm] = [false];
         });
@@ -260,7 +262,7 @@ export class ManagePermissionsDialogComponent {
     // Extract selected permissions
     const formValue = this.form.getRawValue();
     const selectedPermissions = Object.keys(formValue).filter(
-      (key) => (formValue as Record<string, any>)[key] === true,
+      (key) => (formValue as Record<string, boolean>)[key] === true,
     );
 
     this.staffUserService.updateUserPermissions(this.userId(), selectedPermissions).subscribe({

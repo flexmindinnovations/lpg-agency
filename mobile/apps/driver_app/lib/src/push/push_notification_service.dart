@@ -125,8 +125,8 @@ class PushNotificationService {
   Future<String?> _tokenOrNull() async {
     try {
       return await FirebaseMessaging.instance.getToken();
-    } catch (e) {
-      debugPrint('push: could not read FCM token ($e)');
+    } catch (_) {
+      // Best effort: nothing to show the user for this failure.
       return null;
     }
   }
@@ -138,8 +138,7 @@ class PushNotificationService {
     );
     result.when(
       onSuccess: (_) {},
-      onFailure: (f) =>
-          debugPrint('push: device registration failed: ${f.message}'),
+      onFailure: (_) {},
     );
   }
 

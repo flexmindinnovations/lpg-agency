@@ -197,10 +197,11 @@ test.describe('Order to delivery — full workflow', () => {
 
     const signaturePad = page.locator('.signature-pad');
     const box = await signaturePad.boundingBox();
-    if (!box) throw new Error('Signature pad did not render.');
-    await page.mouse.move(box.x + 20, box.y + 20);
+    expect(box, 'Signature pad did not render.').not.toBeNull();
+    const pad = box as NonNullable<typeof box>;
+    await page.mouse.move(pad.x + 20, pad.y + 20);
     await page.mouse.down();
-    await page.mouse.move(box.x + box.width - 20, box.y + box.height - 20, { steps: 5 });
+    await page.mouse.move(pad.x + pad.width - 20, pad.y + pad.height - 20, { steps: 5 });
     await page.mouse.up();
     await page.getByRole('button', { name: 'Save Signature' }).click();
     await expect(page.getByText('Saved')).toBeVisible();

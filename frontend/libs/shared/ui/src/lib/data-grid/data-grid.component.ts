@@ -15,6 +15,7 @@ import type {
   GridApi,
   GridOptions,
   GridReadyEvent,
+  SelectionChangedEvent,
   GridSizeChangedEvent,
 } from 'ag-grid-community';
 import { ButtonDirective } from 'primeng/button';
@@ -478,7 +479,11 @@ export class DataGridComponent<TRow = unknown> {
       type: column.numeric ? 'numericColumn' : undefined,
       cellClass:
         typeof column.cellClass === 'function'
-          ? (params) => (column.cellClass as any)(params.value, params.data)
+          ? (params) =>
+              (column.cellClass as (value: unknown, row: unknown) => string)(
+                params.value,
+                params.data,
+              )
           : column.cellClass,
       valueFormatter: column.valueFormatter
         ? (params) => column.valueFormatter?.(params.value, params.data as TRow) ?? ''
@@ -643,7 +648,7 @@ export class DataGridComponent<TRow = unknown> {
     });
   }
 
-  protected onSelectionChanged(event: any): void {
+  protected onSelectionChanged(event: SelectionChangedEvent): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectionChange.emit(selectedRows as TRow[]);
   }

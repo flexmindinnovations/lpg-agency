@@ -125,7 +125,7 @@ export class NotificationService {
       switch (message.type) {
         case 'notification.new':
           this.adjustUnreadCount(1);
-          this.arrivedSubject.next(message as NewNotificationMessage);
+          this.arrivedSubject.next(message as unknown as NewNotificationMessage);
           this.changedSubject.next();
           break;
         case 'notification.read':
@@ -151,9 +151,8 @@ export class NotificationService {
       // Deliberately silent, not a toast — this is a background poll (every
       // few minutes, see NotificationBell), and a toast on every transient
       // network blip would be worse than the badge just staying stale.
-      // Logged rather than left fully uncaught, which otherwise threw an
-      // async error into the console on every failed poll.
-      error: (err) => console.debug('refreshUnreadCount failed', err),
+      // The handler exists so a failed poll is not left uncaught.
+      error: () => undefined,
     });
   }
 

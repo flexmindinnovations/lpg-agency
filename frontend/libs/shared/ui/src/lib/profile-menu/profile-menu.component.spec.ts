@@ -47,11 +47,12 @@ describe('ProfileMenuComponent', () => {
 
     const menu = document.body.querySelector('[role="menu"]');
     expect(menu).not.toBeNull();
+    const menuEl = menu as HTMLElement;
     const items = Array.from(
-      menu!.querySelectorAll('[role="menuitem"], [role="menuitemradio"]'),
+      menuEl.querySelectorAll('[role="menuitem"], [role="menuitemradio"]'),
     ).map((el) => el.getAttribute('aria-label') ?? el.textContent?.trim());
     expect(items).toEqual(['System', 'Light', 'Dark', 'High contrast', 'Sign Out']);
-    expect(menu!.textContent).not.toContain('My Profile');
+    expect(menuEl.textContent).not.toContain('My Profile');
   });
 
   it('emits signOut when the Sign Out item is activated', () => {

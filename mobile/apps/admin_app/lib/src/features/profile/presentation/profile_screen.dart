@@ -96,8 +96,8 @@ class ProfileScreen extends ConsumerWidget {
                 // sign-out itself.
                 try {
                   await ref.read(pushNotificationServiceProvider).unregister();
-                } catch (e) {
-                  debugPrint('logout: push cleanup failed ($e)');
+                } catch (_) {
+                  // Best effort: nothing to show the user for this failure.
                 } finally {
                   await ref.read(authControllerProvider).logout();
                 }
