@@ -1,6 +1,22 @@
 {$SITE_ADDRESS::80} {
 	encode zstd gzip
 
+	# Security headers (OWASP Secure Headers). HSTS is ignored over plain HTTP
+	# and applies once SITE_ADDRESS is a domain served over HTTPS. The CSP keeps
+	# to directives that cannot break the Angular bundle (framing, <base>,
+	# plugins, form targets); a script-src policy needs the production build's
+	# inline critical-CSS handlers removed first - tracked in the security report.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(), geolocation=(self), payment=(), usb=()"
+		Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'"
+		Cross-Origin-Opener-Policy "same-origin"
+		-Server
+	}
+
 	# No `log` directive on purpose: Caddy writes no access log, so no URL
 	# (query string included) is ever recorded here. If access logs are
 	# turned on, filter credentials out of the query, e.g.
@@ -9,6 +25,10 @@
 	# older app builds still do during the transition.
 	@backend path /api/* /health/*
 	handle @backend {
+		# Uploads are capped at 10 MB by the API; refuse larger bodies early.
+		request_body {
+			max_size 12MB
+		}
 		reverse_proxy backend:8000
 	}
 
