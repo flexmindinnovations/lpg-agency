@@ -33,6 +33,31 @@ final class KycApi {
     }
   }
 
+  /// Staff only: marks a customer's document verified, or rejected with a
+  /// [reason] (`POST /customers/{id}/kyc/{docId}/verify`). Needs
+  /// `kyc:manage`; the backend refuses a customer-role caller outright.
+  Future<Result<void>> verifyDocument(
+    String customerId,
+    String documentId, {
+    required bool verified,
+    String? reason,
+  }) async {
+    try {
+      await _dio.post<dynamic>(
+        '/api/v1/customers/$customerId/kyc/$documentId/verify',
+        data: {
+          'status': verified ? 'verified' : 'rejected',
+          'rejection_reason': ?reason,
+        },
+      );
+      return const Success(null);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Pre-upload a document image, returning an opaque `blobRef` to pass to
   /// [recognizeDocument] and/or [submitDocument]. Deliberately
   /// customer-agnostic server-side (staged under a tenant key, not a

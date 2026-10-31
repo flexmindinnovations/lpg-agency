@@ -410,3 +410,54 @@ class ComplianceDocument {
     ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
   }
 }
+
+/// Which status each status may move to, as the server enforces it
+/// (`GET /inventory/status-transitions`), so the app never offers a move
+/// that would be refused. [statusChange] is for ordinary moves (filled to
+/// leaking); [adjustment] for manual corrections.
+class StatusTransitions {
+  const StatusTransitions({
+    required this.statusChange,
+    required this.adjustment,
+  });
+
+  factory StatusTransitions.fromJson(Map<String, dynamic> json) {
+    Map<String, List<String>> read(Object? raw) => {
+      for (final e in (raw as Map<String, dynamic>? ?? const {}).entries)
+        e.key: [for (final v in e.value as List<dynamic>) v as String],
+    };
+    return StatusTransitions(
+      statusChange: read(json['status_change']),
+      adjustment: read(json['adjustment']),
+    );
+  }
+
+  final Map<String, List<String>> statusChange;
+  final Map<String, List<String>> adjustment;
+}
+
+/// Cylinders sent back to an oil company's plant, mirroring
+/// `OmcReturnResponse`.
+class OmcReturn {
+  const OmcReturn({
+    required this.id,
+    required this.returnNumber,
+    required this.quantity,
+    required this.status,
+    required this.destinationOmc,
+  });
+
+  factory OmcReturn.fromJson(Map<String, dynamic> json) => OmcReturn(
+    id: json['id'] as String,
+    returnNumber: json['return_number'] as String,
+    quantity: (json['quantity'] as num).toInt(),
+    status: json['status'] as String,
+    destinationOmc: json['destination_omc'] as String,
+  );
+
+  final String id;
+  final String returnNumber;
+  final int quantity;
+  final String status;
+  final String destinationOmc;
+}

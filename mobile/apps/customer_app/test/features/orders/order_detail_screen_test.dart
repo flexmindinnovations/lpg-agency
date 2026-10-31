@@ -13,6 +13,8 @@ import '../../support/pump_screen.dart';
 OrderResponse _order({
   String status = 'confirmed',
   double? totalAmount = 999,
+  double? taxAmount,
+  double? payableAmount,
 }) => OrderResponse(
   id: 'abcdef01aaaabbbb',
   orderNumber: 'ORD000042',
@@ -28,6 +30,8 @@ OrderResponse _order({
   requestedDate: DateTime(2026, 8, 20, 10, 30),
   metadata: const {},
   totalAmount: totalAmount,
+  taxAmount: taxAmount,
+  payableAmount: payableAmount,
   lines: [
     OrderLineResponse(
       id: 'l1',
@@ -128,6 +132,37 @@ void main() {
 
       expect(find.text('Domestic 14.2kg × 2'), findsOneWidget);
       expect(find.text('₹999.00'), findsWidgets);
+    });
+
+    testWidgets('shows the price, the GST and what the customer pays', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        _screen(
+          order: _order(
+            totalAmount: 905.5,
+            taxAmount: 45.28,
+            payableAmount: 950.78,
+          ),
+        ),
+      );
+
+      expect(find.text('Price'), findsOneWidget);
+      expect(find.text('₹905.50'), findsOneWidget);
+      expect(find.text('GST'), findsOneWidget);
+      expect(find.text('₹45.28'), findsOneWidget);
+      expect(find.text('You pay'), findsOneWidget);
+      expect(find.text('₹950.78'), findsOneWidget);
+    });
+
+    testWidgets('an order priced before GST was recorded keeps "+ GST"', (
+      tester,
+    ) async {
+      await pumpScreen(tester, _screen(order: _order(totalAmount: 905.5)));
+
+      expect(find.text('You pay'), findsNothing);
+      expect(find.text('₹905.50 + GST'), findsOneWidget);
     });
 
     testWidgets('estimates the total before the agency prices it (CA-06)', (

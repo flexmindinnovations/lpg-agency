@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Thin interface over a live socket connection — the seam that makes
@@ -16,7 +18,12 @@ abstract interface class RealtimeSocket {
 }
 
 final class _WebSocketChannelSocket implements RealtimeSocket {
-  _WebSocketChannelSocket(this._channel);
+  _WebSocketChannelSocket(this._channel) {
+    // A connection that cannot be made fails `ready` as well as the stream.
+    // The client already handles the stream's error and reconnects; with no
+    // listener on `ready` the same failure escapes as an unhandled exception.
+    unawaited(_channel.ready.then<void>((_) {}, onError: (Object _) {}));
+  }
 
   final WebSocketChannel _channel;
 

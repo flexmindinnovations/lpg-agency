@@ -271,13 +271,16 @@ class _SummaryCard extends StatelessWidget {
             icon: LpgIcons.cylinder,
             text: '$cylinders cylinder${cylinders == 1 ? '' : 's'}',
           ),
-          if (order.totalAmount != null &&
+          if (order.amountToPay != null &&
               _collectStatuses.contains(order.status)) ...[
             const SizedBox(height: LpgSpacing.smd),
             _DetailRow(
               icon: LpgIcons.cash,
               tone: LpgTone.accent,
-              text: 'Collect ${LpgFormat.currency(order.totalAmount!)}',
+              text: order.taxAmount == null
+                  ? 'Collect ${LpgFormat.currency(order.amountToPay!)}'
+                  : 'Collect ${LpgFormat.currency(order.amountToPay!)} '
+                        '(includes GST ${LpgFormat.currency(order.taxAmount!)})',
             ),
           ],
         ],

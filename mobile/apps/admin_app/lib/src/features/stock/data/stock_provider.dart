@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api_result.dart';
@@ -56,3 +57,35 @@ final pendingCountsProvider =
             .listReconciliations('warehouse', godownId, state: 'pending'),
       );
     });
+
+/// The moves the server allows between statuses.
+final statusTransitionsProvider = FutureProvider<StatusTransitions>((
+  ref,
+) async {
+  return unwrap(await ref.watch(fleetApiProvider).getStatusTransitions());
+});
+
+/// Certified scales in service at a godown, for logging a receipt sample.
+/// A role that may not weigh gets an empty list rather than an error.
+final receiptScalesProvider = FutureProvider.family<List<ScaleSummary>, String>(
+  (ref, godownId) async {
+    final result = await ref.watch(weighmentApiProvider).listActiveScales();
+    return switch (result) {
+      Success<List<ScaleSummary>>(:final value) => [
+        for (final s in value)
+          if (s.warehouseId == godownId) s,
+      ],
+      _ => const <ScaleSummary>[],
+    };
+  },
+);
+
+/// What a van is carrying, one line per cylinder type and status.
+final vanStockProvider = FutureProvider.family<List<StockBalanceLine>, String>((
+  ref,
+  vanId,
+) async {
+  return unwrap(
+    await ref.watch(fleetApiProvider).getBalanceLines('vehicle', vanId),
+  );
+});

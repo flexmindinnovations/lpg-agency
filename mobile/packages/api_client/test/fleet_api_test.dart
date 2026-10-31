@@ -597,4 +597,99 @@ void main() {
       );
     });
   });
+  group('FleetApi stock moves', () {
+    test('getStatusTransitions reads the allowed moves', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/inventory/status-transitions');
+        return jsonResponse({
+          'status_change': {
+            'filled': ['leakage', 'damaged'],
+          },
+          'adjustment': {
+            'empty': ['filled'],
+          },
+        }, 200);
+      });
+
+      final result = await FleetApi(client.dio).getStatusTransitions();
+
+      final t = result.when(onSuccess: (t) => t, onFailure: (_) => null)!;
+      expect(t.statusChange['filled'], ['leakage', 'damaged']);
+      expect(t.adjustment['empty'], ['filled']);
+    });
+
+    test('changeStatus and adjustStock post to their own routes', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      final seen = <String>[];
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        seen.add('${options.method} ${options.path}');
+        return jsonResponse({'balances': <Object>[]}, 201);
+      });
+      final api = FleetApi(client.dio);
+
+      await api.changeStatus(
+        'warehouse',
+        'w-1',
+        cylinderTypeId: 'c-1',
+        fromStatus: 'filled',
+        toStatus: 'leakage',
+        quantity: 2,
+      );
+      await api.adjustStock(
+        'warehouse',
+        'w-1',
+        cylinderTypeId: 'c-1',
+        fromStatus: 'empty',
+        toStatus: 'filled',
+        quantity: 1,
+        reason: 'Miscounted at receipt',
+      );
+
+      expect(seen, [
+        'POST /api/v1/inventory-locations/warehouse/w-1/status-changes',
+        'POST /api/v1/inventory-locations/warehouse/w-1/adjustments',
+      ]);
+    });
+
+    test('returnToOmc names the plant and what is going back', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/warehouses/w-1/omc-returns');
+        expect(options.data, {
+          'cylinder_type_id': 'c-1',
+          'quantity': 20,
+          'destination_omc': 'iocl',
+          'status': 'empty',
+          'truck_number': 'MH12AB1234',
+        });
+        return jsonResponse({
+          'id': 'r-1',
+          'return_number': 'OMR-2026-000003',
+          'warehouse_id': 'w-1',
+          'cylinder_type_id': 'c-1',
+          'status': 'empty',
+          'quantity': 20,
+          'destination_omc': 'iocl',
+          'challan_number': null,
+          'truck_number': 'MH12AB1234',
+          'dispatched_by': 'u-1',
+          'dispatched_at': '2026-10-30T09:00:00Z',
+        }, 201);
+      });
+
+      final result = await FleetApi(client.dio).returnToOmc(
+        'w-1',
+        cylinderTypeId: 'c-1',
+        quantity: 20,
+        destinationOmc: 'iocl',
+        truckNumber: 'MH12AB1234',
+      );
+
+      expect(
+        result.when(onSuccess: (r) => r.returnNumber, onFailure: (_) => null),
+        'OMR-2026-000003',
+      );
+    });
+  });
 }

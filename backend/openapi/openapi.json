@@ -6712,6 +6712,18 @@
             "title": "Cylinder Type Id",
             "type": "string"
           },
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -6895,6 +6907,18 @@
             ],
             "title": "Order Number"
           },
+          "payable_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payable Amount"
+          },
           "payment_method_preference": {
             "anyOf": [
               {
@@ -6945,6 +6969,18 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "tax_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Amount"
           },
           "tenant_id": {
             "format": "uuid",
@@ -20985,7 +21021,7 @@
     },
     "/api/v1/orders/{order_id}/confirm": {
       "post": {
-        "description": "`booked -> confirmed`. Resolves and snapshots unit prices.\n\n409 `CYLINDER_CAP_EXCEEDED` (BR-04) or `CREDIT_LIMIT_EXCEEDED` (BR-19)\nwhen the tenant's configured `cylinder_holding_cap` /\n`credit_limit_default` for the customer's type would be exceeded.",
+        "description": "`booked -> confirmed`. Resolves and snapshots unit prices and GST.\n\n409 `CYLINDER_CAP_EXCEEDED` (BR-04) or `CREDIT_LIMIT_EXCEEDED` (BR-19)\nwhen the tenant's configured `cylinder_holding_cap` /\n`credit_limit_default` for the customer's type would be exceeded.",
         "operationId": "confirm_order_api_v1_orders__order_id__confirm_post",
         "parameters": [
           {

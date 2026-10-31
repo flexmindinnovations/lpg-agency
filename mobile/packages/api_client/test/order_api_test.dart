@@ -480,4 +480,108 @@ void main() {
       expect(result, isA<Success<OrderResponse>>());
     });
   });
+  group('OrderApi proof of delivery', () {
+    test('reads the collected amount, the place and the photo links', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        expect(options.path, '/api/v1/orders/o-1/proof-of-delivery');
+        return jsonResponse({
+          'id': 'p-1',
+          'tenant_id': 't',
+          'order_id': 'o-1',
+          'otp_verified_at': '2026-10-30T09:00:00Z',
+          'gps_lat': '18.5204',
+          'gps_lng': '73.8567',
+          'payment_method': 'cash',
+          'amount_collected': '905.50',
+          'recorded_by': 'u-1',
+          'recorded_at': '2026-10-30T09:01:00Z',
+          'dac_code': '123456',
+          'signature_url': 'https://files.test/sig.png',
+          'photo_url': null,
+        }, 200);
+      });
+
+      final result = await OrderApi(client.dio).getProofOfDelivery('o-1');
+
+      final pod = result.when(onSuccess: (p) => p, onFailure: (_) => null)!;
+      expect(pod.amountCollected, 905.5);
+      expect(pod.paymentMethod, 'cash');
+      expect(pod.gpsLat, 18.5204);
+      expect(pod.dacCode, '123456');
+      expect(pod.signatureUrl, 'https://files.test/sig.png');
+      expect(pod.photoUrl, isNull);
+    });
+
+    test('an order not yet delivered has no record', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => ResponseBody.fromString(
+          'null',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        ),
+      );
+
+      final result = await OrderApi(client.dio).getProofOfDelivery('o-1');
+
+      expect(
+        result.when(onSuccess: (p) => p == null, onFailure: (_) => false),
+        isTrue,
+      );
+    });
+  });
+  group('OrderResponse GST', () {
+    Map<String, dynamic> order({
+      Object? tax = '45.28',
+      Object? payable = '950.78',
+    }) => {
+      'id': 'o-1',
+      'tenant_id': 't',
+      'branch_id': 'b',
+      'customer_id': 'c',
+      'address_id': 'a',
+      'delivery_address': {'address_line': '12 MG Road'},
+      'status': 'confirmed',
+      'booking_source': 'staff',
+      'requested_date': '2026-10-30T00:00:00Z',
+      'metadata': <String, dynamic>{},
+      'total_amount': '905.50',
+      'tax_amount': ?tax,
+      'payable_amount': ?payable,
+      'lines': [
+        {
+          'id': 'l-1',
+          'cylinder_type_id': 'c-1',
+          'quantity_ordered': 1,
+          'quantity_delivered': 0,
+          'quantity_pending': 0,
+          'quantity_collected_empty': 0,
+          'is_backordered': false,
+          'unit_price': '905.50',
+          'gst_rate_percent': '5.00',
+        },
+      ],
+    };
+
+    test('reads the price, the GST on it and what the customer pays', () {
+      final o = OrderResponse.fromJson(order());
+
+      expect(o.totalAmount, 905.5);
+      expect(o.taxAmount, 45.28);
+      expect(o.payableAmount, 950.78);
+      expect(o.amountToPay, 950.78);
+      expect(o.lines.single.gstRatePercent, 5);
+    });
+
+    test('an answer without the new fields still has an amount to pay', () {
+      final o = OrderResponse.fromJson(order(tax: null, payable: null));
+
+      expect(o.taxAmount, isNull);
+      expect(o.payableAmount, isNull);
+      expect(o.amountToPay, 905.5);
+    });
+  });
 }

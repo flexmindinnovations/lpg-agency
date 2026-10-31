@@ -6,10 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../api_result.dart';
 import '../../../shared/metric_tile.dart';
 import '../../orders/data/orders_provider.dart';
+import '../../fleet/data/fleet_providers.dart';
 import '../data/stock_provider.dart';
 import 'count_review_sheet.dart';
 import 'count_stock_sheet.dart';
 import 'receive_stock_sheet.dart';
+import 'stock_move_sheets.dart';
 import 'stock_presentation.dart';
 
 /// What a godown holds right now: filled cylinders per type with whatever
@@ -41,6 +43,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     ref.invalidate(reorderSignalsProvider);
     ref.invalidate(godownMovementsProvider);
     ref.invalidate(pendingCountsProvider);
+    ref.invalidate(vanStockProvider);
   }
 
   Future<void> _receive(FleetWarehouse godown) async {
@@ -55,6 +58,52 @@ class _StockScreenState extends ConsumerState<StockScreen> {
       context,
       '${received.quantity} cylinders received'
       '${received.grnNumber == null ? '' : ' · ${received.grnNumber}'}',
+      tone: LpgTone.success,
+    );
+    final sampled = await LpgFeedback.showSheet<bool>(
+      context,
+      title: 'Weigh a sample',
+      builder: (_) => ReceiptSampleSheet(godown: godown, receipt: received),
+    );
+    if (sampled == true && mounted) {
+      LpgFeedback.showToast(context, 'Sample saved.', tone: LpgTone.success);
+    }
+  }
+
+  Future<void> _move(
+    FleetWarehouse godown,
+    List<StockBalanceLine> lines, {
+    required bool correction,
+  }) async {
+    final moved = await LpgFeedback.showSheet<bool>(
+      context,
+      title: correction ? 'Correct stock' : 'Change status',
+      builder: (_) =>
+          MoveStockSheet(godown: godown, lines: lines, correction: correction),
+    );
+    if (moved != true || !mounted) return;
+    _reload();
+    LpgFeedback.showToast(
+      context,
+      correction ? 'Correction saved.' : 'Stock moved.',
+      tone: LpgTone.success,
+    );
+  }
+
+  Future<void> _returnToOmc(
+    FleetWarehouse godown,
+    List<StockBalanceLine> lines,
+  ) async {
+    final sent = await LpgFeedback.showSheet<OmcReturn>(
+      context,
+      title: 'Return to OMC',
+      builder: (_) => ReturnToOmcSheet(godown: godown, lines: lines),
+    );
+    if (sent == null || !mounted) return;
+    _reload();
+    LpgFeedback.showToast(
+      context,
+      '${sent.quantity} cylinders sent back · ${sent.returnNumber}',
       tone: LpgTone.success,
     );
   }
@@ -148,6 +197,9 @@ class _StockScreenState extends ConsumerState<StockScreen> {
               onReceive: () => _receive(godown),
               onCount: (lines) => _count(godown, lines),
               onReview: (count) => _review(godown, count),
+              onMove: (lines, correction) =>
+                  _move(godown, lines, correction: correction),
+              onReturn: (lines) => _returnToOmc(godown, lines),
             );
           },
         ),
@@ -164,6 +216,8 @@ class _GodownStock extends ConsumerWidget {
     required this.onReceive,
     required this.onCount,
     required this.onReview,
+    required this.onMove,
+    required this.onReturn,
   });
 
   final List<FleetWarehouse> godowns;
@@ -172,6 +226,8 @@ class _GodownStock extends ConsumerWidget {
   final VoidCallback onReceive;
   final ValueChanged<List<StockBalanceLine>> onCount;
   final ValueChanged<ReconciliationRecord> onReview;
+  final void Function(List<StockBalanceLine> lines, bool correction) onMove;
+  final ValueChanged<List<StockBalanceLine>> onReturn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -217,9 +273,13 @@ class _GodownStock extends ConsumerWidget {
               low: low,
               onReceive: onReceive,
               onCount: () => onCount(lines),
+              onMove: (correction) => onMove(lines, correction),
+              onReturn: () => onReturn(lines),
             );
           },
         ),
+        const SectionHeading('On the vans', topGap: LpgSpacing.lg),
+        _OnVans(branchId: godown.branchId, names: names),
         const SectionHeading(
           'Counts waiting for approval',
           topGap: LpgSpacing.lg,
@@ -241,6 +301,8 @@ class _Holdings extends StatelessWidget {
     required this.low,
     required this.onReceive,
     required this.onCount,
+    required this.onMove,
+    required this.onReturn,
   });
 
   final FleetWarehouse godown;
@@ -249,6 +311,8 @@ class _Holdings extends StatelessWidget {
   final List<ReorderSignal> low;
   final VoidCallback onReceive;
   final VoidCallback onCount;
+  final ValueChanged<bool> onMove;
+  final VoidCallback onReturn;
 
   @override
   Widget build(BuildContext context) {
@@ -367,6 +431,32 @@ class _Holdings extends StatelessWidget {
                 ),
             ],
           ),
+        const SectionHeading('Other stock actions', topGap: LpgSpacing.lg),
+        LpgGroupedList(
+          children: [
+            LpgListTile(
+              leadingIcon: LpgIcons.history,
+              title: 'Change status',
+              subtitle: 'Filled to leaking, damaged to scrap',
+              showChevron: true,
+              onTap: () => onMove(false),
+            ),
+            LpgListTile(
+              leadingIcon: LpgIcons.edit,
+              title: 'Correct stock',
+              subtitle: 'Fix a mistake in the books, with a reason',
+              showChevron: true,
+              onTap: () => onMove(true),
+            ),
+            LpgListTile(
+              leadingIcon: LpgIcons.upload,
+              title: 'Return to OMC',
+              subtitle: 'Empties or defective cylinders back to the plant',
+              showChevron: true,
+              onTap: onReturn,
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -482,6 +572,96 @@ class _Movements extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// What each of the branch's vans is carrying now, so the office can see
+/// stock that has left the godown but is not yet delivered.
+class _OnVans extends ConsumerWidget {
+  const _OnVans({required this.branchId, required this.names});
+
+  final String branchId;
+  final Map<String, String> names;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = context.lpgText;
+    final colors = context.lpgColors;
+    final vans = ref.watch(fleetVehiclesProvider);
+
+    return vans.when(
+      loading: () => const LpgSkeleton(height: 72),
+      error: (_, _) => Text(
+        'Could not load the vans.',
+        style: text.bodyMedium?.copyWith(color: colors.statusDanger),
+      ),
+      data: (all) {
+        final here = [
+          for (final v in all)
+            if (v.isActive && v.branchId == branchId) v,
+        ];
+        if (here.isEmpty) {
+          return Text(
+            'No active van in this branch.',
+            style: text.bodyMedium?.copyWith(color: colors.textSecondary),
+          );
+        }
+        return LpgGroupedList(
+          children: [for (final v in here) _VanStockTile(van: v, names: names)],
+        );
+      },
+    );
+  }
+}
+
+class _VanStockTile extends ConsumerWidget {
+  const _VanStockTile({required this.van, required this.names});
+
+  final FleetVehicle van;
+  final Map<String, String> names;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = context.lpgText;
+    final colors = context.lpgColors;
+    final stock = ref.watch(vanStockProvider(van.id));
+
+    final lines = stock.value ?? const <StockBalanceLine>[];
+    final types = groupByCylinderType(lines, names.keys.toList());
+    final filled = types.fold<int>(0, (n, t) => n + t.filled);
+    final others = types.fold<int>(
+      0,
+      (n, t) => n + t.others.fold<int>(0, (m, o) => m + o.value),
+    );
+
+    return LpgListTile(
+      leadingIcon: LpgIcons.van,
+      title: van.registrationNumber,
+      subtitle: stock.isLoading
+          ? 'Checking…'
+          : stock.hasError
+          ? 'Could not load'
+          : types.isEmpty
+          ? 'Nothing on board'
+          : [
+              for (final t in types)
+                '${names[t.cylinderTypeId] ?? 'Cylinder'} ${t.filled}',
+              if (others > 0) '$others empty or other',
+            ].join(' · '),
+      trailing: stock.hasValue && types.isNotEmpty
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('$filled', style: text.titleMedium),
+                Text(
+                  'filled',
+                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                ),
+              ],
+            )
+          : null,
     );
   }
 }

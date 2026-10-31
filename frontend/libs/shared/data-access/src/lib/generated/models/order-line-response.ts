@@ -3,6 +3,7 @@
 
 export interface OrderLineResponse {
   cylinder_type_id: string;
+  gst_rate_percent?: (string | null);
   id: string;
   is_backordered: boolean;
   quantity_collected_empty: number;

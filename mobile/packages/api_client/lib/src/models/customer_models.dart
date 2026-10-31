@@ -67,6 +67,7 @@ class CustomerResponse {
     required this.kycStatus,
     required this.status,
     this.lpgSubsidyId,
+    this.gstin,
     required this.addresses,
   });
 
@@ -86,6 +87,7 @@ class CustomerResponse {
         kycStatus: json['kyc_status'] as String,
         status: json['status'] as String,
         lpgSubsidyId: json['lpg_subsidy_id'] as String?,
+        gstin: json['gstin'] as String?,
         addresses:
             (json['addresses'] as List<dynamic>?)
                 ?.map(
@@ -111,6 +113,9 @@ class CustomerResponse {
   final String kycStatus;
   final String status;
   final String? lpgSubsidyId;
+
+  /// The GST number printed on a business customer's tax invoices.
+  final String? gstin;
   final List<CustomerAddressResponse> addresses;
 }
 
@@ -284,4 +289,59 @@ class CustomerPageResponse {
 
   final List<CustomerResponse> items;
   final int total;
+}
+
+/// What staff type to register a customer (`POST /customers`), with an
+/// optional first address. A new customer starts in onboarding, which may
+/// already book cylinders; approving later gives them a consumer number.
+class RegisterCustomerRequest {
+  const RegisterCustomerRequest({
+    required this.branchId,
+    required this.fullName,
+    required this.phoneNumber,
+    this.customerType = 'domestic',
+    this.contactPerson,
+    this.alternateMobile,
+    this.email,
+    this.gstin,
+    this.address,
+  });
+
+  final String branchId;
+  final String fullName;
+
+  /// With the country code, such as `+919876543210`.
+  final String phoneNumber;
+
+  /// `domestic`, `commercial`, `industrial` or `government`.
+  final String customerType;
+
+  /// Required by the backend for a commercial customer.
+  final String? contactPerson;
+  final String? alternateMobile;
+  final String? email;
+  final String? gstin;
+  final AddCustomerAddressRequest? address;
+
+  Map<String, dynamic> toJson() => {
+    'branch_id': branchId,
+    'full_name': fullName,
+    'phone_number': phoneNumber,
+    'customer_type': customerType,
+    if (contactPerson != null) 'contact_person': contactPerson,
+    if (alternateMobile != null) 'alternate_mobile': alternateMobile,
+    if (email != null) 'email': email,
+    if (gstin != null) 'gstin': gstin,
+    if (address != null) ...{
+      'line_1': address!.line1,
+      if (address!.line2 != null) 'line_2': address!.line2,
+      if (address!.landmark != null) 'landmark': address!.landmark,
+      if (address!.area != null) 'area': address!.area,
+      if (address!.city != null) 'city': address!.city,
+      if (address!.district != null) 'district': address!.district,
+      if (address!.state != null) 'state': address!.state,
+      if (address!.pincode != null) 'pincode': address!.pincode,
+      'address_type': address!.addressType,
+    },
+  };
 }

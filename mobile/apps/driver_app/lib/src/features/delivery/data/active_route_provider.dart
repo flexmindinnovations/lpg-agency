@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../offline/pending_sync.dart';
 import '../../../auth_provider.dart';
 import '../../../offline/cached_resource.dart';
 
@@ -10,6 +11,8 @@ import '../../../offline/cached_resource.dart';
 /// zone; a genuine `404` (route finished) evicts the cache rather than
 /// resurrecting a stale one.
 final activeRouteProvider = FutureProvider<RouteSummary?>((ref) async {
+  // Read again once a queued action has reached the server.
+  ref.watch(pendingSyncCountProvider);
   final authController = ref.watch(authControllerProvider);
   if (authController.state.status != AuthStatus.authenticated) {
     return null;
@@ -30,6 +33,7 @@ final activeRouteProvider = FutureProvider<RouteSummary?>((ref) async {
 /// first — the delivery-history list on the Deliveries tab. Cached for
 /// offline; capped at the most recent ~20, pagination is a follow-up.
 final routeHistoryProvider = FutureProvider<List<RouteSummary>>((ref) async {
+  ref.watch(pendingSyncCountProvider);
   final authController = ref.watch(authControllerProvider);
   if (authController.state.status != AuthStatus.authenticated) {
     return const [];

@@ -87,6 +87,7 @@ from lpg.api.v1.dependencies.order import (
     get_idempotency_service,
     get_job_queue,
     get_order_customer_directory,
+    get_order_gst_snapshotter,
     get_order_number_sequence,
     get_order_repository,
     get_orderable_cylinder_types,
@@ -140,6 +141,7 @@ from lpg.application.identity.ports import (
 )
 from lpg.application.inventory.ports import InventoryLocationRepository
 from lpg.application.order.booking_source import resolve_booking_source
+from lpg.application.order.gst_snapshot import OrderGstSnapshotter
 from lpg.application.order.orderable import OrderableCylinderTypes
 from lpg.application.order.ports import (
     CancellationRecordEntry,
@@ -244,6 +246,8 @@ def _order_to_response(
         metadata=order.metadata,
         route_stop_id=order.route_stop_id,
         total_amount=order.total_amount,
+        tax_amount=order.tax_amount,
+        payable_amount=order.payable_amount,
         lines=[
             OrderLineResponse(
                 id=line.id,
@@ -254,6 +258,7 @@ def _order_to_response(
                 quantity_collected_empty=line.quantity_collected_empty,
                 is_backordered=line.is_backordered,
                 unit_price=line.unit_price,
+                gst_rate_percent=line.gst_rate_percent,
             )
             for line in order.lines
         ],
@@ -770,8 +775,9 @@ async def confirm_order(
     orderable_cylinder_types: Annotated[
         OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
     ],
+    gst_snapshotter: Annotated[OrderGstSnapshotter, Depends(get_order_gst_snapshotter)],
 ) -> OrderResponse:
-    """`booked -> confirmed`. Resolves and snapshots unit prices.
+    """`booked -> confirmed`. Resolves and snapshots unit prices and GST.
 
     409 `CYLINDER_CAP_EXCEEDED` (BR-04) or `CREDIT_LIMIT_EXCEEDED` (BR-19)
     when the tenant's configured `cylinder_holding_cap` /
@@ -786,6 +792,7 @@ async def confirm_order(
         credit_limit_evaluator,
         unit_of_work,
         orderable_cylinder_types,
+        gst_snapshotter,
     )
     order = await use_case.execute(ConfirmOrderCommand(order_id=order_id, changed_by=actor_id))
     return _order_to_response(order)
@@ -1045,6 +1052,7 @@ async def amend_order(
     cylinder_cap_policy: Annotated[CylinderCapPolicy, Depends(get_cylinder_cap_policy)],
     credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    gst_snapshotter: Annotated[OrderGstSnapshotter, Depends(get_order_gst_snapshotter)],
 ) -> OrderResponse:
     """Edit a booked or confirmed order before it is put on a trip (DO-13):
     quantities, cylinder types, delivery address (one of the customer's
@@ -1066,6 +1074,7 @@ async def amend_order(
         cylinder_cap_policy,
         credit_limit_evaluator,
         unit_of_work,
+        gst_snapshotter,
     ).execute(
         AmendOrderCommand(
             order_id=order_id,

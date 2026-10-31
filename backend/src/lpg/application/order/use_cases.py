@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from lpg.application.delivery.ports import RouteRepository
     from lpg.application.identity.ports import OtpDeliveryPort, OtpStore
     from lpg.application.inventory.ports import InventoryLocationRepository
+    from lpg.application.order.gst_snapshot import OrderGstSnapshotter
     from lpg.application.order.orderable import OrderableCylinderTypes
     from lpg.application.order.ports import (
         CancellationRecordEntry,
@@ -262,6 +263,7 @@ class AmendOrderUseCase:
         cylinder_cap_policy: CylinderCapPolicy,
         credit_limit_evaluator: CreditLimitEvaluator,
         unit_of_work: UnitOfWork,
+        gst_snapshotter: OrderGstSnapshotter | None = None,
     ) -> None:
         self._order_repository = order_repository
         self._customer_repository = customer_repository
@@ -270,6 +272,7 @@ class AmendOrderUseCase:
         self._cylinder_cap_policy = cylinder_cap_policy
         self._credit_limit_evaluator = credit_limit_evaluator
         self._unit_of_work = unit_of_work
+        self._gst_snapshotter = gst_snapshotter
 
     async def execute(self, command: AmendOrderCommand) -> Order:
         order = await self._order_repository.get_by_id(command.order_id)
@@ -311,10 +314,16 @@ class AmendOrderUseCase:
             exclude_order_id=order.id,
         )
         unit_prices = None
+        gst = None
         if order.status == "confirmed":
             unit_prices = await _current_unit_prices(
                 self._price_list_repository, order, customer.customer_type, lines
             )
+            if self._gst_snapshotter is not None:
+                gst = await self._gst_snapshotter.snapshot(
+                    tenant_id=order.tenant_id,
+                    cylinder_type_ids=[line.cylinder_type_id for line in lines],
+                )
             await self._credit_limit_evaluator.evaluate(
                 tenant_id=order.tenant_id,
                 customer_id=customer.id,
@@ -335,6 +344,8 @@ class AmendOrderUseCase:
             ),
             changed_by=command.changed_by,
             unit_prices=unit_prices,
+            gst_rates=gst.rates if gst else None,
+            prices_include_gst=gst.prices_include_gst if gst else None,
         )
         await self._order_repository.save(order)
         await self._unit_of_work.commit()
@@ -376,6 +387,7 @@ class ConfirmOrderUseCase:
         credit_limit_evaluator: CreditLimitEvaluator,
         unit_of_work: UnitOfWork,
         orderable_cylinder_types: OrderableCylinderTypes,
+        gst_snapshotter: OrderGstSnapshotter | None = None,
     ) -> None:
         self._order_repository = order_repository
         self._customer_repository = customer_repository
@@ -384,6 +396,7 @@ class ConfirmOrderUseCase:
         self._credit_limit_evaluator = credit_limit_evaluator
         self._unit_of_work = unit_of_work
         self._orderable = orderable_cylinder_types
+        self._gst_snapshotter = gst_snapshotter
 
     async def execute(self, command: ConfirmOrderCommand) -> Order:
         order = await self._order_repository.get_by_id(command.order_id)
@@ -428,7 +441,20 @@ class ConfirmOrderUseCase:
             order_total=order_total_preview,
         )
 
-        order.confirm(unit_prices=unit_prices, changed_by=command.changed_by)
+        gst = (
+            await self._gst_snapshotter.snapshot(
+                tenant_id=order.tenant_id,
+                cylinder_type_ids=[line.cylinder_type_id for line in order.lines],
+            )
+            if self._gst_snapshotter is not None
+            else None
+        )
+        order.confirm(
+            unit_prices=unit_prices,
+            changed_by=command.changed_by,
+            gst_rates=gst.rates if gst else None,
+            prices_include_gst=gst.prices_include_gst if gst else None,
+        )
         await self._order_repository.save(order)
         await self._unit_of_work.commit()
         return order

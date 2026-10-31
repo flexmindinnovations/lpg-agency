@@ -16,14 +16,45 @@ import '../../orders/data/orders_provider.dart';
 /// `notification.new` real-time subscription lives -- every screen's
 /// unread badge/list should reflect a new notification without a manual
 /// refresh, not just the Notifications screen itself.
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
   /// The navigation shell and state for the branches.
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  late final AppLifecycleListener _lifecycle;
+
+  StatefulNavigationShell get navigationShell => widget.navigationShell;
+
+  @override
+  void initState() {
+    super.initState();
+    // While the app is in the background its socket may be closed and live
+    // updates missed, so everything the customer looks at is reloaded on
+    // return rather than waiting for the next message.
+    _lifecycle = AppLifecycleListener(onResume: _refresh);
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  void _refresh() {
+    ref.invalidate(ordersProvider);
+    ref.invalidate(invoicesProvider);
+    ref.invalidate(notificationsProvider);
+    ref.invalidate(unreadNotificationCountProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.listen(notificationsRealtimeProvider, (previous, next) {
       next.whenData((message) {
         ref.invalidate(notificationsProvider);

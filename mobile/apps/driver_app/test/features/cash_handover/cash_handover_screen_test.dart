@@ -55,17 +55,8 @@ Future<void> _pump(WidgetTester tester, ProviderContainer container) async {
   await tester.pumpAndSettle();
 }
 
-/// Taps the + button of one note value's stepper [times] times.
-Future<void> _count(WidgetTester tester, int value, int times) async {
-  final plus = find.descendant(
-    of: find.byKey(ValueKey('denomination-$value')),
-    matching: find.byTooltip('Increase'),
-  );
-  for (var i = 0; i < times; i++) {
-    await tester.tap(plus);
-    await tester.pump();
-  }
-}
+/// The amount-handed-over field (the reason field, when shown, comes after).
+Finder get _amountField => find.byType(TextFormField).first;
 
 /// Stateful fake: `/for-route` returns the pending view until a POST lands,
 /// then the declared one — so a real declare flow flips the screen to the
@@ -146,7 +137,10 @@ void main() {
 
       await _pump(tester, container);
 
-      expect(find.text('₹1,811.00'), findsOneWidget);
+      expect(
+        find.text('₹1,811.00'),
+        findsWidgets,
+      ); // the headline and the Cash row
       expect(find.textContaining('2 cash deliveries'), findsOneWidget);
       expect(
         find.widgetWithText(LpgButton, 'Declare handover'),
@@ -154,9 +148,37 @@ void main() {
       );
     });
 
-    testWidgets('adds up the counted notes and reports the delta', (
+    testWidgets('starts at the cash expected, with no note counter', (
       tester,
     ) async {
+      final container = ProviderContainer(
+        overrides: [
+          routeCashHandoverProvider.overrideWith(
+            (ref, id) async => _view(expected: 905.50),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      expect(find.text('Count the cash'), findsNothing);
+      expect(find.byTooltip('Increase'), findsNothing);
+      // The amount is already what was collected, so there is nothing to
+      // type for a driver who hands it all over.
+      expect(
+        tester.widget<TextFormField>(_amountField).controller!.text,
+        '905.50',
+      );
+      expect(find.textContaining('Matches the expected'), findsOneWidget);
+      // Cash and UPI are kept apart: UPI went straight to the agency.
+      expect(find.text('Cash'), findsOneWidget);
+      expect(find.text('UPI'), findsOneWidget);
+      expect(find.textContaining('Nothing to hand over'), findsOneWidget);
+    });
+
+    testWidgets('reports the difference and asks why when it is a rupee or '
+        'more', (tester) async {
       final container = ProviderContainer(
         overrides: [
           routeCashHandoverProvider.overrideWith(
@@ -168,18 +190,18 @@ void main() {
 
       await _pump(tester, container);
 
-      // 500 + 2 x 200 = 900.
-      await _count(tester, 500, 1);
-      await _count(tester, 200, 2);
+      await tester.enterText(_amountField, '900');
+      await tester.pump();
       expect(find.text('Short by ₹100.00'), findsOneWidget);
-      // A difference needs a reason.
       expect(find.textContaining('Why does it differ?'), findsOneWidget);
 
-      await _count(tester, 100, 1);
+      await tester.enterText(_amountField, '1000');
+      await tester.pump();
       expect(find.textContaining('Matches the expected'), findsOneWidget);
       expect(find.textContaining('Why does it differ?'), findsNothing);
 
-      await _count(tester, 100, 1);
+      await tester.enterText(_amountField, '1100');
+      await tester.pump();
       expect(find.text('Over by ₹100.00'), findsOneWidget);
     });
 
@@ -195,30 +217,15 @@ void main() {
 
       await _pump(tester, container);
 
-      await _count(tester, 500, 1);
-      await _count(tester, 200, 2);
-      await _count(tester, 5, 1);
+      await tester.enterText(_amountField, '905');
+      await tester.pump();
 
-      expect(find.textContaining('Matches the expected'), findsOneWidget);
+      // Rs 905 against Rs 905.50: close enough to need no reason, but not
+      // a match, and the screen must not say it is.
+      expect(find.textContaining('Matches the expected'), findsNothing);
+      expect(find.textContaining('Short by ₹0.50'), findsOneWidget);
+      expect(find.textContaining('no reason is needed'), findsOneWidget);
       expect(find.textContaining('Why does it differ?'), findsNothing);
-    });
-
-    testWidgets('the total can be typed instead of counted', (tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          routeCashHandoverProvider.overrideWith((ref, id) async => _view()),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      await _pump(tester, container);
-      await tester.tap(find.text('Enter the total instead'));
-      await tester.pump();
-
-      await tester.enterText(find.byType(TextFormField), '900');
-      await tester.pump();
-      expect(find.text('Short by ₹5.50'), findsOneWidget);
-      expect(find.textContaining('Why does it differ?'), findsOneWidget);
     });
 
     testWidgets('a route still in progress cannot be reconciled', (
@@ -270,9 +277,9 @@ void main() {
 
       await _pump(tester, container);
 
-      await _count(tester, 500, 1);
-      await _count(tester, 200, 2);
-      await tester.enterText(find.byType(TextFormField), 'Gave change');
+      await tester.enterText(_amountField, '900');
+      await tester.pump();
+      await tester.enterText(find.byType(TextFormField).last, 'Gave change');
       await tester.pump();
       await tester.tap(find.widgetWithText(LpgButton, 'Declare handover'));
       await tester.pumpAndSettle();
@@ -289,7 +296,6 @@ void main() {
         'driver_id': 'drv-1',
         'route_id': 'route-1',
         'actual_amount': '900.00',
-        'denominations': {'500': 1, '200': 2},
         'variance_reason': 'Gave change',
       });
       // ...synced against the stub, and the screen has caught up to the

@@ -74,6 +74,9 @@ class OrderModel(Base):
         Uuid(), ForeignKey("delivery.route_stop.id"), nullable=True
     )
     total_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # Whether the unit prices included GST when the order was priced;
+    # NULL for an order priced before this was recorded.
+    prices_include_gst: Mapped[bool | None] = mapped_column(Boolean(), nullable=True)
     # Dedupe timestamp for the hourly stale-unassigned-order alert cron
     # (`infrastructure/jobs/stale_order_jobs.py`) -- same shape as
     # `compliance.compliance_document.last_expiry_notified_at`. Set only
@@ -120,6 +123,8 @@ class OrderLineModel(Base):
     quantity_collected_empty: Mapped[int] = mapped_column(Integer(), server_default=text("0"))
     is_backordered: Mapped[bool] = mapped_column(Boolean(), server_default=text("false"))
     unit_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # The GST rate quoted with the price, snapshotted with it.
+    gst_rate_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
 
     order: Mapped[OrderModel] = relationship("OrderModel", back_populates="lines")
 
