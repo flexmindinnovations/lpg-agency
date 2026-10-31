@@ -246,6 +246,34 @@ jobs:
           else
             echo "object storage: not configured, server settings left untouched"
           fi
+      - name: Collect Razorpay settings (optional)
+        id: payments
+        env:
+          KEY_ID: ${{ secrets.LPG_RAZORPAY_KEY_ID }}
+          KEY_SECRET: ${{ secrets.LPG_RAZORPAY_KEY_SECRET }}
+          WEBHOOK_SECRET: ${{ secrets.LPG_RAZORPAY_WEBHOOK_SECRET }}
+        run: |
+          # All three or nothing. rzp_test_ keys run Razorpay in test mode (the
+          # server needs the allow flag to accept them in production); rzp_live_
+          # keys switch the flag off, so the server refuses a test key again.
+          if [ -n "$KEY_ID" ] && [ -n "$KEY_SECRET" ] && [ -n "$WEBHOOK_SECRET" ]; then
+            case "$KEY_ID" in
+              rzp_test_*) allow=true; mode=TEST ;;
+              rzp_live_*) allow=false; mode=LIVE ;;
+              *) echo "::error::LPG_RAZORPAY_KEY_ID must start with rzp_test_ or rzp_live_"; exit 1 ;;
+            esac
+            echo "::add-mask::$KEY_SECRET"
+            echo "::add-mask::$WEBHOOK_SECRET"
+            {
+              echo "env<<__LPG_PAYMENTS_EOF__"
+              printf 'LPG_PAYMENTS_PROVIDER=razorpay\nLPG_PAYMENTS_ALLOW_TEST_KEYS=%s\nLPG_RAZORPAY_KEY_ID=%s\nLPG_RAZORPAY_KEY_SECRET=%s\nLPG_RAZORPAY_WEBHOOK_SECRET=%s\n' \
+                "$allow" "$KEY_ID" "$KEY_SECRET" "$WEBHOOK_SECRET"
+              echo "__LPG_PAYMENTS_EOF__"
+            } >> "$GITHUB_OUTPUT"
+            echo "payments: Razorpay $mode mode settings supplied"
+          else
+            echo "payments: Razorpay secrets not all set, server settings left untouched"
+          fi
       - uses: ./.github/actions/deploy-to-server
         with:
           sha: ${{ github.sha }}
@@ -259,6 +287,9 @@ jobs:
           # Optional. Object storage (DigitalOcean Spaces). Stays off until all
           # four secrets exist in the production environment (see DEPLOY.md).
           storage-env: ${{ steps.storage.outputs.env }}
+          # Optional. Razorpay (test or live keys). Stays as is until all three
+          # secrets exist in the production environment (see DEPLOY.md).
+          payments-env: ${{ steps.payments.outputs.env }}
 
   # After a healthy deploy, mark these images as "the deployed ones". The next
   # run's `changes` job reads the revision label from them.

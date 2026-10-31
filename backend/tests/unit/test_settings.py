@@ -64,6 +64,18 @@ class TestProductionGuardRails:
         with pytest.raises(ValueError, match="debug must be disabled"):
             Settings(environment="production", debug=True)
 
+    def test_razorpay_test_key_needs_explicit_opt_in_in_production(self) -> None:
+        with pytest.raises(ValueError, match="LPG_PAYMENTS_ALLOW_TEST_KEYS"):
+            Settings(environment="production", razorpay_key_id="rzp_test_abc")
+
+        settings = Settings(
+            environment="production",
+            razorpay_key_id="rzp_test_abc",
+            payments_allow_test_keys=True,
+        )
+
+        assert settings.razorpay_key_id == "rzp_test_abc"
+
     def test_wildcard_permitted_locally(self) -> None:
         settings = Settings(environment="local", cors_origins=["*"], debug=True)
 

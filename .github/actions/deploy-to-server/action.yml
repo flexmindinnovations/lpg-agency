@@ -38,6 +38,15 @@ inputs:
     required: false
     default: ""
 
+  payments-env:
+    description: >-
+      Optional Razorpay settings as KEY=VALUE lines (LPG_PAYMENTS_PROVIDER,
+      LPG_RAZORPAY_KEY_ID, _KEY_SECRET, _WEBHOOK_SECRET, LPG_PAYMENTS_ALLOW_TEST_KEYS).
+      When set, the server writes them into integrations.env; when empty, the
+      server's existing payment settings are left alone.
+    required: false
+    default: ""
+
 runs:
   using: composite
   steps:
@@ -52,6 +61,7 @@ runs:
         GHCR_TOKEN: ${{ inputs.ghcr-token }}
         FCM_SERVICE_ACCOUNT: ${{ inputs.fcm-service-account }}
         STORAGE_ENV: ${{ inputs.storage-env }}
+        PAYMENTS_ENV: ${{ inputs.payments-env }}
       run: |
         set -euo pipefail
         install -m 700 -d ~/.ssh
@@ -70,7 +80,11 @@ runs:
         if [ -n "$STORAGE_ENV" ]; then
           storage_b64="$(printf '%s\n' "$STORAGE_ENV" | base64 -w0)"
         fi
-        printf '%s\n%s\n%s\n' "$GHCR_TOKEN" "$fcm_b64" "$storage_b64" | ssh \
+        payments_b64=""
+        if [ -n "$PAYMENTS_ENV" ]; then
+          payments_b64="$(printf '%s\n' "$PAYMENTS_ENV" | base64 -w0)"
+        fi
+        printf '%s\n%s\n%s\n%s\n' "$GHCR_TOKEN" "$fcm_b64" "$storage_b64" "$payments_b64" | ssh \
           -i ~/.ssh/deploy_key \
           -o BatchMode=yes \
           -o StrictHostKeyChecking=yes \

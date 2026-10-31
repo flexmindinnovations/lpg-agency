@@ -266,6 +266,19 @@ webhooks with the providers:
 Each agency's WhatsApp phone number ID goes in that tenant's Tenant
 Configuration (`whatsapp_phone_number_id`), not in this file.
 
+#### Razorpay (test or live) from GitHub secrets
+
+Add three secrets to the GitHub `production` environment (Settings ->
+Environments -> production): `LPG_RAZORPAY_KEY_ID`,
+`LPG_RAZORPAY_KEY_SECRET` and `LPG_RAZORPAY_WEBHOOK_SECRET`. On the next
+deploy they are written into `integrations.env` (all three required, else
+nothing changes). A key starting `rzp_test_` runs Razorpay in **test mode**:
+the deploy also sets `LPG_PAYMENTS_ALLOW_TEST_KEYS=true`, which production
+otherwise refuses. A key starting `rzp_live_` clears that flag, so going live
+is just replacing the three secrets and redeploying. The webhook secret is the
+one you type when creating the webhook in the Razorpay dashboard (use Test
+Mode there while testing). Never put these in chat.
+
 #### Push notifications (Firebase)
 
 Without a Firebase service account the worker uses a stub push channel: it
