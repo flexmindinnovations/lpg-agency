@@ -6,6 +6,14 @@ import os
 
 bind = os.getenv("BIND", "0.0.0.0:8000")
 
+# Behind Caddy the TCP peer is always the proxy container, so without this every
+# visitor shares one client IP and the per-IP rate limits (login, OTP) become a
+# single global bucket that one attacker can exhaust for everyone. The backend
+# port is never published (docker-compose.prod.yml), so only Caddy can reach it
+# and its X-Forwarded-For can be trusted. Narrow this if the backend is ever
+# exposed any other way.
+forwarded_allow_ips = os.getenv("FORWARDED_ALLOW_IPS", "*")
+
 # For I/O bound workloads (like FastAPI with WebSockets), the worker class should be uvicorn.
 worker_class = "uvicorn.workers.UvicornWorker"
 

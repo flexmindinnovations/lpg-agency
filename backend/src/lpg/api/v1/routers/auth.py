@@ -230,6 +230,19 @@ async def otp_verify(
     customer_login_provisioner: Annotated[
         CustomerLoginProvisioner, Depends(get_customer_login_provisioner)
     ],
+    # Per-IP throttle on top of the per-code attempt cap in `OtpService`.
+    _rate_limit: Annotated[
+        None,
+        Depends(require_rate_limit(key_prefix="auth:otp_verify", limit=30, window_seconds=600)),
+    ],
+    _phone_rate_limit: Annotated[
+        None,
+        Depends(
+            require_phone_rate_limit(
+                key_prefix="auth:otp_verify:phone", limit=15, window_seconds=3600
+            )
+        ),
+    ],
 ) -> TokenResponse:
     use_case = VerifyOtpUseCase(
         otp_store,
@@ -268,6 +281,10 @@ async def refresh(
     jwt_signer: Annotated[JwtSigner, Depends(get_jwt_signer)],
     license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     tenant_status_checker: Annotated[TenantStatusChecker, Depends(get_tenant_status_checker)],
+    _rate_limit: Annotated[
+        None,
+        Depends(require_rate_limit(key_prefix="auth:refresh", limit=60, window_seconds=60)),
+    ],
 ) -> TokenResponse:
     raw_token = _resolve_refresh_token(request, body.refresh_token)
     if raw_token is None:
@@ -348,6 +365,12 @@ async def password_reset(
     user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     password_hasher: Annotated[PasswordHasher, Depends(get_password_hasher)],
+    _rate_limit: Annotated[
+        None,
+        Depends(
+            require_rate_limit(key_prefix="auth:password_reset", limit=10, window_seconds=3600)
+        ),
+    ],
 ) -> None:
     use_case = ConfirmPasswordResetUseCase(
         reset_token_repository, user_repository, token_hasher, password_hasher

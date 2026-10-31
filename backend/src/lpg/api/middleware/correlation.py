@@ -11,6 +11,7 @@ across several downstream effects (``12-observability.md`` §4).
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 from typing import TYPE_CHECKING
@@ -28,6 +29,10 @@ if TYPE_CHECKING:
 
 _logger = get_logger(__name__)
 
+#: A client-supplied ID is only echoed and logged when it is a plain token, so a
+#: crafted header can't inject log lines or response-header content.
+_SAFE_CORRELATION_ID = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
+
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     """Bind a correlation ID to every request and log its outcome."""
@@ -39,7 +44,10 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        correlation_id = request.headers.get(self.header_name) or str(uuid.uuid4())
+        supplied = request.headers.get(self.header_name)
+        correlation_id = (
+            supplied if supplied and _SAFE_CORRELATION_ID.match(supplied) else str(uuid.uuid4())
+        )
 
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(

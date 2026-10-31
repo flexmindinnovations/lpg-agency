@@ -35,6 +35,7 @@ from lpg.api.v1.schemas.customer import (
     UpdateCustomerProfileRequest,
     VerifyKycDocumentRequest,
 )
+from lpg.api.v1.uploads import read_upload
 from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.ai.prediction import PredictionRepository
 from lpg.application.common.errors import NotFoundError
@@ -425,9 +426,9 @@ async def upload_kyc_attachment(
     off — same reasoning `upload_pod_attachment`
     (`api/v1/routers/order.py`) uses for pre-dispatch blob uploads.
     """
-    key = f"tenant/{principal.tenant_id}/kyc-staging/{uuid.uuid4()}_{file.filename}"
-    data = await file.read()
-    await file_storage.upload(key, data, content_type=file.content_type)
+    data, filename, content_type = await read_upload(file)
+    key = f"tenant/{principal.tenant_id}/kyc-staging/{uuid.uuid4()}_{filename}"
+    await file_storage.upload(key, data, content_type=content_type)
     return KycAttachmentResponse(blob_ref=key)
 
 

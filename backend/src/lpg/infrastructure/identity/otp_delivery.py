@@ -63,6 +63,12 @@ class LoggingOtpDelivery:
         *,
         purpose: OtpPurpose = "login",
     ) -> None:
+        if self._settings.is_production:
+            # Never write a live credential to the logs. With no SMS provider
+            # configured in production nobody can sign in by OTP - set
+            # LPG_SMS_PROVIDER (and the DLT templates) instead.
+            _logger.error("otp_not_delivered_no_sms_provider", purpose=purpose)
+            return
         _logger.info("otp_delivery_dev_mode", phone_number=phone_number, code=code, purpose=purpose)
         await _stash_in_dev_inbox(self._redis, self._settings, phone_number, code, purpose)
 

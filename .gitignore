@@ -214,3 +214,8 @@ logs/
 
 # One-off debug/fix scripts, not part of the build
 backend/scratch/
+
+# Stray local artifacts
+dump.rdb
+*.rdb
+actionlint*.tar.gz
