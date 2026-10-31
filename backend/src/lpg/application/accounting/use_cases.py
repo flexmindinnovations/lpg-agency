@@ -50,7 +50,7 @@ if TYPE_CHECKING:
         TenantRepository,
     )
     from lpg.domain.accounting.online_payment import OnlinePayment
-    from lpg.domain.order.order import Order
+    from lpg.domain.order.order import Order, OrderLine
 
 _logger = get_logger(__name__)
 
@@ -183,6 +183,14 @@ def _taxed_line(
     )
 
 
+def _quoted_gst(line: OrderLine, current: GstClass) -> GstClass:
+    """The GST class to bill a line at: the rate it was quoted with when the
+    order recorded one, with the current HSN code."""
+    if isinstance(line.gst_rate_percent, Decimal):
+        return GstClass(hsn_code=current.hsn_code, rate_percent=line.gst_rate_percent)
+    return current
+
+
 class GenerateInvoiceForOrderUseCase:
     """Issues the tax invoice for a delivered order (BR-17) or, for an
     order cancelled after dispatch, for its cancellation charge (DO-14).
@@ -252,15 +260,26 @@ class GenerateInvoiceForOrderUseCase:
             cylinder_type_ids=[line.cylinder_type_id for line in delivered],
             at=delivered_at,
         )
-        inclusive = await resolve_prices_include_gst(
-            self._tenant_config_repository, tenant_id, delivered_at
+        # What the customer was quoted wins over today's configuration: an
+        # order carries the GST rate and the inclusive/exclusive basis it was
+        # priced with, so a rate changed after confirmation does not make the
+        # invoice differ from the amount the customer was told to pay.
+        # Orders confirmed before that was recorded fall back to today's
+        # configuration, as before.
+        snapshot_inclusive = order.prices_include_gst
+        inclusive = (
+            snapshot_inclusive
+            if isinstance(snapshot_inclusive, bool)
+            else await resolve_prices_include_gst(
+                self._tenant_config_repository, tenant_id, delivered_at
+            )
         )
         lines = [
             _taxed_line(
                 cylinder_type_id=line.cylinder_type_id,
                 quantity=line.quantity_delivered,
                 unit_price=line.unit_price or Decimal("0.00"),
-                gst=gst_classes[line.cylinder_type_id],
+                gst=_quoted_gst(line, gst_classes[line.cylinder_type_id]),
                 prices_include_gst=inclusive,
             )
             for line in delivered

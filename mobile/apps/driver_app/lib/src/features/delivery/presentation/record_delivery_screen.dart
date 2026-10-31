@@ -18,14 +18,13 @@ import '../data/image_picker_provider.dart';
 import '../data/location_sharing.dart';
 import '../data/stop_order_provider.dart';
 
-/// Mirrors the backend's `PaymentMethod`.
-const _paymentMethods = <(String, String)>[
-  ('cash', 'Cash'),
-  ('upi', 'UPI'),
-  ('card', 'Card'),
-  ('online_gateway', 'Online'),
-  ('credit', 'On credit'),
-];
+/// The icon for each payment method code the agency may offer.
+const _paymentMethodIcons = {
+  'cash': LpgIcons.cash,
+  'upi': LpgIcons.wallet,
+  'online_gateway': LpgIcons.security,
+  'credit': LpgIcons.invoice,
+};
 
 /// The proof-of-delivery capture: quantities, payment, the customer's
 /// delivery OTP and a GPS stamp, plus an optional signature and photo —
@@ -50,6 +49,22 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   // cylinderTypeId -> (delivered, collectedEmpty)
   final _quantities = <String, (int, int)>{};
   String _paymentMethod = 'cash';
+
+  /// Only what the agency has set up: a UPI ID for UPI, a connected gateway
+  /// for online, a credit limit for on credit.
+  List<PaymentMethodOption> get _offeredMethods =>
+      (ref.read(paymentMethodsProvider).value ?? PaymentMethods.cashOnly)
+          .delivery;
+
+  /// The chosen method, or the first one offered if the agency no longer
+  /// offers it.
+  String get _method {
+    final offered = _offeredMethods;
+    return offered.any((m) => m.code == _paymentMethod)
+        ? _paymentMethod
+        : offered.first.code;
+  }
+
   Uint8List? _photoBytes;
   bool _submitting = false;
   bool _resending = false;
@@ -187,7 +202,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
             otpCode: _otpController.text.trim(),
             gpsLat: position.latitude,
             gpsLng: position.longitude,
-            paymentMethod: _paymentMethod,
+            paymentMethod: _method,
             amountCollected: amount,
             signatureBytes: signatureBytes,
             photoBytes: _photoBytes,
@@ -254,6 +269,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
           };
           final queuedEmpties =
               ref.watch(queuedEmptiesByTypeProvider).value ?? const {};
+          ref.watch(paymentMethodsProvider); // rebuild when it arrives
+          final offered = _offeredMethods;
+          final method = _method;
           return ListView(
             padding: LpgSpacing.page,
             children: [
@@ -275,22 +293,14 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 ),
               const _Section(icon: LpgIcons.payment, title: 'Payment'),
               LpgDropdownField<String>(
-                value: _paymentMethod,
-                items: {
-                  for (final (value, label) in _paymentMethods) value: label,
-                },
-                icons: const {
-                  'cash': LpgIcons.cash,
-                  'upi': LpgIcons.wallet,
-                  'card': LpgIcons.payment,
-                  'online_gateway': LpgIcons.security,
-                  'credit': LpgIcons.invoice,
-                },
+                value: method,
+                items: {for (final m in offered) m.code: m.label},
+                icons: _paymentMethodIcons,
                 onChanged: (v) {
                   if (v != null) setState(() => _paymentMethod = v);
                 },
               ),
-              if (_paymentMethod == 'upi') ...[
+              if (method == 'upi') ...[
                 const SizedBox(height: LpgSpacing.md),
                 _UpiQrPanel(orderId: widget.orderId),
               ],

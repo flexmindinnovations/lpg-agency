@@ -82,3 +82,16 @@ class UpiCheckResponse(BaseModel):
 class VerifyPaymentDetailsResponse(BaseModel):
     ifsc: IfscCheckResponse | None = None
     upi: UpiCheckResponse | None = None
+
+
+class PaymentMethodOptionResponse(BaseModel):
+    code: str
+    label: str
+
+
+class PaymentMethodsResponse(BaseModel):
+    """The ways of paying this agency offers, from its own payment set-up."""
+
+    booking: list[PaymentMethodOptionResponse]
+    delivery: list[PaymentMethodOptionResponse]
+    office: list[PaymentMethodOptionResponse]

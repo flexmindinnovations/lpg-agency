@@ -21,17 +21,9 @@ class RecordPaymentSheet extends ConsumerStatefulWidget {
 }
 
 class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
-  static const _methods = {
-    'cash': 'Cash',
-    'upi': 'UPI',
-    'card': 'Card',
-    'cheque': 'Cheque',
-    'bank_transfer': 'Bank transfer',
-  };
   static const _methodIcons = {
     'cash': LpgIcons.cash,
     'upi': LpgIcons.qrCode,
-    'card': LpgIcons.payment,
     'cheque': LpgIcons.receipt,
     'bank_transfer': LpgIcons.agency,
   };
@@ -40,7 +32,21 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
     text: widget.invoice.balanceDue.toStringAsFixed(2),
   );
   final _reference = TextEditingController();
-  String _method = 'cash';
+  String _chosenMethod = 'cash';
+
+  /// What the agency has set up: UPI needs its UPI ID, bank transfer its bank
+  /// details (the payment profile).
+  List<PaymentMethodOption> get _offeredMethods =>
+      (ref.read(paymentMethodsProvider).value ?? PaymentMethods.cashOnly)
+          .office;
+
+  String get _method {
+    final offered = _offeredMethods;
+    return offered.any((m) => m.code == _chosenMethod)
+        ? _chosenMethod
+        : offered.first.code;
+  }
+
   String? _error;
   bool _busy = false;
 
@@ -109,6 +115,7 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
   Widget build(BuildContext context) {
     final text = context.lpgText;
     final colors = context.lpgColors;
+    ref.watch(paymentMethodsProvider); // rebuild when it arrives
 
     return SingleChildScrollView(
       child: Column(
@@ -124,14 +131,14 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
           LpgDropdownField<String>(
             label: 'How was it paid?',
             value: _method,
-            items: _methods,
+            items: {for (final m in _offeredMethods) m.code: m.label},
             icons: _methodIcons,
             onChanged: _busy
                 ? null
                 : (v) {
                     if (v == null) return;
                     setState(() {
-                      _method = v;
+                      _chosenMethod = v;
                       _error = null;
                     });
                   },

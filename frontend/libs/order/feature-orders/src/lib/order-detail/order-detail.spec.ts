@@ -79,6 +79,46 @@ describe('OrderDetail', () => {
     });
   });
 
+  describe('Amount', () => {
+    const order = (extra: Record<string, unknown>) => ({
+      id: 'order-1',
+      order_number: 'ORD000063',
+      branch_id: 'branch-1',
+      status: 'confirmed',
+      booking_source: 'staff',
+      requested_date: '2026-10-30T00:00:00Z',
+      delivery_address: { address_line: 'Somewhere' },
+      lines: [],
+      ...extra,
+    });
+
+    it('shows the price, the GST and the total to pay once GST is worked out', () => {
+      const fixture = TestBed.createComponent(OrderDetail);
+      fixture.detectChanges();
+      TestBed.inject(HttpTestingController)
+        .expectOne('http://test/api/v1/orders/order-1')
+        .flush(order({ total_amount: '905.50', tax_amount: '45.28', payable_amount: '950.78' }));
+      fixture.detectChanges();
+      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(text).toContain('Price before GST');
+      expect(text).toContain('Total to pay');
+      expect(text).toContain('950.78');
+      expect(text).toContain('45.28');
+    });
+
+    it('keeps "+ GST" for an order priced before GST was recorded', () => {
+      const fixture = TestBed.createComponent(OrderDetail);
+      fixture.detectChanges();
+      TestBed.inject(HttpTestingController)
+        .expectOne('http://test/api/v1/orders/order-1')
+        .flush(order({ total_amount: '905.50' }));
+      fixture.detectChanges();
+      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(text).toContain('+ GST');
+      expect(text).not.toContain('Total to pay');
+    });
+  });
+
   describe('Approve Cancellation', () => {
     const outForDelivery = {
       id: 'order-1',

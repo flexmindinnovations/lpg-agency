@@ -42,6 +42,21 @@ final paymentApiProvider = Provider<PaymentApi>(
   (ref) => PaymentApi(ref.watch(apiClientProvider).dio),
 );
 
+/// The ways of paying this agency offers (`GET /payments/methods`), from its
+/// own UPI ID, bank details and connected gateway. Read afresh each time a
+/// payment screen opens, so a change in the agency's set-up shows at once; a
+/// failed read throws and the screen falls back to
+/// [PaymentMethods.cashOnly], which needs no provider.
+final paymentMethodsProvider = FutureProvider.autoDispose<PaymentMethods>((
+  ref,
+) async {
+  final result = await ref.watch(paymentApiProvider).getPaymentMethods();
+  return result.when(
+    onSuccess: (methods) => methods,
+    onFailure: (failure) => throw failure,
+  );
+}, retry: (_, _) => null);
+
 /// The `/notifications/*` API — device-token registration and the inbox.
 final notificationApiProvider = Provider<NotificationApi>(
   (ref) => NotificationApi(ref.watch(apiClientProvider).dio),

@@ -35,6 +35,19 @@ Widget _host(Widget child) => ProviderScope(
     invoiceApiProvider.overrideWith(
       (ref) => throw StateError('the API must not be called'),
     ),
+    // An agency with a UPI ID and bank details on its payment profile.
+    paymentMethodsProvider.overrideWith(
+      (ref) async => const PaymentMethods(
+        booking: [],
+        delivery: [],
+        office: [
+          PaymentMethodOption(code: 'cash', label: 'Cash'),
+          PaymentMethodOption(code: 'upi', label: 'UPI'),
+          PaymentMethodOption(code: 'cheque', label: 'Cheque'),
+          PaymentMethodOption(code: 'bank_transfer', label: 'Bank transfer'),
+        ],
+      ),
+    ),
   ],
   child: MaterialApp(
     theme: LpgTheme.light,
@@ -102,6 +115,40 @@ void main() {
       expect(find.widgetWithText(TextField, '45.28'), findsOneWidget);
     });
 
+    testWidgets('offers only the ways of paying the agency has set up', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            paymentMethodsProvider.overrideWith(
+              (ref) async => const PaymentMethods(
+                booking: [],
+                delivery: [],
+                office: [
+                  PaymentMethodOption(code: 'cash', label: 'Cash'),
+                  PaymentMethodOption(code: 'cheque', label: 'Cheque'),
+                ],
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            theme: LpgTheme.light,
+            home: Scaffold(body: RecordPaymentSheet(invoice: _invoice())),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Cash'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cheque'), findsWidgets);
+      expect(find.text('UPI'), findsNothing);
+      expect(find.text('Bank transfer'), findsNothing);
+      expect(find.text('Card'), findsNothing);
+    });
+
     testWidgets('refuses more than the balance without calling the API', (
       tester,
     ) async {
@@ -118,6 +165,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(_host(RecordPaymentSheet(invoice: _invoice())));
+      await tester.pumpAndSettle(); // the agency's payment methods arrive
 
       await tester.tap(find.text('Cash').first);
       await tester.pumpAndSettle();

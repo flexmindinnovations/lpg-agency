@@ -138,7 +138,8 @@
               </div>
               <div class="jira-card__footer">
                 <span class="jira-card__amount">
-                  @if (order.total_amount) { ₹{{ order.total_amount }} }
+                  @if (order.payable_amount ?? order.total_amount) { ₹{{ order.payable_amount ??
+                  order.total_amount }} }
                 </span>
                 <button
                   type="button"

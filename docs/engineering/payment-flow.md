@@ -56,3 +56,7 @@ BR-17, BR-18, BR-19, BR-20.
 
 ## 10. Open Items
 See `questions/open-questions.md` Q-08, Q-09, Q-31 (UPI/Card device integration model), Q-32 (deferred/partial payment policy), Q-33 (collections process).
+
+## 11. Which payment methods are offered
+The apps do not carry their own list. `GET /payments/methods` returns what the agency's set-up allows, in three places: `booking` (a customer's preference), `delivery` (recorded at the door by the driver or the office) and `office` (recorded against an invoice). Cash is always offered; UPI needs a UPI ID on the payment profile; online payment needs the agency's Razorpay account connected (ADR-067); bank transfer needs bank details; on credit needs a credit limit; cheque is an office-only record. Card is not offered. Rules live in `application/accounting/payment_methods.py`.
+

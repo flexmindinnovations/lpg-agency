@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
+import 'package:driver_app/src/api_provider.dart';
 import 'package:driver_app/src/dev_otp_provider.dart';
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/features/delivery/data/image_picker_provider.dart';
@@ -200,6 +201,18 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
       loadedLines: loadedLines,
     );
 
+/// An agency with UPI, a gateway and a credit limit set up.
+const _agencyMethods = PaymentMethods(
+  booking: [],
+  delivery: [
+    PaymentMethodOption(code: 'cash', label: 'Cash'),
+    PaymentMethodOption(code: 'upi', label: 'UPI'),
+    PaymentMethodOption(code: 'online_gateway', label: 'Online payment'),
+    PaymentMethodOption(code: 'credit', label: 'On credit'),
+  ],
+  office: [],
+);
+
 ({ProviderContainer container, OfflineHarness harness}) _container(
   _RecordingAdapter adapter, {
   bool online = true,
@@ -208,6 +221,7 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
   String? devCode,
   DriverGeolocator geolocator = const _FakeGeolocator(),
   OrderResponse? order,
+  PaymentMethods methods = _agencyMethods,
 }) {
   final harness = OfflineHarness(
     ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
@@ -217,6 +231,7 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
     overrides: [
       ...harness.overrides,
       stopOrderProvider.overrideWith((ref, id) async => order ?? _order()),
+      paymentMethodsProvider.overrideWith((ref) async => methods),
       imagePickerProvider.overrideWithValue(_FakePicker()),
       driverGeolocatorProvider.overrideWithValue(geolocator),
       activeRouteProvider.overrideWith((ref) async => route),
@@ -256,6 +271,29 @@ void main() {
       expect(find.text('Confirm delivery'), findsOneWidget);
       // Amount prefilled from the order total.
       expect(find.text('905.50'), findsOneWidget);
+    });
+
+    testWidgets('offers only the payment methods the agency has set up', (
+      tester,
+    ) async {
+      final (:container, :harness) = _container(
+        _RecordingAdapter(),
+        methods: const PaymentMethods(
+          booking: [],
+          delivery: [PaymentMethodOption(code: 'cash', label: 'Cash')],
+          office: [],
+        ),
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await tester.tap(find.text('Cash'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('UPI'), findsNothing);
+      expect(find.text('On credit'), findsNothing);
+      expect(find.text('Card'), findsNothing);
     });
 
     testWidgets('prefills the amount with the price plus GST', (tester) async {

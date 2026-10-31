@@ -447,6 +447,8 @@ export type { SetPaymentProfileApiV1PaymentProfilePut$Params as SetPaymentProfil
 export { setPaymentProfileApiV1PaymentProfilePut as setPaymentProfileApiV1PaymentProfilePut } from './fn/payment-profile/set-payment-profile-api-v-1-payment-profile-put';
 export type { VerifyPaymentDetailsApiV1PaymentProfileVerifyPost$Params as VerifyPaymentDetailsApiV1PaymentProfileVerifyPost$Params } from './fn/payment-profile/verify-payment-details-api-v-1-payment-profile-verify-post';
 export { verifyPaymentDetailsApiV1PaymentProfileVerifyPost as verifyPaymentDetailsApiV1PaymentProfileVerifyPost } from './fn/payment-profile/verify-payment-details-api-v-1-payment-profile-verify-post';
+export type { ListPaymentMethodsApiV1PaymentsMethodsGet$Params as ListPaymentMethodsApiV1PaymentsMethodsGet$Params } from './fn/payment-profile/list-payment-methods-api-v-1-payments-methods-get';
+export { listPaymentMethodsApiV1PaymentsMethodsGet as listPaymentMethodsApiV1PaymentsMethodsGet } from './fn/payment-profile/list-payment-methods-api-v-1-payments-methods-get';
 export type { GetUpiQrApiV1PaymentsUpiQrGet$Params as GetUpiQrApiV1PaymentsUpiQrGet$Params } from './fn/payment-profile/get-upi-qr-api-v-1-payments-upi-qr-get';
 export { getUpiQrApiV1PaymentsUpiQrGet as getUpiQrApiV1PaymentsUpiQrGet } from './fn/payment-profile/get-upi-qr-api-v-1-payments-upi-qr-get';
 export type { ListAgenciesApiV1PlatformAgenciesGet$Params as ListAgenciesApiV1PlatformAgenciesGet$Params } from './fn/platform-console/list-agencies-api-v-1-platform-agencies-get';
