@@ -52,7 +52,7 @@ describe('WebSocketService', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     FakeSocket.instances = [];
-    (globalThis as any).WebSocket = FakeSocket;
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = FakeSocket;
     TestBed.configureTestingModule({
       providers: [
         { provide: ApiConfiguration, useValue: { rootUrl: 'https://lpg.example' } },
@@ -64,7 +64,7 @@ describe('WebSocketService', () => {
 
   afterEach(() => {
     service.ngOnDestroy();
-    (globalThis as any).WebSocket = realWebSocket;
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = realWebSocket;
     jest.useRealTimers();
   });
 

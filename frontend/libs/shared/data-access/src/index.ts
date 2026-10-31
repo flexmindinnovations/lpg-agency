@@ -1,6 +1,7 @@
 export * from './lib/problem-details';
 export * from './lib/correlation.interceptor';
 export * from './lib/global-error-toast.interceptor';
+export * from './lib/app-error-handler';
 export * from './lib/auth-token.store';
 export * from './lib/auth.service';
 export * from './lib/auth.interceptor';

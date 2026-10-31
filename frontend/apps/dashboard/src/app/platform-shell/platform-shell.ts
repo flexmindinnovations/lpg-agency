@@ -83,7 +83,11 @@ export class PlatformShell {
       ? [
           {
             label: 'Platform Console',
-            items: items.map(({ condition: _condition, ...rest }) => rest),
+            items: items.map((item) => ({
+              label: item.label,
+              icon: item.icon,
+              route: item.route,
+            })),
           },
         ]
       : [];

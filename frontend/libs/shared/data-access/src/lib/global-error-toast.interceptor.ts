@@ -22,6 +22,14 @@ const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * the drawer that sent it), so the same failure isn't also toasted. */
 export const SKIP_ERROR_TOAST = new HttpContextToken<boolean>(() => false);
 
+/** Errors the interceptor already toasted, so `AppErrorHandler` does not show
+ * the same failure a second time if nothing downstream catches it. */
+const toasted = new WeakSet<object>();
+
+export function wasToasted(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && toasted.has(error);
+}
+
 function isAuthEndpoint(url: string): boolean {
   return AUTH_ENDPOINT_SEGMENTS.some((segment) => url.includes(segment));
 }
@@ -61,6 +69,7 @@ export const globalErrorToastInterceptor: HttpInterceptorFn = (request, next) =>
       const shownInline = request.context.get(SKIP_ERROR_TOAST);
       if (MUTATING_METHODS.has(request.method) && !isAuthOrSessionExpiry && !shownInline) {
         notify.error(errorMessageFor(error));
+        if (typeof error === 'object' && error !== null) toasted.add(error);
       }
 
       return throwError(() => error);

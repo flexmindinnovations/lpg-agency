@@ -393,7 +393,9 @@ export class PaymentSettings implements OnInit {
       return;
     }
     this.saving.set(true);
-    const { account_number_confirm: _confirm, ...profile } = this.form.getRawValue();
+    const profile = this.form.getRawValue();
+    // The confirmation field is a UI check only; it is not part of the saved profile.
+    Reflect.deleteProperty(profile, 'account_number_confirm');
     this.service.save(profile).subscribe({
       next: (profile) => {
         this.saving.set(false);

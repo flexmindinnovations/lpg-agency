@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, ErrorHandler, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import {
   provideRouter,
@@ -8,6 +8,7 @@ import {
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import {
+  AppErrorHandler,
   AppMessageService,
   authInterceptor,
   correlationIdInterceptor,
@@ -39,6 +40,8 @@ export const appConfig: ApplicationConfig = {
     // lifetime per severity) — see AppMessageService (QA DO-21).
     { provide: MessageService, useClass: AppMessageService },
     ConfirmationService,
+    // Unexpected runtime errors reach the user as a toast, not just the console.
+    { provide: ErrorHandler, useClass: AppErrorHandler },
     provideBrowserGlobalErrorListeners(),
     provideRouter(
       appRoutes,

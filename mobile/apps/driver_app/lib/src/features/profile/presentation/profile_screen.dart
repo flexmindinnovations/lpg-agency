@@ -106,8 +106,8 @@ class ProfileScreen extends ConsumerWidget {
               try {
                 await ref.read(pushNotificationServiceProvider).unregister();
                 await ref.read(resourceCacheProvider)?.clear();
-              } catch (e) {
-                debugPrint('logout: cleanup failed ($e)');
+              } catch (_) {
+                // Best effort: nothing to show the user for this failure.
               } finally {
                 await ref.read(authControllerProvider).logout();
               }

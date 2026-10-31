@@ -5,7 +5,7 @@ import { AuthTokenStore } from './auth-token.store';
 
 export interface RealtimeMessage {
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -24,7 +24,7 @@ export class WebSocketService implements OnDestroy {
 
   private activeIntents = new Set<string>();
   private reconnectAttempts = 0;
-  private reconnectTimeoutId: any = null;
+  private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private isDestroyed = false;
 
   readonly messages$ = this.messageSubject.asObservable();
@@ -76,8 +76,8 @@ export class WebSocketService implements OnDestroy {
           return;
         }
         this.messageSubject.next(data);
-      } catch (err) {
-        console.error('Failed to parse WebSocket message:', err);
+      } catch {
+        // A frame that is not valid JSON carries nothing the app can act on.
       }
     };
 
@@ -144,7 +144,7 @@ export class WebSocketService implements OnDestroy {
     }
   }
 
-  on<T = any>(messageType: string): Observable<T> {
+  on<T = RealtimeMessage>(messageType: string): Observable<T> {
     return this.messages$.pipe(
       filter((msg) => msg.type === messageType),
       map((msg) => msg as T),
@@ -176,7 +176,7 @@ export class WebSocketService implements OnDestroy {
     this.hasBeenReady = true;
   }
 
-  private send(payload: any): void {
+  private send(payload: Record<string, unknown>): void {
     this.socket?.send(JSON.stringify(payload));
   }
 

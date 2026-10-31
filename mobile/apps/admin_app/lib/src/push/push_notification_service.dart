@@ -125,22 +125,15 @@ class PushNotificationService {
   Future<String?> _tokenOrNull() async {
     try {
       return await FirebaseMessaging.instance.getToken();
-    } catch (e) {
-      debugPrint('push: could not read FCM token ($e)');
+    } catch (_) {
+      // Best effort: nothing to show the user for this failure.
       return null;
     }
   }
 
   Future<void> _sendToken(String token) async {
-    final result = await _notificationApi.registerDevice(
-      token: token,
-      platform: _platform,
-    );
-    result.when(
-      onSuccess: (_) {},
-      onFailure: (f) =>
-          debugPrint('push: device registration failed: ${f.message}'),
-    );
+    // Best effort: a failed registration is retried on the next app start.
+    await _notificationApi.registerDevice(token: token, platform: _platform);
   }
 
   Future<void> _showForeground(RemoteMessage message) async {

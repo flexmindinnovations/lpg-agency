@@ -102,8 +102,8 @@ void main() async {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     await pushService.init();
     _wirePushRegistrationToAuth(authController, pushService);
-  } catch (e, s) {
-    debugPrint('push: initialisation skipped ($e)\n$s');
+  } catch (_) {
+    // Best effort: nothing to show the user for this failure.
   }
 
   runApp(

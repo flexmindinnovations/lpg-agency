@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
 import { interval, startWith } from 'rxjs';
-import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
+import { AppShellComponent, type NavGroup, type NavItem } from '@lpg/shared/ui/app-shell';
 import {
   AuthService,
   AuthTokenStore,
@@ -186,11 +186,15 @@ export class ShellLayout {
     // as `permission.guard.ts`'s route guards for these paths.
     const canBrowse = (code: string) => can(code) && principal?.role !== 'driver';
 
-    const buildGroup = (label: string, items: (any & { condition?: boolean })[]) => {
+    type ConditionalNavItem = NavItem & { condition?: boolean };
+    const withoutCondition = (item: ConditionalNavItem): NavItem => {
+      const copy = { ...item };
+      delete copy.condition;
+      return copy;
+    };
+    const buildGroup = (label: string, items: ConditionalNavItem[]) => {
       const filtered = items.filter((i) => i.condition !== false);
-      return filtered.length > 0
-        ? [{ label, items: filtered.map(({ condition, ...rest }) => rest) }]
-        : [];
+      return filtered.length > 0 ? [{ label, items: filtered.map(withoutCondition) }] : [];
     };
 
     return [

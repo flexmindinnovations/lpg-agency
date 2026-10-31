@@ -46,7 +46,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _requestCode() async {
-    debugPrint('LoginScreen: _requestCode called');
     final tenantId = _tenantIdController.text.trim();
     final phone = normalizePhoneNumber(_phoneController.text);
 
@@ -76,8 +75,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
 
-    debugPrint('LoginScreen: Requesting OTP for $phone in tenant $tenantId');
-
     final result = await ref
         .read(authControllerProvider)
         .requestOtp(tenantId: tenantId, phoneNumber: phone);
@@ -92,12 +89,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _submitting = false;
       result.when(
         onSuccess: (_) {
-          debugPrint('LoginScreen: OTP requested successfully');
           _codeRequested = true;
           _testingOtp = testingOtp;
         },
         onFailure: (failure) {
-          debugPrint('LoginScreen: OTP request failed: ${failure.message}');
           _errorMessage = failure.message;
         },
       );
@@ -127,10 +122,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
 
-    debugPrint(
-      'LoginScreen: Verifying OTP for ${_phoneController.text.trim()}',
-    );
-
     final result = await ref
         .read(authControllerProvider)
         .verifyOtp(
@@ -143,11 +134,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _submitting = false;
       result.when(
-        onSuccess: (_) => debugPrint('LoginScreen: OTP verified successfully'),
+        onSuccess: (_) {},
         onFailure: (failure) {
-          debugPrint(
-            'LoginScreen: OTP verification failed: ${failure.message}',
-          );
           _errorMessage = failure.message;
         },
       );
