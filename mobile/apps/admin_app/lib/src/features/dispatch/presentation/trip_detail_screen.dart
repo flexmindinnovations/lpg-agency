@@ -26,9 +26,8 @@ class TripDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();
 }
 
-class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
-  var _busy = false;
-
+class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
+    with LpgBusyActions<TripDetailScreen> {
   void _refresh() {
     ref.invalidate(tripProvider(widget.tripId));
     ref.invalidate(tripWeighmentsProvider(widget.tripId));
@@ -42,13 +41,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   void _toast(String message, {LpgTone tone = LpgTone.success}) =>
       LpgFeedback.showToast(context, message, tone: tone);
 
-  Future<void> _optimise() async {
-    setState(() => _busy = true);
+  Future<void> _optimise() => runBusy('optimise', _doOptimise);
+
+  Future<void> _doOptimise() async {
     final result = await ref
         .read(routeApiProvider)
         .optimizeRoute(widget.tripId);
     if (!mounted) return;
-    setState(() => _busy = false);
     switch (result) {
       case FailureResult<RouteOptimization>(:final failure):
         _toast(failure.message, tone: LpgTone.danger);
@@ -63,6 +62,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   }
 
   Future<void> _cancel() async {
+    if (anyBusy) return;
     final ok = await LpgFeedback.confirm(
       context,
       title: 'Cancel this trip?',
@@ -74,10 +74,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       destructive: true,
     );
     if (!ok || !mounted) return;
-    setState(() => _busy = true);
+    await runBusy('cancel', _doCancel);
+  }
+
+  Future<void> _doCancel() async {
     final result = await ref.read(routeApiProvider).cancelRoute(widget.tripId);
     if (!mounted) return;
-    setState(() => _busy = false);
     switch (result) {
       case FailureResult<RouteSummary>(:final failure):
         _toast(failure.message, tone: LpgTone.danger);
@@ -185,7 +187,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                         'The trip is back. Count what is left on the van, '
                         'then settle it to close it out.',
                     actionLabel: 'Settle trip',
-                    onAction: _busy ? null : () => _settle(trip),
+                    onAction: anyBusy ? null : () => _settle(trip),
                   ),
                 if (trip.status == 'completed')
                   const SizedBox(height: LpgSpacing.md),
@@ -217,8 +219,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     icon: LpgIcons.route,
                     variant: LpgButtonVariant.secondary,
                     expand: true,
-                    isLoading: _busy,
-                    onPressed: _busy ? null : _optimise,
+                    isLoading: isBusy('optimise'),
+                    onPressed: anyBusy ? null : _optimise,
                   ),
                 ],
                 if (trip.loadedLines.isNotEmpty) ...[
@@ -247,7 +249,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     label: 'Cancel trip',
                     variant: LpgButtonVariant.destructive,
                     expand: true,
-                    onPressed: _busy ? null : _cancel,
+                    isLoading: isBusy('cancel'),
+                    onPressed: anyBusy ? null : _cancel,
                   ),
                 ],
                 if (trip.status == 'completed') ...[
@@ -256,7 +259,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     label: 'Settle trip',
                     icon: LpgIcons.check,
                     expand: true,
-                    onPressed: _busy ? null : () => _settle(trip),
+                    onPressed: anyBusy ? null : () => _settle(trip),
                   ),
                 ],
               ],

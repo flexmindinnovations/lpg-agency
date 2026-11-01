@@ -41,12 +41,12 @@ class PushNotificationService {
   /// is running. `CustomerApp` listens and calls `router.go`.
   Stream<String> get taps => _tapController.stream;
 
-  /// A route derived from the notification that cold-started the app, if
-  /// any. Read once, early, by `CustomerApp`.
   /// Ticks whenever a notification arrives while the app is in the
   /// foreground — the shell refetches the unread count, inbox and orders.
   Stream<void> get messages => _messageController.stream;
 
+  /// A route derived from the notification that cold-started the app, if
+  /// any. Read once, early, by `CustomerApp`.
   String? takeInitialRoute() {
     final route = _initialRoute;
     _initialRoute = null;

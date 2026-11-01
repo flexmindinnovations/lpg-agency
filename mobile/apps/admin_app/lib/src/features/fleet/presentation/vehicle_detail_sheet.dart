@@ -31,6 +31,9 @@ class _VehicleSheet extends ConsumerStatefulWidget {
 
 class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
   var _busy = false;
+
+  /// Which action is running, so only its button shows the spinner.
+  String? _pending;
   var _editing = false;
   String? _error;
   final _make = TextEditingController();
@@ -87,6 +90,7 @@ class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
       );
       if (!ok) return;
     }
+    _pending = status;
     await _run(
       () => ref.read(fleetApiProvider).setVehicleStatus(vehicle.id, status),
       success:
@@ -105,6 +109,7 @@ class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
       setState(() => _error = 'Capacity must be at least 1.');
       return;
     }
+    _pending = 'save';
     await _run(
       () => ref
           .read(fleetApiProvider)
@@ -216,7 +221,7 @@ class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
             LpgButton(
               label: 'Save',
               expand: true,
-              isLoading: _busy,
+              isLoading: _busy && _pending == 'save',
               onPressed: _busy ? null : () => _save(vehicle),
             ),
             LpgButton(
@@ -253,6 +258,7 @@ class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
                   ? LpgButtonVariant.destructive
                   : LpgButtonVariant.tonal,
               expand: true,
+              isLoading: _busy && _pending == status,
               onPressed: _busy ? null : () => _changeStatus(vehicle, status),
             ),
           ],

@@ -26,15 +26,15 @@ class ProposalSheet extends ConsumerStatefulWidget {
   ConsumerState<ProposalSheet> createState() => _ProposalSheetState();
 }
 
-class _ProposalSheetState extends ConsumerState<ProposalSheet> {
+class _ProposalSheetState extends ConsumerState<ProposalSheet>
+    with LpgBusyActions<ProposalSheet> {
   String? _error;
-  bool _busy = false;
 
-  Future<void> _decide(bool accept) async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+  Future<void> _decide(bool accept) =>
+      runBusy(accept ? 'accept' : 'reject', () => _submit(accept));
+
+  Future<void> _submit(bool accept) async {
+    setState(() => _error = null);
     final result = await ref
         .read(priceListApiProvider)
         .reviewProposal(widget.proposal.id, accept: accept);
@@ -43,10 +43,7 @@ class _ProposalSheetState extends ConsumerState<ProposalSheet> {
       case Success<void>():
         Navigator.of(context).pop(accept ? 'accepted' : 'rejected');
       case FailureResult<void>(:final failure):
-        setState(() {
-          _busy = false;
-          _error = failure.message;
-        });
+        setState(() => _error = failure.message);
     }
   }
 
@@ -124,16 +121,17 @@ class _ProposalSheetState extends ConsumerState<ProposalSheet> {
           LpgButton(
             label: 'Accept new price',
             icon: LpgIcons.check,
-            isLoading: _busy,
+            isLoading: isBusy('accept'),
             expand: true,
-            onPressed: _busy ? null : () => _decide(true),
+            onPressed: anyBusy ? null : () => _decide(true),
           ),
           const SizedBox(height: LpgSpacing.sm),
           LpgButton(
             label: 'Reject',
             variant: LpgButtonVariant.secondary,
             expand: true,
-            onPressed: _busy ? null : () => _decide(false),
+            isLoading: isBusy('reject'),
+            onPressed: anyBusy ? null : () => _decide(false),
           ),
         ],
       ),

@@ -31,6 +31,9 @@ class _DriverSheet extends ConsumerStatefulWidget {
 
 class _DriverSheetState extends ConsumerState<_DriverSheet> {
   var _busy = false;
+
+  /// Which action is running, so only its button shows the spinner.
+  String? _pending;
   String? _error;
   var _editing = false;
   var _moving = false;
@@ -86,6 +89,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
       );
       if (!ok) return;
     }
+    _pending = status;
     await _run(
       () => ref.read(fleetApiProvider).setDriverStatus(driver.id, status),
       success:
@@ -100,6 +104,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
       setState(() => _error = 'Choose the branch to move them to.');
       return;
     }
+    _pending = 'branch';
     await _run(
       () => ref
           .read(fleetApiProvider)
@@ -118,6 +123,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
       setState(() => _error = 'Enter the licence number.');
       return;
     }
+    _pending = 'licence';
     await _run(
       () => ref
           .read(fleetApiProvider)
@@ -219,7 +225,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
             LpgButton(
               label: 'Save licence',
               expand: true,
-              isLoading: _busy,
+              isLoading: _busy && _pending == 'licence',
               onPressed: _busy ? null : () => _saveLicence(driver),
             ),
             LpgButton(
@@ -247,7 +253,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
             LpgButton(
               label: 'Move driver',
               expand: true,
-              isLoading: _busy,
+              isLoading: _busy && _pending == 'branch',
               onPressed: _busy ? null : () => _moveBranch(driver),
             ),
             LpgButton(
@@ -317,6 +323,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
                   ? LpgButtonVariant.destructive
                   : LpgButtonVariant.tonal,
               expand: true,
+              isLoading: _busy && _pending == status,
               onPressed: _busy ? null : () => _changeStatus(driver, status),
             ),
           ],
