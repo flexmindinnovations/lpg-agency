@@ -1,3 +1,4 @@
+import 'package:core/core.dart';
 import 'dart:async';
 
 import 'package:api_client/api_client.dart';
@@ -28,9 +29,14 @@ class NotificationsScreen extends ConsumerWidget {
         }),
       );
     }
-    final id = item.referenceId;
-    if (item.referenceType == 'order' && id != null && context.mounted) {
-      context.goNamed('order_detail', pathParameters: {'orderId': id});
+    // Same destination as tapping the push itself (ADR-069).
+    final route = notificationRoute(
+      PushApp.admin,
+      referenceType: item.referenceType,
+      referenceId: item.referenceId,
+    );
+    if (route != null && route != '/alerts' && context.mounted) {
+      context.go(route);
     }
   }
 

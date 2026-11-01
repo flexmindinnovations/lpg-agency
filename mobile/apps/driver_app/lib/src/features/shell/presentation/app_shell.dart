@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../offline/offline_banner.dart';
 import '../../../offline/sync_providers.dart';
 import '../../delivery/data/active_route_provider.dart';
+import '../../delivery/data/stop_order_provider.dart';
 import '../../notifications/data/notifications_provider.dart';
 
 /// The Driver App shell: a persistent [LpgAdaptiveShell] (bottom bar on
@@ -100,6 +101,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     ref.invalidate(unreadNotificationCountProvider);
     ref.invalidate(driverNotificationsProvider);
     ref.invalidate(activeRouteProvider);
+    ref.invalidate(stopOrderProvider);
   }
 
   void _onTap(int index) {

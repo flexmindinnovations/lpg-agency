@@ -51,10 +51,14 @@ class _AppShellState extends ConsumerState<AppShell> {
     ref.invalidate(invoicesProvider);
     ref.invalidate(notificationsProvider);
     ref.invalidate(unreadNotificationCountProvider);
+    ref.invalidate(orderDetailProvider);
   }
 
   @override
   Widget build(BuildContext context) {
+    // A push that lands while the app is open means something moved (order
+    // confirmed, delivered, invoice paid, ...): reload what is on screen.
+    ref.listen(pushMessagesProvider, (_, _) => _refresh());
     ref.listen(notificationsRealtimeProvider, (previous, next) {
       next.whenData((message) {
         ref.invalidate(notificationsProvider);

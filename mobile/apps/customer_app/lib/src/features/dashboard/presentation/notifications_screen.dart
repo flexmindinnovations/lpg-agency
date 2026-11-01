@@ -1,3 +1,4 @@
+import 'package:core/core.dart';
 import 'dart:async';
 
 import 'package:api_client/api_client.dart';
@@ -30,12 +31,14 @@ class NotificationsScreen extends ConsumerWidget {
       );
     }
 
-    // Only "order" reference notifications are produced by the backend
-    // today (notification_jobs.py) -- nothing else to route to yet.
-    if (item.referenceType == 'order' && item.referenceId != null) {
-      if (context.mounted) {
-        context.push('/orders/${item.referenceId}');
-      }
+    // Same destination as tapping the push itself (ADR-069).
+    final route = notificationRoute(
+      PushApp.customer,
+      referenceType: item.referenceType,
+      referenceId: item.referenceId,
+    );
+    if (route != null && route != '/notifications' && context.mounted) {
+      context.push(route);
     }
   }
 

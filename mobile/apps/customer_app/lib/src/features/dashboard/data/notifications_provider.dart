@@ -39,6 +39,11 @@ final unreadNotificationCountProvider = FutureProvider<int>((ref) async {
   return 0;
 });
 
+/// Ticks when an FCM message lands while the app is foregrounded.
+final pushMessagesProvider = StreamProvider<void>((ref) {
+  return ref.watch(pushNotificationServiceProvider).messages;
+});
+
 /// Live inbox changes for the signed-in user over the backend's `/ws`
 /// (`RealtimeClient.subscribeToNotificationChanges`): `notification.new`
 /// (carrying id, title, body and `reference_type`/`reference_id`), reads

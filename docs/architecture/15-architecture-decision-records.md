@@ -1647,6 +1647,21 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 066 | Payment profile, UPI QR and cash controls | Accepted |
 | 067 | Per-agency Razorpay credentials | Accepted |
 | 068 | Per-agency notification settings | Accepted |
+| 069 | Push notification deep-link contract and live screen sync | Accepted |
+
+## ADR-069: Push Notification Deep-Link Contract and Live Screen Sync
+
+**Status:** Accepted
+
+**Context.** Tapping a push opened the wrong screen or none: the cold-start route was applied before the session was restored (the auth guard then redirected to `/`), the three apps mapped `reference_type` differently, inbox taps and push taps used separate code, and a push arriving while an app was open did not refresh the customer app's screens.
+
+**Decision.**
+- Every push carries one data block, built in `notification/delivery.py`: `type` (catalog key), `reference_type` and `reference_id` (omitted when the event has no entity). `reference_type` values are `order`, `invoice`, `route`, `complaint`, `customer`, `cash_handover`, `price_list_proposal`, `compliance_document`, `inventory_location`. The same fields ride on the `notification.new` realtime message.
+- `notificationRoute(app, referenceType, referenceId)` in `mobile/packages/core` is the only mapping from that pair to an app route. Push taps (foreground, background, cold start, tray) and inbox-row taps all use it, so they land on the same screen. Unknown types fall back to the app's inbox (`/notifications` customer, `/` driver Today, `/alerts` admin).
+- `DeepLinkGate` holds a tapped route until the session is authenticated, then navigates once. A cold-start or signed-out tap therefore survives session restore and login.
+- Live sync: every app shell invalidates its order, trip, invoice and inbox providers (whole families, so open detail screens refetch) on three signals: a foreground push, a `/ws` event, and app resume. After a socket drop the `realtime.reconnected` marker triggers a full refetch.
+
+**Consequences.** Adding a notification for a new entity means adding its `reference_type` to `notificationRoute` for each app that can receive it. Navigating a user away from a screen whose entity changed state is left to that screen's own status handling.
 
 ## Deferred Decisions
 
