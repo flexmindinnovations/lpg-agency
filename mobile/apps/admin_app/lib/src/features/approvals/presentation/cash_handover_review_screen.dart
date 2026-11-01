@@ -44,6 +44,7 @@ class _CashHandoverReviewScreenState
     extends ConsumerState<CashHandoverReviewScreen> {
   final _noteController = TextEditingController();
   bool _loading = false;
+  String? _pendingOutcome;
   String? _errorMessage;
 
   @override
@@ -64,6 +65,7 @@ class _CashHandoverReviewScreenState
 
     setState(() {
       _loading = true;
+      _pendingOutcome = outcome;
       _errorMessage = null;
     });
 
@@ -91,6 +93,7 @@ class _CashHandoverReviewScreenState
       onFailure: (failure) {
         setState(() {
           _loading = false;
+          _pendingOutcome = null;
           _errorMessage = failure.message;
         });
       },
@@ -244,7 +247,7 @@ class _CashHandoverReviewScreenState
                     child: LpgButton(
                       label: 'Dispute',
                       variant: LpgButtonVariant.destructive,
-                      isLoading: _loading,
+                      isLoading: _loading && _pendingOutcome == 'disputed',
                       onPressed: _loading
                           ? null
                           : () => _submitReview('disputed'),
@@ -255,7 +258,7 @@ class _CashHandoverReviewScreenState
                     child: LpgButton(
                       label: 'Accept & Verify',
                       variant: LpgButtonVariant.primary,
-                      isLoading: _loading,
+                      isLoading: _loading && _pendingOutcome == 'accepted',
                       onPressed: _loading
                           ? null
                           : () => _submitReview('accepted'),
