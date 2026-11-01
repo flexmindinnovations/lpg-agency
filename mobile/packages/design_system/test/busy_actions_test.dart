@@ -47,9 +47,7 @@ void main() {
     final gate = Completer<void>();
     var sends = 0;
     await tester.pumpWidget(
-      _wrap(
-        _TwoActions(save: () => gate.future, send: () async => sends++),
-      ),
+      _wrap(_TwoActions(save: () => gate.future, send: () async => sends++)),
     );
 
     await tester.tap(find.text('Save'));

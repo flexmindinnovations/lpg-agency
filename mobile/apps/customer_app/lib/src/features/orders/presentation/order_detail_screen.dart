@@ -150,9 +150,7 @@ class OrderDetailScreen extends ConsumerWidget {
               _DeliveredActions(order: order),
             if (cancellable) ...[
               if (order.isTrackable) const SizedBox(height: LpgSpacing.smd),
-              _CancelOrderButton(
-                onCancel: () => _confirmCancel(context, ref),
-              ),
+              _CancelOrderButton(onCancel: () => _confirmCancel(context, ref)),
             ],
           ];
 
