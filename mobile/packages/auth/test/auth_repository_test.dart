@@ -162,6 +162,44 @@ void main() {
       expect(repository.accessToken, 'access-2');
     });
 
+    test(
+      'concurrent restoreSession calls share one refresh (rotating tokens)',
+      () async {
+        var refreshCalls = 0;
+        final authApi = _authApiReturning({
+          '/auth/refresh': (_) {
+            refreshCalls++;
+            return _jsonResponse({
+              'access_token': 'access-2',
+              'refresh_token': 'refresh-2',
+            }, 200);
+          },
+          '/auth/me': (_) => _jsonResponse({
+            'user_id': 'user-1',
+            'tenant_id': 'tenant-1',
+            'role': 'driver',
+            'permissions': <String>[],
+          }, 200),
+        });
+        final repository = ApiAuthRepository(
+          authApi: authApi,
+          tokenStorage: _inMemoryTokenStorage({
+            'auth.refresh_token': 'refresh-1',
+          }),
+        );
+
+        await Future.wait([
+          repository.restoreSession(),
+          repository.restoreSession(),
+          repository.restoreSession(),
+        ]);
+
+        expect(refreshCalls, 1);
+        await repository.restoreSession();
+        expect(refreshCalls, 2);
+      },
+    );
+
     test('logout clears both the in-memory token and stored tokens', () async {
       final authApi = _authApiReturning({
         '/auth/logout': (_) => _jsonResponse({}, 204),
