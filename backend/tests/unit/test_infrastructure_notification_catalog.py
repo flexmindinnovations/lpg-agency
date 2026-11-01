@@ -51,17 +51,20 @@ def test_staff_alerts_go_to_the_people_who_act_on_them(
     assert spec.permission == permission
 
 
-def test_staff_alerts_are_in_app_only_unless_money_or_stock() -> None:
-    # Staff work from the dashboard; the apps are the only clients with
-    # push tokens. A money discrepancy or a reorder wants an email trail.
+def test_staff_alerts_push_to_the_admin_app_except_low_urgency_ones() -> None:
+    # Managers run the Admin App, which registers push tokens, so actionable
+    # staff alerts push. Pure FYI types stay in-app. SMS is never used for
+    # staff; a money discrepancy or a reorder also wants an email trail.
+    quiet = {"order_delivered_staff", "route_load_confirmed_staff"}
     for name, spec in SPECS.items():
         if spec.audience is not Audience.STAFF:
             continue
-        assert spec.push is False, name
+        assert spec.push is (name not in quiet), name
         assert spec.sms is None, name
+    assert SPECS["complaint_assigned"].push is True
     assert SPECS["cash_shortfall_staff"].email is True
     assert SPECS["inventory_low_stock_staff"].email is True
-    assert SPECS["order_placed_staff"].has_external_channel is False
+    assert SPECS["order_placed_staff"].push is True
 
 
 def test_customer_lifecycle_types_push_and_sms_where_registered() -> None:
