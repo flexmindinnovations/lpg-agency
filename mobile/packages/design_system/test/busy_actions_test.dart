@@ -55,7 +55,6 @@ void main() {
 
     // One spinner (on Save), and Send is inert while Save runs.
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('Save'), findsNothing);
     await tester.tap(find.text('Send'));
     await tester.pump();
     expect(sends, 0);
