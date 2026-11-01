@@ -47,7 +47,12 @@ class LpgAdaptiveShell extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.body,
+    this.fullWidthIndexes = const {},
   });
+
+  /// Tabs that lay themselves out for the whole tablet width (for example a
+  /// two-pane list and detail) instead of the centred, capped column.
+  final Set<int> fullWidthIndexes;
 
   final List<LpgNavDestination> destinations;
   final int selectedIndex;
@@ -83,7 +88,14 @@ class LpgAdaptiveShell extends StatelessWidget {
                 ? colors.borderStrong
                 : colors.borderDefault,
           ),
-          Expanded(child: LpgContentWidth(child: body)),
+          Expanded(
+            child: fullWidthIndexes.contains(selectedIndex)
+                ? LpgContentWidth(
+                    maxWidth: LpgBreakpoints.wideContentMaxWidth,
+                    child: body,
+                  )
+                : LpgContentWidth(child: body),
+          ),
         ],
       ),
     );

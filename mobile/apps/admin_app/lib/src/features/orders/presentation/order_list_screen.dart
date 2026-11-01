@@ -12,9 +12,19 @@ import '../../../shared/admin_app_bar.dart';
 import '../../../shared/order_row.dart';
 import '../data/orders_provider.dart';
 import '../domain/order_flow.dart';
+import 'order_detail_screen.dart';
 
 class OrderListScreen extends ConsumerStatefulWidget {
-  const OrderListScreen({super.key, this.initialFilter, this.initialSearch});
+  const OrderListScreen({
+    super.key,
+    this.initialFilter,
+    this.initialSearch,
+    this.initialSelectedId,
+  });
+
+  /// On a tablet, the order shown in the detail pane when the list opens
+  /// (a deep link or push notification to one order).
+  final String? initialSelectedId;
 
   /// The label of the filter chip to start on ("Booked"); the dashboard tiles
   /// open the list this way.
@@ -38,6 +48,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
   /// How many pages of 50 are on screen; "Load more" adds one.
   int _pages = 1;
+
+  /// The order open in the detail pane (two-pane tablet layout only).
+  late String? _selectedId = widget.initialSelectedId;
 
   @override
   void dispose() {
@@ -91,23 +104,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
     final hasMore = !last.isLoading && !last.hasError && loadedCount < total;
 
-    return Scaffold(
-      appBar: AdminAppBar(
-        title: 'Orders',
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(LpgIcons.sync),
-            onPressed: _refresh,
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.goNamed('order_new'),
-        icon: const Icon(LpgIcons.add),
-        label: const Text('New order'),
-      ),
-      body: Column(
+    final twoPane = LpgBreakpoints.isExpanded(context);
+    final colors = context.lpgColors;
+
+    final listPane = Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -174,11 +174,22 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       LpgGroupedList(
                         children: [
                           for (final order in orders)
-                            OrderTile(
-                              order: order,
-                              onTap: () => context.goNamed(
-                                'order_detail',
-                                pathParameters: {'orderId': order.id},
+                            ColoredBox(
+                              color: twoPane && order.id == _selectedId
+                                  ? colors.actionPrimaryContainer
+                                  : Colors.transparent,
+                              child: OrderTile(
+                                order: order,
+                                onTap: () {
+                                  if (twoPane) {
+                                    setState(() => _selectedId = order.id);
+                                    return;
+                                  }
+                                  context.goNamed(
+                                    'order_detail',
+                                    pathParameters: {'orderId': order.id},
+                                  );
+                                },
                               ),
                             ),
                         ],
@@ -198,7 +209,44 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             ),
           ),
         ],
+      );
+
+    return Scaffold(
+      appBar: AdminAppBar(
+        title: 'Orders',
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            icon: const Icon(LpgIcons.sync),
+            onPressed: _refresh,
+          ),
+        ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.goNamed('order_new'),
+        icon: const Icon(LpgIcons.add),
+        label: const Text('New order'),
+      ),
+      body: twoPane
+          ? Row(
+              children: [
+                SizedBox(width: 420, child: listPane),
+                VerticalDivider(width: 1, color: colors.borderDefault),
+                Expanded(
+                  child: _selectedId == null
+                      ? const LpgEmptyState(
+                          message: 'Select an order to see its details.',
+                          icon: LpgIcons.orders,
+                        )
+                      : OrderDetailScreen(
+                          key: ValueKey(_selectedId),
+                          orderId: _selectedId!,
+                          embedded: true,
+                        ),
+                ),
+              ],
+            )
+          : listPane,
     );
   }
 }

@@ -17,9 +17,16 @@ import 'sheets/send_out_sheet.dart';
 /// dashboard's order page: confirm, send out on a trip, record the delivery
 /// (or its failure), reschedule, close, and cancel or review a cancellation.
 class OrderDetailScreen extends ConsumerStatefulWidget {
-  const OrderDetailScreen({super.key, required this.orderId});
+  const OrderDetailScreen({
+    super.key,
+    required this.orderId,
+    this.embedded = false,
+  });
 
   final String orderId;
+
+  /// Shown in the right pane of a two-pane tablet layout: no back button.
+  final bool embedded;
 
   @override
   ConsumerState<OrderDetailScreen> createState() => _OrderDetailScreenState();
@@ -142,6 +149,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: Text(
           orderAsync.maybeWhen(
             data: (o) => LpgFormat.orderNumber(o.orderNumber, o.id),
