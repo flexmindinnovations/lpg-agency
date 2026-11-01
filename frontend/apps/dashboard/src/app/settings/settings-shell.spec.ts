@@ -61,6 +61,7 @@ describe('SettingsShell', () => {
       'Configuration',
       'Payments',
       'Online Payments',
+      'Notifications',
       'Feature Flags',
       'License',
       'Linked Devices',

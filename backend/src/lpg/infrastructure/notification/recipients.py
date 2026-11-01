@@ -24,12 +24,14 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from lpg.application.notification.preferences import EffectiveChannels, effective_channels
 from lpg.infrastructure.notification.catalog import (
     FAILED_DELIVERY_REASON_LABELS,
     Audience,
     NotificationSpec,
     spec_for,
 )
+from lpg.infrastructure.notification.event_catalog import definition_for
 
 if TYPE_CHECKING:
     from lpg.domain.delivery.route import Route
@@ -56,6 +58,11 @@ class PreparedNotification:
     facts: dict[str, str] = field(default_factory=dict)
     #: Overrides `spec.push` for types whose push is decided per instance.
     push: bool = False
+    #: The agency's per-event channel choices (ADR-068) applied on top of the
+    #: catalogue defaults.
+    in_app: bool = True
+    sms: bool = False
+    email: bool = False
 
 
 def _humanize(value: str) -> str:
@@ -194,6 +201,11 @@ class NotificationResolver:
             _logger.info("notification_no_recipients", notification_type=notification_type)
             return None
 
+        channels = await self._channels(notification_type, spec, push)
+        if not channels.any:
+            _logger.info("notification_switched_off", notification_type=notification_type)
+            return None
+
         return PreparedNotification(
             notification_type=notification_type,
             spec=spec,
@@ -203,8 +215,37 @@ class NotificationResolver:
             reference_type=spec.reference_type,
             reference_id=reference_id,
             facts=facts,
-            push=push,
+            push=channels.push,
+            in_app=channels.in_app,
+            sms=channels.sms,
+            email=channels.email,
         )
+
+    async def _channels(
+        self, notification_type: str, spec: NotificationSpec, push: bool
+    ) -> EffectiveChannels:
+        """Catalogue defaults (with the per-instance `push`), then the
+        agency's override for this event."""
+        from lpg.infrastructure.persistence.repositories.notification import (
+            SqlAlchemyNotificationPreferenceRepository,
+        )
+
+        definition = definition_for(notification_type)
+        override = await SqlAlchemyNotificationPreferenceRepository(
+            self._uow.session, self._tenant_id
+        ).get_override(notification_type)
+        if definition is None:
+            return EffectiveChannels(
+                in_app=True, push=push, sms=spec.sms is not None, email=spec.email
+            )
+        resolved = effective_channels(definition, override)
+        # Push for a few driver types is decided per instance; keep that
+        # unless the agency set push explicitly.
+        if override is None or override.push is None:
+            resolved = EffectiveChannels(
+                in_app=resolved.in_app, push=push, sms=resolved.sms, email=resolved.email
+            )
+        return resolved
 
     # ------------------------------------------------------------------
     # Lookups

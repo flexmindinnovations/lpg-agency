@@ -24,7 +24,7 @@ import structlog
 
 from lpg.domain.notification.in_app_notification import InAppNotification
 from lpg.domain.notification.notification_log import NotificationLog
-from lpg.infrastructure.notification.catalog import sms_variables, spec_for
+from lpg.infrastructure.notification.catalog import sms_variables
 from lpg.infrastructure.notification.recipients import (
     NotificationResolver,
     PreparedNotification,
@@ -93,7 +93,8 @@ async def create_in_app_notifications(
             prepared = await NotificationResolver(uow, tenant_id).prepare(payload)
             if prepared is None:
                 return None
-            await write_in_app(uow, prepared)
+            if prepared.in_app:
+                await write_in_app(uow, prepared)
             await uow.commit()
             events = uow.collect_events()
     if prepared is not None and event_dispatcher is not None:
@@ -139,8 +140,7 @@ class InAppFirstNotifier:
             return
         if prepared is None:
             return
-        spec = spec_for(str(notification_type))
-        if spec is not None and (spec.has_external_channel or prepared.push):
+        if prepared.sms or prepared.email or prepared.push:
             await self._enqueue({**payload, IN_APP_DELIVERED: True})
 
     async def _enqueue(self, payload: dict[str, Any]) -> None:
@@ -174,7 +174,7 @@ async def deliver_external(
     )
 
     spec = prepared.spec
-    if not (spec.email or spec.sms is not None or prepared.push):
+    if not (prepared.email or prepared.sms or prepared.push):
         return
 
     tenant_id = uow.tenant_context.tenant_id
@@ -212,7 +212,7 @@ async def deliver_external(
         if user is None:
             continue
 
-        if spec.email and user.email:
+        if prepared.email and user.email:
             log = _log(user_id, "email", user.email, title)
             await log_repo.add(log)
             try:
@@ -223,7 +223,7 @@ async def deliver_external(
                 _logger.exception("email_send_failed", user_id=str(user_id))
             await log_repo.save(log)
 
-        if spec.sms is not None and user.phone_number:
+        if prepared.sms and spec.sms is not None and user.phone_number:
             log = _log(user_id, "sms", user.phone_number, None)
             await log_repo.add(log)
             try:
