@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ==========================================================================
 # Runtime — slim, no uv/build toolchain in the final image.
 # ==========================================================================
-FROM python:3.13-slim-bookworm@sha256:b4409e44a3e971621ee4bc2f3dc7a53859980685d261ab7a3a7bd4f0b84445c7 AS runtime
+FROM python:3.15-slim-bookworm@sha256:4e03260adeeebafccd084f3584e6b84823aba5651cfb53ef8a078ed441ddf9cd AS runtime
 
 # libgl1 / libglib2.0-0: opencv-python (a transitive dependency of rapidocr,
 # used for server-side OCR) fails to import without them on Debian slim.
