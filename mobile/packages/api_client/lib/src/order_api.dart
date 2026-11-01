@@ -260,7 +260,7 @@ final class OrderApi {
 
   /// What is left to collect for [delivered] (cylinder type id -> quantity),
   /// less what the customer already paid online (ADR-069).
-  Future<Result<OrderSettlement>> getSettlement(
+  Future<Result<DeliverySettlement>> getSettlement(
     String orderId, {
     required Map<String, int> delivered,
   }) async {
@@ -276,7 +276,7 @@ final class OrderApi {
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));
       }
-      return Success(OrderSettlement.fromJson(response.data!));
+      return Success(DeliverySettlement.fromJson(response.data!));
     } on DioException catch (e) {
       return FailureResult(mapDioError(e));
     } catch (e) {

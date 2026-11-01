@@ -333,15 +333,15 @@ class DeliverOrderResponse {
 
 /// What is left to collect at the door for a delivery (ADR-069), from
 /// `GET /orders/{id}/settlement`.
-class OrderSettlement {
-  const OrderSettlement({
+class DeliverySettlement {
+  const DeliverySettlement({
     required this.paidOnline,
     this.payable,
     this.balanceDue,
   });
 
-  factory OrderSettlement.fromJson(Map<String, dynamic> json) =>
-      OrderSettlement(
+  factory DeliverySettlement.fromJson(Map<String, dynamic> json) =>
+      DeliverySettlement(
         payable: asDoubleOrNull(json['payable_amount']),
         paidOnline: asDoubleOrNull(json['paid_online_amount']) ?? 0,
         balanceDue: asDoubleOrNull(json['balance_due']),

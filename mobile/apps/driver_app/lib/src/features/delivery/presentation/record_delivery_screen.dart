@@ -204,7 +204,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
 
   /// The balance still to collect: the server's answer when there is one
   /// (it knows what was paid online), otherwise an estimate from the order.
-  double? _balanceDue(OrderResponse order, OrderSettlement? settlement) {
+  double? _balanceDue(OrderResponse order, DeliverySettlement? settlement) {
     if (settlement != null) return settlement.balanceDue;
     final payable = order.amountToPay;
     if (payable == null) return null;
@@ -874,7 +874,7 @@ typedef _SettlementKey = ({String orderId, String delivered});
 /// when it can't be reached (offline): the screen then estimates from the
 /// cached order and the server applies the same rule when the delivery syncs.
 final _settlementProvider = FutureProvider.autoDispose
-    .family<OrderSettlement?, _SettlementKey>((ref, key) async {
+    .family<DeliverySettlement?, _SettlementKey>((ref, key) async {
       final delivered = <String, int>{};
       for (final part in key.delivered.split(',')) {
         if (part.isEmpty) continue;
