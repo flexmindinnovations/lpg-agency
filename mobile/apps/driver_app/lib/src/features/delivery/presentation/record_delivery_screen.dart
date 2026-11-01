@@ -83,6 +83,10 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   /// The driver typed the amount themselves; stop overwriting it.
   bool _amountEdited = false;
 
+  /// A partial payment: whatever is not collected stays on the customer's
+  /// account (needs the agency's credit to be on).
+  bool _onAccount = false;
+
   /// The balance the amount field was last filled from.
   double? _syncedBalance;
   bool _resending = false;
@@ -215,7 +219,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
       deliveredValue += price * delivered;
     }
     if (allDelivered || orderedValue == 0) return payable;
-    return double.parse((payable * deliveredValue / orderedValue).toStringAsFixed(2));
+    return double.parse(
+      (payable * deliveredValue / orderedValue).toStringAsFixed(2),
+    );
   }
 
   /// Keeps "Amount collected" at what is due until the driver types their own
@@ -241,7 +247,10 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     context.go('/');
   }
 
-  Future<void> _submit(OrderResponse order, {required double? balanceDue}) async {
+  Future<void> _submit(
+    OrderResponse order, {
+    required double? balanceDue,
+  }) async {
     if (_done || _submitting) return;
     setState(() {
       _submitting = true;
@@ -284,7 +293,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
             paymentMethod: nothingDue && _paidOnline > 0
                 ? 'online_gateway'
                 : _method,
-            amountCollected: amount,
+            // On credit nothing is handed over.
+            amountCollected: _method == 'credit' ? 0.0 : amount,
+            balanceOnAccount: _onAccount && _method != 'credit',
             idempotencyKey: _idempotencyKey,
             signatureBytes: signatureBytes,
             photoBytes: _photoBytes,
@@ -356,15 +367,15 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
           final offered = _offeredMethods;
           final method = _method;
           final settlement = ref
-              .watch(_settlementProvider(
-                (
+              .watch(
+                _settlementProvider((
                   orderId: order.id,
                   delivered: [
                     for (final e in _deliveredQuantities().entries)
                       '${e.key}:${e.value}',
                   ].join(','),
-                ),
-              ))
+                )),
+              )
               .value;
           _paidOnline = settlement?.paidOnline ?? 0;
           final balance = _balanceDue(order, settlement);
@@ -375,7 +386,8 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
           final shortBy = balance == null || credit || nothingDue
               ? 0.0
               : balance - entered;
-          final settled = shortBy <= 0.5;
+          final canCredit = offered.any((m) => m.code == 'credit');
+          final settled = shortBy <= 0.5 || (_onAccount && canCredit);
           return ListView(
             padding: LpgSpacing.page,
             children: [
@@ -399,11 +411,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                     ),
                   ),
                 ),
-              const _Section(
-                step: 2,
-                icon: LpgIcons.payment,
-                title: 'Payment',
-              ),
+              const _Section(step: 2, icon: LpgIcons.payment, title: 'Payment'),
               if (balance != null || (settlement?.paidOnline ?? 0) > 0)
                 _SettlementCard(
                   payable: settlement?.payable ?? order.amountToPay,
@@ -452,24 +460,34 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                   _UpiQrPanel(orderId: widget.orderId),
                 ],
                 const SizedBox(height: LpgSpacing.md),
-                LpgTextField(
-                  label: credit
-                      ? 'Received now (the rest goes on account)'
-                      : 'Amount collected',
-                  prefixIcon: LpgIcons.rupee,
-                  controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                if (!credit)
+                  LpgTextField(
+                    label: 'Amount collected',
+                    prefixIcon: LpgIcons.rupee,
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    onChanged: (_) => _amountEdited = true,
                   ),
-                  onChanged: (_) => _amountEdited = true,
-                ),
-                if (credit && balance != null) ...[
-                  const SizedBox(height: LpgSpacing.sm),
+                if (credit && balance != null)
                   LpgBanner(
                     tone: LpgTone.info,
+                    title: 'On credit',
                     message:
-                        '${LpgFormat.currency((balance - entered).clamp(0, balance).toDouble())} '
-                        "will stay on the customer's account.",
+                        '${LpgFormat.currency(balance)} will go on the '
+                        "customer's account. Nothing to collect.",
+                  ),
+                if (!credit && canCredit && shortBy > 0.5) ...[
+                  const SizedBox(height: LpgSpacing.sm),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _onAccount,
+                    onChanged: (v) => setState(() => _onAccount = v),
+                    title: Text(
+                      "Put ${LpgFormat.currency(shortBy)} on the customer's "
+                      'account',
+                    ),
                   ),
                 ],
               ],
@@ -826,10 +844,7 @@ class _SettlementCard extends StatelessWidget {
     Widget row(String label, double? value, {bool strong = false}) => Row(
       children: [
         Expanded(
-          child: Text(
-            label,
-            style: strong ? text.titleSmall : text.bodyMedium,
-          ),
+          child: Text(label, style: strong ? text.titleSmall : text.bodyMedium),
         ),
         Text(
           value == null ? '—' : LpgFormat.currency(value),

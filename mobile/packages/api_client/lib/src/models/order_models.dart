@@ -264,6 +264,7 @@ class ProofOfDeliverySubmission {
     required this.paymentMethod,
     required this.amountCollected,
     this.dacCode,
+    this.balanceOnAccount = false,
   });
 
   final String? signatureBlobRef;
@@ -274,6 +275,9 @@ class ProofOfDeliverySubmission {
   final double amountCollected;
   final String? dacCode;
 
+  /// The balance not collected now stays on the customer's account.
+  final bool balanceOnAccount;
+
   Map<String, dynamic> toJson() => {
     'signature_blob_ref': ?signatureBlobRef,
     'photo_blob_ref': ?photoBlobRef,
@@ -282,6 +286,7 @@ class ProofOfDeliverySubmission {
     'payment_method': paymentMethod,
     'amount_collected': amountCollected,
     if (dacCode != null) 'dac_code': dacCode,
+    if (balanceOnAccount) 'balance_on_account': true,
   };
 }
 

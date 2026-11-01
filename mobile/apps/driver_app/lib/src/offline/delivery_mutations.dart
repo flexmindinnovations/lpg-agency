@@ -149,6 +149,7 @@ class DeliveryMutations {
     List<int>? signatureBytes,
     List<int>? photoBytes,
     String? dacCode,
+    bool balanceOnAccount = false,
     String? idempotencyKey,
   }) async {
     if (await _isOnline()) {
@@ -163,6 +164,7 @@ class DeliveryMutations {
         signatureBytes: signatureBytes,
         photoBytes: photoBytes,
         dacCode: dacCode,
+        balanceOnAccount: balanceOnAccount,
         idempotencyKey: idempotencyKey,
       );
       // `null` here means "the network dropped mid-submit" — fall through to
@@ -181,6 +183,7 @@ class DeliveryMutations {
       signatureBytes: signatureBytes,
       photoBytes: photoBytes,
       dacCode: dacCode,
+      balanceOnAccount: balanceOnAccount,
     );
     return const DeliverQueued();
   }
@@ -206,6 +209,7 @@ class DeliveryMutations {
     List<int>? signatureBytes,
     List<int>? photoBytes,
     String? dacCode,
+    bool balanceOnAccount = false,
     String? idempotencyKey,
   }) async {
     String? signatureRef;
@@ -251,6 +255,7 @@ class DeliveryMutations {
           paymentMethod: paymentMethod,
           amountCollected: amountCollected,
           dacCode: dacCode,
+          balanceOnAccount: balanceOnAccount,
         ),
       ),
       // One key per submission: a second tap, or a retry after a lost
@@ -280,6 +285,7 @@ class DeliveryMutations {
     List<int>? signatureBytes,
     List<int>? photoBytes,
     String? dacCode,
+    bool balanceOnAccount = false,
   }) async {
     final mediaId = const Uuid().v4();
     final sigKey = 'pod/$mediaId/signature.png';
@@ -336,6 +342,7 @@ class DeliveryMutations {
             // model, so a field added to one and not the other is a
             // silent drop for every delivery captured offline.
             'dac_code': ?dacCode,
+            if (balanceOnAccount) 'balance_on_account': true,
           },
         },
       }),
