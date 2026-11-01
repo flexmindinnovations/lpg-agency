@@ -3,7 +3,7 @@ override merge and the safety rules for critical events."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -25,6 +25,8 @@ from lpg.infrastructure.notification.event_catalog import (
 
 if TYPE_CHECKING:
     import uuid
+
+    from lpg.application.common.ports import UnitOfWork
 
 
 class FakeRepo:
@@ -54,11 +56,16 @@ class FakeUow:
         self.commits += 1
 
 
-def _setting(**kw: bool) -> SetNotificationSettingCommand:
-    base = {"in_app": True, "push": False, "sms": False, "email": False}
+def _setting(
+    notification_type: str = "order_placed",
+    *,
+    in_app: bool = True,
+    push: bool = False,
+    sms: bool = False,
+    email: bool = False,
+) -> SetNotificationSettingCommand:
     return SetNotificationSettingCommand(
-        notification_type=kw.pop("notification_type", "order_placed"),  # type: ignore[arg-type]
-        **{**base, **kw},
+        notification_type=notification_type, in_app=in_app, push=push, sms=sms, email=email
     )
 
 
@@ -97,8 +104,8 @@ def test_sms_cannot_be_forced_on_where_no_template_exists() -> None:
 
 @pytest.mark.anyio
 async def test_saving_only_stores_what_differs_from_the_default() -> None:
-    repo, uow = FakeRepo(), FakeUow()
-    use_case = SetNotificationSettingUseCase(repo, uow, build_event_catalog())  # type: ignore[arg-type]
+    repo, uow = FakeRepo(), _uow()
+    use_case = SetNotificationSettingUseCase(repo, uow, build_event_catalog())
     result = await use_case.execute(_setting(push=False))
     assert result.customized
     assert repo.rows["order_placed"] == ChannelOverride(push=False)
@@ -110,31 +117,33 @@ async def test_saving_only_stores_what_differs_from_the_default() -> None:
 
 @pytest.mark.anyio
 async def test_critical_events_reject_switching_in_app_off() -> None:
-    use_case = SetNotificationSettingUseCase(FakeRepo(), FakeUow(), build_event_catalog())  # type: ignore[arg-type]
+    use_case = SetNotificationSettingUseCase(FakeRepo(), _uow(), build_event_catalog())
     with pytest.raises(ValidationError):
-        await use_case.execute(
-            _setting(notification_type="order_cancelled_customer", in_app=False, push=True)
-        )
+        await use_case.execute(_setting("order_cancelled_customer", in_app=False, push=True))
 
 
 @pytest.mark.anyio
 async def test_unavailable_channels_and_unknown_types_are_rejected() -> None:
-    use_case = SetNotificationSettingUseCase(FakeRepo(), FakeUow(), build_event_catalog())  # type: ignore[arg-type]
+    use_case = SetNotificationSettingUseCase(FakeRepo(), _uow(), build_event_catalog())
     with pytest.raises(ValidationError):
         await use_case.execute(_setting(sms=True))  # order_placed has no SMS template
     with pytest.raises(ValidationError):
-        await use_case.execute(_setting(notification_type="nope"))
+        await use_case.execute(_setting("nope"))
 
 
 @pytest.mark.anyio
 async def test_listing_flags_customised_events_and_reset_clears_them() -> None:
-    repo, uow = FakeRepo(), FakeUow()
+    repo, uow = FakeRepo(), _uow()
     catalog = build_event_catalog()
-    await SetNotificationSettingUseCase(repo, uow, catalog).execute(_setting(push=False))  # type: ignore[arg-type]
-    listed = await ListNotificationSettingsUseCase(repo, catalog).execute()  # type: ignore[arg-type]
+    await SetNotificationSettingUseCase(repo, uow, catalog).execute(_setting(push=False))
+    listed = await ListNotificationSettingsUseCase(repo, catalog).execute()
     by_type = {i.definition.notification_type: i for i in listed}
     assert by_type["order_placed"].customized
     assert not by_type["order_placed"].effective.push
     assert not by_type["booking_confirmed"].customized
-    await ResetNotificationSettingUseCase(repo, uow, catalog).execute("order_placed")  # type: ignore[arg-type]
+    await ResetNotificationSettingUseCase(repo, uow, catalog).execute("order_placed")
     assert repo.rows == {}
+
+
+def _uow() -> UnitOfWork:
+    return cast("UnitOfWork", FakeUow())

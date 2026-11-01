@@ -5,7 +5,7 @@ by the notification resolver."""
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from asgi_lifespan import LifespanManager
@@ -116,7 +116,7 @@ async def _headers(client: AsyncClient, email: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
-def _by_type(payload: dict) -> dict:
+def _by_type(payload: dict[str, Any]) -> dict[str, Any]:
     return {e["notification_type"]: e for e in payload["events"]}
 
 
