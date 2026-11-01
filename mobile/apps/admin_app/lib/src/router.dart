@@ -41,10 +41,6 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final routerProvider = Provider<GoRouter>((ref) {
   final authController = ref.watch(authControllerProvider);
 
-  // A deep link (push tap) that arrived before the session was ready. Kept so
-  // the user lands on it after splash/login instead of on the home screen.
-  String? pendingLocation;
-
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
@@ -55,16 +51,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       final splashing = state.matchedLocation == '/splash';
 
       if (status == AuthStatus.unknown) {
-        if (splashing) return null;
-        pendingLocation ??= _deepLink(state);
-        return '/splash';
+        return splashing ? null : '/splash';
       }
 
       if (status != AuthStatus.authenticated && !loggingIn) return '/login';
       if (status == AuthStatus.authenticated && (loggingIn || splashing)) {
-        final target = pendingLocation ?? '/';
-        pendingLocation = null;
-        return target;
+        return '/';
       }
       return null;
     },
@@ -291,11 +283,3 @@ final routerProvider = Provider<GoRouter>((ref) {
         Scaffold(body: Center(child: Text('Route not found: ${state.uri}'))),
   );
 });
-
-/// The location to resume after sign-in: anything but the splash, login or
-/// home screens, which are where the app lands anyway.
-String? _deepLink(GoRouterState state) {
-  final location = state.uri.toString();
-  const ignored = {'/', '/splash', '/login'};
-  return ignored.contains(state.matchedLocation) ? null : location;
-}

@@ -88,6 +88,8 @@ class AppShell extends ConsumerWidget {
     });
 
     ref.listen(pushMessagesProvider, (_, _) {
+      _refreshOrders(ref);
+      ref.invalidate(dashboardSummaryProvider);
       ref.invalidate(unreadNotificationCountProvider);
       ref.invalidate(adminNotificationsProvider);
     });

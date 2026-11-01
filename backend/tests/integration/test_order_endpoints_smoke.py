@@ -1393,7 +1393,7 @@ class TestFailedDeliveryAndReschedule:
                     "photo_blob_ref": "photo-ref",
                     "gps_lat": "12.9716",
                     "gps_lng": "77.5946",
-                    "payment_method": "cash",
+                    "payment_method": "credit",
                     "amount_collected": "0",
                 },
             },
@@ -1401,6 +1401,16 @@ class TestFailedDeliveryAndReschedule:
         )
         assert deliver_response.status_code == 200, deliver_response.text
         assert deliver_response.json()["order"]["status"] == "delivered"
+
+        # The apps hide Cancel on a delivered order; the server refuses it
+        # too, for whoever still has a stale screen open.
+        late_cancel = await client.post(
+            f"/api/v1/orders/{order_id}/cancel",
+            json={"reason": "Too late"},
+            headers=admin_headers,
+        )
+        assert late_cancel.status_code == 409, late_cancel.text
+        assert late_cancel.json()["error_code"] == "INVALID_STATE_TRANSITION"
 
 
 # ==========================================================================
@@ -2042,7 +2052,7 @@ class TestDeliveryWithoutAttachments:
                 "proof_of_delivery": {
                     "gps_lat": "12.9716",
                     "gps_lng": "77.5946",
-                    "payment_method": "cash",
+                    "payment_method": "credit",
                     "amount_collected": "0",
                     **proof_extras,
                 },

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -46,6 +47,10 @@ class PushNotificationService {
 
   /// A route derived from the notification that cold-started the app, if
   /// any. Read once, early, by `CustomerApp`.
+  /// Ticks whenever a notification arrives while the app is in the
+  /// foreground — the shell refetches the unread count, inbox and orders.
+  Stream<void> get messages => _messageController.stream;
+
   String? takeInitialRoute() {
     final route = _initialRoute;
     _initialRoute = null;
@@ -172,21 +177,15 @@ class PushNotificationService {
     }
   }
 
-  /// Maps the FCM `data` block (set by the backend's push channel:
-  /// `type`, `reference_type`, `reference_id`) to an in-app route. Falls
-  /// back to the notifications inbox when there's nothing specific to open.
-  String? _routeFromData(Map<String, dynamic> data) {
-    final referenceType = data['reference_type'] as String?;
-    final referenceId = data['reference_id'] as String?;
-    if (referenceType == 'order' && referenceId != null) {
-      return '/orders/$referenceId';
-    }
-    if (referenceType == 'invoice' && referenceId != null) {
-      return '/orders/invoices/$referenceId';
-    }
-    if (data.isNotEmpty) return '/notifications';
-    return null;
-  }
+  /// Maps the FCM `data` block (`type`, `reference_type`, `reference_id`) to
+  /// an in-app route via the shared contract (see ADR-069).
+  String? _routeFromData(Map<String, dynamic> data) =>
+      notificationRoute(
+        PushApp.customer,
+        referenceType: data['reference_type'] as String?,
+        referenceId: data['reference_id'] as String?,
+      ) ??
+      (data.isEmpty ? null : '/notifications');
 
   Future<void> dispose() async {
     await _onMessageSub?.cancel();

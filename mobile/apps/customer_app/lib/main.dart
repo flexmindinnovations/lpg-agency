@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
+import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -170,6 +171,9 @@ class _CustomerAppState extends ConsumerState<CustomerApp>
     if (state == AppLifecycleState.resumed) _refreshOrders();
   }
 
+  late final DeepLinkGate _links;
+  late final AuthController _auth;
+
   @override
   void initState() {
     super.initState();
@@ -177,24 +181,41 @@ class _CustomerAppState extends ConsumerState<CustomerApp>
     final pushService = ref.read(pushNotificationServiceProvider);
     _messageSub = pushService.messages.listen((_) => _refreshOrders());
 
-    // A notification that cold-started the app: navigate once the first
-    // frame (and the router) is ready.
+    // A tapped notification may arrive before the session is restored (cold
+    // start) or while signed out; the gate holds the route until sign-in so
+    // the auth guard cannot swallow it.
+    final auth = ref.read(authControllerProvider);
+    _auth = auth;
+    _links = DeepLinkGate(
+      isAuthenticated: () => auth.state.isAuthenticated,
+      go: (route) => ref.read(routerProvider).go(route),
+    );
+    auth.addListener(_flushLinks);
+
     final initialRoute = pushService.takeInitialRoute();
     if (initialRoute != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ref.read(routerProvider).go(initialRoute);
+        if (mounted) _links.open(initialRoute);
       });
     }
 
     // Taps while the app is already running.
     _tapSub = pushService.taps.listen((route) {
-      if (mounted) ref.read(routerProvider).go(route);
+      if (mounted) _links.open(route);
+    });
+  }
+
+  void _flushLinks() {
+    // After the frame, so the router's own sign-in redirect has settled.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _links.flush();
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _auth.removeListener(_flushLinks);
     _tapSub?.cancel();
     _messageSub?.cancel();
     super.dispose();

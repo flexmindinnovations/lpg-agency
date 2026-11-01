@@ -1188,7 +1188,9 @@ export class OrderDetail implements OnInit {
       otp_code: '',
       dac_code: '',
       payment_method: 'cash',
-      amount_collected: 0,
+      // The order is only completed once the balance is collected or put on
+      // credit (ADR-069), so start from what the customer owes.
+      amount_collected: Number(order.payable_amount ?? order.total_amount ?? 0),
       gps_lat: 0,
       gps_lng: 0,
     });

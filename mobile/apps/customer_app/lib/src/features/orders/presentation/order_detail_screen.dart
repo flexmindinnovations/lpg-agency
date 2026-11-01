@@ -7,35 +7,12 @@ import 'package:go_router/go_router.dart';
 import '../../../providers.dart';
 import '../../payments/presentation/pay_online_section.dart';
 import '../data/cylinder_types_provider.dart';
+import '../../payments/data/order_payments_provider.dart';
 import '../data/invoices_provider.dart';
 import '../data/orders_provider.dart';
 import 'order_placement_screen.dart' show ReorderDraft;
 import 'order_presentation.dart';
 import 'widgets/delivery_code_card.dart';
-
-/// Statuses a customer can still cancel from, mirroring the backend's
-/// order state machine (D-19): free before dispatch, a Manager-approved
-/// request once the driver is on the way (`pendingApproval: true`). Listed
-/// positively so a status the app doesn't know about (`closed`, or one
-/// added later) never offers Cancel.
-const _cancellableStatuses = {
-  'booked',
-  'confirmed',
-  'assigned',
-  'ready_for_dispatch',
-  'out_for_delivery',
-};
-
-/// Statuses in which the backend accepts an online prepayment: the price is
-/// fixed (`confirmed`) and the cylinders have not been delivered yet. After
-/// delivery, the balance is paid from the invoice instead. Not offered on a
-/// failed delivery: the agency first has to arrange another attempt.
-const _prepayableStatuses = {
-  'confirmed',
-  'assigned',
-  'ready_for_dispatch',
-  'out_for_delivery',
-};
 
 class OrderDetailScreen extends ConsumerWidget {
   const OrderDetailScreen({super.key, required this.orderId});
@@ -47,7 +24,9 @@ class OrderDetailScreen extends ConsumerWidget {
     ref.invalidate(pendingCancellationProvider(orderId));
     ref.invalidate(deliveryCodeProvider(orderId));
     ref.invalidate(orderHistoryProvider(orderId));
+    ref.invalidate(orderPaymentsProvider(orderId));
     ref.invalidate(ordersProvider);
+    ref.invalidate(invoicesProvider);
   }
 
   @override
@@ -86,9 +65,7 @@ class OrderDetailScreen extends ConsumerWidget {
               .watch(pendingCancellationProvider(orderId))
               .asData
               ?.value;
-          final cancellable =
-              _cancellableStatuses.contains(order.status) &&
-              pendingCancel == null;
+          final cancellable = order.canCancel && pendingCancel == null;
           final sections = <Widget>[
             _SummaryCard(order: order),
             if (pendingCancel != null) ...[
@@ -133,10 +110,19 @@ class OrderDetailScreen extends ConsumerWidget {
             const SizedBox(height: LpgSpacing.md),
             _TotalCard(order: order),
             const SizedBox(height: LpgSpacing.lg),
+            if (order.isBilledOnCredit && order.canCancel)
+              const Padding(
+                padding: EdgeInsets.only(bottom: LpgSpacing.md),
+                child: LpgBanner(
+                  tone: LpgTone.info,
+                  title: 'Billed to your credit account',
+                  message: 'Nothing to pay now. The amount is on your invoice.',
+                ),
+              ),
             if (pendingCancel == null)
               PayOnlineSection(
                 orderId: orderId,
-                canPay: _prepayableStatuses.contains(order.status),
+                canPay: order.canPrepay,
                 onPaid: () => ref.invalidate(orderDetailProvider(orderId)),
               ),
             if (order.isTrackable)
@@ -150,7 +136,12 @@ class OrderDetailScreen extends ConsumerWidget {
               _DeliveredActions(order: order),
             if (cancellable) ...[
               if (order.isTrackable) const SizedBox(height: LpgSpacing.smd),
-              _CancelOrderButton(onCancel: () => _confirmCancel(context, ref)),
+              _CancelOrderButton(
+                label: order.cancelNeedsApproval
+                    ? 'Request Cancellation'
+                    : 'Cancel Order',
+                onCancel: () => _confirmCancel(context, ref),
+              ),
             ],
           ];
 
@@ -550,8 +541,9 @@ class _SummaryCard extends StatelessWidget {
 /// "Cancel Order" with its own busy state: ignores taps while the dialog or
 /// the cancel request is in flight, and spins only itself.
 class _CancelOrderButton extends StatefulWidget {
-  const _CancelOrderButton({required this.onCancel});
+  const _CancelOrderButton({required this.label, required this.onCancel});
 
+  final String label;
   final Future<void> Function() onCancel;
 
   @override
@@ -563,7 +555,7 @@ class _CancelOrderButtonState extends State<_CancelOrderButton>
   @override
   Widget build(BuildContext context) {
     return LpgButton(
-      label: 'Cancel Order',
+      label: widget.label,
       icon: LpgIcons.cancel,
       variant: LpgButtonVariant.secondary,
       expand: true,

@@ -243,6 +243,10 @@ class ProofOfDeliverySubmission(BaseModel):
     payment_method: PaymentMethod
     amount_collected: Decimal = Field(ge=0)
     dac_code: str | None = Field(default=None, pattern=r"^\d{6}$")
+    #: The balance not collected now stays on the customer's account (a
+    #: partial payment on credit, ADR-069). `payment_method: credit` means
+    #: the whole balance. Subject to the agency's credit limit.
+    balance_on_account: bool = False
 
 
 class DeliverOrderRequest(BaseModel):
@@ -274,6 +278,18 @@ class ProofOfDeliveryResponse(BaseModel):
 class DeliverOrderResponse(BaseModel):
     order: OrderResponse
     proof_of_delivery: ProofOfDeliveryResponse
+
+
+class SettlementResponse(BaseModel):
+    """The money side of a delivery (ADR-069)."""
+
+    order_id: uuid.UUID
+    #: Price plus GST for the quantities delivered; `null` for an unpriced order.
+    payable_amount: Decimal | None
+    #: Already captured online for this order: do not collect it again.
+    paid_online_amount: Decimal
+    #: What is still to collect; `null` when `payable_amount` is.
+    balance_due: Decimal | None
 
 
 class PodAttachmentResponse(BaseModel):

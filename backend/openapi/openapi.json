@@ -8305,6 +8305,11 @@
             ],
             "title": "Amount Collected"
           },
+          "balance_on_account": {
+            "default": false,
+            "title": "Balance On Account",
+            "type": "boolean"
+          },
           "dac_code": {
             "anyOf": [
               {
@@ -11355,6 +11360,53 @@
           "is_active"
         ],
         "title": "SetWarehouseActiveRequest",
+        "type": "object"
+      },
+      "SettlementResponse": {
+        "description": "The money side of a delivery (ADR-069).",
+        "properties": {
+          "balance_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance Due"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "paid_online_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Paid Online Amount",
+            "type": "string"
+          },
+          "payable_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payable Amount"
+          }
+        },
+        "required": [
+          "order_id",
+          "payable_amount",
+          "paid_online_amount",
+          "balance_due"
+        ],
+        "title": "SettlementResponse",
         "type": "object"
       },
       "SetupProgressResponse": {
@@ -21354,7 +21406,7 @@
     },
     "/api/v1/orders/{order_id}/deliver": {
       "post": {
-        "description": "`out_for_delivery -> delivered`. Idempotency-Key required (offline-\nsync retries). Missing POD fields are a 422 (see `ProofOfDeliverySubmission`);\npresent-but-invalid ones (blank ref, out-of-range GPS) are a 400\n`IncompletePodError`; wrong/expired OTP is a 409.",
+        "description": "`out_for_delivery -> delivered`. Idempotency-Key required (offline-\nsync retries). Missing POD fields are a 422 (see `ProofOfDeliverySubmission`);\npresent-but-invalid ones (blank ref, out-of-range GPS) are a 400\n`IncompletePodError`; wrong/expired OTP is a 409. The order is only\ncompleted once the payment is settled (ADR-069): less than the balance\ndue collected, without recording the rest as credit, is a 409\n`PAYMENT_NOT_SETTLED`. Repeating a delivery that already went through\nreturns the recorded result.",
         "operationId": "deliver_order_api_v1_orders__order_id__deliver_post",
         "parameters": [
           {
@@ -22047,6 +22099,71 @@
           }
         },
         "summary": "Reschedule Order",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/settlement": {
+      "get": {
+        "description": "What the driver still has to collect at the door (ADR-069): the amount\npayable for the quantities delivered, what the customer already paid\nonline (so cash is never collected twice) and the balance due.",
+        "operationId": "get_order_settlement_api_v1_orders__order_id__settlement_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`<cylinder_type_id>:<quantity>` for each line; default: as ordered.",
+            "in": "query",
+            "name": "delivered",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`<cylinder_type_id>:<quantity>` for each line; default: as ordered.",
+              "title": "Delivered"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Order Settlement",
         "tags": [
           "Orders"
         ]

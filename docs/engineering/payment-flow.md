@@ -29,6 +29,8 @@ Customer, Delivery Driver, Accountant/Cashier, Payment Gateway (external), Syste
 4. System generates the Invoice at this point (per BR-17) with payment status Paid (or Partially Paid if a split payment is later supported).
 5. Invoice is downloadable by the customer (Customer App feature, explicit in blueprint).
 
+> **Update (ADR-069).** The driver completes a stop in one flow: cylinders, payment, confirm. The order is only completed once the balance is collected, covered by an online payment, or recorded as credit; the server refuses it otherwise (`PAYMENT_NOT_SETTLED`) and never records more than the balance due.
+
 ## 5. Path C — End-of-Shift Cash Reconciliation
 
 1. At shift end, driver's total recorded cash collections for the day are computed by the system.

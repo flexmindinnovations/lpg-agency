@@ -264,6 +264,7 @@ class ProofOfDeliverySubmission {
     required this.paymentMethod,
     required this.amountCollected,
     this.dacCode,
+    this.balanceOnAccount = false,
   });
 
   final String? signatureBlobRef;
@@ -274,6 +275,9 @@ class ProofOfDeliverySubmission {
   final double amountCollected;
   final String? dacCode;
 
+  /// The balance not collected now stays on the customer's account.
+  final bool balanceOnAccount;
+
   Map<String, dynamic> toJson() => {
     'signature_blob_ref': ?signatureBlobRef,
     'photo_blob_ref': ?photoBlobRef,
@@ -282,6 +286,7 @@ class ProofOfDeliverySubmission {
     'payment_method': paymentMethod,
     'amount_collected': amountCollected,
     if (dacCode != null) 'dac_code': dacCode,
+    if (balanceOnAccount) 'balance_on_account': true,
   };
 }
 
@@ -324,6 +329,32 @@ class DeliverOrderResponse {
       );
 
   final OrderResponse order;
+}
+
+/// What is left to collect at the door for a delivery (ADR-069), from
+/// `GET /orders/{id}/settlement`.
+class DeliverySettlement {
+  const DeliverySettlement({
+    required this.paidOnline,
+    this.payable,
+    this.balanceDue,
+  });
+
+  factory DeliverySettlement.fromJson(Map<String, dynamic> json) =>
+      DeliverySettlement(
+        payable: asDoubleOrNull(json['payable_amount']),
+        paidOnline: asDoubleOrNull(json['paid_online_amount']) ?? 0,
+        balanceDue: asDoubleOrNull(json['balance_due']),
+      );
+
+  /// Price plus GST for the quantities delivered; `null` for an unpriced order.
+  final double? payable;
+
+  /// Already captured online (Razorpay): never collect it again.
+  final double paidOnline;
+
+  /// What the driver still has to collect; `null` when [payable] is.
+  final double? balanceDue;
 }
 
 class OrderPageResponse {
