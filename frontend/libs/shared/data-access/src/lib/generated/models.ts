@@ -39,6 +39,7 @@ export type { ChangeCylinderConditionStatusRequest } from './models/change-cylin
 export type { ChangeCylinderStatusRequest } from './models/change-cylinder-status-request';
 export type { ChangeEmployeeStatusRequest } from './models/change-employee-status-request';
 export type { ChangeMyPasswordRequest } from './models/change-my-password-request';
+export type { ChannelSetting } from './models/channel-setting';
 export type { ClassifyCylinderTypeForGstRequest } from './models/classify-cylinder-type-for-gst-request';
 export type { ComplaintAssigneeResponse } from './models/complaint-assignee-response';
 export type { ComplaintAssignmentResponse } from './models/complaint-assignment-response';
@@ -138,7 +139,9 @@ export type { LpgApiV1SchemasRouteAssignOrderRequest } from './models/lpg-api-v-
 export type { MoveCylinderCustodyRequest } from './models/move-cylinder-custody-request';
 export type { MyProfileResponse } from './models/my-profile-response';
 export type { NextConsumerNumberResponse } from './models/next-consumer-number-response';
+export type { NotificationEventResponse } from './models/notification-event-response';
 export type { NotificationResponse } from './models/notification-response';
+export type { NotificationSettingsResponse } from './models/notification-settings-response';
 export type { OmcReturnRequest } from './models/omc-return-request';
 export type { OmcReturnResponse } from './models/omc-return-response';
 export type { OnboardingDraftListResponse } from './models/onboarding-draft-list-response';
@@ -246,6 +249,7 @@ export type { SetFeatureFlagRolloutPercentageRequest } from './models/set-featur
 export type { SetLicenseDeviceCapRequest } from './models/set-license-device-cap-request';
 export type { SetLicenseFeatureOverrideRequest } from './models/set-license-feature-override-request';
 export type { SetLicensePlanTierRequest } from './models/set-license-plan-tier-request';
+export type { SetNotificationSettingRequest } from './models/set-notification-setting-request';
 export type { SetPaymentGatewayRequest } from './models/set-payment-gateway-request';
 export type { SetPaymentProfileRequest } from './models/set-payment-profile-request';
 export type { SetPriceRequest } from './models/set-price-request';

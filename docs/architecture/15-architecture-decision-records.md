@@ -1564,6 +1564,21 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Consequences:** Agencies onboard themselves to Razorpay without a deploy. Losing `LPG_KYC_ENCRYPTION_KEY` now also loses saved Razorpay secrets (agencies re-enter them). A payment link created under one account is refreshed with whichever account the agency has at that moment, so changing keys while links are open leaves those links unrefreshable until they expire. Feature: `planning/features/54-per-agency-razorpay`.
 
+## ADR-068: Per-Agency Notification Settings
+
+**Status:** Accepted
+
+**Context:** What each system event sends, and on which channels, was fixed in code (`infrastructure/notification/catalog.py`). Agencies could not quieten a noisy alert or turn on push for one they care about without a deploy.
+
+**Decision:**
+- An agency overrides the channels (in-app, push, SMS, email) per event type in `notification.notification_preference` (one row per tenant and type, row-level security). Each channel column is nullable: NULL means "use the catalogue default", so a default that changes later still reaches agencies that never touched the event. Saving exactly the defaults deletes the row.
+- Agency admins (`tenant:configure`) edit them in Settings > Notifications, which lists every catalogue event grouped by the app that receives it (customer, driver, admin app and dashboard). `GET/PUT/DELETE /notification-settings[/{type}]`.
+- `NotificationResolver.prepare` applies the override once for every path (event handlers, crons, the worker). In-app rows are skipped when in-app is off, and the worker sends only the enabled external channels. An event with every channel off is dropped.
+- Safety: critical events (cancellation waiting for approval, failed delivery, cash shortfall, expiring compliance document, order cancelled and failed-delivery notices to customers, payment received) always keep their in-app alert; the API rejects switching it off. SMS is offered only where a DLT template exists and email only where the catalogue has one. Delivery codes and login OTPs are not notifications and are unaffected.
+- Recipients are unchanged: staff alerts go to people holding the event's permission (RBAC, editable under Users & roles), scoped to their branch. Choosing recipient roles per event is deliberately not duplicated here.
+
+**Consequences:** No app change is needed: the apps already show whatever in-app and push alerts arrive. Push device registration and the in-app inbox are untouched. Feature: `planning/features/58-notification-settings`.
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1631,6 +1646,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 065 | Incremental deploy pipeline | Accepted |
 | 066 | Payment profile, UPI QR and cash controls | Accepted |
 | 067 | Per-agency Razorpay credentials | Accepted |
+| 068 | Per-agency notification settings | Accepted |
 
 ## Deferred Decisions
 

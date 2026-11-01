@@ -1558,6 +1558,34 @@
         "title": "ChangeMyPasswordRequest",
         "type": "object"
       },
+      "ChannelSetting": {
+        "properties": {
+          "available": {
+            "default": true,
+            "title": "Available",
+            "type": "boolean"
+          },
+          "default": {
+            "title": "Default",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "locked": {
+            "default": false,
+            "title": "Locked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "default"
+        ],
+        "title": "ChannelSetting",
+        "type": "object"
+      },
       "ClassifyCylinderTypeForGstRequest": {
         "properties": {
           "gst_rate_percent": {
@@ -6118,6 +6146,65 @@
         "title": "NextConsumerNumberResponse",
         "type": "object"
       },
+      "NotificationEventResponse": {
+        "properties": {
+          "audience": {
+            "title": "Audience",
+            "type": "string"
+          },
+          "critical": {
+            "title": "Critical",
+            "type": "boolean"
+          },
+          "customized": {
+            "title": "Customized",
+            "type": "boolean"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "email": {
+            "$ref": "#/components/schemas/ChannelSetting"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "in_app": {
+            "$ref": "#/components/schemas/ChannelSetting"
+          },
+          "notification_type": {
+            "title": "Notification Type",
+            "type": "string"
+          },
+          "push": {
+            "$ref": "#/components/schemas/ChannelSetting"
+          },
+          "sms": {
+            "$ref": "#/components/schemas/ChannelSetting"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_type",
+          "title",
+          "description",
+          "audience",
+          "group",
+          "critical",
+          "customized",
+          "in_app",
+          "push",
+          "sms",
+          "email"
+        ],
+        "title": "NotificationEventResponse",
+        "type": "object"
+      },
       "NotificationResponse": {
         "properties": {
           "body": {
@@ -6185,6 +6272,22 @@
           "created_at"
         ],
         "title": "NotificationResponse",
+        "type": "object"
+      },
+      "NotificationSettingsResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "NotificationSettingsResponse",
         "type": "object"
       },
       "OmcReturnRequest": {
@@ -11000,6 +11103,35 @@
           "plan_tier"
         ],
         "title": "SetLicensePlanTierRequest",
+        "type": "object"
+      },
+      "SetNotificationSettingRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "boolean"
+          },
+          "in_app": {
+            "title": "In App",
+            "type": "boolean"
+          },
+          "push": {
+            "title": "Push",
+            "type": "boolean"
+          },
+          "sms": {
+            "title": "Sms",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "in_app",
+          "push",
+          "sms",
+          "email"
+        ],
+        "title": "SetNotificationSettingRequest",
         "type": "object"
       },
       "SetPaymentGatewayRequest": {
@@ -19990,6 +20122,112 @@
         "summary": "Send an invoice to the customer",
         "tags": [
           "Invoices"
+        ]
+      }
+    },
+    "/api/v1/notification-settings": {
+      "get": {
+        "operationId": "list_notification_settings_api_v1_notification_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Every notification event and the channels it uses for this agency",
+        "tags": [
+          "Notification Settings"
+        ]
+      }
+    },
+    "/api/v1/notification-settings/{notification_type}": {
+      "delete": {
+        "operationId": "reset_notification_setting_api_v1_notification_settings__notification_type__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_type",
+            "required": true,
+            "schema": {
+              "title": "Notification Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationEventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put one event back to its defaults",
+        "tags": [
+          "Notification Settings"
+        ]
+      },
+      "put": {
+        "operationId": "set_notification_setting_api_v1_notification_settings__notification_type__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_type",
+            "required": true,
+            "schema": {
+              "title": "Notification Type",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNotificationSettingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationEventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Unknown event, or a channel this event can't use."
+          }
+        },
+        "summary": "Choose the channels for one event",
+        "tags": [
+          "Notification Settings"
         ]
       }
     },

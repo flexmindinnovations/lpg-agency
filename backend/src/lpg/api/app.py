@@ -39,6 +39,7 @@ from lpg.api.v1.routers import (
     health,
     inventory,
     invoice,
+    notification_settings,
     notifications,
     onboarding_draft,
     online_payment,
@@ -350,6 +351,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(compliance.cylinder_units_router, prefix=settings.api_v1_prefix)
     app.include_router(documents.router, prefix=settings.api_v1_prefix)
     app.include_router(notifications.router, prefix=settings.api_v1_prefix)
+    app.include_router(notification_settings.router, prefix=settings.api_v1_prefix)
     app.include_router(inventory.router, prefix=settings.api_v1_prefix)
     # Before `order`: `/orders/reminder-presets` must win over `/orders/{order_id}`.
     app.include_router(order_reminder.router, prefix=settings.api_v1_prefix)

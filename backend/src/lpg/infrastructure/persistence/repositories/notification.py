@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from lpg.application.notification.preferences import ChannelOverride
 from lpg.domain.notification.device_token import DeviceToken
 from lpg.domain.notification.in_app_notification import InAppNotification
 
@@ -384,3 +385,82 @@ class SqlAlchemyNotificationRecipientRepository:
             },
         )
         return result.first() is not None
+
+
+class SqlAlchemyNotificationPreferenceRepository:
+    """An agency's per-event channel overrides (ADR-068). Runs on a
+    tenant-scoped (RLS) session; the `tenant_id` filter is defence in depth."""
+
+    def __init__(self, session: AsyncSession, tenant_id: uuid.UUID) -> None:
+        self._session = session
+        self._tenant_id = tenant_id
+
+    @staticmethod
+    def _override(row: Any) -> ChannelOverride:
+        return ChannelOverride(
+            in_app=row["in_app"], push=row["push"], sms=row["sms"], email=row["email"]
+        )
+
+    async def list_overrides(self) -> dict[str, ChannelOverride]:
+        from sqlalchemy import text
+
+        result = await self._session.execute(
+            text("""
+                SELECT notification_type, in_app, push, sms, email
+                FROM notification.notification_preference
+                WHERE tenant_id = :tenant_id
+            """),
+            {"tenant_id": self._tenant_id},
+        )
+        return {r["notification_type"]: self._override(r) for r in result.mappings()}
+
+    async def get_override(self, notification_type: str) -> ChannelOverride | None:
+        from sqlalchemy import text
+
+        result = await self._session.execute(
+            text("""
+                SELECT in_app, push, sms, email
+                FROM notification.notification_preference
+                WHERE tenant_id = :tenant_id AND notification_type = :type
+            """),
+            {"tenant_id": self._tenant_id, "type": notification_type},
+        )
+        row = result.mappings().first()
+        return self._override(row) if row else None
+
+    async def set_override(
+        self, notification_type: str, override: ChannelOverride, updated_by: uuid.UUID | None
+    ) -> None:
+        from sqlalchemy import text
+
+        await self._session.execute(
+            text("""
+                INSERT INTO notification.notification_preference
+                    (tenant_id, notification_type, in_app, push, sms, email, updated_by)
+                VALUES (:tenant_id, :type, :in_app, :push, :sms, :email, :updated_by)
+                ON CONFLICT (tenant_id, notification_type) DO UPDATE SET
+                    in_app = EXCLUDED.in_app, push = EXCLUDED.push, sms = EXCLUDED.sms,
+                    email = EXCLUDED.email, updated_by = EXCLUDED.updated_by,
+                    updated_at = now()
+            """),
+            {
+                "tenant_id": self._tenant_id,
+                "type": notification_type,
+                "in_app": override.in_app,
+                "push": override.push,
+                "sms": override.sms,
+                "email": override.email,
+                "updated_by": updated_by,
+            },
+        )
+
+    async def delete_override(self, notification_type: str) -> None:
+        from sqlalchemy import text
+
+        await self._session.execute(
+            text("""
+                DELETE FROM notification.notification_preference
+                WHERE tenant_id = :tenant_id AND notification_type = :type
+            """),
+            {"tenant_id": self._tenant_id, "type": notification_type},
+        )

@@ -61,7 +61,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             prepared = await NotificationResolver(uow, tenant_id).prepare(payload)
             if prepared is None:
                 return
-            if not payload.get(IN_APP_DELIVERED):
+            if prepared.in_app and not payload.get(IN_APP_DELIVERED):
                 await write_in_app(uow, prepared)
             await deliver_external(ctx, uow, database, prepared)
             await uow.commit()

@@ -45,6 +45,12 @@ export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
         permission: 'tenant:configure',
       },
       {
+        label: 'Notifications',
+        icon: 'pi pi-bell',
+        route: '/settings/notifications',
+        permission: 'tenant:configure',
+      },
+      {
         label: 'Feature Flags',
         icon: 'pi pi-flag',
         route: '/settings/feature-flags',

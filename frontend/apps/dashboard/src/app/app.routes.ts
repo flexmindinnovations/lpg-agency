@@ -167,6 +167,21 @@ export const appRoutes: Route[] = [
             },
           },
           {
+            path: 'notifications',
+            canActivate: [permissionGuard('tenant:configure')],
+            loadComponent: () =>
+              import('./settings/notifications/notification-settings').then(
+                (m) => m.NotificationSettings,
+              ),
+            title: 'Notification settings',
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'Notifications', routerLink: '/settings/notifications' },
+              ],
+            },
+          },
+          {
             path: 'configuration/tdt-rating',
             canActivate: [permissionGuard('tenant:configure')],
             data: {

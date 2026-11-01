@@ -20,6 +20,10 @@ from lpg.application.notification.ports import (
     DeviceTokenRepository,
     InAppNotificationRepository,
 )
+from lpg.application.notification.preferences import (
+    EventDefinition,
+    NotificationPreferenceRepository,
+)
 
 
 def get_notification_repository(
@@ -52,3 +56,23 @@ def get_realtime_publisher() -> RealtimePublisher | None:
     from lpg.api.app import get_app_state
 
     return get_app_state().realtime_publisher
+
+
+def get_event_catalog() -> list[EventDefinition]:
+    from lpg.infrastructure.notification.event_catalog import build_event_catalog
+
+    return build_event_catalog()
+
+
+def get_notification_preference_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> NotificationPreferenceRepository:
+    from lpg.infrastructure.persistence.repositories.notification import (
+        SqlAlchemyNotificationPreferenceRepository,
+    )
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+    assert isinstance(unit_of_work, SqlAlchemyUnitOfWork)
+    return SqlAlchemyNotificationPreferenceRepository(
+        unit_of_work.session, unit_of_work.tenant_context.tenant_id
+    )
