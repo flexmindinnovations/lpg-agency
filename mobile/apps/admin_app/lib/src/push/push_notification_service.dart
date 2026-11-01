@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -180,19 +181,15 @@ class PushNotificationService {
   }
 }
 
-/// Maps the FCM `data` block (set by the backend's push channel — `type`,
-/// `reference_type`, `reference_id`) to an Admin App route: an order opens
-/// its order page, anything else with data opens the Alerts tab; a push with
-/// no data isn't navigable.
-String? adminRouteFromData(Map<String, dynamic> data) {
-  final referenceType = data['reference_type'] as String?;
-  final referenceId = data['reference_id'] as String?;
-  if (referenceType == 'order' && referenceId != null) {
-    return '/orders/$referenceId';
-  }
-  if (data.isNotEmpty) return '/alerts';
-  return null;
-}
+/// Maps the FCM `data` block (`type`, `reference_type`, `reference_id`) to a
+/// route via the shared contract (see ADR-069).
+String? adminRouteFromData(Map<String, dynamic> data) =>
+    notificationRoute(
+      PushApp.admin,
+      referenceType: data['reference_type'] as String?,
+      referenceId: data['reference_id'] as String?,
+    ) ??
+    (data.isEmpty ? null : '/alerts');
 
 /// Background/terminated-state message handler. FCM shows the tray
 /// notification itself for messages that carry a `notification` block, so
