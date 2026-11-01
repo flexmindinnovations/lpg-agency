@@ -371,15 +371,18 @@ class OrderLine:
             raise InvariantViolation(msg)
         self.gst_rate_percent = rate_percent
 
-    def taxed_amounts(self, *, prices_include_gst: bool) -> tuple[Decimal, Decimal] | None:
+    def taxed_amounts(
+        self, *, prices_include_gst: bool, quantity: int | None = None
+    ) -> tuple[Decimal, Decimal] | None:
         """`(tax, payable)` for the quantity ordered, worked out exactly as the
         invoice works out a line (per line, half-up to the paisa), so the
         amount quoted and the amount invoiced agree. `None` until the line is
-        priced. A line with no GST rate snapshot carries no tax.
+        priced. A line with no GST rate snapshot carries no tax. `quantity`
+        prices a different quantity (what was actually delivered).
         """
         if self.unit_price is None:
             return None
-        gross = self.unit_price * self.quantity_ordered
+        gross = self.unit_price * (self.quantity_ordered if quantity is None else quantity)
         if self.gst_rate_percent is None:
             return Decimal("0.00"), to_cents(gross)
         if prices_include_gst:
@@ -625,6 +628,27 @@ class Order(AggregateRoot):
         if taxed is None:
             return self._total_amount
         return sum((p for _, p in taxed), Decimal("0.00"))
+
+    def payable_for_quantities(self, quantities: dict[uuid.UUID, int]) -> Decimal | None:
+        """What the customer pays for `quantities` (cylinder type -> units
+        delivered), worked out line by line exactly as the invoice does. A
+        type missing from `quantities` counts as nothing delivered. `None`
+        when the order was never priced (the caller then has no amount to
+        hold the driver to). An order priced before GST was recorded carries
+        no tax, as `payable_amount` has always treated it.
+        """
+        if self._total_amount is None:
+            return None
+        total = Decimal("0.00")
+        for line in self._lines:
+            amounts = line.taxed_amounts(
+                prices_include_gst=bool(self._prices_include_gst),
+                quantity=quantities.get(line.cylinder_type_id, 0),
+            )
+            if amounts is None:
+                return None
+            total += amounts[1]
+        return total
 
     @property
     def lines(self) -> list[OrderLine]:

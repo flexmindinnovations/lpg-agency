@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -180,24 +181,15 @@ class PushNotificationService {
   }
 }
 
-/// Maps the FCM `data` block (set by the backend's push channel — `type`,
-/// `reference_type`, `reference_id`) to a driver-app route.
-///
-/// `driver_assigned` / delivery-lifecycle pushes carry
-/// `reference_type: order` — the driver's screen for an order is its stop
-/// detail. A `route`-scoped push (e.g. a future "route ready") opens the
-/// Today tab. Anything else with data falls back to Today; a push with no
-/// data isn't navigable.
-String? driverRouteFromData(Map<String, dynamic> data) {
-  final referenceType = data['reference_type'] as String?;
-  final referenceId = data['reference_id'] as String?;
-  if (referenceType == 'order' && referenceId != null) {
-    return '/deliveries/stops/$referenceId';
-  }
-  if (referenceType == 'route') return '/';
-  if (data.isNotEmpty) return '/';
-  return null;
-}
+/// Maps the FCM `data` block (`type`, `reference_type`, `reference_id`) to a
+/// route via the shared contract (see ADR-069).
+String? driverRouteFromData(Map<String, dynamic> data) =>
+    notificationRoute(
+      PushApp.driver,
+      referenceType: data['reference_type'] as String?,
+      referenceId: data['reference_id'] as String?,
+    ) ??
+    (data.isEmpty ? null : '/');
 
 /// Background/terminated-state message handler. FCM shows the tray
 /// notification itself for messages that carry a `notification` block, so

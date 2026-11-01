@@ -149,6 +149,8 @@ class DeliveryMutations {
     List<int>? signatureBytes,
     List<int>? photoBytes,
     String? dacCode,
+    bool balanceOnAccount = false,
+    String? idempotencyKey,
   }) async {
     if (await _isOnline()) {
       final inline = await _deliverInline(
@@ -162,6 +164,8 @@ class DeliveryMutations {
         signatureBytes: signatureBytes,
         photoBytes: photoBytes,
         dacCode: dacCode,
+        balanceOnAccount: balanceOnAccount,
+        idempotencyKey: idempotencyKey,
       );
       // `null` here means "the network dropped mid-submit" — fall through to
       // the queue rather than making the driver recapture everything.
@@ -179,6 +183,7 @@ class DeliveryMutations {
       signatureBytes: signatureBytes,
       photoBytes: photoBytes,
       dacCode: dacCode,
+      balanceOnAccount: balanceOnAccount,
     );
     return const DeliverQueued();
   }
@@ -204,6 +209,8 @@ class DeliveryMutations {
     List<int>? signatureBytes,
     List<int>? photoBytes,
     String? dacCode,
+    bool balanceOnAccount = false,
+    String? idempotencyKey,
   }) async {
     String? signatureRef;
     if (signatureBytes != null) {
@@ -248,8 +255,13 @@ class DeliveryMutations {
           paymentMethod: paymentMethod,
           amountCollected: amountCollected,
           dacCode: dacCode,
+          balanceOnAccount: balanceOnAccount,
         ),
       ),
+      // One key per submission: a second tap, or a retry after a lost
+      // response, replays the first delivery instead of running again
+      // against a delivery code the first request already used up.
+      idempotencyKey: idempotencyKey,
     );
     return switch (result) {
       Success() => const DeliverSynced(),
@@ -273,6 +285,7 @@ class DeliveryMutations {
     List<int>? signatureBytes,
     List<int>? photoBytes,
     String? dacCode,
+    bool balanceOnAccount = false,
   }) async {
     final mediaId = const Uuid().v4();
     final sigKey = 'pod/$mediaId/signature.png';
@@ -329,6 +342,7 @@ class DeliveryMutations {
             // model, so a field added to one and not the other is a
             // silent drop for every delivery captured offline.
             'dac_code': ?dacCode,
+            if (balanceOnAccount) 'balance_on_account': true,
           },
         },
       }),

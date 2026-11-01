@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -180,37 +181,15 @@ class PushNotificationService {
   }
 }
 
-/// Maps the FCM `data` block (set by the backend's push channel — `type`,
-/// `reference_type`, `reference_id`) to the Admin App screen that handles it:
-/// an order opens its order page, a complaint its page, a trip its trip
-/// sheet, and the money, stock, compliance and pricing alerts open their
-/// own tabs. Anything else with data opens the Alerts tab; a push with no
-/// data isn't navigable.
-String? adminRouteFromData(Map<String, dynamic> data) {
-  final referenceType = data['reference_type'] as String?;
-  final referenceId = data['reference_id'] as String?;
-  final hasId = referenceId != null && referenceId.isNotEmpty;
-  switch (referenceType) {
-    case 'order' when hasId:
-      return '/orders/$referenceId';
-    case 'complaint' when hasId:
-      return '/complaints/$referenceId';
-    case 'route' when hasId:
-      return '/dispatch/trip/$referenceId';
-    case 'customer' when hasId:
-      return '/customers/$referenceId';
-    case 'cash_handover':
-      return '/approvals';
-    case 'inventory_location':
-      return '/stock';
-    case 'compliance_document':
-      return '/compliance';
-    case 'price_list_proposal':
-      return '/pricing';
-  }
-  if (data.isNotEmpty) return '/alerts';
-  return null;
-}
+/// Maps the FCM `data` block (`type`, `reference_type`, `reference_id`) to a
+/// route via the shared contract (see ADR-069).
+String? adminRouteFromData(Map<String, dynamic> data) =>
+    notificationRoute(
+      PushApp.admin,
+      referenceType: data['reference_type'] as String?,
+      referenceId: data['reference_id'] as String?,
+    ) ??
+    (data.isEmpty ? null : '/alerts');
 
 /// Background/terminated-state message handler. FCM shows the tray
 /// notification itself for messages that carry a `notification` block, so

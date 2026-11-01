@@ -258,6 +258,32 @@ final class OrderApi {
     }
   }
 
+  /// What is left to collect for [delivered] (cylinder type id -> quantity),
+  /// less what the customer already paid online (ADR-069).
+  Future<Result<DeliverySettlement>> getSettlement(
+    String orderId, {
+    required Map<String, int> delivered,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/orders/$orderId/settlement',
+        queryParameters: {
+          'delivered': [
+            for (final e in delivered.entries) '${e.key}:${e.value}',
+          ],
+        },
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(DeliverySettlement.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// `out_for_delivery -> failed_delivery`. `reasonCode` is one of
   /// `customer_unavailable` / `wrong_address` / `payment_refused` /
   /// `vehicle_issue` / `safety_issue`; `resolutionAction` is optional

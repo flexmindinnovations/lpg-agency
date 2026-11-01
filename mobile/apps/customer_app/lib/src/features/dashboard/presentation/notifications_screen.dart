@@ -1,10 +1,10 @@
+import 'package:core/core.dart';
 import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../push/push_notification_service.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../providers.dart';
@@ -31,11 +31,12 @@ class NotificationsScreen extends ConsumerWidget {
       );
     }
 
-    // Same destination as tapping the push notification itself.
-    final route = customerRouteFromData({
-      'reference_type': item.referenceType,
-      'reference_id': item.referenceId,
-    });
+    // Same destination as tapping the push itself (ADR-069).
+    final route = notificationRoute(
+      PushApp.customer,
+      referenceType: item.referenceType,
+      referenceId: item.referenceId,
+    );
     if (route != null && route != '/notifications' && context.mounted) {
       context.push(route);
     }

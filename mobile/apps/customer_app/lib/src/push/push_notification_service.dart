@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -28,6 +29,7 @@ class PushNotificationService {
   final NotificationApi _notificationApi;
   final _localNotifications = FlutterLocalNotificationsPlugin();
   final _tapController = StreamController<String>.broadcast();
+  final _messageController = StreamController<void>.broadcast();
 
   StreamSubscription<RemoteMessage>? _onMessageSub;
   StreamSubscription<RemoteMessage>? _onOpenedSub;
@@ -41,6 +43,10 @@ class PushNotificationService {
 
   /// A route derived from the notification that cold-started the app, if
   /// any. Read once, early, by `CustomerApp`.
+  /// Ticks whenever a notification arrives while the app is in the
+  /// foreground — the shell refetches the unread count, inbox and orders.
+  Stream<void> get messages => _messageController.stream;
+
   String? takeInitialRoute() {
     final route = _initialRoute;
     _initialRoute = null;
@@ -96,7 +102,7 @@ class PushNotificationService {
 
     final initial = await FirebaseMessaging.instance.getInitialMessage();
     if (initial != null) {
-      _initialRoute = customerRouteFromData(initial.data);
+      _initialRoute = _routeFromData(initial.data);
     }
   }
 
@@ -133,6 +139,7 @@ class PushNotificationService {
   }
 
   Future<void> _showForeground(RemoteMessage message) async {
+    if (!_messageController.isClosed) _messageController.add(null);
     final notification = message.notification;
     if (notification == null) return;
     await _localNotifications.show(
@@ -153,7 +160,7 @@ class PushNotificationService {
   }
 
   void _emitTapFromData(Map<String, dynamic> data) {
-    final route = customerRouteFromData(data);
+    final route = _routeFromData(data);
     if (route != null) _tapController.add(route);
   }
 
@@ -166,35 +173,23 @@ class PushNotificationService {
     }
   }
 
+  /// Maps the FCM `data` block (`type`, `reference_type`, `reference_id`) to
+  /// an in-app route via the shared contract (see ADR-069).
+  String? _routeFromData(Map<String, dynamic> data) =>
+      notificationRoute(
+        PushApp.customer,
+        referenceType: data['reference_type'] as String?,
+        referenceId: data['reference_id'] as String?,
+      ) ??
+      (data.isEmpty ? null : '/notifications');
+
   Future<void> dispose() async {
     await _onMessageSub?.cancel();
     await _onOpenedSub?.cancel();
     await _onTokenRefreshSub?.cancel();
     await _tapController.close();
+    await _messageController.close();
   }
-}
-
-/// Maps the FCM `data` block (set by the backend's push channel:
-/// `type`, `reference_type`, `reference_id`) to an in-app route. Falls
-/// back to the notifications inbox when there's nothing specific to open.
-String? customerRouteFromData(Map<String, dynamic> data) {
-  final referenceType = data['reference_type'] as String?;
-  final referenceId = data['reference_id'] as String?;
-  if (referenceId != null && referenceId.isNotEmpty) {
-    switch (referenceType) {
-      case 'order':
-        return '/orders/$referenceId';
-      case 'invoice':
-        return '/orders/invoices/$referenceId';
-      case 'complaint':
-        return '/support/$referenceId';
-    }
-  }
-  // "Time for a refill?" is about the customer, not an order: open the
-  // order form.
-  if (referenceType == 'customer') return '/orders/new';
-  if (data.isNotEmpty) return '/notifications';
-  return null;
 }
 
 /// Background/terminated-state message handler. FCM shows the tray

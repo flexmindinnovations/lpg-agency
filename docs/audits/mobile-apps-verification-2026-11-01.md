@@ -6,13 +6,11 @@ Scope: customer, driver and admin apps against the backend on `main` (after #107
 
 | # | Issue | Fix |
 |---|---|---|
-| 1 | A push tapped while the app was cold-starting, or while signed out, was lost: the router redirects everything to splash/login until the session is `authenticated`, and nothing remembered the route. | New `DeepLinkGate` (packages/auth) holds the tapped route and opens it once the session is signed in. Used by all three apps. Unit tested. |
-| 2 | Customer push for a complaint or a refill reminder opened the inbox; admin pushes for complaints, trips, cash handovers, stock, compliance and pricing all opened Alerts. | One route mapping per app (`customerRouteFromData`, `adminRouteFromData`, `driverRouteFromData`) now covers every reference type the backend sends. Tested. |
-| 3 | Tapping an item in the in-app inbox went somewhere different from tapping the same push (customer: orders only; admin: orders only). | The inbox now uses the same mapping as the push. |
-| 4 | Customer order screen kept its payment state after a payment or live update: the order-payments, cancellation and history providers were not refreshed, so "Pay Online" could stay after the order was paid. Invoice detail and complaint screens were not refreshed by live events at all. | Live events now invalidate order payments, cancellation, history, invoice detail, invoice list, and complaint list/detail. Resume-from-background also refreshes complaints. |
-| 5 | Customer app offered Pay Online / UPI QR on orders that are billed to a credit account. | Pay is not offered for `credit` orders before delivery; a "Billed to your credit account" note shows instead. |
-| 6 | Customer app showed "Cancel Order" once the driver was on the way, but the server only accepts a request the agency must approve. | The button reads "Request Cancellation" for `out_for_delivery`. Rules now live in one place (`OrderPresentation.canCancel`, `canPrepay`) and mirror the backend state machine. |
-| 7 | Driver app: a double tap on "Start this delivery" or "Delivery failed" could queue the action twice. | In-flight guard in the stop screen. |
+| 1 | A push tapped during cold start or while signed out was lost, and several push types (complaint, trip, cash, stock, compliance, pricing, refill) opened the wrong screen; inbox taps differed from push taps. | Found independently and fixed on `main` by #110 (shared `notificationRoute` and `DeepLinkGate` in `packages/core`) while this pass was running. I confirmed it covers every reference type the backend sends and dropped my duplicate. |
+| 2 | Customer order screen kept its payment state after a payment or live update: the order-payments, cancellation and history providers were not refreshed, so "Pay Online" could stay after the order was paid. Invoice detail and complaint screens were not refreshed by live events at all. | Live events now invalidate order payments, cancellation, history, invoice detail, invoice list, and complaint list/detail. Resume-from-background also refreshes complaints. |
+| 3 | Customer app offered Pay Online / UPI QR on orders that are billed to a credit account. | Pay is not offered for `credit` orders before delivery; a "Billed to your credit account" note shows instead. |
+| 4 | Customer app showed "Cancel Order" once the driver was on the way, but the server only accepts a request the agency must approve. | The button reads "Request Cancellation" for `out_for_delivery`. Rules now live in one place (`OrderPresentation.canCancel`, `canPrepay`) and mirror the backend state machine. |
+| 5 | Driver app: a double tap on "Start this delivery" or "Delivery failed" could queue the action twice. | In-flight guard in the stop screen. |
 
 ## Verified (tests that pass)
 

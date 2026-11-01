@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
+import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -150,31 +151,49 @@ class AdminApp extends ConsumerStatefulWidget {
 
 class _AdminAppState extends ConsumerState<AdminApp> {
   StreamSubscription<String>? _tapSub;
-  late final DeepLinkGate _gate;
+  late final DeepLinkGate _links;
+  late final AuthController _auth;
 
   @override
   void initState() {
     super.initState();
     final pushService = ref.read(pushNotificationServiceProvider);
 
-    // Taps (cold start or while running) go through a gate that holds the
-    // route until the session is restored/signed in; the router's auth
-    // redirect would otherwise swallow a route opened too early.
-    _gate = DeepLinkGate(
-      auth: ref.read(authControllerProvider),
-      open: (route) {
-        if (mounted) ref.read(routerProvider).go(route);
-      },
+    // A tapped notification may arrive before the session is restored (cold
+    // start) or while signed out; the gate holds the route until sign-in so
+    // the auth guard cannot swallow it.
+    final auth = ref.read(authControllerProvider);
+    _auth = auth;
+    _links = DeepLinkGate(
+      isAuthenticated: () => auth.state.isAuthenticated,
+      go: (route) => ref.read(routerProvider).go(route),
     );
+    auth.addListener(_flushLinks);
+
     final initialRoute = pushService.takeInitialRoute();
-    if (initialRoute != null) _gate.open(initialRoute);
-    _tapSub = pushService.taps.listen(_gate.open);
+    if (initialRoute != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _links.open(initialRoute);
+      });
+    }
+
+    // Taps while the app is already running.
+    _tapSub = pushService.taps.listen((route) {
+      if (mounted) _links.open(route);
+    });
+  }
+
+  void _flushLinks() {
+    // After the frame, so the router's own sign-in redirect has settled.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _links.flush();
+    });
   }
 
   @override
   void dispose() {
+    _auth.removeListener(_flushLinks);
     _tapSub?.cancel();
-    _gate.dispose();
     super.dispose();
   }
 

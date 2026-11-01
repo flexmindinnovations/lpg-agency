@@ -54,6 +54,9 @@ class _RecordingAdapter implements HttpClientAdapter {
   final paths = <String>[];
   Map<String, dynamic>? deliverBody;
 
+  /// The answer to `GET /orders/{id}/settlement`; `null` = not reachable.
+  Map<String, dynamic>? settlement;
+
   /// When true, every request fails as if the network is down — so the
   /// coordinator's post-enqueue `syncNow()` can't quietly complete the op.
   bool offline = false;
@@ -64,6 +67,19 @@ class _RecordingAdapter implements HttpClientAdapter {
       throw DioException.connectionError(
         requestOptions: options,
         reason: 'offline',
+      );
+    }
+    if (options.path.endsWith('/settlement')) {
+      final answer = settlement;
+      if (answer == null) {
+        return ResponseBody.fromString('{}', 500);
+      }
+      return ResponseBody.fromString(
+        jsonEncode(answer),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
       );
     }
     paths.add(options.path);
@@ -268,7 +284,7 @@ void main() {
       expect(find.text("Customer's signature (optional)"), findsOneWidget);
       expect(find.text('Delivery photo (optional)'), findsOneWidget);
       expect(find.text('Take a photo'), findsOneWidget);
-      expect(find.text('Confirm delivery'), findsOneWidget);
+      expect(find.text('Complete delivery'), findsOneWidget);
       // Amount prefilled from the order total.
       expect(find.text('905.50'), findsOneWidget);
     });
@@ -311,6 +327,101 @@ void main() {
       expect(find.text('905.50'), findsNothing);
     });
 
+    testWidgets('shows what was already paid online and asks for no cash', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter()
+        ..settlement = {
+          'order_id': 'order-1',
+          'payable_amount': '905.50',
+          'paid_online_amount': '905.50',
+          'balance_due': '0.00',
+        };
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      expect(find.text('Already paid online'), findsOneWidget);
+      expect(find.text('Amount collected'), findsNothing);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Code from the customer'),
+        '123456',
+      );
+      await tester.tap(find.text('Complete delivery'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 1)),
+      );
+      await tester.pumpAndSettle();
+
+      final pod = adapter.deliverBody!['proof_of_delivery'] as Map;
+      expect(pod['amount_collected'], 0);
+      expect(pod['payment_method'], 'online_gateway');
+    });
+
+    testWidgets('will not complete until the balance is collected', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await tester.enterText(find.byType(TextField).first, '100');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Payment not settled'), findsOneWidget);
+      await tester.tap(find.text('Complete delivery'));
+      await tester.pumpAndSettle();
+      expect(adapter.deliverBody, isNull);
+
+      // A partial payment with the rest on the customer's account.
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
+      expect(find.text('Payment not settled'), findsNothing);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Code from the customer'),
+        '123456',
+      );
+      await tester.tap(find.text('Complete delivery'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 1)),
+      );
+      await tester.pumpAndSettle();
+
+      final pod = adapter.deliverBody!['proof_of_delivery'] as Map;
+      expect(pod['amount_collected'], 100);
+      expect(pod['balance_on_account'], true);
+    });
+
+    testWidgets('on credit records no cash', (tester) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await tester.tap(find.text('Cash'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('On credit').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Amount collected'), findsNothing);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Code from the customer'),
+        '123456',
+      );
+      await tester.tap(find.text('Complete delivery'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 1)),
+      );
+      await tester.pumpAndSettle();
+
+      final pod = adapter.deliverBody!['proof_of_delivery'] as Map;
+      expect(pod['payment_method'], 'credit');
+      expect(pod['amount_collected'], 0);
+    });
+
     testWidgets('delivers without a signature or photo', (tester) async {
       final adapter = _RecordingAdapter();
       final (:container, :harness) = _container(adapter);
@@ -322,7 +433,7 @@ void main() {
         find.widgetWithText(TextField, 'Code from the customer'),
         '123456',
       );
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
@@ -358,7 +469,7 @@ void main() {
 
       // Submitting encodes the signature PNG and talks to dio — both need a
       // real async zone, so drive it under runAsync.
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
@@ -401,7 +512,7 @@ void main() {
         '123456',
       );
 
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
@@ -425,7 +536,7 @@ void main() {
       addTearDown(container.dispose);
       await _pump(tester, container);
 
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.pumpAndSettle();
 
       expect(adapter.paths, isEmpty);
@@ -442,7 +553,7 @@ void main() {
       );
       expect(
         bannerTop,
-        lessThan(tester.getTopLeft(find.text('Confirm delivery')).dy),
+        lessThan(tester.getTopLeft(find.text('Complete delivery')).dy),
       );
     });
 
@@ -464,7 +575,7 @@ void main() {
         find.widgetWithText(TextField, 'Code from the customer'),
         '123456',
       );
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.pumpAndSettle();
 
       expect(adapter.paths, isEmpty);
@@ -476,7 +587,7 @@ void main() {
         findsOneWidget,
       );
       // Still on the form so the driver can retry.
-      expect(find.text('Confirm delivery'), findsOneWidget);
+      expect(find.text('Complete delivery'), findsOneWidget);
     });
 
     test('deliveryFix gives up with a retryable message on timeout', () async {

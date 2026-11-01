@@ -5,4 +5,5 @@
 library;
 
 export 'src/phone_number.dart';
+export 'src/push_routing.dart';
 export 'src/result.dart';
