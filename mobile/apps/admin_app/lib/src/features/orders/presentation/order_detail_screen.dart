@@ -28,6 +28,10 @@ class OrderDetailScreen extends ConsumerStatefulWidget {
 class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   bool _busy = false;
 
+  /// Label of the button last tapped, so only that button shows the loader
+  /// while [_busy] disables the rest.
+  String? _pressed;
+
   /// Reloads everything this order's screens show.
   void _reload() {
     ref.invalidate(adminOrderDetailProvider(widget.orderId));
@@ -424,8 +428,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         variant: variant,
         icon: icon,
         expand: true,
-        isLoading: _busy,
-        onPressed: _busy ? null : onPressed,
+        isLoading: _busy && _pressed == label,
+        onPressed: _busy
+            ? null
+            : () {
+                _pressed = label;
+                onPressed();
+              },
       ),
     );
 
