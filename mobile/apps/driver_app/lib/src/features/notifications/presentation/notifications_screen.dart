@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../push/push_notification_service.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../api_provider.dart';
@@ -30,13 +31,12 @@ class NotificationsScreen extends ConsumerWidget {
       );
     }
 
-    if (item.referenceType == 'order' && item.referenceId != null) {
-      if (context.mounted) {
-        context.goNamed('stop', pathParameters: {'orderId': item.referenceId!});
-      }
-    } else if (item.referenceType == 'route') {
-      if (context.mounted) context.go('/');
-    }
+    // Same destination as tapping the push notification itself.
+    final route = driverRouteFromData({
+      'reference_type': item.referenceType,
+      'reference_id': item.referenceId,
+    });
+    if (route != null && context.mounted) context.go(route);
   }
 
   Future<void> _markAllRead(WidgetRef ref) async {

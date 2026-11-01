@@ -165,4 +165,52 @@ void main() {
       },
     );
   });
+
+  group('DeepLinkGate', () {
+    testWidgets(
+      'holds a tap until the session is authenticated, then opens it once',
+      (tester) async {
+        final repository = _FakeAuthRepository();
+        final controller = AuthController(repository);
+        final opened = <String>[];
+        final gate = DeepLinkGate(auth: controller, open: opened.add);
+
+        // Tapped while the session is still being restored.
+        gate.open('/orders/o-1');
+        expect(gate.pending, '/orders/o-1');
+        await tester.pump();
+        expect(opened, isEmpty);
+
+        // Session settles as signed out: still nothing.
+        await tester.pump(const Duration(milliseconds: 10));
+        expect(opened, isEmpty);
+
+        // The user signs in: the held route opens, once.
+        await controller.login(email: 'a@b.c', password: 'x');
+        await tester.pump();
+        await tester.pump();
+        expect(opened, ['/orders/o-1']);
+        expect(gate.pending, isNull);
+
+        controller.notifyListeners();
+        await tester.pump();
+        expect(opened, ['/orders/o-1']);
+        gate.dispose();
+      },
+    );
+
+    testWidgets('opens straight away when already signed in', (tester) async {
+      final controller = AuthController(
+        _FakeAuthRepository(restoreSessionResult: const Success(_principal)),
+      );
+      await tester.pump(const Duration(milliseconds: 10));
+      final opened = <String>[];
+      final gate = DeepLinkGate(auth: controller, open: opened.add);
+
+      gate.open('/alerts');
+      await tester.pump();
+      expect(opened, ['/alerts']);
+      gate.dispose();
+    });
+  });
 }

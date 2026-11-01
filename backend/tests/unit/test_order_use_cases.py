@@ -85,6 +85,7 @@ from lpg.domain.order.order import (
     DeliveredLine,
     DeliveryAddress,
     InsufficientVehicleStockError,
+    InvalidOrderStatusTransitionError,
     Order,
     OrderLine,
 )
@@ -1264,6 +1265,31 @@ class TestDeliverOrderUseCase:
 
 
 class TestCancelOrderUseCase:
+    @pytest.mark.parametrize("status", ["delivered", "closed", "cancelled", "draft"])
+    async def test_cancel_is_refused_once_delivered_closed_or_cancelled(
+        self,
+        status: str,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        """The customer app hides Cancel for these statuses; the server must
+        refuse it too, whatever a stale or hand-made client sends."""
+        order = _make_order(status=status)
+        mock_order_repo.get_by_id.return_value = order
+        use_case = CancelOrderUseCase(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, MagicMock(), mock_uow
+        )
+
+        with pytest.raises(InvalidOrderStatusTransitionError):
+            await use_case.execute(
+                CancelOrderCommand(order_id=order.id, reason="too late", cancelled_by=uuid.uuid4())
+            )
+
+        mock_order_repo.save.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
     async def test_free_cancel_releases_reservation_and_cancels_route_stop(
         self,
         mock_order_repo: MagicMock,

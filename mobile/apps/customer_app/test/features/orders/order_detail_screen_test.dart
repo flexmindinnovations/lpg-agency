@@ -15,6 +15,7 @@ OrderResponse _order({
   double? totalAmount = 999,
   double? taxAmount,
   double? payableAmount,
+  String? paymentMethodPreference,
 }) => OrderResponse(
   id: 'abcdef01aaaabbbb',
   orderNumber: 'ORD000042',
@@ -27,6 +28,7 @@ OrderResponse _order({
   ),
   status: status,
   bookingSource: 'mobile_app',
+  paymentMethodPreference: paymentMethodPreference,
   requestedDate: DateTime(2026, 8, 20, 10, 30),
   metadata: const {},
   totalAmount: totalAmount,
@@ -103,6 +105,31 @@ void main() {
       await pumpScreen(tester, _screen(order: _order(status: 'confirmed')));
 
       expect(find.text('Cancel Order'), findsOneWidget);
+    });
+
+    testWidgets('once the driver is on the way, Cancel becomes a request', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        _screen(order: _order(status: 'out_for_delivery')),
+      );
+
+      expect(find.text('Request Cancellation'), findsOneWidget);
+      expect(find.text('Cancel Order'), findsNothing);
+    });
+
+    testWidgets('a credit-account order says it is billed, not asked to pay', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        _screen(order: _order(paymentMethodPreference: 'credit')),
+      );
+
+      expect(find.text('Billed to your credit account'), findsOneWidget);
+      expect(find.text('Pay Online'), findsNothing);
+      expect(find.text('Pay by UPI QR'), findsNothing);
     });
 
     for (final status in ['delivered', 'closed', 'cancelled', 'draft']) {

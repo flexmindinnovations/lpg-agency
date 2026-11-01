@@ -150,30 +150,31 @@ class AdminApp extends ConsumerStatefulWidget {
 
 class _AdminAppState extends ConsumerState<AdminApp> {
   StreamSubscription<String>? _tapSub;
+  late final DeepLinkGate _gate;
 
   @override
   void initState() {
     super.initState();
     final pushService = ref.read(pushNotificationServiceProvider);
 
-    // A notification that cold-started the app: navigate once the router is
-    // ready.
+    // Taps (cold start or while running) go through a gate that holds the
+    // route until the session is restored/signed in; the router's auth
+    // redirect would otherwise swallow a route opened too early.
+    _gate = DeepLinkGate(
+      auth: ref.read(authControllerProvider),
+      open: (route) {
+        if (mounted) ref.read(routerProvider).go(route);
+      },
+    );
     final initialRoute = pushService.takeInitialRoute();
-    if (initialRoute != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ref.read(routerProvider).go(initialRoute);
-      });
-    }
-
-    // Taps while the app is already running.
-    _tapSub = pushService.taps.listen((route) {
-      if (mounted) ref.read(routerProvider).go(route);
-    });
+    if (initialRoute != null) _gate.open(initialRoute);
+    _tapSub = pushService.taps.listen(_gate.open);
   }
 
   @override
   void dispose() {
     _tapSub?.cancel();
+    _gate.dispose();
     super.dispose();
   }
 

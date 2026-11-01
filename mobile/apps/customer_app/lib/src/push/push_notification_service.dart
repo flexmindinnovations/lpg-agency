@@ -96,7 +96,7 @@ class PushNotificationService {
 
     final initial = await FirebaseMessaging.instance.getInitialMessage();
     if (initial != null) {
-      _initialRoute = _routeFromData(initial.data);
+      _initialRoute = customerRouteFromData(initial.data);
     }
   }
 
@@ -153,7 +153,7 @@ class PushNotificationService {
   }
 
   void _emitTapFromData(Map<String, dynamic> data) {
-    final route = _routeFromData(data);
+    final route = customerRouteFromData(data);
     if (route != null) _tapController.add(route);
   }
 
@@ -166,28 +166,35 @@ class PushNotificationService {
     }
   }
 
-  /// Maps the FCM `data` block (set by the backend's push channel:
-  /// `type`, `reference_type`, `reference_id`) to an in-app route. Falls
-  /// back to the notifications inbox when there's nothing specific to open.
-  String? _routeFromData(Map<String, dynamic> data) {
-    final referenceType = data['reference_type'] as String?;
-    final referenceId = data['reference_id'] as String?;
-    if (referenceType == 'order' && referenceId != null) {
-      return '/orders/$referenceId';
-    }
-    if (referenceType == 'invoice' && referenceId != null) {
-      return '/orders/invoices/$referenceId';
-    }
-    if (data.isNotEmpty) return '/notifications';
-    return null;
-  }
-
   Future<void> dispose() async {
     await _onMessageSub?.cancel();
     await _onOpenedSub?.cancel();
     await _onTokenRefreshSub?.cancel();
     await _tapController.close();
   }
+}
+
+/// Maps the FCM `data` block (set by the backend's push channel:
+/// `type`, `reference_type`, `reference_id`) to an in-app route. Falls
+/// back to the notifications inbox when there's nothing specific to open.
+String? customerRouteFromData(Map<String, dynamic> data) {
+  final referenceType = data['reference_type'] as String?;
+  final referenceId = data['reference_id'] as String?;
+  if (referenceId != null && referenceId.isNotEmpty) {
+    switch (referenceType) {
+      case 'order':
+        return '/orders/$referenceId';
+      case 'invoice':
+        return '/orders/invoices/$referenceId';
+      case 'complaint':
+        return '/support/$referenceId';
+    }
+  }
+  // "Time for a refill?" is about the customer, not an order: open the
+  // order form.
+  if (referenceType == 'customer') return '/orders/new';
+  if (data.isNotEmpty) return '/notifications';
+  return null;
 }
 
 /// Background/terminated-state message handler. FCM shows the tray
