@@ -1649,6 +1649,10 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 045 | AI Model Gateway as a provider-agnostic tool-calling port, Gemini as the first adapter, a fixed read-only tool registry as the first consumer | Accepted |
 | 046 | Zero-click driver auto-assignment — deterministic scoring, opt-in kill switch, no new system-principal bypass | Accepted |
 | 047 | Global error-toast interceptor replaces per-component toasting, not a per-request opt-in mechanism | Accepted |
+| 048 | Agency provisioning through a `SECURITY DEFINER` insert function, a two-step create with compensation, and a one-time setup link returned in the response | Accepted |
+| 049 | Super Admin agency-user recovery — setup links limited to `agency_admin`, 24-hour single-use lifetime, explicit audit attributed to the target agency | Accepted |
+| 050 | Show the login OTP in the Driver App for testing, via the existing non-production dev inbox and a client-side opt-in | Accepted |
+| 051 | Create a Customer App login on an agency-registered customer's first OTP sign-in | Accepted |
 | 052 | Mobile design system: semantic Lucide icons, bundled Inter, shared component kit | Accepted |
 | 053 | Online payments through Razorpay payment links behind a provider-agnostic gateway port | Accepted |
 | 054 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
@@ -1667,6 +1671,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 067 | Per-agency Razorpay credentials | Accepted |
 | 068 | Per-agency notification settings | Accepted |
 | 069 | Push notification deep-link contract and live screen sync | Accepted |
+| 070 | One Settings area with per-section routes replaces scattered agency-admin pages; old URLs redirect | Accepted |
 
 ## ADR-069: Push Notification Deep-Link Contract and Live Screen Sync
 
@@ -1681,6 +1686,27 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 - Live sync: every app shell invalidates its order, trip, invoice and inbox providers (whole families, so open detail screens refetch) on three signals: a foreground push, a `/ws` event, and app resume. After a socket drop the `realtime.reconnected` marker triggers a full refetch.
 
 **Consequences.** Adding a notification for a new entity means adding its `reference_type` to `notificationRoute` for each app that can receive it. Navigating a user away from a screen whose entity changed state is left to that screen's own status handling.
+
+## ADR-070: One Settings Area With Per-Section Routes Replaces Scattered Agency-Admin Pages; Old URLs Redirect
+
+**Status:** Accepted
+
+**Context:** Four agency-wide admin pages (Tenant Config, Feature Flags, License, Linked Devices) each had a sidebar entry and an `/admin/...` route, while the personal My Profile page was reachable only from the user menu. The agency code that drivers and customers type to sign in to the mobile apps was shown on no dashboard screen an agency admin could open. Adding it to the Profile page (first attempt) mixed a tenant-wide fact into a page every role sees.
+
+**Decision:** A single Settings area at `/settings` with a section nav in two groups. **Account** (My Profile) is open to every role; **Agency** (Agency, Configuration and its TDT Rating sub-page, Feature Flags, License, Linked Devices) is tenant-wide, and each section carries the same `permissionGuard` its `/admin` route had. Every section stays its own lazy child route, so deep links, lazy loading and per-section guards are unchanged; the shell component only supplies the frame and hides sections the user cannot open. The sidebar shows one always-visible Settings item; the command palette lists each section by name. The old URLs (`/profile`, `/admin/tenant-config[/tdt-rating]`, `/admin/feature-flags`, `/admin/license[/devices]`) redirect to the new ones. `license.guard` exempts `/settings/license*` (previously `/admin/license*`) so a blocked tenant can still reach activation. A new read-only Agency section, backed by the existing `GET /admin/tenant`, shows the agency code with its sign-in hint. Inside Settings, cards are flat: `lpg-section-card` (and the TDT section card) read optional `--card-border` / `--card-shadow` custom properties that the Settings content area sets to `none`.
+
+**Consequences:**
+- Frontend only; no backend, API or OpenAPI change. The server still re-enforces every permission regardless of what the nav shows.
+- The license-guard exemption now depends on the `/settings/license` URL prefix; moving that page again means changing the guard and `LicenseRequired` together.
+- A tenant with a blocked license can open `/settings/license`, but the other Settings sections in the nav bounce back to `/license-required` until the nav learns the license state.
+- Custom properties inherit through view encapsulation, so flattening cards needs no `::ng-deep` and no change to cards outside Settings.
+- The legacy redirects are a compatibility cost to retire once old links are gone.
+- Operational master data (Branches, Warehouses, Cylinder Types, Pricing, Users & Roles, Employees, Audit Log) stays in the sidebar; this ADR moves only the four pages above plus Profile.
+
+**Alternatives Considered:**
+- **Sections on the Profile page** — rejected: Profile is open to every role and holds personal data; agency-wide, permission-gated sections would make it change shape by role and mix two scopes.
+- **One page with tabs but no per-section routes** — rejected: loses deep links, lazy loading and route-level guards.
+- **Keep separate sidebar entries** — rejected: four of the Administration group's ten items were rarely-used agency settings crowding the operational list.
 
 ## Deferred Decisions
 
