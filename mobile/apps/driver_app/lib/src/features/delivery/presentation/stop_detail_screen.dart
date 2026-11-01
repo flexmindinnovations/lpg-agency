@@ -20,6 +20,8 @@ class StopDetailScreen extends ConsumerWidget {
 
   final String orderId;
 
+  static bool _running = false;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderAsync = ref.watch(stopOrderProvider(orderId));
@@ -192,6 +194,10 @@ class StopDetailScreen extends ConsumerWidget {
     Future<void> Function() action, {
     required String doneMessage,
   }) async {
+    // A second tap while the first is still queueing would queue the same
+    // action twice.
+    if (_running) return;
+    _running = true;
     try {
       await action();
     } catch (e) {
@@ -202,6 +208,8 @@ class StopDetailScreen extends ConsumerWidget {
         tone: LpgTone.danger,
       );
       return;
+    } finally {
+      _running = false;
     }
     if (!context.mounted) return;
     ref.invalidate(stopOrderProvider(orderId));

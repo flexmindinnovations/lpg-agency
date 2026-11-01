@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../dashboard/data/notifications_provider.dart';
 import '../../orders/data/invoices_provider.dart';
 import '../../orders/data/orders_provider.dart';
+import '../../payments/data/order_payments_provider.dart';
+import '../../support/data/complaints_provider.dart';
 
 /// The main application shell for the Customer App.
 ///
@@ -49,6 +51,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   void _refresh() {
     ref.invalidate(ordersProvider);
     ref.invalidate(invoicesProvider);
+    ref.invalidate(complaintsProvider);
     ref.invalidate(notificationsProvider);
     ref.invalidate(unreadNotificationCountProvider);
     ref.invalidate(orderDetailProvider);
@@ -76,7 +79,26 @@ class _AppShellState extends ConsumerState<AppShell> {
           ref.invalidate(ordersProvider);
           ref.invalidate(invoicesProvider);
           final orderId = message['reference_id'];
-          if (orderId is String) ref.invalidate(orderDetailProvider(orderId));
+          if (orderId is String) {
+            ref.invalidate(orderDetailProvider(orderId));
+            ref.invalidate(orderPaymentsProvider(orderId));
+            ref.invalidate(pendingCancellationProvider(orderId));
+            ref.invalidate(orderHistoryProvider(orderId));
+          }
+        }
+        if (message['reference_type'] == 'invoice') {
+          ref.invalidate(invoicesProvider);
+          final invoiceId = message['reference_id'];
+          if (invoiceId is String) {
+            ref.invalidate(invoiceDetailProvider(invoiceId));
+          }
+        }
+        if (message['reference_type'] == 'complaint') {
+          ref.invalidate(complaintsProvider);
+          final complaintId = message['reference_id'];
+          if (complaintId is String) {
+            ref.invalidate(complaintDetailProvider(complaintId));
+          }
         }
       });
     });
