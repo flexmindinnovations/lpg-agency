@@ -1393,7 +1393,7 @@ class TestFailedDeliveryAndReschedule:
                     "photo_blob_ref": "photo-ref",
                     "gps_lat": "12.9716",
                     "gps_lng": "77.5946",
-                    "payment_method": "cash",
+                    "payment_method": "credit",
                     "amount_collected": "0",
                 },
             },
@@ -2042,7 +2042,7 @@ class TestDeliveryWithoutAttachments:
                 "proof_of_delivery": {
                     "gps_lat": "12.9716",
                     "gps_lng": "77.5946",
-                    "payment_method": "cash",
+                    "payment_method": "credit",
                     "amount_collected": "0",
                     **proof_extras,
                 },

@@ -276,6 +276,18 @@ class DeliverOrderResponse(BaseModel):
     proof_of_delivery: ProofOfDeliveryResponse
 
 
+class SettlementResponse(BaseModel):
+    """The money side of a delivery (ADR-069)."""
+
+    order_id: uuid.UUID
+    #: Price plus GST for the quantities delivered; `null` for an unpriced order.
+    payable_amount: Decimal | None
+    #: Already captured online for this order: do not collect it again.
+    paid_online_amount: Decimal
+    #: What is still to collect; `null` when `payable_amount` is.
+    balance_due: Decimal | None
+
+
 class PodAttachmentResponse(BaseModel):
     blob_ref: str
 

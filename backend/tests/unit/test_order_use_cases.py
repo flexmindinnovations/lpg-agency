@@ -35,6 +35,7 @@ from lpg.application.common.errors import (
     NotFoundError,
     OtpExpiredError,
     OtpMismatchError,
+    PaymentNotSettledError,
     RouteNotLoadedError,
     ServiceUnavailableError,
     ValidationError,
@@ -932,6 +933,204 @@ class TestDeliverOrderUseCase:
         mock_order_repo.save.assert_called_once()
         mock_inventory_repo.save.assert_called_once()
         mock_route_repo.save.assert_called_once()
+        pod_repo.create.assert_called_once()
+        mock_uow.commit.assert_called_once()
+
+    async def _deliver(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+        *,
+        method: str,
+        amount: str,
+        delivered: int = 4,
+        prepaid: str | None = None,
+    ) -> tuple[Order, MagicMock]:
+        cylinder_type_id = uuid.uuid4()
+        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        mock_inventory_repo.get_by_location_ref.return_value = _make_vehicle_location(
+            location_ref_id=route.vehicle_id
+        )
+        use_case, pod_repo, _otp = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+        payments = MagicMock()
+        paid = []
+        if prepaid is not None:
+            online = MagicMock()
+            online.status = "paid"
+            online.amount = Decimal(prepaid)
+            paid.append(online)
+        payments.list_for_order = AsyncMock(return_value=paid)
+        use_case._online_payment_repository = payments
+        await use_case.execute(
+            DeliverOrderCommand(
+                order_id=order.id,
+                lines=[
+                    DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=delivered)
+                ],
+                otp_code="123456",
+                signature_blob_ref=None,
+                photo_blob_ref=None,
+                gps_lat=Decimal("12.9"),
+                gps_lng=Decimal("77.6"),
+                payment_method=method,
+                amount_collected=Decimal(amount),
+                changed_by=uuid.uuid4(),
+            )
+        )
+        return order, pod_repo
+
+    async def test_delivery_is_refused_until_the_balance_is_collected(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        with pytest.raises(PaymentNotSettledError) as excinfo:
+            await self._deliver(
+                mock_order_repo,
+                mock_route_repo,
+                mock_inventory_repo,
+                mock_uow,
+                method="cash",
+                amount="1000",
+            )
+        assert excinfo.value.context["balance_due"] == "3600.00"
+        mock_order_repo.save.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
+    async def test_short_delivery_is_held_to_the_smaller_amount(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        order, _ = await self._deliver(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            method="cash",
+            amount="1800",
+            delivered=2,
+        )
+        assert order.status == "delivered"
+
+    async def test_online_prepayment_covers_the_balance(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        order, _ = await self._deliver(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            method="cash",
+            amount="0",
+            prepaid="3600",
+        )
+        assert order.status == "delivered"
+
+    async def test_cash_is_never_recorded_beyond_the_balance_due(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        """Paid online already, but the form still says 3600 collected."""
+        _, pod_repo = await self._deliver(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            method="cash",
+            amount="3600",
+            prepaid="3600",
+        )
+        assert pod_repo.create.call_args.kwargs["amount_collected"] == Decimal("0.00")
+
+    async def test_partial_online_prepayment_leaves_only_the_rest_to_collect(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        order, _ = await self._deliver(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            method="cash",
+            amount="1600",
+            prepaid="2000",
+        )
+        assert order.status == "delivered"
+
+    async def test_credit_puts_the_balance_on_account(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        order, _ = await self._deliver(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            method="credit",
+            amount="0",
+        )
+        assert order.status == "delivered"
+
+    async def test_repeating_a_completed_delivery_returns_the_recorded_result(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        cylinder_type_id = uuid.uuid4()
+        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        mock_inventory_repo.get_by_location_ref.return_value = _make_vehicle_location(
+            location_ref_id=route.vehicle_id
+        )
+        use_case, pod_repo, otp_store = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+        command = DeliverOrderCommand(
+            order_id=order.id,
+            lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
+            otp_code="123456",
+            signature_blob_ref=None,
+            photo_blob_ref=None,
+            gps_lat=Decimal("12.9"),
+            gps_lng=Decimal("77.6"),
+            payment_method="cash",
+            amount_collected=Decimal("3600"),
+            changed_by=uuid.uuid4(),
+        )
+        first = await use_case.execute(command)
+        pod_repo.get_by_order_id = AsyncMock(return_value=first.proof_of_delivery)
+        otp_store.verify = AsyncMock(return_value=False)  # the code is used up
+
+        again = await use_case.execute(command)
+
+        assert again.proof_of_delivery is first.proof_of_delivery
         pod_repo.create.assert_called_once()
         mock_uow.commit.assert_called_once()
 

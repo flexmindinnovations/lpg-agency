@@ -30,6 +30,7 @@ from lpg.application.common.errors import (
     NotFoundError,
     OtpExpiredError,
     OtpMismatchError,
+    PaymentNotSettledError,
     RouteNotLoadedError,
     ServiceUnavailableError,
     ValidationError,
@@ -40,6 +41,7 @@ from lpg.application.delivery.use_cases import (
     ensure_crew_is_free,
 )
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
+from lpg.application.order.settlement import compute_settlement
 from lpg.domain.delivery.route import ProofOfDelivery as RouteProofOfDelivery
 from lpg.domain.delivery.route import Route
 from lpg.domain.order.cancellation_fee import CancellationFeeCalculator
@@ -52,6 +54,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from contextlib import AbstractAsyncContextManager
 
+    from lpg.application.accounting.ports import OnlinePaymentRepository
     from lpg.application.common.ports import JobQueuePort, UnitOfWork
     from lpg.application.customer.ports import CustomerRepository
     from lpg.application.delivery.ports import RouteRepository
@@ -889,6 +892,7 @@ class DeliverOrderUseCase:
         pod_repository: ProofOfDeliveryRepository,
         otp_store: OtpStore,
         unit_of_work: UnitOfWork,
+        online_payment_repository: OnlinePaymentRepository | None = None,
     ) -> None:
         self._order_repository = order_repository
         self._route_repository = route_repository
@@ -896,12 +900,22 @@ class DeliverOrderUseCase:
         self._pod_repository = pod_repository
         self._otp_store = otp_store
         self._unit_of_work = unit_of_work
+        self._online_payment_repository = online_payment_repository
 
     async def execute(self, command: DeliverOrderCommand) -> DeliverOrderResult:
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
             msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
+
+        # A repeat of a delivery that already went through (a lost response,
+        # a second tap, a retry under a fresh idempotency key): answer with
+        # what was recorded instead of failing on a delivery code that was
+        # used up the first time.
+        if order.status == "delivered":
+            existing = await self._pod_repository.get_by_order_id(order.id)
+            if existing is not None:
+                return DeliverOrderResult(order=order, proof_of_delivery=existing)
 
         vehicle_location = None
         route = None
@@ -913,6 +927,10 @@ class DeliverOrderUseCase:
                 )
                 route = await self._route_repository.get_by_id(owner.route_id)
         _require_loaded_route(route, order.id)
+
+        # Before the code is checked: verifying uses the code up, and a driver
+        # sent back to collect the money must still be able to use it.
+        amount_collected = await self._require_payment_settled(order, command)
 
         key = order_delivery_otp_key(order.tenant_id, order.id)
         try:
@@ -980,12 +998,52 @@ class DeliverOrderUseCase:
             gps_lat=command.gps_lat,
             gps_lng=command.gps_lng,
             payment_method=command.payment_method,
-            amount_collected=command.amount_collected,
+            amount_collected=amount_collected,
             recorded_by=command.changed_by,
             dac_code=command.dac_code,
         )
         await self._unit_of_work.commit()
         return DeliverOrderResult(order=order, proof_of_delivery=pod)
+
+    async def _require_payment_settled(self, order: Order, command: DeliverOrderCommand) -> Decimal:
+        """The order is only completed once the money is dealt with (ADR-069):
+        the balance collected, covered by an online payment, or taken on
+        credit. Runs before the code is checked and before anything is
+        mutated. Returns the amount to record as collected: never more than
+        the balance that was due, so money already received online is not
+        counted again as cash in the driver's hand.
+        """
+        prepayments = (
+            await self._online_payment_repository.list_for_order(order.id)
+            if self._online_payment_repository is not None
+            else []
+        )
+        settlement = compute_settlement(
+            order,
+            {
+                d.cylinder_type_id: min(
+                    d.quantity_delivered, order.line_for(d.cylinder_type_id).quantity_ordered
+                )
+                for d in command.lines
+            },
+            prepayments,
+        )
+        if not settlement.is_settled_by(
+            method=command.payment_method, amount_collected=command.amount_collected
+        ):
+            msg = (
+                f"₹{settlement.balance_due} is still due for this delivery. Collect it, "
+                "or record the balance as credit, before completing the delivery."
+            )
+            raise PaymentNotSettledError(
+                msg,
+                order_id=str(order.id),
+                balance_due=str(settlement.balance_due),
+                paid_online=str(settlement.paid_online),
+            )
+        if settlement.balance_due is None:
+            return command.amount_collected
+        return min(command.amount_collected, settlement.balance_due)
 
     @staticmethod
     def _validate_pod_fields(command: DeliverOrderCommand) -> None:
