@@ -296,6 +296,7 @@ SPECS: dict[str, NotificationSpec] = {
         title="New order",
         body=lambda f: f"{_order_for(f)} was just placed and is waiting for confirmation.",
         audience=Audience.STAFF,
+        push=True,
         permission="orders:confirm",
     ),
     "cancellation_requested_staff": NotificationSpec(
@@ -304,6 +305,7 @@ SPECS: dict[str, NotificationSpec] = {
             f"{_order_for(f)}: cancellation requested — approve or decline it.", f
         ),
         audience=Audience.STAFF,
+        push=True,
         permission="orders:cancel_approve",
     ),
     "complaint_raised_staff": NotificationSpec(
@@ -314,6 +316,7 @@ SPECS: dict[str, NotificationSpec] = {
             + f": {f.get('category') or 'other'}, {f.get('priority') or 'normal'} priority."
         ),
         audience=Audience.STAFF,
+        push=True,
         permission="complaints.manage",
         reference_type="complaint",
     ),
@@ -325,12 +328,14 @@ SPECS: dict[str, NotificationSpec] = {
             + f" ({f.get('category') or 'other'}) is now yours to handle."
         ),
         audience=Audience.ASSIGNEE,
+        push=True,
         reference_type="complaint",
     ),
     "delivery_failed_staff": NotificationSpec(
         title="Delivery failed",
         body=lambda f: _with_reason(f"{_order_for(f)} could not be delivered.", f),
         audience=Audience.STAFF,
+        push=True,
         permission="orders:dispatch",
     ),
     "order_delivered_staff": NotificationSpec(
@@ -345,18 +350,21 @@ SPECS: dict[str, NotificationSpec] = {
             f"{_order_for(f)} has no free driver or van in its branch — add it to a trip."
         ),
         audience=Audience.STAFF,
+        push=True,
         permission="orders:dispatch",
     ),
     "order_stale_unassigned_staff": NotificationSpec(
         title="Order still waiting for a trip",
         body=lambda f: f"{_order_for(f)} is confirmed but still not on a trip.",
         audience=Audience.STAFF,
+        push=True,
         permission="orders:dispatch",
     ),
     "route_started_staff": NotificationSpec(
         title="Trip started",
         body=lambda f: f"{_route(f)} has left the depot.",
         audience=Audience.STAFF,
+        push=True,
         permission="orders:dispatch",
         reference_type="route",
     ),
@@ -374,6 +382,7 @@ SPECS: dict[str, NotificationSpec] = {
             f"{_rupees(f.get('expected_amount'))} — short by {_rupees(f.get('shortfall'))}."
         ),
         audience=Audience.STAFF,
+        push=True,
         permission="invoices:record_payment",
         reference_type="cash_handover",
         email=True,
@@ -386,6 +395,7 @@ SPECS: dict[str, NotificationSpec] = {
             + "."
         ),
         audience=Audience.STAFF,
+        push=True,
         permission="invoices:record_payment",
     ),
     "inventory_low_stock_staff": NotificationSpec(
@@ -397,6 +407,7 @@ SPECS: dict[str, NotificationSpec] = {
             f"{f.get('reorder_point', '?')}). Time to reorder."
         ),
         audience=Audience.STAFF,
+        push=True,
         permission="inventory:adjust",
         reference_type="inventory_location",
         email=True,
@@ -409,6 +420,7 @@ SPECS: dict[str, NotificationSpec] = {
             f"{f.get('expiry_date') or 'soon'}. Arrange a renewal and upload the replacement."
         ),
         audience=Audience.STAFF,
+        push=True,
         permission="compliance:manage",
         reference_type="compliance_document",
     ),
@@ -420,6 +432,7 @@ SPECS: dict[str, NotificationSpec] = {
             "review on the Price List page."
         ),
         audience=Audience.STAFF,
+        push=True,
         permission="tenant:configure",
         reference_type="price_list_proposal",
         email=True,
