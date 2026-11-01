@@ -17,7 +17,14 @@ import 'resolve_complaint_sheet.dart';
 /// deadline, who has it, what was done, and the two things staff do with it:
 /// hand it to someone and resolve it.
 class ComplaintDetailScreen extends ConsumerWidget {
-  const ComplaintDetailScreen({super.key, required this.complaintId});
+  const ComplaintDetailScreen({
+    super.key,
+    required this.complaintId,
+    this.embedded = false,
+  });
+
+  /// Shown in the right pane of a tablet's two-pane layout: no back button.
+  final bool embedded;
 
   final String complaintId;
 
@@ -81,6 +88,7 @@ class ComplaintDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !embedded,
         title: Text(async.value?.complaintNumber ?? 'Complaint'),
         actions: [
           IconButton(

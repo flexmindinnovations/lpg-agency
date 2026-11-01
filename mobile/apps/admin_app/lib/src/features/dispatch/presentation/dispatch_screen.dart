@@ -14,12 +14,16 @@ import '../../orders/data/orders_provider.dart';
 import '../../orders/presentation/sheets/send_out_sheet.dart';
 import '../data/dispatch_provider.dart';
 import '../domain/trip_status.dart';
+import 'trip_detail_screen.dart';
 
 /// The trip sheet: confirmed orders waiting for a van, and the trips that
 /// are loading or out. "Send out" opens the same sheet as the order page
 /// (pick a driver and van, load, hand over in one step).
 class DispatchScreen extends ConsumerStatefulWidget {
-  const DispatchScreen({super.key});
+  const DispatchScreen({super.key, this.initialSelectedId});
+
+  /// On a tablet, the trip shown in the detail pane when Dispatch opens.
+  final String? initialSelectedId;
 
   @override
   ConsumerState<DispatchScreen> createState() => _DispatchScreenState();
@@ -110,111 +114,119 @@ class _DispatchScreenState extends ConsumerState<DispatchScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          _refresh(ref);
-          await ref.read(
-            _past ? pastTripsProvider.future : dispatchTripsProvider.future,
-          );
-        },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: LpgSpacing.page,
-          children: [
-            if (fleet != null &&
-                (!fleet.drivers.any((d) => d.isActive) ||
-                    !fleet.vehicles.any((v) => v.isActive))) ...[
-              LpgBanner(
-                tone: LpgTone.warning,
-                message: !fleet.drivers.any((d) => d.isActive)
-                    ? 'No active driver. Add or activate one to send orders out.'
-                    : 'No active van. Add or activate one to send orders out.',
-                actionLabel: 'Drivers and vans',
-                onAction: () => context.pushNamed('fleet'),
-              ),
-              const SizedBox(height: LpgSpacing.md),
-            ],
-            Text('Waiting for a trip', style: text.titleMedium),
-            const SizedBox(height: LpgSpacing.sm),
-            waitingAsync.when(
-              loading: () => const LpgSkeleton(height: 72),
-              error: (err, _) => LpgErrorState(
-                message: errorMessage(err),
-                onRetry: () => ref.invalidate(ordersWaitingForTripProvider),
-              ),
-              data: (orders) {
-                if (orders.isEmpty) {
-                  return Text(
-                    'Every confirmed order is on a trip.',
-                    style: text.bodyMedium?.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  );
-                }
-                return LpgGroupedList(
-                  children: [
-                    for (final order in orders)
-                      OrderTile(
-                        order: order,
-                        subtitle:
-                            '${order.customerName ?? 'Customer'}  ·  '
-                            '${[for (final l in order.lines) '${l.quantityOrdered} × ${names[l.cylinderTypeId] ?? 'Cylinder'}'].join(', ')}',
-                        onTap: () => context.goNamed(
-                          'order_detail',
-                          pathParameters: {'orderId': order.id},
-                        ),
-                        trailing: LpgButton(
-                          label: 'Send out',
-                          icon: LpgIcons.truck,
-                          variant: LpgButtonVariant.text,
-                          onPressed: () => _sendOut(context, ref, order),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: LpgSpacing.lg),
-            Text('Trips', style: text.titleMedium),
-            const SizedBox(height: LpgSpacing.sm),
-            LpgChoiceChips<bool>(
-              options: const {false: 'On now', true: 'Past'},
-              selected: _past,
-              onSelected: (v) => setState(() => _past = v ?? false),
-            ),
-            const SizedBox(height: LpgSpacing.sm),
-            tripsAsync.when(
-              loading: () => const LpgSkeletonList(itemCount: 3),
-              error: (err, _) => LpgErrorState(
-                message: errorMessage(err),
-                onRetry: () => ref.invalidate(
-                  _past ? pastTripsProvider : dispatchTripsProvider,
+      body: LpgMasterDetail(
+        initialSelectedId: widget.initialSelectedId,
+        emptyMessage: 'Select a trip to see its stops.',
+        emptyIcon: LpgIcons.truck,
+        masterBuilder: (context, md) => RefreshIndicator(
+          onRefresh: () async {
+            _refresh(ref);
+            await ref.read(
+              _past ? pastTripsProvider.future : dispatchTripsProvider.future,
+            );
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: LpgSpacing.page,
+            children: [
+              if (fleet != null &&
+                  (!fleet.drivers.any((d) => d.isActive) ||
+                      !fleet.vehicles.any((v) => v.isActive))) ...[
+                LpgBanner(
+                  tone: LpgTone.warning,
+                  message: !fleet.drivers.any((d) => d.isActive)
+                      ? 'No active driver. Add or activate one to send orders out.'
+                      : 'No active van. Add or activate one to send orders out.',
+                  actionLabel: 'Drivers and vans',
+                  onAction: () => context.pushNamed('fleet'),
                 ),
-              ),
-              data: (trips) {
-                if (trips.isEmpty) {
-                  return LpgEmptyState(
-                    message: _past
-                        ? 'No finished or cancelled trips yet.'
-                        : 'No trips are loading or on the road.',
-                    icon: LpgIcons.truck,
-                  );
-                }
-                return LpgGroupedList(
-                  children: [
-                    for (final trip in trips)
-                      _TripTile(
-                        trip: trip,
-                        fleet: fleet,
-                        onCancel: () => _cancelTrip(trip),
+                const SizedBox(height: LpgSpacing.md),
+              ],
+              Text('Waiting for a trip', style: text.titleMedium),
+              const SizedBox(height: LpgSpacing.sm),
+              waitingAsync.when(
+                loading: () => const LpgSkeleton(height: 72),
+                error: (err, _) => LpgErrorState(
+                  message: errorMessage(err),
+                  onRetry: () => ref.invalidate(ordersWaitingForTripProvider),
+                ),
+                data: (orders) {
+                  if (orders.isEmpty) {
+                    return Text(
+                      'Every confirmed order is on a trip.',
+                      style: text.bodyMedium?.copyWith(
+                        color: colors.textSecondary,
                       ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: LpgSpacing.xxl),
-          ],
+                    );
+                  }
+                  return LpgGroupedList(
+                    children: [
+                      for (final order in orders)
+                        OrderTile(
+                          order: order,
+                          subtitle:
+                              '${order.customerName ?? 'Customer'}  ·  '
+                              '${[for (final l in order.lines) '${l.quantityOrdered} × ${names[l.cylinderTypeId] ?? 'Cylinder'}'].join(', ')}',
+                          onTap: () => context.goNamed(
+                            'order_detail',
+                            pathParameters: {'orderId': order.id},
+                          ),
+                          trailing: LpgButton(
+                            label: 'Send out',
+                            icon: LpgIcons.truck,
+                            variant: LpgButtonVariant.text,
+                            onPressed: () => _sendOut(context, ref, order),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: LpgSpacing.lg),
+              Text('Trips', style: text.titleMedium),
+              const SizedBox(height: LpgSpacing.sm),
+              LpgChoiceChips<bool>(
+                options: const {false: 'On now', true: 'Past'},
+                selected: _past,
+                onSelected: (v) => setState(() => _past = v ?? false),
+              ),
+              const SizedBox(height: LpgSpacing.sm),
+              tripsAsync.when(
+                loading: () => const LpgSkeletonList(itemCount: 3),
+                error: (err, _) => LpgErrorState(
+                  message: errorMessage(err),
+                  onRetry: () => ref.invalidate(
+                    _past ? pastTripsProvider : dispatchTripsProvider,
+                  ),
+                ),
+                data: (trips) {
+                  if (trips.isEmpty) {
+                    return LpgEmptyState(
+                      message: _past
+                          ? 'No finished or cancelled trips yet.'
+                          : 'No trips are loading or on the road.',
+                      icon: LpgIcons.truck,
+                    );
+                  }
+                  return LpgGroupedList(
+                    children: [
+                      for (final trip in trips)
+                        _TripTile(
+                          trip: trip,
+                          fleet: fleet,
+                          md: md,
+                          onCancel: () => _cancelTrip(trip),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: LpgSpacing.xxl),
+            ],
+          ),
         ),
+        detailBuilder: (context, id) =>
+            TripDetailScreen(tripId: id, embedded: true),
       ),
     );
   }
@@ -226,11 +238,13 @@ class _TripTile extends StatelessWidget {
   const _TripTile({
     required this.trip,
     required this.fleet,
+    required this.md,
     required this.onCancel,
   });
 
   final RouteSummary trip;
   final FleetData? fleet;
+  final LpgMasterDetailController md;
   final VoidCallback onCancel;
 
   @override
@@ -259,10 +273,13 @@ class _TripTile extends StatelessWidget {
             severity: severity,
           ),
           showChevron: true,
-          onTap: () => context.pushNamed(
-            'trip_detail',
-            pathParameters: {'tripId': trip.id},
-          ),
+          onTap: () {
+            if (md.open(trip.id)) return;
+            context.pushNamed(
+              'trip_detail',
+              pathParameters: {'tripId': trip.id},
+            );
+          },
         ),
         if (total > 0)
           Padding(
