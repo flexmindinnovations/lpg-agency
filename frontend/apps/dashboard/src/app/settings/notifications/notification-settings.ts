@@ -149,9 +149,9 @@ const AUDIENCES: readonly { key: string; heading: string }[] = [
       }
       .notif__row {
         display: grid;
-        grid-template-columns: minmax(14rem, 1fr) repeat(4, 5.5rem) 5rem;
+        grid-template-columns: minmax(10rem, 1fr) repeat(4, 4.25rem) 4rem;
         align-items: center;
-        gap: var(--spacing-md);
+        gap: var(--spacing-sm);
         padding-block: var(--spacing-sm);
         border-block-end: 1px solid var(--color-border);
       }
@@ -173,15 +173,18 @@ const AUDIENCES: readonly { key: string; heading: string }[] = [
         flex-direction: column;
         gap: 2px;
       }
-      @media (max-width: 48rem) {
-        .notif__row {
-          grid-template-columns: 1fr 1fr;
-        }
+      .notif__table {
+        container-type: inline-size;
+      }
+      @container (max-width: 38rem) {
         .notif__row--head {
           display: none;
         }
         .notif__name {
           grid-column: 1 / -1;
+        }
+        .notif__row {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .notif__cell::before {
           content: attr(data-label);
