@@ -56,7 +56,11 @@ class InvoiceRepository(Protocol):
         recorded `payments` (R10). Never used for the initial creation.
         """
 
-    async def get_by_id(self, invoice_id: uuid.UUID) -> Invoice | None: ...
+    async def get_by_id(self, invoice_id: uuid.UUID, *, for_update: bool = False) -> Invoice | None:
+        """Load an invoice. `for_update=True` takes a row lock held until the
+        unit of work ends, so a read-check-write on its payments (recording a
+        payment, applying an online one) cannot interleave with another.
+        """
 
     async def list_invoices(
         self,
@@ -88,8 +92,11 @@ class InvoiceRepository(Protocol):
         views — one query instead of a customer lookup per row.
         """
 
-    async def get_by_order_id(self, tenant_id: uuid.UUID, order_id: uuid.UUID) -> Invoice | None:
-        """Load an invoice by its associated order ID.
+    async def get_by_order_id(
+        self, tenant_id: uuid.UUID, order_id: uuid.UUID, *, for_update: bool = False
+    ) -> Invoice | None:
+        """Load an invoice by its associated order ID. `for_update` locks the
+        row as for `get_by_id`.
 
         Args:
             tenant_id: The scoping tenant.

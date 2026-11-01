@@ -159,7 +159,7 @@ async def _apply_gateway_status(
 
     if online_payment.status == "paid" and not online_payment.is_applied:
         invoice = await invoice_repository.get_by_order_id(
-            online_payment.tenant_id, online_payment.order_id
+            online_payment.tenant_id, online_payment.order_id, for_update=True
         )
         if invoice is not None and apply_online_payments_to_invoice(invoice, [online_payment]):
             await invoice_repository.save(invoice)

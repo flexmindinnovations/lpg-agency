@@ -195,12 +195,17 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                 )
             )
 
-    async def get_by_id(self, invoice_id: uuid.UUID) -> Invoice | None:
+    async def get_by_id(self, invoice_id: uuid.UUID, *, for_update: bool = False) -> Invoice | None:
         stmt = (
             select(InvoiceModel)
             .where(InvoiceModel.id == invoice_id)
             .options(selectinload(InvoiceModel.lines), selectinload(InvoiceModel.payments))
         )
+        if for_update:
+            # Serialises concurrent payments on one invoice: the second waits,
+            # then re-reads the committed payments and is refused if the first
+            # already settled it. Children load after the lock is held.
+            stmt = stmt.with_for_update(of=InvoiceModel)
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         if not model:
@@ -304,7 +309,9 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         )
         return {row.id: row.full_name for row in result}
 
-    async def get_by_order_id(self, tenant_id: uuid.UUID, order_id: uuid.UUID) -> Invoice | None:
+    async def get_by_order_id(
+        self, tenant_id: uuid.UUID, order_id: uuid.UUID, *, for_update: bool = False
+    ) -> Invoice | None:
         stmt = (
             select(InvoiceModel)
             .where(
@@ -313,6 +320,8 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             )
             .options(selectinload(InvoiceModel.lines), selectinload(InvoiceModel.payments))
         )
+        if for_update:
+            stmt = stmt.with_for_update(of=InvoiceModel)
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         if model is None:

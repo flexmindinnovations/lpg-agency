@@ -464,7 +464,7 @@ class RecordPaymentUseCase:
             msg = "Enter the cheque number or bank reference (UTR)."
             raise ValidationError(msg, errors={"reference": [msg]})
 
-        invoice = await self._repository.get_by_id(command.invoice_id)
+        invoice = await self._repository.get_by_id(command.invoice_id, for_update=True)
         if invoice is None:
             msg = f"No invoice visible with id {command.invoice_id}."
             raise NotFoundError(msg, invoice_id=str(command.invoice_id))
