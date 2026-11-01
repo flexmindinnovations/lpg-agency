@@ -94,8 +94,23 @@ final class ApiAuthRepository implements AuthRepository {
     return _hydrateFrom(tokenResult);
   }
 
+  /// The refresh in flight, if any. Refresh tokens rotate and the backend
+  /// treats a second use of a rotated token as theft (revoking every
+  /// session), so concurrent callers - the startup restore, a 401-triggered
+  /// refresh from a screen's first request, push registration - must share
+  /// one network call instead of each redeeming the same token.
+  Future<Result<Principal>>? _restoreInFlight;
+
   @override
-  Future<Result<Principal>> restoreSession() async {
+  Future<Result<Principal>> restoreSession() {
+    final inFlight = _restoreInFlight;
+    if (inFlight != null) return inFlight;
+    final future = _doRestoreSession();
+    _restoreInFlight = future;
+    return future.whenComplete(() => _restoreInFlight = null);
+  }
+
+  Future<Result<Principal>> _doRestoreSession() async {
     final refreshToken = await _tokenStorage.readRefreshToken();
     if (refreshToken == null) {
       return const FailureResult(
