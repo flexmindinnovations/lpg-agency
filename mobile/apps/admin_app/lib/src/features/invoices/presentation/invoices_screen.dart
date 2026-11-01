@@ -9,6 +9,7 @@ import '../../../api_result.dart';
 import '../../../shared/invoice_tile.dart';
 import '../../customers/data/customers_provider.dart';
 import '../data/invoices_provider.dart';
+import 'invoice_detail_screen.dart';
 
 /// The status chips: label and the server's status value (`null` = all).
 const _statusFilters = <(String, String?)>[
@@ -91,24 +92,9 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              LpgSpacing.md,
-              LpgSpacing.sm,
-              LpgSpacing.md,
-              0,
-            ),
-            child: LpgTextField(
-              label: 'Search invoices',
-              hintText: 'Invoice, order or customer',
-              controller: _controller,
-              prefixIcon: LpgIcons.search,
-              onChanged: _onChanged,
-            ),
-          ),
-          if (widget.customerId != null)
+      body: LpgMasterDetail(
+        masterBuilder: (context, md) => Column(
+          children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 LpgSpacing.md,
@@ -116,99 +102,131 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                 LpgSpacing.md,
                 0,
               ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: InputChip(
-                  avatar: const Icon(LpgIcons.user, size: LpgSizes.iconSm),
-                  label: Text(customerName ?? 'This customer'),
-                  onDeleted: () => context.go('/invoices'),
-                  deleteButtonTooltipMessage: 'Show every customer',
+              child: LpgTextField(
+                label: 'Search invoices',
+                hintText: 'Invoice, order or customer',
+                controller: _controller,
+                prefixIcon: LpgIcons.search,
+                onChanged: _onChanged,
+              ),
+            ),
+            if (widget.customerId != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  LpgSpacing.md,
+                  LpgSpacing.sm,
+                  LpgSpacing.md,
+                  0,
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InputChip(
+                    avatar: const Icon(LpgIcons.user, size: LpgSizes.iconSm),
+                    label: Text(customerName ?? 'This customer'),
+                    onDeleted: () => context.go('/invoices'),
+                    deleteButtonTooltipMessage: 'Show every customer',
+                  ),
                 ),
               ),
-            ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-              horizontal: LpgSpacing.md,
-              vertical: LpgSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                for (final (label, value) in _statusFilters)
-                  Padding(
-                    padding: const EdgeInsets.only(right: LpgSpacing.xs),
-                    child: FilterChip(
-                      label: Text(label),
-                      selected: _status == value,
-                      onSelected: (_) => setState(() {
-                        _status = value;
-                        _pages = 1;
-                      }),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: first.when(
-              loading: () => const Padding(
-                padding: LpgSpacing.page,
-                child: LpgSkeletonList(itemCount: 6),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                horizontal: LpgSpacing.md,
+                vertical: LpgSpacing.sm,
               ),
-              error: (err, _) =>
-                  LpgErrorState(message: errorMessage(err), onRetry: _refresh),
-              data: (_) {
-                if (invoices.isEmpty) {
-                  return LpgEmptyState(
-                    icon: LpgIcons.invoice,
-                    message: _search.isEmpty && _status == null
-                        ? 'No invoices yet.'
-                        : 'No invoices match.',
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    _refresh();
-                    await ref.read(invoicesProvider((query, 1)).future);
-                  },
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: LpgSpacing.page,
-                    children: [
-                      LpgGroupedList(
-                        children: [
-                          for (final i in invoices)
-                            InvoiceTile(
-                              invoice: i,
-                              showCustomer: widget.customerId == null,
-                              onTap: () => context.pushNamed(
-                                'invoice_detail',
-                                pathParameters: {'invoiceId': i.invoiceId},
-                              ),
-                            ),
-                        ],
+              child: Row(
+                children: [
+                  for (final (label, value) in _statusFilters)
+                    Padding(
+                      padding: const EdgeInsets.only(right: LpgSpacing.xs),
+                      child: FilterChip(
+                        label: Text(label),
+                        selected: _status == value,
+                        onSelected: (_) => setState(() {
+                          _status = value;
+                          _pages = 1;
+                        }),
                       ),
-                      const SizedBox(height: LpgSpacing.md),
-                      if (last.isLoading)
-                        const Center(child: LpgLoadingIndicator())
-                      else if (last.hasError)
-                        LpgErrorState(
-                          message: errorMessage(last.error!),
-                          onRetry: _refresh,
-                        )
-                      else if (hasMore)
-                        LpgButton(
-                          label: 'Load more',
-                          variant: LpgButtonVariant.secondary,
-                          onPressed: () => setState(() => _pages++),
-                        ),
-                    ],
-                  ),
-                );
-              },
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+            Expanded(
+              child: first.when(
+                loading: () => const Padding(
+                  padding: LpgSpacing.page,
+                  child: LpgSkeletonList(itemCount: 6),
+                ),
+                error: (err, _) => LpgErrorState(
+                  message: errorMessage(err),
+                  onRetry: _refresh,
+                ),
+                data: (_) {
+                  if (invoices.isEmpty) {
+                    return LpgEmptyState(
+                      icon: LpgIcons.invoice,
+                      message: _search.isEmpty && _status == null
+                          ? 'No invoices yet.'
+                          : 'No invoices match.',
+                    );
+                  }
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      _refresh();
+                      await ref.read(invoicesProvider((query, 1)).future);
+                    },
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: LpgSpacing.page,
+                      children: [
+                        LpgGroupedList(
+                          children: [
+                            for (final i in invoices)
+                              ColoredBox(
+                                color:
+                                    md.twoPane && md.selectedId == i.invoiceId
+                                    ? context.lpgColors.actionPrimaryContainer
+                                    : Colors.transparent,
+                                child: InvoiceTile(
+                                  invoice: i,
+                                  showCustomer: widget.customerId == null,
+                                  onTap: () {
+                                    if (md.open(i.invoiceId)) return;
+                                    context.pushNamed(
+                                      'invoice_detail',
+                                      pathParameters: {
+                                        'invoiceId': i.invoiceId,
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: LpgSpacing.md),
+                        if (last.isLoading)
+                          const Center(child: LpgLoadingIndicator())
+                        else if (last.hasError)
+                          LpgErrorState(
+                            message: errorMessage(last.error!),
+                            onRetry: _refresh,
+                          )
+                        else if (hasMore)
+                          LpgButton(
+                            label: 'Load more',
+                            variant: LpgButtonVariant.secondary,
+                            onPressed: () => setState(() => _pages++),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        detailBuilder: (context, id) =>
+            InvoiceDetailScreen(invoiceId: id, embedded: true),
       ),
     );
   }

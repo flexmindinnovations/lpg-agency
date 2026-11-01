@@ -18,7 +18,14 @@ import 'settle_trip_sheet.dart';
 /// re-order the stops, cancel a trip that hasn't left, and settle one that
 /// has come back.
 class TripDetailScreen extends ConsumerStatefulWidget {
-  const TripDetailScreen({super.key, required this.tripId});
+  const TripDetailScreen({
+    super.key,
+    required this.tripId,
+    this.embedded = false,
+  });
+
+  /// Shown in the right pane of a tablet's two-pane layout: no back button.
+  final bool embedded;
 
   final String tripId;
 
@@ -110,6 +117,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: const Text('Trip'),
         actions: [
           IconButton(

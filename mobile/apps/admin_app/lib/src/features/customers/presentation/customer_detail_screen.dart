@@ -22,7 +22,14 @@ import 'kyc_review_sheet.dart';
 /// their latest orders and invoices, and the quick actions an owner reaches
 /// for (call, book an order, see their invoices).
 class CustomerDetailScreen extends ConsumerWidget {
-  const CustomerDetailScreen({super.key, required this.customerId});
+  const CustomerDetailScreen({
+    super.key,
+    required this.customerId,
+    this.embedded = false,
+  });
+
+  /// Shown in the right pane of a tablet's two-pane layout: no back button.
+  final bool embedded;
 
   final String customerId;
 
@@ -40,6 +47,7 @@ class CustomerDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !embedded,
         title: Text(customerAsync.value?.fullName ?? 'Customer'),
         actions: [
           IconButton(

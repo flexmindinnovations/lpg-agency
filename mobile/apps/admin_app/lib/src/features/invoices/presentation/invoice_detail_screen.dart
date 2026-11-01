@@ -20,7 +20,14 @@ import 'upi_qr_sheet.dart';
 /// paid, and the three things an owner does with it: record a payment, show
 /// the UPI QR, and send it (or a reminder) to the customer.
 class InvoiceDetailScreen extends ConsumerStatefulWidget {
-  const InvoiceDetailScreen({super.key, required this.invoiceId});
+  const InvoiceDetailScreen({
+    super.key,
+    required this.invoiceId,
+    this.embedded = false,
+  });
+
+  /// Shown in the right pane of a tablet's two-pane layout: no back button.
+  final bool embedded;
 
   final String invoiceId;
 
@@ -84,6 +91,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen>
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: Text(async.value?.invoiceNumber ?? 'Invoice'),
         actions: [
           IconButton(

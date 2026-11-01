@@ -98,7 +98,7 @@ class AppShell extends ConsumerWidget {
         ref.watch(pendingCashHandoversProvider).value?.length ?? 0;
 
     return LpgAdaptiveShell(
-      fullWidthIndexes: const {1},
+      fullWidthIndexes: const {0, 1, 2},
       body: navigationShell,
       selectedIndex: navigationShell.currentIndex,
       onDestinationSelected: _onTap,

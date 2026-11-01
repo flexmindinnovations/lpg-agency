@@ -38,6 +38,12 @@ import 'splash_screen.dart';
 /// are pushed on this navigator so the bottom bar hides while they are open.
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Phone-width, centred column for full-screen pages on tablets.
+Widget _capped(BuildContext context, Widget child) =>
+    LpgBreakpoints.isWide(context)
+    ? LpgContentWidth(paintCanvas: true, child: child)
+    : child;
+
 final routerProvider = Provider<GoRouter>((ref) {
   final authController = ref.watch(authControllerProvider);
 
@@ -106,8 +112,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                     // screens (a customer's page, the dashboard), so it
                     // sits above the tab bar rather than inside one tab.
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => CreateOrderScreen(
-                      initialCustomerId: state.uri.queryParameters['customer'],
+                    builder: (context, state) => _capped(
+                      context,
+                      CreateOrderScreen(
+                        initialCustomerId:
+                            state.uri.queryParameters['customer'],
+                      ),
                     ),
                   ),
                   GoRoute(
@@ -139,9 +149,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'trip/:tripId',
                     name: 'trip_detail',
-                    builder: (context, state) => TripDetailScreen(
-                      tripId: state.pathParameters['tripId']!,
-                    ),
+                    builder: (context, state) {
+                      final id = state.pathParameters['tripId']!;
+                      // On a tablet the trip opens in Dispatch's right pane.
+                      if (LpgBreakpoints.isExpanded(context)) {
+                        return DispatchScreen(
+                          key: ValueKey('trip-pane-$id'),
+                          initialSelectedId: id,
+                        );
+                      }
+                      return TripDetailScreen(tripId: id);
+                    },
                   ),
                 ],
               ),
@@ -162,51 +180,56 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/search',
         name: 'search',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            SearchScreen(initialQuery: state.uri.queryParameters['q'] ?? ''),
+        builder: (context, state) => _capped(
+          context,
+          SearchScreen(initialQuery: state.uri.queryParameters['q'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/alerts',
         name: 'alerts',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const NotificationsScreen(),
+        builder: (context, state) =>
+            _capped(context, const NotificationsScreen()),
       ),
       GoRoute(
         path: '/approvals',
         name: 'approvals',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ApprovalsScreen(),
+        builder: (context, state) => _capped(context, const ApprovalsScreen()),
       ),
       GoRoute(
         path: '/pricing',
         name: 'pricing',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const PricingScreen(),
+        builder: (context, state) => _capped(context, const PricingScreen()),
       ),
       GoRoute(
         path: '/compliance',
         name: 'compliance',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ComplianceScreen(),
+        builder: (context, state) => _capped(context, const ComplianceScreen()),
       ),
       GoRoute(
         path: '/stock',
         name: 'stock',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            StockScreen(initialGodownId: state.uri.queryParameters['godown']),
+        builder: (context, state) => _capped(
+          context,
+          StockScreen(initialGodownId: state.uri.queryParameters['godown']),
+        ),
       ),
       GoRoute(
         path: '/cash-book',
         name: 'cash_book',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const CashBookScreen(),
+        builder: (context, state) => _capped(context, const CashBookScreen()),
       ),
       GoRoute(
         path: '/profile',
         name: 'profile',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ProfileScreen(),
+        builder: (context, state) => _capped(context, const ProfileScreen()),
       ),
       GoRoute(
         path: '/customers',
@@ -217,13 +240,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'new',
             name: 'customer_new',
-            builder: (context, state) => const AddCustomerScreen(),
+            builder: (context, state) =>
+                _capped(context, const AddCustomerScreen()),
           ),
           GoRoute(
             path: ':customerId',
             name: 'customer_detail',
-            builder: (context, state) => CustomerDetailScreen(
-              customerId: state.pathParameters['customerId']!,
+            builder: (context, state) => _capped(
+              context,
+              CustomerDetailScreen(
+                customerId: state.pathParameters['customerId']!,
+              ),
             ),
           ),
         ],
@@ -241,8 +268,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: ':complaintId',
             name: 'complaint_detail',
-            builder: (context, state) => ComplaintDetailScreen(
-              complaintId: state.pathParameters['complaintId']!,
+            builder: (context, state) => _capped(
+              context,
+              ComplaintDetailScreen(
+                complaintId: state.pathParameters['complaintId']!,
+              ),
             ),
           ),
         ],
@@ -260,8 +290,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: ':invoiceId',
             name: 'invoice_detail',
-            builder: (context, state) => InvoiceDetailScreen(
-              invoiceId: state.pathParameters['invoiceId']!,
+            builder: (context, state) => _capped(
+              context,
+              InvoiceDetailScreen(
+                invoiceId: state.pathParameters['invoiceId']!,
+              ),
             ),
           ),
         ],
@@ -270,19 +303,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/fleet',
         name: 'fleet',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => FleetScreen(
-          initialTab: state.uri.queryParameters['tab'] == 'vans' ? 1 : 0,
+        builder: (context, state) => _capped(
+          context,
+          FleetScreen(
+            initialTab: state.uri.queryParameters['tab'] == 'vans' ? 1 : 0,
+          ),
         ),
         routes: [
           GoRoute(
             path: 'driver-new',
             name: 'fleet_driver_new',
-            builder: (context, state) => const DriverFormScreen(),
+            builder: (context, state) =>
+                _capped(context, const DriverFormScreen()),
           ),
           GoRoute(
             path: 'van-new',
             name: 'fleet_vehicle_new',
-            builder: (context, state) => const VehicleFormScreen(),
+            builder: (context, state) =>
+                _capped(context, const VehicleFormScreen()),
           ),
         ],
       ),

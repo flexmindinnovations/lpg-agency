@@ -200,240 +200,263 @@ class _Body extends StatelessWidget {
     final cash = ops.cash;
     final inv = ops.invoices;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        LpgHeroCard(
-          onTap: () => onOrders('All'),
-          watermark: LpgIcons.orders,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Today's bookings",
-                style: text.bodyMedium?.copyWith(color: colors.onHero),
-              ),
-              const SizedBox(height: LpgSpacing.xs),
-              Text(
-                '${o.bookingsToday}',
-                style: text.displaySmall?.copyWith(color: colors.onHero),
-              ),
-              const SizedBox(height: LpgSpacing.sm),
-              Text(
-                '${o.deliveredToday} delivered  •  ${o.failedToday} failed  •  '
-                '${o.pendingCancellations} cancellations to approve',
-                style: text.bodySmall?.copyWith(color: colors.onHero),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: LpgSpacing.lg),
-        _Attention(
-          items: [
-            if (booked > 0)
-              _AttentionItem(
-                icon: LpgIcons.pending,
-                tone: LpgTone.warning,
-                title:
-                    '$booked ${booked == 1 ? 'booking is' : 'bookings are'} waiting to be confirmed',
-                action: 'Confirm',
-                onTap: () => onOrders('Booked'),
-              ),
-            if (waiting > 0)
-              _AttentionItem(
-                icon: LpgIcons.truck,
-                tone: LpgTone.info,
-                title:
-                    '$waiting confirmed ${waiting == 1 ? 'order needs' : 'orders need'} a van',
-                action: 'Send out',
-                onTap: () => context.goNamed('dispatch'),
-              ),
-            if (o.failedToday > 0)
-              _AttentionItem(
-                icon: LpgIcons.warning,
-                tone: LpgTone.danger,
-                title:
-                    '${o.failedToday} failed ${o.failedToday == 1 ? 'delivery' : 'deliveries'} to reschedule',
-                action: 'Open',
-                onTap: () => onOrders('Failed'),
-              ),
-            if (o.pendingCancellations > 0)
-              _AttentionItem(
-                icon: LpgIcons.cancel,
-                tone: LpgTone.danger,
-                title:
-                    '${o.pendingCancellations} cancellation ${o.pendingCancellations == 1 ? 'request needs' : 'requests need'} your decision',
-                action: 'Review',
-                onTap: () => onOrders('Out for delivery'),
-              ),
-            if (ops.openComplaints > 0)
-              _AttentionItem(
-                icon: LpgIcons.complaint,
-                tone: LpgTone.warning,
-                title:
-                    '${ops.openComplaints} open ${ops.openComplaints == 1 ? 'complaint' : 'complaints'} to handle',
-                action: 'Open',
-                onTap: () => context.pushNamed('complaints'),
-              ),
-            if (complianceDue > 0)
-              _AttentionItem(
-                icon: LpgIcons.badge,
-                tone: LpgTone.danger,
-                title:
-                    '$complianceDue ${complianceDue == 1 ? 'licence or paper needs' : 'licences or papers need'} renewing',
-                action: 'Renew',
-                onTap: () => context.pushNamed('compliance'),
-              ),
-            if ((cash?.handoversAwaitingReview ?? 0) > 0)
-              _AttentionItem(
-                icon: LpgIcons.cash,
-                tone: LpgTone.accent,
-                title:
-                    '${cash!.handoversAwaitingReview} driver cash ${cash.handoversAwaitingReview == 1 ? 'handover' : 'handovers'} to review',
-                action: 'Review',
-                onTap: () => context.pushNamed('approvals'),
-              ),
-            if (fleet != null &&
-                (freeDrivers == 0 || freeVans == 0) &&
-                waiting > 0)
-              _AttentionItem(
-                icon: LpgIcons.van,
-                tone: LpgTone.warning,
-                title: freeVans == 0 && freeDrivers == 0
-                    ? 'No free van or driver for the waiting orders'
-                    : freeVans == 0
-                    ? 'No free van for the waiting orders'
-                    : 'No free driver for the waiting orders',
-                action: 'Fix',
-                onTap: () => context.pushNamed('fleet'),
-              ),
+    final children = <Widget>[
+      LpgHeroCard(
+        onTap: () => onOrders('All'),
+        watermark: LpgIcons.orders,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Today's bookings",
+              style: text.bodyMedium?.copyWith(color: colors.onHero),
+            ),
+            const SizedBox(height: LpgSpacing.xs),
+            Text(
+              '${o.bookingsToday}',
+              style: text.displaySmall?.copyWith(color: colors.onHero),
+            ),
+            const SizedBox(height: LpgSpacing.sm),
+            Text(
+              '${o.deliveredToday} delivered  •  ${o.failedToday} failed  •  '
+              '${o.pendingCancellations} cancellations to approve',
+              style: text.bodySmall?.copyWith(color: colors.onHero),
+            ),
           ],
         ),
-        const SizedBox(height: LpgSpacing.lg),
-        SectionHeading(
-          'Live trips',
-          actionLabel: 'All trips',
-          onAction: () => context.goNamed('dispatch'),
-        ),
-        _LiveTrips(trips: trips, fleet: fleet),
-        const SizedBox(height: LpgSpacing.lg),
-        const SectionHeading('Orders right now'),
-        MetricGrid(
-          tiles: [
-            MetricTile(
-              label: 'Awaiting confirmation',
-              value: '$booked',
+      ),
+      const SizedBox(height: LpgSpacing.lg),
+      _Attention(
+        items: [
+          if (booked > 0)
+            _AttentionItem(
               icon: LpgIcons.pending,
               tone: LpgTone.warning,
-              attention: booked > 0,
+              title:
+                  '$booked ${booked == 1 ? 'booking is' : 'bookings are'} waiting to be confirmed',
+              action: 'Confirm',
               onTap: () => onOrders('Booked'),
             ),
-            MetricTile(
-              label: 'Ready to send out',
-              value: '$waiting',
+          if (waiting > 0)
+            _AttentionItem(
               icon: LpgIcons.truck,
               tone: LpgTone.info,
-              attention: waiting > 0,
+              title:
+                  '$waiting confirmed ${waiting == 1 ? 'order needs' : 'orders need'} a van',
+              action: 'Send out',
               onTap: () => context.goNamed('dispatch'),
             ),
-            MetricTile(
-              label: 'Out for delivery',
-              value: '$outNow',
-              icon: LpgIcons.navigate,
-              onTap: () => onOrders('Out for delivery'),
-            ),
-            MetricTile(
-              label: 'Failed today',
-              value: '${o.failedToday}',
+          if (o.failedToday > 0)
+            _AttentionItem(
               icon: LpgIcons.warning,
               tone: LpgTone.danger,
-              attention: o.failedToday > 0,
+              title:
+                  '${o.failedToday} failed ${o.failedToday == 1 ? 'delivery' : 'deliveries'} to reschedule',
+              action: 'Open',
               onTap: () => onOrders('Failed'),
             ),
-          ],
-        ),
-        SectionHeading(
-          'Drivers and vans',
-          actionLabel: 'Manage',
-          onAction: () => context.pushNamed('fleet'),
-        ),
-        MetricGrid(
-          tiles: [
-            MetricTile(
-              label: 'Drivers free',
-              value: fleet == null
-                  ? '–'
-                  : '$freeDrivers of ${activeDrivers.length}',
-              icon: LpgIcons.user,
-              tone: freeDrivers == 0 && fleet != null
-                  ? LpgTone.warning
-                  : LpgTone.success,
-              attention: fleet != null && freeDrivers == 0,
-              onTap: () => context.pushNamed(
-                'fleet',
-                queryParameters: {'tab': 'drivers'},
-              ),
-            ),
-            MetricTile(
-              label: 'Vans free',
-              value: fleet == null ? '–' : '$freeVans of ${activeVans.length}',
-              icon: LpgIcons.van,
-              tone: freeVans == 0 && fleet != null
-                  ? LpgTone.warning
-                  : LpgTone.success,
-              attention: fleet != null && freeVans == 0,
-              onTap: () =>
-                  context.pushNamed('fleet', queryParameters: {'tab': 'vans'}),
-            ),
-          ],
-        ),
-        const SectionHeading('Money and watch-list'),
-        MetricGrid(
-          tiles: [
-            MetricTile(
-              label: 'Cash with drivers',
-              value: LpgFormat.currencyWhole(cash?.awaitingHandover ?? 0),
-              caption: (cash?.handoversAwaitingReview ?? 0) > 0
-                  ? '${cash!.handoversAwaitingReview} to review'
-                  : null,
-              icon: LpgIcons.cash,
-              tone: LpgTone.accent,
-              attention: (cash?.handoversAwaitingReview ?? 0) > 0,
-              onTap: () => context.pushNamed('cash_book'),
-            ),
-            MetricTile(
-              label: 'Outstanding',
-              value: LpgFormat.currencyWhole(inv?.outstandingAmount ?? 0),
-              caption: '${inv?.outstandingCount ?? 0} invoices',
-              icon: LpgIcons.invoice,
-              onTap: () => context.pushNamed('invoices'),
-            ),
-            MetricTile(
-              label: 'Overdue',
-              value: LpgFormat.currencyWhole(inv?.overdueAmount ?? 0),
-              caption: '${inv?.overdueCount ?? 0} invoices',
-              icon: LpgIcons.clock,
+          if (o.pendingCancellations > 0)
+            _AttentionItem(
+              icon: LpgIcons.cancel,
               tone: LpgTone.danger,
-              attention: (inv?.overdueCount ?? 0) > 0,
-              onTap: () => context.pushNamed('invoices'),
+              title:
+                  '${o.pendingCancellations} cancellation ${o.pendingCancellations == 1 ? 'request needs' : 'requests need'} your decision',
+              action: 'Review',
+              onTap: () => onOrders('Out for delivery'),
             ),
-            MetricTile(
-              label: 'Open complaints',
-              value: '${ops.openComplaints}',
+          if (ops.openComplaints > 0)
+            _AttentionItem(
               icon: LpgIcons.complaint,
               tone: LpgTone.warning,
-              attention: ops.openComplaints > 0,
+              title:
+                  '${ops.openComplaints} open ${ops.openComplaints == 1 ? 'complaint' : 'complaints'} to handle',
+              action: 'Open',
               onTap: () => context.pushNamed('complaints'),
             ),
-            MetricTile(
-              label: 'Low-stock godowns',
-              value: '${ops.lowStockCount}',
-              icon: LpgIcons.warehouse,
+          if (complianceDue > 0)
+            _AttentionItem(
+              icon: LpgIcons.badge,
               tone: LpgTone.danger,
-              attention: ops.lowStockCount > 0,
-              onTap: () => context.pushNamed('stock'),
+              title:
+                  '$complianceDue ${complianceDue == 1 ? 'licence or paper needs' : 'licences or papers need'} renewing',
+              action: 'Renew',
+              onTap: () => context.pushNamed('compliance'),
             ),
-          ],
+          if ((cash?.handoversAwaitingReview ?? 0) > 0)
+            _AttentionItem(
+              icon: LpgIcons.cash,
+              tone: LpgTone.accent,
+              title:
+                  '${cash!.handoversAwaitingReview} driver cash ${cash.handoversAwaitingReview == 1 ? 'handover' : 'handovers'} to review',
+              action: 'Review',
+              onTap: () => context.pushNamed('approvals'),
+            ),
+          if (fleet != null &&
+              (freeDrivers == 0 || freeVans == 0) &&
+              waiting > 0)
+            _AttentionItem(
+              icon: LpgIcons.van,
+              tone: LpgTone.warning,
+              title: freeVans == 0 && freeDrivers == 0
+                  ? 'No free van or driver for the waiting orders'
+                  : freeVans == 0
+                  ? 'No free van for the waiting orders'
+                  : 'No free driver for the waiting orders',
+              action: 'Fix',
+              onTap: () => context.pushNamed('fleet'),
+            ),
+        ],
+      ),
+      const SizedBox(height: LpgSpacing.lg),
+      SectionHeading(
+        'Live trips',
+        actionLabel: 'All trips',
+        onAction: () => context.goNamed('dispatch'),
+      ),
+      _LiveTrips(trips: trips, fleet: fleet),
+      const SizedBox(height: LpgSpacing.lg),
+      const SectionHeading('Orders right now'),
+      MetricGrid(
+        tiles: [
+          MetricTile(
+            label: 'Awaiting confirmation',
+            value: '$booked',
+            icon: LpgIcons.pending,
+            tone: LpgTone.warning,
+            attention: booked > 0,
+            onTap: () => onOrders('Booked'),
+          ),
+          MetricTile(
+            label: 'Ready to send out',
+            value: '$waiting',
+            icon: LpgIcons.truck,
+            tone: LpgTone.info,
+            attention: waiting > 0,
+            onTap: () => context.goNamed('dispatch'),
+          ),
+          MetricTile(
+            label: 'Out for delivery',
+            value: '$outNow',
+            icon: LpgIcons.navigate,
+            onTap: () => onOrders('Out for delivery'),
+          ),
+          MetricTile(
+            label: 'Failed today',
+            value: '${o.failedToday}',
+            icon: LpgIcons.warning,
+            tone: LpgTone.danger,
+            attention: o.failedToday > 0,
+            onTap: () => onOrders('Failed'),
+          ),
+        ],
+      ),
+      SectionHeading(
+        'Drivers and vans',
+        actionLabel: 'Manage',
+        onAction: () => context.pushNamed('fleet'),
+      ),
+      MetricGrid(
+        tiles: [
+          MetricTile(
+            label: 'Drivers free',
+            value: fleet == null
+                ? '–'
+                : '$freeDrivers of ${activeDrivers.length}',
+            icon: LpgIcons.user,
+            tone: freeDrivers == 0 && fleet != null
+                ? LpgTone.warning
+                : LpgTone.success,
+            attention: fleet != null && freeDrivers == 0,
+            onTap: () =>
+                context.pushNamed('fleet', queryParameters: {'tab': 'drivers'}),
+          ),
+          MetricTile(
+            label: 'Vans free',
+            value: fleet == null ? '–' : '$freeVans of ${activeVans.length}',
+            icon: LpgIcons.van,
+            tone: freeVans == 0 && fleet != null
+                ? LpgTone.warning
+                : LpgTone.success,
+            attention: fleet != null && freeVans == 0,
+            onTap: () =>
+                context.pushNamed('fleet', queryParameters: {'tab': 'vans'}),
+          ),
+        ],
+      ),
+      const SectionHeading('Money and watch-list'),
+      MetricGrid(
+        tiles: [
+          MetricTile(
+            label: 'Cash with drivers',
+            value: LpgFormat.currencyWhole(cash?.awaitingHandover ?? 0),
+            caption: (cash?.handoversAwaitingReview ?? 0) > 0
+                ? '${cash!.handoversAwaitingReview} to review'
+                : null,
+            icon: LpgIcons.cash,
+            tone: LpgTone.accent,
+            attention: (cash?.handoversAwaitingReview ?? 0) > 0,
+            onTap: () => context.pushNamed('cash_book'),
+          ),
+          MetricTile(
+            label: 'Outstanding',
+            value: LpgFormat.currencyWhole(inv?.outstandingAmount ?? 0),
+            caption: '${inv?.outstandingCount ?? 0} invoices',
+            icon: LpgIcons.invoice,
+            onTap: () => context.pushNamed('invoices'),
+          ),
+          MetricTile(
+            label: 'Overdue',
+            value: LpgFormat.currencyWhole(inv?.overdueAmount ?? 0),
+            caption: '${inv?.overdueCount ?? 0} invoices',
+            icon: LpgIcons.clock,
+            tone: LpgTone.danger,
+            attention: (inv?.overdueCount ?? 0) > 0,
+            onTap: () => context.pushNamed('invoices'),
+          ),
+          MetricTile(
+            label: 'Open complaints',
+            value: '${ops.openComplaints}',
+            icon: LpgIcons.complaint,
+            tone: LpgTone.warning,
+            attention: ops.openComplaints > 0,
+            onTap: () => context.pushNamed('complaints'),
+          ),
+          MetricTile(
+            label: 'Low-stock godowns',
+            value: '${ops.lowStockCount}',
+            icon: LpgIcons.warehouse,
+            tone: LpgTone.danger,
+            attention: ops.lowStockCount > 0,
+            onTap: () => context.pushNamed('stock'),
+          ),
+        ],
+      ),
+    ];
+
+    // Index 6 is the gap after the live trips; what follows is the metric
+    // grids, which sit in their own column on a tablet.
+    const split = 6;
+    if (!LpgBreakpoints.isExpanded(context)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children.sublist(0, split),
+          ),
+        ),
+        const SizedBox(width: LpgSpacing.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children.sublist(split + 1),
+          ),
         ),
       ],
     );
