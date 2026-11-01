@@ -84,6 +84,17 @@ abstract final class LpgBreakpoints {
   /// The widest a single short form (sign-in) grows: phone-width, centred.
   static const double formMaxWidth = 480;
 
+  /// From this width (a 10" tablet or larger) screens may show two panes,
+  /// such as a list beside the selected item's detail.
+  static const double expanded = 840;
+
+  /// The widest a full-width (master-detail) tab grows before it is centred.
+  static const double wideContentMaxWidth = 1400;
+
+  /// Whether [context] is wide enough for a two-pane layout.
+  static bool isExpanded(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= expanded;
+
   /// Whether [context] is wider than a phone.
   static bool isWide(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= medium;

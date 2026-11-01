@@ -64,6 +64,8 @@ abstract final class LpgFeedback {
       context: context,
       isScrollControlled: isScrollControlled,
       useSafeArea: true,
+      // Centred, phone-ish width on tablets instead of a full-width slab.
+      constraints: const BoxConstraints(maxWidth: 560),
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
           left: LpgSpacing.mdl,

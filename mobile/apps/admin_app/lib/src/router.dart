@@ -113,9 +113,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: ':orderId',
                     name: 'order_detail',
-                    builder: (context, state) => OrderDetailScreen(
-                      orderId: state.pathParameters['orderId']!,
-                    ),
+                    builder: (context, state) {
+                      final id = state.pathParameters['orderId']!;
+                      // On a tablet the order opens in the list's right pane.
+                      if (LpgBreakpoints.isExpanded(context)) {
+                        return OrderListScreen(
+                          key: ValueKey('order-pane-$id'),
+                          initialSelectedId: id,
+                        );
+                      }
+                      return OrderDetailScreen(orderId: id);
+                    },
                   ),
                 ],
               ),
