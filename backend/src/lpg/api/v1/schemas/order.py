@@ -243,6 +243,10 @@ class ProofOfDeliverySubmission(BaseModel):
     payment_method: PaymentMethod
     amount_collected: Decimal = Field(ge=0)
     dac_code: str | None = Field(default=None, pattern=r"^\d{6}$")
+    #: The balance not collected now stays on the customer's account (a
+    #: partial payment on credit, ADR-069). `payment_method: credit` means
+    #: the whole balance. Subject to the agency's credit limit.
+    balance_on_account: bool = False
 
 
 class DeliverOrderRequest(BaseModel):

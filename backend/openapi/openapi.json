@@ -8305,6 +8305,11 @@
             ],
             "title": "Amount Collected"
           },
+          "balance_on_account": {
+            "default": false,
+            "title": "Balance On Account",
+            "type": "boolean"
+          },
           "dac_code": {
             "anyOf": [
               {

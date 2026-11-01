@@ -38,10 +38,21 @@ class Settlement:
     #: `payable` is unknown.
     balance_due: Decimal | None
 
-    def is_settled_by(self, *, method: str, amount_collected: Decimal) -> bool:
-        if self.balance_due is None or method == CREDIT_METHOD:
+    def is_settled_by(
+        self, *, method: str, amount_collected: Decimal, balance_on_account: bool = False
+    ) -> bool:
+        if self.balance_due is None or method == CREDIT_METHOD or balance_on_account:
             return True
         return amount_collected + SETTLEMENT_TOLERANCE >= self.balance_due
+
+    def on_account(self, *, method: str, amount_collected: Decimal) -> Decimal:
+        """What stays on the customer's account: all of the balance on
+        credit, otherwise whatever was not collected."""
+        if self.balance_due is None:
+            return Decimal("0.00")
+        if method == CREDIT_METHOD:
+            return self.balance_due
+        return max(self.balance_due - amount_collected, Decimal("0.00"))
 
 
 def compute_settlement(

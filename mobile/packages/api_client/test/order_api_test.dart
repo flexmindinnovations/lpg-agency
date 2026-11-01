@@ -299,6 +299,33 @@ void main() {
       },
     );
 
+    test('getSettlement asks for the delivered quantities', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse({
+          'order_id': 'o1',
+          'payable_amount': '1800.00',
+          'paid_online_amount': '500.00',
+          'balance_due': '1300.00',
+        }, 200);
+      });
+
+      final result = await OrderApi(
+        client.dio,
+      ).getSettlement('o1', delivered: {'ct1': 2});
+
+      expect(captured!.path, '/api/v1/orders/o1/settlement');
+      expect(captured!.queryParameters['delivered'], ['ct1:2']);
+      final settlement = result.when(
+        onSuccess: (r) => r,
+        onFailure: (_) => null,
+      );
+      expect(settlement!.paidOnline, 500);
+      expect(settlement.balanceDue, 1300);
+    });
+
     test(
       'deliverOrder sends lines, otp and PoD with an Idempotency-Key',
       () async {

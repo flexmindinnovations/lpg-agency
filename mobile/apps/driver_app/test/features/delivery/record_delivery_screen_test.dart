@@ -268,7 +268,7 @@ void main() {
       expect(find.text("Customer's signature (optional)"), findsOneWidget);
       expect(find.text('Delivery photo (optional)'), findsOneWidget);
       expect(find.text('Take a photo'), findsOneWidget);
-      expect(find.text('Confirm delivery'), findsOneWidget);
+      expect(find.text('Complete delivery'), findsOneWidget);
       // Amount prefilled from the order total.
       expect(find.text('905.50'), findsOneWidget);
     });
@@ -322,7 +322,7 @@ void main() {
         find.widgetWithText(TextField, 'Code from the customer'),
         '123456',
       );
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
@@ -358,7 +358,7 @@ void main() {
 
       // Submitting encodes the signature PNG and talks to dio — both need a
       // real async zone, so drive it under runAsync.
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
@@ -401,7 +401,7 @@ void main() {
         '123456',
       );
 
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
@@ -425,7 +425,7 @@ void main() {
       addTearDown(container.dispose);
       await _pump(tester, container);
 
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.pumpAndSettle();
 
       expect(adapter.paths, isEmpty);
@@ -442,7 +442,7 @@ void main() {
       );
       expect(
         bannerTop,
-        lessThan(tester.getTopLeft(find.text('Confirm delivery')).dy),
+        lessThan(tester.getTopLeft(find.text('Complete delivery')).dy),
       );
     });
 
@@ -464,7 +464,7 @@ void main() {
         find.widgetWithText(TextField, 'Code from the customer'),
         '123456',
       );
-      await tester.tap(find.text('Confirm delivery'));
+      await tester.tap(find.text('Complete delivery'));
       await tester.pumpAndSettle();
 
       expect(adapter.paths, isEmpty);
@@ -476,7 +476,7 @@ void main() {
         findsOneWidget,
       );
       // Still on the form so the driver can retry.
-      expect(find.text('Confirm delivery'), findsOneWidget);
+      expect(find.text('Complete delivery'), findsOneWidget);
     });
 
     test('deliveryFix gives up with a retryable message on timeout', () async {

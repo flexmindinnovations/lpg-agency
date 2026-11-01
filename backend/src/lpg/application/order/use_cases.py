@@ -41,7 +41,7 @@ from lpg.application.delivery.use_cases import (
     ensure_crew_is_free,
 )
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
-from lpg.application.order.settlement import compute_settlement
+from lpg.application.order.settlement import SETTLEMENT_TOLERANCE, compute_settlement
 from lpg.domain.delivery.route import ProofOfDelivery as RouteProofOfDelivery
 from lpg.domain.delivery.route import Route
 from lpg.domain.order.cancellation_fee import CancellationFeeCalculator
@@ -869,6 +869,8 @@ class DeliverOrderCommand(Command):
     # ~90%, not 100%) and never gates delivery — format-validated at the API
     # schema layer, same as `otp_code`'s own `min_length=1`.
     dac_code: str | None = None
+    #: The balance not collected now stays on the customer's account.
+    balance_on_account: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -893,7 +895,11 @@ class DeliverOrderUseCase:
         otp_store: OtpStore,
         unit_of_work: UnitOfWork,
         online_payment_repository: OnlinePaymentRepository | None = None,
+        customer_repository: CustomerRepository | None = None,
+        credit_limit_evaluator: CreditLimitEvaluator | None = None,
     ) -> None:
+        self._customer_repository = customer_repository
+        self._credit_limit_evaluator = credit_limit_evaluator
         self._order_repository = order_repository
         self._route_repository = route_repository
         self._inventory_repository = inventory_location_repository
@@ -1029,7 +1035,9 @@ class DeliverOrderUseCase:
             prepayments,
         )
         if not settlement.is_settled_by(
-            method=command.payment_method, amount_collected=command.amount_collected
+            method=command.payment_method,
+            amount_collected=command.amount_collected,
+            balance_on_account=command.balance_on_account,
         ):
             msg = (
                 f"₹{settlement.balance_due} is still due for this delivery. Collect it, "
@@ -1043,7 +1051,33 @@ class DeliverOrderUseCase:
             )
         if settlement.balance_due is None:
             return command.amount_collected
-        return min(command.amount_collected, settlement.balance_due)
+        if command.payment_method == "credit":
+            # Nothing was handed over: the whole balance goes on account, and
+            # cash expected at the handover stays exact.
+            await self._require_within_credit_limit(order, settlement.balance_due)
+            return Decimal("0.00")
+        collected = min(command.amount_collected, settlement.balance_due)
+        on_account = settlement.on_account(
+            method=command.payment_method, amount_collected=collected
+        )
+        if on_account > SETTLEMENT_TOLERANCE:
+            await self._require_within_credit_limit(order, on_account)
+        return collected
+
+    async def _require_within_credit_limit(self, order: Order, on_account: Decimal) -> None:
+        """Putting a balance on account is only allowed up to the agency's
+        credit limit for this kind of customer (BR-19)."""
+        if self._customer_repository is None or self._credit_limit_evaluator is None:
+            return
+        customer = await self._customer_repository.get_by_id(order.customer_id)
+        if customer is None:
+            return
+        await self._credit_limit_evaluator.evaluate(
+            tenant_id=order.tenant_id,
+            customer_id=customer.id,
+            customer_type=customer.customer_type,
+            order_total=on_account,
+        )
 
     @staticmethod
     def _validate_pod_fields(command: DeliverOrderCommand) -> None:

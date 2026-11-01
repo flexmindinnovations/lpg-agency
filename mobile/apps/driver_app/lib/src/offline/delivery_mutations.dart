@@ -149,6 +149,7 @@ class DeliveryMutations {
     List<int>? signatureBytes,
     List<int>? photoBytes,
     String? dacCode,
+    String? idempotencyKey,
   }) async {
     if (await _isOnline()) {
       final inline = await _deliverInline(
@@ -162,6 +163,7 @@ class DeliveryMutations {
         signatureBytes: signatureBytes,
         photoBytes: photoBytes,
         dacCode: dacCode,
+        idempotencyKey: idempotencyKey,
       );
       // `null` here means "the network dropped mid-submit" — fall through to
       // the queue rather than making the driver recapture everything.
@@ -204,6 +206,7 @@ class DeliveryMutations {
     List<int>? signatureBytes,
     List<int>? photoBytes,
     String? dacCode,
+    String? idempotencyKey,
   }) async {
     String? signatureRef;
     if (signatureBytes != null) {
@@ -250,6 +253,10 @@ class DeliveryMutations {
           dacCode: dacCode,
         ),
       ),
+      // One key per submission: a second tap, or a retry after a lost
+      // response, replays the first delivery instead of running again
+      // against a delivery code the first request already used up.
+      idempotencyKey: idempotencyKey,
     );
     return switch (result) {
       Success() => const DeliverSynced(),

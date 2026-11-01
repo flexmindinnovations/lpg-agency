@@ -1258,6 +1258,8 @@ async def deliver_order(
     online_payment_repository: Annotated[
         OnlinePaymentRepository, Depends(get_online_payment_repository)
     ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
 ) -> DeliverOrderResponse:
     """`out_for_delivery -> delivered`. Idempotency-Key required (offline-
     sync retries). Missing POD fields are a 422 (see `ProofOfDeliverySubmission`);
@@ -1284,6 +1286,8 @@ async def deliver_order(
         otp_store,
         unit_of_work,
         online_payment_repository,
+        customer_repository,
+        credit_limit_evaluator,
     )
 
     async def _operation() -> dict[str, Any]:
@@ -1307,6 +1311,7 @@ async def deliver_order(
                 amount_collected=body.proof_of_delivery.amount_collected,
                 changed_by=actor_id,
                 dac_code=body.proof_of_delivery.dac_code,
+                balance_on_account=body.proof_of_delivery.balance_on_account,
             )
         )
         return DeliverOrderResponse(

@@ -326,6 +326,32 @@ class DeliverOrderResponse {
   final OrderResponse order;
 }
 
+/// What is left to collect at the door for a delivery (ADR-069), from
+/// `GET /orders/{id}/settlement`.
+class OrderSettlement {
+  const OrderSettlement({
+    required this.paidOnline,
+    this.payable,
+    this.balanceDue,
+  });
+
+  factory OrderSettlement.fromJson(Map<String, dynamic> json) =>
+      OrderSettlement(
+        payable: asDoubleOrNull(json['payable_amount']),
+        paidOnline: asDoubleOrNull(json['paid_online_amount']) ?? 0,
+        balanceDue: asDoubleOrNull(json['balance_due']),
+      );
+
+  /// Price plus GST for the quantities delivered; `null` for an unpriced order.
+  final double? payable;
+
+  /// Already captured online (Razorpay): never collect it again.
+  final double paidOnline;
+
+  /// What the driver still has to collect; `null` when [payable] is.
+  final double? balanceDue;
+}
+
 class OrderPageResponse {
   const OrderPageResponse({required this.items, required this.total});
 

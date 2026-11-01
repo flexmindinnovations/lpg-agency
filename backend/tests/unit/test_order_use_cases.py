@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 from lpg.application.common.errors import (
     ConflictError,
+    CreditLimitExceededError,
     CylinderCapExceededError,
     CylinderNotOrderableError,
     IncompletePodError,
@@ -947,6 +948,8 @@ class TestDeliverOrderUseCase:
         amount: str,
         delivered: int = 4,
         prepaid: str | None = None,
+        on_account: bool = False,
+        credit_error: Exception | None = None,
     ) -> tuple[Order, MagicMock]:
         cylinder_type_id = uuid.uuid4()
         order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
@@ -967,6 +970,16 @@ class TestDeliverOrderUseCase:
             paid.append(online)
         payments.list_for_order = AsyncMock(return_value=paid)
         use_case._online_payment_repository = payments
+        customer = MagicMock()
+        customer.id = uuid.uuid4()
+        customer.customer_type = "domestic"
+        customers = MagicMock()
+        customers.get_by_id = AsyncMock(return_value=customer)
+        evaluator = MagicMock()
+        evaluator.evaluate = AsyncMock(side_effect=credit_error)
+        use_case._customer_repository = customers
+        use_case._credit_limit_evaluator = evaluator
+        self.evaluator = evaluator
         await use_case.execute(
             DeliverOrderCommand(
                 order_id=order.id,
@@ -981,6 +994,7 @@ class TestDeliverOrderUseCase:
                 payment_method=method,
                 amount_collected=Decimal(amount),
                 changed_by=uuid.uuid4(),
+                balance_on_account=on_account,
             )
         )
         return order, pod_repo
@@ -1094,6 +1108,54 @@ class TestDeliverOrderUseCase:
             amount="0",
         )
         assert order.status == "delivered"
+
+    async def test_partial_payment_puts_the_rest_on_account_within_the_limit(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        order, pod_repo = await self._deliver(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            method="cash",
+            amount="1000",
+            on_account=True,
+        )
+        assert order.status == "delivered"
+        assert pod_repo.create.call_args.kwargs["amount_collected"] == Decimal("1000")
+        assert self.evaluator.evaluate.call_args.kwargs["order_total"] == Decimal("2600.00")
+
+    async def test_credit_records_no_cash_and_respects_the_credit_limit(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        _, pod_repo = await self._deliver(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            method="credit",
+            amount="500",
+        )
+        assert pod_repo.create.call_args.kwargs["amount_collected"] == Decimal("0.00")
+
+        with pytest.raises(CreditLimitExceededError):
+            await self._deliver(
+                mock_order_repo,
+                mock_route_repo,
+                mock_inventory_repo,
+                mock_uow,
+                method="credit",
+                amount="0",
+                credit_error=CreditLimitExceededError("over the limit"),
+            )
 
     async def test_repeating_a_completed_delivery_returns_the_recorded_result(
         self,

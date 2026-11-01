@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../cash_handover/data/cash_handover_provider.dart';
 import '../../../api_provider.dart';
@@ -26,10 +27,13 @@ const _paymentMethodIcons = {
   'credit': LpgIcons.invoice,
 };
 
-/// The proof-of-delivery capture: quantities, payment, the customer's
-/// delivery OTP and a GPS stamp, plus an optional signature and photo —
-/// then `POST /orders/{id}/deliver`. "Send a new code" re-sends the delivery
-/// OTP when the customer lost it or it expired.
+/// One stop, three steps on one screen (ADR-069): 1 Cylinders (delivered and
+/// empties collected), 2 Payment (what is due, what was already paid online,
+/// how it is settled), 3 Confirm (the customer's delivery code, GPS stamp,
+/// optional signature and photo) — then one `POST /orders/{id}/deliver`. The
+/// order is only completed once the payment is settled: the button stays off
+/// until the balance is collected or recorded as credit. "Send a new code"
+/// re-sends the delivery OTP when the customer lost it or it expired.
 class RecordDeliveryScreen extends ConsumerStatefulWidget {
   const RecordDeliveryScreen({super.key, required this.orderId});
 
@@ -67,6 +71,20 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
 
   Uint8List? _photoBytes;
   bool _submitting = false;
+
+  /// The delivery went through; the screen is on its way out and must not
+  /// submit again.
+  bool _done = false;
+
+  /// One key for every attempt of this delivery, so a second tap or a retry
+  /// replays the first instead of re-running against a used-up code.
+  final _idempotencyKey = const Uuid().v4();
+
+  /// The driver typed the amount themselves; stop overwriting it.
+  bool _amountEdited = false;
+
+  /// The balance the amount field was last filled from.
+  double? _syncedBalance;
   bool _resending = false;
   String? _error;
   bool _prefilled = false;
@@ -77,10 +95,18 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   /// Testing only: the delivery code read back from the dev inbox.
   String? _devCode;
 
+  /// Money the customer already paid online for this order (from the latest
+  /// settlement answer): never to be collected again.
+  double _paidOnline = 0;
+
   @override
   void initState() {
     super.initState();
     _loadDevCode();
+    _amountController.addListener(() {
+      // Rebuild the settlement hints as the driver types.
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadDevCode() async {
@@ -167,7 +193,56 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     if (mounted) setState(() => _photoBytes = bytes);
   }
 
-  Future<void> _submit(OrderResponse order) async {
+  /// The quantities delivered, as the settlement endpoint wants them.
+  Map<String, int> _deliveredQuantities() => {
+    for (final e in _quantities.entries) e.key: e.value.$1,
+  };
+
+  /// The balance still to collect: the server's answer when there is one
+  /// (it knows what was paid online), otherwise an estimate from the order.
+  double? _balanceDue(OrderResponse order, OrderSettlement? settlement) {
+    if (settlement != null) return settlement.balanceDue;
+    final payable = order.amountToPay;
+    if (payable == null) return null;
+    var orderedValue = 0.0;
+    var deliveredValue = 0.0;
+    var allDelivered = true;
+    for (final line in order.lines) {
+      final delivered = _quantities[line.cylinderTypeId]?.$1 ?? 0;
+      if (delivered != line.quantityOrdered) allDelivered = false;
+      final price = line.unitPrice ?? 1;
+      orderedValue += price * line.quantityOrdered;
+      deliveredValue += price * delivered;
+    }
+    if (allDelivered || orderedValue == 0) return payable;
+    return double.parse((payable * deliveredValue / orderedValue).toStringAsFixed(2));
+  }
+
+  /// Keeps "Amount collected" at what is due until the driver types their own
+  /// figure; on credit it starts at nothing.
+  void _syncAmount(double? balance, {required bool credit}) {
+    if (_amountEdited || balance == null) return;
+    final target = credit ? 0.0 : balance;
+    if (_syncedBalance == target) return;
+    _syncedBalance = target;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _amountEdited) return;
+      _amountController.text = target.toStringAsFixed(2);
+    });
+  }
+
+  /// Leaves the finished stop. The Deliveries tab keeps its own stack, so it
+  /// is reset first: otherwise this screen would still be waiting there, and
+  /// tapping Confirm again would hit a delivery code that is already used.
+  void _leave() {
+    StatefulNavigationShell.maybeOf(
+      context,
+    )?.goBranch(1, initialLocation: true);
+    context.go('/');
+  }
+
+  Future<void> _submit(OrderResponse order, {required double? balanceDue}) async {
+    if (_done || _submitting) return;
     setState(() {
       _submitting = true;
       _error = null;
@@ -180,7 +255,11 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
       if (_otpController.text.trim().isEmpty) {
         throw Exception('Enter the delivery code the customer received.');
       }
-      final amount = double.tryParse(_amountController.text.trim());
+      // Nothing to collect (paid online in full): record that, not cash.
+      final nothingDue = balanceDue != null && balanceDue <= 0;
+      final amount = nothingDue
+          ? 0.0
+          : double.tryParse(_amountController.text.trim());
       if (amount == null || amount < 0) {
         throw Exception('Enter a valid amount collected.');
       }
@@ -202,8 +281,11 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
             otpCode: _otpController.text.trim(),
             gpsLat: position.latitude,
             gpsLng: position.longitude,
-            paymentMethod: _method,
+            paymentMethod: nothingDue && _paidOnline > 0
+                ? 'online_gateway'
+                : _method,
             amountCollected: amount,
+            idempotencyKey: _idempotencyKey,
             signatureBytes: signatureBytes,
             photoBytes: _photoBytes,
             dacCode: _dacController.text.trim().isEmpty
@@ -216,6 +298,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
         case DeliverFailed(:final message):
           _showError(message);
         case DeliverSynced() || DeliverQueued():
+          _done = true;
           ref.invalidate(activeRouteProvider);
           ref.invalidate(routeHistoryProvider);
           // The cash to declare and the cash in hand come from the route the
@@ -233,7 +316,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
           // order drops out of the driver's visibility (and their last stop
           // completes the route), so popping to `StopDetailScreen` would
           // strand them on a "stop not found" error.
-          context.go('/');
+          _leave();
       }
     } catch (e) {
       _showError(e.toString().replaceFirst('Exception: ', ''));
@@ -272,10 +355,35 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
           ref.watch(paymentMethodsProvider); // rebuild when it arrives
           final offered = _offeredMethods;
           final method = _method;
+          final settlement = ref
+              .watch(_settlementProvider(
+                (
+                  orderId: order.id,
+                  delivered: [
+                    for (final e in _deliveredQuantities().entries)
+                      '${e.key}:${e.value}',
+                  ].join(','),
+                ),
+              ))
+              .value;
+          _paidOnline = settlement?.paidOnline ?? 0;
+          final balance = _balanceDue(order, settlement);
+          final credit = method == 'credit';
+          _syncAmount(balance, credit: credit);
+          final nothingDue = balance != null && balance <= 0;
+          final entered = double.tryParse(_amountController.text.trim()) ?? 0;
+          final shortBy = balance == null || credit || nothingDue
+              ? 0.0
+              : balance - entered;
+          final settled = shortBy <= 0.5;
           return ListView(
             padding: LpgSpacing.page,
             children: [
-              const _Section(icon: LpgIcons.cylinder, title: 'Cylinders'),
+              const _Section(
+                step: 1,
+                icon: LpgIcons.cylinder,
+                title: 'Cylinders',
+              ),
               for (final line in order.lines)
                 Padding(
                   padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
@@ -291,29 +399,85 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                     ),
                   ),
                 ),
-              const _Section(icon: LpgIcons.payment, title: 'Payment'),
-              LpgDropdownField<String>(
-                value: method,
-                items: {for (final m in offered) m.code: m.label},
-                icons: _paymentMethodIcons,
-                onChanged: (v) {
-                  if (v != null) setState(() => _paymentMethod = v);
-                },
+              const _Section(
+                step: 2,
+                icon: LpgIcons.payment,
+                title: 'Payment',
               ),
-              if (method == 'upi') ...[
-                const SizedBox(height: LpgSpacing.md),
-                _UpiQrPanel(orderId: widget.orderId),
-              ],
-              const SizedBox(height: LpgSpacing.md),
-              LpgTextField(
-                label: 'Amount collected',
-                prefixIcon: LpgIcons.rupee,
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+              if (balance != null || (settlement?.paidOnline ?? 0) > 0)
+                _SettlementCard(
+                  payable: settlement?.payable ?? order.amountToPay,
+                  paidOnline: settlement?.paidOnline ?? 0,
+                  balanceDue: balance,
                 ),
+              if (nothingDue) ...[
+                const SizedBox(height: LpgSpacing.sm),
+                LpgBanner(
+                  tone: LpgTone.success,
+                  title: (settlement?.paidOnline ?? 0) > 0
+                      ? 'Already paid online'
+                      : 'Nothing to collect',
+                  message: (settlement?.paidOnline ?? 0) > 0
+                      ? 'The customer paid ${LpgFormat.currency(settlement!.paidOnline)} '
+                            'online. Do not collect any cash.'
+                      : 'There is no balance on this delivery.',
+                ),
+              ] else ...[
+                if ((settlement?.paidOnline ?? 0) > 0) ...[
+                  const SizedBox(height: LpgSpacing.sm),
+                  LpgBanner(
+                    tone: LpgTone.info,
+                    title: 'Part paid online',
+                    message:
+                        '${LpgFormat.currency(settlement!.paidOnline)} was paid '
+                        'online. Collect only the rest.',
+                  ),
+                ],
+                const SizedBox(height: LpgSpacing.md),
+                LpgDropdownField<String>(
+                  value: method,
+                  items: {for (final m in offered) m.code: m.label},
+                  icons: _paymentMethodIcons,
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() {
+                        _paymentMethod = v;
+                        _syncedBalance = null;
+                      });
+                    }
+                  },
+                ),
+                if (method == 'upi') ...[
+                  const SizedBox(height: LpgSpacing.md),
+                  _UpiQrPanel(orderId: widget.orderId),
+                ],
+                const SizedBox(height: LpgSpacing.md),
+                LpgTextField(
+                  label: credit
+                      ? 'Received now (the rest goes on account)'
+                      : 'Amount collected',
+                  prefixIcon: LpgIcons.rupee,
+                  controller: _amountController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  onChanged: (_) => _amountEdited = true,
+                ),
+                if (credit && balance != null) ...[
+                  const SizedBox(height: LpgSpacing.sm),
+                  LpgBanner(
+                    tone: LpgTone.info,
+                    message:
+                        '${LpgFormat.currency((balance - entered).clamp(0, balance).toDouble())} '
+                        "will stay on the customer's account.",
+                  ),
+                ],
+              ],
+              const _Section(
+                step: 3,
+                icon: LpgIcons.lock,
+                title: 'Delivery code',
               ),
-              const _Section(icon: LpgIcons.lock, title: 'Delivery code'),
               LpgTextField(
                 label: "Customer's code",
                 hintText: 'Code from the customer',
@@ -420,12 +584,25 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 ),
                 const SizedBox(height: LpgSpacing.smd),
               ],
+              if (!settled) ...[
+                LpgBanner(
+                  tone: LpgTone.warning,
+                  title: 'Payment not settled',
+                  message:
+                      '${LpgFormat.currency(shortBy)} is still to collect. '
+                      'Collect it to complete the delivery, or choose On '
+                      'credit if the customer pays later.',
+                ),
+                const SizedBox(height: LpgSpacing.smd),
+              ],
               LpgButton(
-                label: 'Confirm delivery',
+                label: 'Complete delivery',
                 icon: LpgIcons.check,
                 expand: true,
                 isLoading: _submitting,
-                onPressed: _submitting ? null : () => _submit(order),
+                onPressed: _submitting || _done || !settled
+                    ? null
+                    : () => _submit(order, balanceDue: balance),
               ),
             ],
           );
@@ -440,10 +617,13 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
 
 /// A form section heading with its icon.
 class _Section extends StatelessWidget {
-  const _Section({required this.icon, required this.title});
+  const _Section({required this.icon, required this.title, this.step});
 
   final IconData icon;
   final String title;
+
+  /// The step number (1-3) of the stop flow, when this heading starts one.
+  final int? step;
 
   @override
   Widget build(BuildContext context) {
@@ -454,6 +634,26 @@ class _Section extends StatelessWidget {
         header: true,
         child: Row(
           children: [
+            if (step case final n?) ...[
+              ExcludeSemantics(
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors.actionPrimaryContainer,
+                  ),
+                  child: Text(
+                    '$n',
+                    style: context.lpgText.labelSmall?.copyWith(
+                      color: colors.onActionPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: LpgSpacing.sm),
+            ],
             Icon(icon, size: LpgSizes.iconSm, color: colors.textSecondary),
             const SizedBox(width: LpgSpacing.sm),
             Text(title, style: context.lpgText.titleSmall),
@@ -607,3 +807,70 @@ final _upiQrProvider = FutureProvider.autoDispose.family<UpiQr?, String>((
     _ => null,
   };
 });
+
+/// Amount due, already paid online, and what is left to collect.
+class _SettlementCard extends StatelessWidget {
+  const _SettlementCard({
+    required this.payable,
+    required this.paidOnline,
+    required this.balanceDue,
+  });
+
+  final double? payable;
+  final double paidOnline;
+  final double? balanceDue;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.lpgText;
+    Widget row(String label, double? value, {bool strong = false}) => Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: strong ? text.titleSmall : text.bodyMedium,
+          ),
+        ),
+        Text(
+          value == null ? '—' : LpgFormat.currency(value),
+          style: strong ? text.titleSmall : text.bodyMedium,
+        ),
+      ],
+    );
+    return LpgCard(
+      child: Column(
+        children: [
+          row('Amount due', payable),
+          if (paidOnline > 0) ...[
+            const SizedBox(height: LpgSpacing.xs),
+            row('Paid online', -paidOnline),
+          ],
+          const Divider(),
+          row('To collect now', balanceDue, strong: true),
+        ],
+      ),
+    );
+  }
+}
+
+typedef _SettlementKey = ({String orderId, String delivered});
+
+/// `GET /orders/{id}/settlement` for the quantities currently entered. `null`
+/// when it can't be reached (offline): the screen then estimates from the
+/// cached order and the server applies the same rule when the delivery syncs.
+final _settlementProvider = FutureProvider.autoDispose
+    .family<OrderSettlement?, _SettlementKey>((ref, key) async {
+      final delivered = <String, int>{};
+      for (final part in key.delivered.split(',')) {
+        if (part.isEmpty) continue;
+        final i = part.lastIndexOf(':');
+        delivered[part.substring(0, i)] = int.parse(part.substring(i + 1));
+      }
+      final result = await ref
+          .watch(orderApiProvider)
+          .getSettlement(key.orderId, delivered: delivered);
+      return switch (result) {
+        Success(:final value) => value,
+        _ => null,
+      };
+    });
