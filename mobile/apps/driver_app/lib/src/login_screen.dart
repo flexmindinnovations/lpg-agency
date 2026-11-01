@@ -195,6 +195,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         LpgTextField(
                           label: 'Agency code',
+                          hintText: 'Code given by your agency',
                           prefixIcon: LpgIcons.agency,
                           controller: _tenantIdController,
                           enabled: !_codeRequested,
