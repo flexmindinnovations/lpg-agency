@@ -38,7 +38,9 @@ class PayOnlineSection extends ConsumerStatefulWidget {
 
 class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
     with WidgetsBindingObserver {
-  bool _busy = false;
+  /// Which action is running ('pay' or 'check'); only its button spins.
+  String? _action;
+  bool get _busy => _action != null;
   String? _pendingPaymentId;
 
   /// Why the last attempt to start a payment failed, shown under the
@@ -66,8 +68,9 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
   }
 
   Future<void> _pay() async {
+    if (_busy) return;
     setState(() {
-      _busy = true;
+      _action = 'pay';
       _startError = null;
     });
     final result = await ref
@@ -102,7 +105,7 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
         );
       },
     );
-    if (mounted) setState(() => _busy = false);
+    if (mounted) setState(() => _action = null);
   }
 
   /// The agency's UPI QR and bank details for this order's balance
@@ -171,11 +174,11 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
 
   Future<void> _checkStatus({bool quiet = false}) async {
     final paymentId = _pendingPaymentId;
-    if (paymentId == null) return;
-    setState(() => _busy = true);
+    if (paymentId == null || _busy) return;
+    setState(() => _action = 'check');
     final result = await ref.read(paymentApiProvider).refreshPayment(paymentId);
     if (!mounted) return;
-    setState(() => _busy = false);
+    setState(() => _action = null);
 
     result.when(
       onSuccess: (payment) {
@@ -253,7 +256,7 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
             label: 'Pay Online',
             icon: LpgIcons.wallet,
             expand: true,
-            isLoading: _busy && _pendingPaymentId == null,
+            isLoading: _action == 'pay',
             onPressed: _busy ? null : _pay,
           ),
           if (_startError case final error?) ...[
@@ -267,7 +270,7 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
               icon: LpgIcons.sync,
               variant: LpgButtonVariant.secondary,
               expand: true,
-              isLoading: _busy,
+              isLoading: _action == 'check',
               onPressed: _busy ? null : _checkStatus,
             ),
           ],

@@ -12,6 +12,7 @@ import 'package:realtime/realtime.dart';
 import 'package:sync_engine/sync_engine.dart';
 
 import 'src/auth_provider.dart';
+import 'src/features/orders/data/orders_provider.dart';
 import 'src/providers.dart';
 import 'src/push/push_notification_service.dart';
 import 'src/router.dart';
@@ -148,13 +149,33 @@ class CustomerApp extends ConsumerStatefulWidget {
   ConsumerState<CustomerApp> createState() => _CustomerAppState();
 }
 
-class _CustomerAppState extends ConsumerState<CustomerApp> {
+class _CustomerAppState extends ConsumerState<CustomerApp>
+    with WidgetsBindingObserver {
   StreamSubscription<String>? _tapSub;
+  StreamSubscription<void>? _messageSub;
+
+  /// Refetches what a screen may have missed while the app was backgrounded
+  /// or the socket was down, so a delivered order stops offering Pay and
+  /// Cancel as soon as the customer looks at it again.
+  void _refreshOrders() {
+    ref.invalidate(ordersProvider);
+    ref.invalidate(orderDetailProvider);
+    ref.invalidate(pendingCancellationProvider);
+    ref.invalidate(deliveryCodeProvider);
+    ref.invalidate(orderHistoryProvider);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshOrders();
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final pushService = ref.read(pushNotificationServiceProvider);
+    _messageSub = pushService.messages.listen((_) => _refreshOrders());
 
     // A notification that cold-started the app: navigate once the first
     // frame (and the router) is ready.
@@ -173,7 +194,9 @@ class _CustomerAppState extends ConsumerState<CustomerApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tapSub?.cancel();
+    _messageSub?.cancel();
     super.dispose();
   }
 

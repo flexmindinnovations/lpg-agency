@@ -150,12 +150,8 @@ class OrderDetailScreen extends ConsumerWidget {
               _DeliveredActions(order: order),
             if (cancellable) ...[
               if (order.isTrackable) const SizedBox(height: LpgSpacing.smd),
-              LpgButton(
-                label: 'Cancel Order',
-                icon: LpgIcons.cancel,
-                variant: LpgButtonVariant.secondary,
-                expand: true,
-                onPressed: () => _confirmCancel(context, ref),
+              _CancelOrderButton(
+                onCancel: () => _confirmCancel(context, ref),
               ),
             ],
           ];
@@ -549,6 +545,32 @@ class _SummaryCard extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// "Cancel Order" with its own busy state: ignores taps while the dialog or
+/// the cancel request is in flight, and spins only itself.
+class _CancelOrderButton extends StatefulWidget {
+  const _CancelOrderButton({required this.onCancel});
+
+  final Future<void> Function() onCancel;
+
+  @override
+  State<_CancelOrderButton> createState() => _CancelOrderButtonState();
+}
+
+class _CancelOrderButtonState extends State<_CancelOrderButton>
+    with LpgBusyActions<_CancelOrderButton> {
+  @override
+  Widget build(BuildContext context) {
+    return LpgButton(
+      label: 'Cancel Order',
+      icon: LpgIcons.cancel,
+      variant: LpgButtonVariant.secondary,
+      expand: true,
+      isLoading: isBusy('cancel'),
+      onPressed: anyBusy ? null : () => runBusy('cancel', widget.onCancel),
     );
   }
 }

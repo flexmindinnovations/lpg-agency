@@ -94,6 +94,7 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
         vehicleId: _vehicleId!,
         routeDate: requested.isAfter(now) ? requested : now,
       );
+      if (!mounted) return;
       switch (planned) {
         case FailureResult<RouteSummary>(:final failure):
           return _fail(failure);
@@ -108,6 +109,7 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
       warehouseId: warehouseId,
       orderIds: _order.status == 'confirmed' ? [_order.id] : const [],
     );
+    if (!mounted) return;
     if (dispatched case FailureResult<RouteSummary>(:final failure)) {
       if (failure.errorCode == 'WEIGHMENT_CHECK_REQUIRED') {
         return _askForWeighment(trip, failure);

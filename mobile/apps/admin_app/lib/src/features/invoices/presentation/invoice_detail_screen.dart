@@ -29,9 +29,8 @@ class InvoiceDetailScreen extends ConsumerStatefulWidget {
       _InvoiceDetailScreenState();
 }
 
-class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
-  bool _busy = false;
-
+class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen>
+    with LpgBusyActions<InvoiceDetailScreen> {
   /// Reloads everything an invoice change shows up in.
   void _reload({String? customerId}) {
     ref.invalidate(invoiceDetailProvider(widget.invoiceId));
@@ -59,13 +58,14 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
     builder: (_) => UpiQrSheet(invoice: invoice),
   );
 
-  Future<void> _send(InvoiceResponse invoice) async {
-    setState(() => _busy = true);
+  Future<void> _send(InvoiceResponse invoice) =>
+      runBusy('send', () => _doSend(invoice));
+
+  Future<void> _doSend(InvoiceResponse invoice) async {
     final result = await ref
         .read(invoiceApiProvider)
         .sendInvoice(invoice.invoiceId);
     if (!mounted) return;
-    setState(() => _busy = false);
     switch (result) {
       case Success<InvoiceResponse>():
         LpgFeedback.showToast(
@@ -225,7 +225,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                 label: 'Record payment',
                 icon: LpgIcons.rupee,
                 expand: true,
-                onPressed: _busy ? null : () => _recordPayment(invoice),
+                onPressed: anyBusy ? null : () => _recordPayment(invoice),
               ),
               const SizedBox(height: LpgSpacing.sm),
               LpgButton(
@@ -233,7 +233,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                 icon: LpgIcons.qrCode,
                 variant: LpgButtonVariant.secondary,
                 expand: true,
-                onPressed: _busy ? null : () => _showQr(invoice),
+                onPressed: anyBusy ? null : () => _showQr(invoice),
               ),
               const SizedBox(height: LpgSpacing.sm),
             ],
@@ -242,8 +242,8 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
               icon: LpgIcons.share,
               variant: LpgButtonVariant.text,
               expand: true,
-              isLoading: _busy,
-              onPressed: _busy ? null : () => _send(invoice),
+              isLoading: isBusy('send'),
+              onPressed: anyBusy ? null : () => _send(invoice),
             ),
           ],
           const SectionHeading('Items', topGap: LpgSpacing.lg),

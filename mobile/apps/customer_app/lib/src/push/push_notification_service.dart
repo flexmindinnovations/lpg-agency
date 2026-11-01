@@ -28,6 +28,7 @@ class PushNotificationService {
   final NotificationApi _notificationApi;
   final _localNotifications = FlutterLocalNotificationsPlugin();
   final _tapController = StreamController<String>.broadcast();
+  final _messageController = StreamController<void>.broadcast();
 
   StreamSubscription<RemoteMessage>? _onMessageSub;
   StreamSubscription<RemoteMessage>? _onOpenedSub;
@@ -38,6 +39,10 @@ class PushNotificationService {
   /// Route strings emitted when the user taps a notification while the app
   /// is running. `CustomerApp` listens and calls `router.go`.
   Stream<String> get taps => _tapController.stream;
+
+  /// Ticks whenever a notification arrives while the app is in the
+  /// foreground, so screens can refetch what it announced.
+  Stream<void> get messages => _messageController.stream;
 
   /// A route derived from the notification that cold-started the app, if
   /// any. Read once, early, by `CustomerApp`.
@@ -133,6 +138,7 @@ class PushNotificationService {
   }
 
   Future<void> _showForeground(RemoteMessage message) async {
+    if (!_messageController.isClosed) _messageController.add(null);
     final notification = message.notification;
     if (notification == null) return;
     await _localNotifications.show(
@@ -187,6 +193,7 @@ class PushNotificationService {
     await _onOpenedSub?.cancel();
     await _onTokenRefreshSub?.cancel();
     await _tapController.close();
+    await _messageController.close();
   }
 }
 
