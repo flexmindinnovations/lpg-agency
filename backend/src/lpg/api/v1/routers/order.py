@@ -93,6 +93,7 @@ from lpg.api.v1.dependencies.order import (
     get_orderable_cylinder_types,
     get_proof_of_delivery_repository,
 )
+from lpg.api.v1.dependencies.payments import get_online_payment_repository
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.order import (
     AmendOrderRequest,
@@ -124,9 +125,11 @@ from lpg.api.v1.schemas.order import (
     RecordFailedDeliveryRequest,
     RejectCancellationRequest,
     RescheduleOrderRequest,
+    SettlementResponse,
     TrackingDriverInfo,
 )
 from lpg.api.v1.uploads import read_upload
+from lpg.application.accounting.ports import OnlinePaymentRepository
 from lpg.application.common.errors import NotFoundError, PermissionDeniedError, ValidationError
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
@@ -157,6 +160,7 @@ from lpg.application.order.ports import (
     ProofOfDeliveryEntry,
     ProofOfDeliveryRepository,
 )
+from lpg.application.order.settlement import compute_settlement
 from lpg.application.order.use_cases import (
     AmendOrderCommand,
     AmendOrderUseCase,
@@ -1251,11 +1255,20 @@ async def deliver_order(
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
     idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
+    online_payment_repository: Annotated[
+        OnlinePaymentRepository, Depends(get_online_payment_repository)
+    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
 ) -> DeliverOrderResponse:
     """`out_for_delivery -> delivered`. Idempotency-Key required (offline-
     sync retries). Missing POD fields are a 422 (see `ProofOfDeliverySubmission`);
     present-but-invalid ones (blank ref, out-of-range GPS) are a 400
-    `IncompletePodError`; wrong/expired OTP is a 409.
+    `IncompletePodError`; wrong/expired OTP is a 409. The order is only
+    completed once the payment is settled (ADR-069): less than the balance
+    due collected, without recording the rest as credit, is a 409
+    `PAYMENT_NOT_SETTLED`. Repeating a delivery that already went through
+    returns the recorded result.
     """
     idempotency_key = request.headers.get("Idempotency-Key")
     if idempotency_key is None:
@@ -1272,6 +1285,9 @@ async def deliver_order(
         pod_repository,
         otp_store,
         unit_of_work,
+        online_payment_repository,
+        customer_repository,
+        credit_limit_evaluator,
     )
 
     async def _operation() -> dict[str, Any]:
@@ -1295,6 +1311,7 @@ async def deliver_order(
                 amount_collected=body.proof_of_delivery.amount_collected,
                 changed_by=actor_id,
                 dac_code=body.proof_of_delivery.dac_code,
+                balance_on_account=body.proof_of_delivery.balance_on_account,
             )
         )
         return DeliverOrderResponse(
@@ -1309,6 +1326,55 @@ async def deliver_order(
         operation=_operation,
     )
     return DeliverOrderResponse.model_validate(result)
+
+
+@router.get(
+    "/orders/{order_id}/settlement",
+    response_model=SettlementResponse,
+    dependencies=[Depends(require_permission("orders:deliver"))],
+)
+async def get_order_settlement(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    online_payment_repository: Annotated[
+        OnlinePaymentRepository, Depends(get_online_payment_repository)
+    ],
+    delivered: Annotated[
+        list[str] | None,
+        Query(description="`<cylinder_type_id>:<quantity>` for each line; default: as ordered."),
+    ] = None,
+) -> SettlementResponse:
+    """What the driver still has to collect at the door (ADR-069): the amount
+    payable for the quantities delivered, what the customer already paid
+    online (so cash is never collected twice) and the balance due.
+    """
+    await _require_own_driver_order_when_driver(
+        order_id, principal, order_repository, driver_repository, route_repository
+    )
+    order = await order_repository.get_by_id(order_id)
+    if order is None:
+        raise NotFoundError("Order not found.", order_id=str(order_id))
+    quantities = {line.cylinder_type_id: line.quantity_ordered for line in order.lines}
+    for item in delivered or []:
+        try:
+            type_id, quantity = item.split(":", 1)
+            quantities[uuid.UUID(type_id)] = int(quantity)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422, detail="delivered must be <cylinder_type_id>:<quantity>."
+            ) from exc
+    settlement = compute_settlement(
+        order, quantities, await online_payment_repository.list_for_order(order.id)
+    )
+    return SettlementResponse(
+        order_id=order.id,
+        payable_amount=settlement.payable,
+        paid_online_amount=settlement.paid_online,
+        balance_due=settlement.balance_due,
+    )
 
 
 @router.post(

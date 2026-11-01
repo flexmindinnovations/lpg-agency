@@ -138,6 +138,17 @@ class RouteNotLoadedError(ConflictError):
     title = "The van has not been loaded for this route yet"
 
 
+class PaymentNotSettledError(ConflictError):
+    """A delivery was completed without settling the payment: less than the
+    amount due was collected and the balance was not put on the customer's
+    account (ADR-069). The order stays out for delivery until the driver
+    collects the rest or records the balance as credit.
+    """
+
+    error_code = "PAYMENT_NOT_SETTLED"
+    title = "Collect the payment before completing the delivery"
+
+
 class CylinderNotOrderableError(ConflictError):
     """A booking named a cylinder type that cannot be ordered right now: it
     is inactive, has no price for the customer's type and branch, or the

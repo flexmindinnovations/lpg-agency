@@ -1579,6 +1579,25 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Consequences:** No app change is needed: the apps already show whatever in-app and push alerts arrive. Push device registration and the in-app inbox are untouched. Feature: `planning/features/58-notification-settings`.
 
+
+## ADR-069: One Stop Flow: Deliver, Pay, Complete
+
+**Status:** Accepted
+
+**Context:** The driver app recorded the delivery and the payment on one long form, but nothing stopped a driver completing the order with nothing collected, and the flow had three faults. (1) Each tap generated a fresh `Idempotency-Key`, so a repeat after a lost response or a second tap re-ran the delivery against a delivery code that the first request had already used up, and the driver saw "code expired" for a delivery that had gone through. (2) After success the app jumped to the Today tab but left the old Record delivery screen alive in the Deliveries tab's stack, so the driver found it again "on the same screen". (3) Money already received online (Razorpay) was invisible to the driver, so cash could be collected twice.
+
+**Decision:** The standard LPG doorstep sequence is the flow: arrive and verify, hand over full cylinders and collect empties, confirm with the customer's delivery code (and optional signature/photo), collect the payment, then complete. The driver app presents this as three steps on one screen, **Cylinders, Payment, Confirm**, and submits once.
+- **The order is completed only when the payment is settled.** `POST /orders/{id}/deliver` stays the single atomic call, so there is never a delivered order whose payment was forgotten. The balance due is `payable for the quantities delivered` (price plus GST, line by line exactly as the invoice computes it) minus captured online payments. The call is refused with `409 PAYMENT_NOT_SETTLED` when the amount collected is less than the balance (₹0.50 tolerance) unless the method is `credit`. The check runs before the delivery code is verified, so a driver sent back to collect the money keeps a valid code.
+- **Exceptions:** short delivery prices the smaller quantity; an order paid in full online needs ₹0 collected; a part-paid order needs only the rest; a customer on account is recorded as `credit` (offered only where the agency configured a credit limit) and the invoice stays open; a partial payment is recorded by choosing On credit and entering what was actually received: that amount is kept and the invoice shows the balance outstanding. A failed delivery keeps its existing path and takes no payment.
+- **Never record more than was due.** The amount stored as collected is capped at the balance due, so an online payment is not also counted as cash in the driver's hand, and the end-of-day cash handover expects only real cash.
+- **A repeat of a completed delivery is not an error.** If the order is already delivered, the call returns the recorded proof of delivery instead of failing on the used-up code. The app also keeps one idempotency key per submission.
+- `GET /orders/{id}/settlement?delivered=<type>:<qty>` returns payable, paid online and balance due, so the driver app shows "Paid online, do not collect again" and the exact amount. Offline, the app falls back to the cached order total; the server's check is the same rule and only ever lowers what is owed.
+- **Customers on credit.** The agency's existing credit limit (by customer type, `credit_limit_default`) decides whether On credit is offered and how much may sit on a customer's account (BR-19). `payment_method: credit` puts the whole balance on account and records no cash; a partial payment is the received method with a lower amount plus `balance_on_account: true`. The on-account amount is checked against the limit with the customer's outstanding invoices, and the delivery is refused with `CREDIT_LIMIT_EXCEEDED` when it would pass it. The invoice is left open, so the amount shows in the customer's outstanding balance, the receivables report and the office's payment recording; credit is excluded from the cash expected at handover (which counts only `cash`). The approver is the driver recorded on the proof of delivery. Per-customer credit eligibility and payment terms (days) are not built yet: they follow in a separate change.
+- Cash handover (end of day, counted notes) and the admin cash book are unchanged and remain a separate step.
+- No new order status: `delivered` now implies settled or on account, and the invoice carries `paid`, `partially_paid` or `issued`. The dashboard and admin app deliver forms start from the amount payable.
+
+**Consequences:** Deliveries cannot be completed unpaid by accident; credit is an explicit choice that appears in the invoice and the customer's balance. An offline queued delivery is only rejected at sync time if the cached total was lower than the server's balance, which cannot happen in practice. The driver APK must be rebuilt. Feature: `planning/features/59-driver-stop-flow`.
+
 ## Summary Table
 
 | ADR | Decision | Status |
