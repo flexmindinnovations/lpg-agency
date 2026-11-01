@@ -495,6 +495,47 @@ void main() {
     expect(find.text('Order placed'), findsOneWidget);
   });
 
+  testWidgets(
+    'LpgNavigationBar keeps labels on one line at a large font size',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LpgTheme.light,
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(360, 640),
+              textScaler: TextScaler.linear(2),
+            ),
+            child: Scaffold(
+              bottomNavigationBar: LpgNavigationBar(
+                selectedIndex: 0,
+                onDestinationSelected: (_) {},
+                destinations: const [
+                  LpgNavDestination(
+                    icon: LpgIcons.home,
+                    selectedIcon: LpgIcons.homeFilled,
+                    label: 'Dashboard',
+                  ),
+                  LpgNavDestination(
+                    icon: LpgIcons.orders,
+                    selectedIcon: LpgIcons.ordersFilled,
+                    label: 'Orders',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // The bar is the only place the scale is capped: 2x outside, at most 1.1x
+      // inside, so a 10-point label never grows past 11.
+      final inside = tester.element(find.text('Dashboard'));
+      expect(MediaQuery.textScalerOf(inside).scale(10), closeTo(11, 0.001));
+      expect(find.text('Dashboard'), findsOneWidget);
+    },
+  );
+
   testWidgets('LpgNavigationBar renders destinations with a badge', (
     tester,
   ) async {

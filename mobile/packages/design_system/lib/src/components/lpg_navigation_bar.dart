@@ -60,21 +60,27 @@ class LpgNavigationBar extends StatelessWidget {
           ),
         ),
       ),
-      child: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: onDestinationSelected,
-        animationDuration: LpgMotion.large(context),
-        destinations: [
-          for (final d in destinations)
-            NavigationDestination(
-              icon: withBadge(d.icon, d.badgeCount),
-              selectedIcon: withBadge(d.selectedIcon, d.badgeCount),
-              label: d.label,
-              tooltip: d.badgeCount > 0
-                  ? '${d.label}, ${d.badgeCount} new'
-                  : d.label,
-            ),
-        ],
+      // Labels must stay on one line so the icons line up: the bar's height
+      // is fixed, so cap the system font scale inside it (the tooltip still
+      // carries the full name for screen readers).
+      child: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.1,
+        child: NavigationBar(
+          selectedIndex: selectedIndex,
+          onDestinationSelected: onDestinationSelected,
+          animationDuration: LpgMotion.large(context),
+          destinations: [
+            for (final d in destinations)
+              NavigationDestination(
+                icon: withBadge(d.icon, d.badgeCount),
+                selectedIcon: withBadge(d.selectedIcon, d.badgeCount),
+                label: d.label,
+                tooltip: d.badgeCount > 0
+                    ? '${d.label}, ${d.badgeCount} new'
+                    : d.label,
+              ),
+          ],
+        ),
       ),
     );
   }
