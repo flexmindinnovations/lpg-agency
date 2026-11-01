@@ -108,108 +108,108 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final colors = context.lpgColors;
 
     final listPane = Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              LpgSpacing.md,
-              LpgSpacing.sm,
-              LpgSpacing.md,
-              0,
-            ),
-            child: LpgTextField(
-              label: 'Search orders',
-              hintText: 'Order number, customer, phone',
-              controller: _searchController,
-              prefixIcon: LpgIcons.search,
-              onChanged: _onSearchChanged,
-            ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            LpgSpacing.md,
+            LpgSpacing.sm,
+            LpgSpacing.md,
+            0,
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-              horizontal: LpgSpacing.md,
-              vertical: LpgSpacing.sm,
-            ),
-            child: Row(
-              children: orderFilters.map((filter) {
-                final selected = _selectedFilter == filter;
-                return Padding(
-                  padding: const EdgeInsets.only(right: LpgSpacing.xs),
-                  child: FilterChip(
-                    label: Text(filter.label),
-                    selected: selected,
-                    onSelected: (_) => setState(() {
-                      _selectedFilter = filter;
-                      _pages = 1;
-                    }),
-                  ),
+          child: LpgTextField(
+            label: 'Search orders',
+            hintText: 'Order number, customer, phone',
+            controller: _searchController,
+            prefixIcon: LpgIcons.search,
+            onChanged: _onSearchChanged,
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(
+            horizontal: LpgSpacing.md,
+            vertical: LpgSpacing.sm,
+          ),
+          child: Row(
+            children: orderFilters.map((filter) {
+              final selected = _selectedFilter == filter;
+              return Padding(
+                padding: const EdgeInsets.only(right: LpgSpacing.xs),
+                child: FilterChip(
+                  label: Text(filter.label),
+                  selected: selected,
+                  onSelected: (_) => setState(() {
+                    _selectedFilter = filter;
+                    _pages = 1;
+                  }),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        Expanded(
+          child: first.when(
+            loading: () => const LpgSkeletonList(itemCount: 5),
+            error: (err, _) =>
+                LpgErrorState(message: errorMessage(err), onRetry: _refresh),
+            data: (_) {
+              if (orders.isEmpty && !hasMore) {
+                return LpgEmptyState(
+                  message: _search.isEmpty
+                      ? 'No orders match the selected filter.'
+                      : 'No orders match "$_search".',
+                  icon: LpgIcons.orders,
                 );
-              }).toList(),
-            ),
-          ),
-          Expanded(
-            child: first.when(
-              loading: () => const LpgSkeletonList(itemCount: 5),
-              error: (err, _) =>
-                  LpgErrorState(message: errorMessage(err), onRetry: _refresh),
-              data: (_) {
-                if (orders.isEmpty && !hasMore) {
-                  return LpgEmptyState(
-                    message: _search.isEmpty
-                        ? 'No orders match the selected filter.'
-                        : 'No orders match "$_search".',
-                    icon: LpgIcons.orders,
-                  );
-                }
+              }
 
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    _refresh();
-                    await ref.read(adminOrdersProvider((query, 1)).future);
-                  },
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: LpgSpacing.page,
-                    children: [
-                      LpgGroupedList(
-                        children: [
-                          for (final order in orders)
-                            ColoredBox(
-                              color: twoPane && order.id == _selectedId
-                                  ? colors.actionPrimaryContainer
-                                  : Colors.transparent,
-                              child: OrderTile(
-                                order: order,
-                                onTap: () {
-                                  if (twoPane) {
-                                    setState(() => _selectedId = order.id);
-                                    return;
-                                  }
-                                  context.goNamed(
-                                    'order_detail',
-                                    pathParameters: {'orderId': order.id},
-                                  );
-                                },
-                              ),
+              return RefreshIndicator(
+                onRefresh: () async {
+                  _refresh();
+                  await ref.read(adminOrdersProvider((query, 1)).future);
+                },
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: LpgSpacing.page,
+                  children: [
+                    LpgGroupedList(
+                      children: [
+                        for (final order in orders)
+                          ColoredBox(
+                            color: twoPane && order.id == _selectedId
+                                ? colors.actionPrimaryContainer
+                                : Colors.transparent,
+                            child: OrderTile(
+                              order: order,
+                              onTap: () {
+                                if (twoPane) {
+                                  setState(() => _selectedId = order.id);
+                                  return;
+                                }
+                                context.goNamed(
+                                  'order_detail',
+                                  pathParameters: {'orderId': order.id},
+                                );
+                              },
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: LpgSpacing.md),
-                      _ListFooter(
-                        loading: last.isLoading,
-                        error: last.hasError ? errorMessage(last.error!) : null,
-                        hasMore: hasMore,
-                        onMore: () => setState(() => _pages++),
-                        onRetry: _refresh,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: LpgSpacing.md),
+                    _ListFooter(
+                      loading: last.isLoading,
+                      error: last.hasError ? errorMessage(last.error!) : null,
+                      hasMore: hasMore,
+                      onMore: () => setState(() => _pages++),
+                      onRetry: _refresh,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        ],
-      );
+        ),
+      ],
+    );
 
     return Scaffold(
       appBar: AdminAppBar(

@@ -17,10 +17,7 @@ Future<void> _pump(WidgetTester tester, Size size) async {
           (ref, args) async => const OrderPageResponse(items: [], total: 0),
         ),
       ],
-      child: MaterialApp(
-        theme: LpgTheme.light,
-        home: const OrderListScreen(),
-      ),
+      child: MaterialApp(theme: LpgTheme.light, home: const OrderListScreen()),
     ),
   );
   await tester.pump();
