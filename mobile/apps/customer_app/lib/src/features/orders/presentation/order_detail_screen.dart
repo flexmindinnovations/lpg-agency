@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart' show Result;
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -140,7 +141,7 @@ class OrderDetailScreen extends ConsumerWidget {
                 label: order.cancelNeedsApproval
                     ? 'Request Cancellation'
                     : 'Cancel Order',
-                onCancel: () => _confirmCancel(context, ref),
+                onCancel: (runBusy) => _confirmCancel(context, ref, runBusy),
               ),
             ],
           ];
@@ -164,7 +165,11 @@ class OrderDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmCancel(BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmCancel(
+    BuildContext context,
+    WidgetRef ref,
+    _RunBusy runBusy,
+  ) async {
     final reason = await showDialog<String>(
       context: context,
       builder: (dialogContext) => const _CancelDialog(),
@@ -172,9 +177,11 @@ class OrderDetailScreen extends ConsumerWidget {
 
     if (reason == null || reason.isEmpty || !context.mounted) return;
 
-    final result = await ref
-        .read(orderApiProvider)
-        .cancelOrder(orderId, reason);
+    // Only the request spins the button; the dialog above stays free of it.
+    late final Result<CancelOrderResponse> result;
+    await runBusy(() async {
+      result = await ref.read(orderApiProvider).cancelOrder(orderId, reason);
+    });
 
     if (!context.mounted) return;
 
@@ -538,13 +545,16 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-/// "Cancel Order" with its own busy state: ignores taps while the dialog or
-/// the cancel request is in flight, and spins only itself.
+/// Runs [body] as the screen's one in-flight cancel action.
+typedef _RunBusy = Future<void> Function(Future<void> Function() body);
+
+/// The cancel button with its own busy state: ignores taps while the dialog
+/// or the request is open, and spins only itself while the request runs.
 class _CancelOrderButton extends StatefulWidget {
   const _CancelOrderButton({required this.label, required this.onCancel});
 
   final String label;
-  final Future<void> Function() onCancel;
+  final Future<void> Function(_RunBusy runBusy) onCancel;
 
   @override
   State<_CancelOrderButton> createState() => _CancelOrderButtonState();
@@ -552,6 +562,18 @@ class _CancelOrderButton extends StatefulWidget {
 
 class _CancelOrderButtonState extends State<_CancelOrderButton>
     with LpgBusyActions<_CancelOrderButton> {
+  bool _asking = false;
+
+  Future<void> _tap() async {
+    if (_asking || anyBusy) return;
+    _asking = true;
+    try {
+      await widget.onCancel((body) => runBusy('cancel', body));
+    } finally {
+      _asking = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return LpgButton(
@@ -560,7 +582,7 @@ class _CancelOrderButtonState extends State<_CancelOrderButton>
       variant: LpgButtonVariant.secondary,
       expand: true,
       isLoading: isBusy('cancel'),
-      onPressed: anyBusy ? null : () => runBusy('cancel', widget.onCancel),
+      onPressed: anyBusy ? null : _tap,
     );
   }
 }
