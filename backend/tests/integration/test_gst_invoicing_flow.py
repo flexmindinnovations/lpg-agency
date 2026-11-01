@@ -9,6 +9,7 @@ cylinder type is classified. Uses the env-var fixtures (`admin_engine`,
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -246,3 +247,53 @@ class TestGstInvoicingFlow:
             "/api/v1/invoices", json={"order_id": str(order_id)}, headers=headers
         )
         assert response.status_code == 403, response.text
+
+
+class TestConcurrentPayments:
+    async def test_simultaneous_full_payments_settle_the_invoice_once(
+        self, client: AsyncClient, admin_engine: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        """A double tap (or a staff entry racing a gateway webhook) must not
+        take the same invoice's balance twice."""
+        _, email, order_id, cylinder_type_id = await _seed(
+            admin_engine, integration_settings, role="agency_admin"
+        )
+        headers = await _headers(client, email)
+        classified = await client.patch(
+            f"/api/v1/admin/cylinder-types/{cylinder_type_id}/gst",
+            json={"hsn_code": "27111900", "gst_rate_percent": "5"},
+            headers=headers,
+        )
+        assert classified.status_code == 200, classified.text
+        issued = await client.post(
+            "/api/v1/invoices", json={"order_id": str(order_id)}, headers=headers
+        )
+        assert issued.status_code == 201, issued.text
+        invoice = issued.json()
+
+        responses = await asyncio.gather(
+            *(
+                client.post(
+                    f"/api/v1/invoices/{invoice['invoice_id']}/payments",
+                    json={"method": "cash", "amount": invoice["total_amount"]},
+                    headers=headers,
+                )
+                for _ in range(4)
+            )
+        )
+
+        assert sorted(r.status_code for r in responses).count(201) == 1, [
+            (r.status_code, r.text) for r in responses
+        ]
+        async with admin_engine.begin() as conn:
+            rows, total = (
+                await conn.execute(
+                    text(
+                        "SELECT count(*), coalesce(sum(amount), 0) "
+                        "FROM accounting.payment WHERE invoice_id = :i"
+                    ),
+                    {"i": invoice["invoice_id"]},
+                )
+            ).one()
+        assert rows == 1
+        assert str(total) == invoice["total_amount"]
