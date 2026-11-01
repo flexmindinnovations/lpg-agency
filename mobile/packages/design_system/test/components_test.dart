@@ -111,6 +111,39 @@ void main() {
     expect(find.text('Required'), findsOneWidget);
   });
 
+  testWidgets('LpgTextField marks its label and shows an icon while invalid, '
+      'and clears both as the user fixes the value', (tester) async {
+    final formKey = GlobalKey<FormState>();
+    await tester.pumpWidget(
+      _wrap(
+        Form(
+          key: formKey,
+          child: LpgTextField(
+            label: 'Phone',
+            validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+          ),
+        ),
+      ),
+    );
+    bool labelFlagged() =>
+        tester.widget<LpgFieldLabel>(find.byType(LpgFieldLabel)).hasError;
+    expect(labelFlagged(), isFalse);
+    expect(find.byIcon(LpgIcons.error), findsNothing);
+
+    formKey.currentState!.validate();
+    await tester.pump();
+    await tester.pump();
+    expect(labelFlagged(), isTrue);
+    expect(find.byIcon(LpgIcons.error), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField), '9876543210');
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Required'), findsNothing);
+    expect(labelFlagged(), isFalse);
+    expect(find.byIcon(LpgIcons.error), findsNothing);
+  });
+
   testWidgets('LpgStatusBadge renders its label', (tester) async {
     await tester.pumpWidget(
       _wrap(
