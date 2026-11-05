@@ -25,6 +25,13 @@ const _retryableStatuses = ['pending', 'error'];
 /// [SyncOperation] with a client-generated idempotency key, drained here
 /// against the real backend when connectivity allows.
 ///
+/// **Whose queue it is.** A phone can be used by more than one person, so each
+/// operation is stamped with the user who queued it ([currentOwner]) and is
+/// sent, counted and listed only while that user is signed in. Someone else's
+/// operations stay in the queue (nothing is lost on a forced sign-out) and
+/// resume when their owner signs in again; they are never sent under another
+/// person's session. With nobody signed in, nothing is sent.
+///
 /// `_dispatch` hits `_apiClient.dio` directly rather than the `api_client`
 /// wrapper classes: those return a `Result`, swallowing the `DioException`
 /// (and its status code) into a plain `Failure`, and [_processOperation]
@@ -34,12 +41,14 @@ class SyncCoordinator {
   SyncCoordinator({
     required AppDatabase database,
     required ApiClient apiClient,
+    required String? Function() currentOwner,
     ConnectivityMonitor? connectivity,
     MediaStore? mediaStore,
     Duration pollInterval = const Duration(seconds: 30),
     int maxRetries = 8,
   }) : _db = database,
        _apiClient = apiClient,
+       _currentOwner = currentOwner,
        _connectivity = connectivity,
        _mediaStore = mediaStore,
        _pollInterval = pollInterval,
@@ -47,6 +56,9 @@ class SyncCoordinator {
 
   final AppDatabase _db;
   final ApiClient _apiClient;
+
+  /// The signed-in user's id, read on every call so it follows sign-ins.
+  final String? Function() _currentOwner;
   final ConnectivityMonitor? _connectivity;
   final MediaStore? _mediaStore;
   final Duration _pollInterval;
@@ -89,6 +101,7 @@ class SyncCoordinator {
             type: type,
             payload: payload,
             idempotencyKey: uuid,
+            ownerId: drift.Value(_currentOwner()),
           ),
         );
     syncNow();
@@ -99,13 +112,22 @@ class SyncCoordinator {
   /// whose backoff window hasn't elapsed are skipped this pass unless
   /// [ignoreBackoff] is set (a connectivity-regained drain).
   Future<void> syncNow({bool ignoreBackoff = false}) async {
+    // Nobody signed in: nothing to send, and an operation must never go out
+    // under a session that is not its owner's.
+    final owner = _currentOwner();
+    if (owner == null) return;
     if (_isSyncing) return;
     _isSyncing = true;
 
     try {
+      await _adoptUnownedOperations(owner);
       final ops =
           await (_db.select(_db.syncOperations)
-                ..where((t) => t.status.isIn(_retryableStatuses))
+                ..where(
+                  (t) =>
+                      t.status.isIn(_retryableStatuses) &
+                      t.ownerId.equals(owner),
+                )
                 ..orderBy([(t) => drift.OrderingTerm.asc(t.createdAt)]))
               .get();
 
@@ -119,13 +141,27 @@ class SyncCoordinator {
     }
   }
 
-  /// A `Stream` of the count of operations still working through the queue
-  /// (`pending` / `error` / `syncing`) — drives the shell's sync badge.
+  /// Operations queued before owners existed belong to whoever signs in first
+  /// after the upgrade: on a phone with one driver that is their owner, and
+  /// leaving them unowned would strand their unsent deliveries.
+  Future<void> _adoptUnownedOperations(String owner) async {
+    await (_db.update(_db.syncOperations)..where((t) => t.ownerId.isNull()))
+        .write(SyncOperationsCompanion(ownerId: drift.Value(owner)));
+  }
+
+  /// A `Stream` of the count of the signed-in user's operations still working
+  /// through the queue (`pending` / `error` / `syncing`) — drives the shell's
+  /// sync badge. The owner is fixed when the stream is created; the apps
+  /// rebuild their providers when a session ends (`SessionScope`).
   Stream<int> watchPendingCount() {
+    final owner = _currentOwner();
     final count = _db.syncOperations.id.count();
     final query = _db.selectOnly(_db.syncOperations)
       ..addColumns([count])
-      ..where(_db.syncOperations.status.isIn(['pending', 'error', 'syncing']));
+      ..where(
+        _db.syncOperations.status.isIn(['pending', 'error', 'syncing']) &
+            _db.syncOperations.ownerId.equalsNullable(owner),
+      );
     return query.map((row) => row.read(count) ?? 0).watchSingle();
   }
 
@@ -133,8 +169,13 @@ class SyncCoordinator {
   /// `syncing`), oldest first — the app derives its optimistic-overlay set
   /// (which orders/routes have an unsynced mutation) from this.
   Stream<List<SyncOperation>> watchActive() {
+    final owner = _currentOwner();
     return (_db.select(_db.syncOperations)
-          ..where((t) => t.status.isIn(['pending', 'error', 'syncing']))
+          ..where(
+            (t) =>
+                t.status.isIn(['pending', 'error', 'syncing']) &
+                t.ownerId.equalsNullable(owner),
+          )
           ..orderBy([(t) => drift.OrderingTerm.asc(t.createdAt)]))
         .watch();
   }
@@ -143,8 +184,13 @@ class SyncCoordinator {
   /// `failed` (retries exhausted or a permanent 4xx) and `conflict` (the
   /// server rejected a stale transition). Newest first.
   Stream<List<SyncOperation>> watchIssues() {
+    final owner = _currentOwner();
     return (_db.select(_db.syncOperations)
-          ..where((t) => t.status.isIn(['failed', 'conflict']))
+          ..where(
+            (t) =>
+                t.status.isIn(['failed', 'conflict']) &
+                t.ownerId.equalsNullable(owner),
+          )
           ..orderBy([(t) => drift.OrderingTerm.desc(t.createdAt)]))
         .watch();
   }

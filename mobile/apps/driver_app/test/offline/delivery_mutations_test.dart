@@ -95,6 +95,7 @@ void main() {
     coordinator = SyncCoordinator(
       database: db,
       apiClient: client,
+      currentOwner: () => 'driver-1',
       mediaStore: media,
     );
   });

@@ -8,10 +8,20 @@ import 'drift/app_database.dart';
 /// every screen's provider calls [read] before hitting the API, then
 /// [write] to overwrite the row with the fresh response. JSON in, JSON out:
 /// callers own their own `fromJson`/`toJson`, this class just persists it.
+///
+/// Every row belongs to [owner], the signed-in user's id, so a second person
+/// signing in on the same phone never reads the first person's data. [owner]
+/// is read on each call, so it follows sign-ins and sign-outs; with none
+/// given, everything is kept under one anonymous owner.
 final class ResourceCache {
-  const ResourceCache(this._db);
+  // The public `owner` parameter cannot be a private initializing formal.
+  // ignore: prefer_initializing_formals
+  const ResourceCache(this._db, {String? Function()? owner}) : _owner = owner;
 
   final AppDatabase _db;
+  final String? Function()? _owner;
+
+  String get _ownerId => _owner?.call() ?? '';
 
   Future<Map<String, dynamic>?> read(
     String resourceType,
@@ -21,7 +31,8 @@ final class ResourceCache {
         await (_db.select(_db.cachedResources)..where(
               (t) =>
                   t.resourceType.equals(resourceType) &
-                  t.resourceId.equals(resourceId),
+                  t.resourceId.equals(resourceId) &
+                  t.ownerId.equals(_ownerId),
             ))
             .getSingleOrNull();
     if (row == null) return null;
@@ -40,6 +51,7 @@ final class ResourceCache {
             resourceType: resourceType,
             resourceId: resourceId,
             jsonPayload: jsonEncode(json),
+            ownerId: Value(_ownerId),
             updatedAt: Value(DateTime.now()),
           ),
         );
@@ -51,13 +63,15 @@ final class ResourceCache {
     await (_db.delete(_db.cachedResources)..where(
           (t) =>
               t.resourceType.equals(resourceType) &
-              t.resourceId.equals(resourceId),
+              t.resourceId.equals(resourceId) &
+              t.ownerId.equals(_ownerId),
         ))
         .go();
   }
 
-  /// Drop every cached row — called on logout so the next user on this
-  /// device never sees the previous one's data.
+  /// Drop every cached row, whoever owns it — called on an explicit log out.
+  /// (Rows are also owner-scoped, so a forced sign-out needs no clearing for
+  /// the next person to be unable to read them.)
   Future<void> clear() async {
     await _db.delete(_db.cachedResources).go();
   }
@@ -67,7 +81,11 @@ final class ResourceCache {
   Future<List<Map<String, dynamic>>> readAll(String resourceType) async {
     final rows =
         await (_db.select(_db.cachedResources)
-              ..where((t) => t.resourceType.equals(resourceType))
+              ..where(
+                (t) =>
+                    t.resourceType.equals(resourceType) &
+                    t.ownerId.equals(_ownerId),
+              )
               ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
             .get();
     return rows

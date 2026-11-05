@@ -37,6 +37,13 @@ class SyncOperations extends Table {
   /// `retryCount` to decide whether the backoff window has elapsed.
   DateTimeColumn get lastAttemptAt => dateTime().nullable()();
 
+  /// The signed-in user who queued this operation. A phone can be used by
+  /// more than one person; an operation is only ever sent, counted or shown
+  /// under its owner's session, and stays queued (not lost) while someone else
+  /// is signed in. `null` only for operations queued before owners existed:
+  /// the first user to sign in after the upgrade adopts them.
+  TextColumn get ownerId => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -53,8 +60,12 @@ class CachedResources extends Table {
   TextColumn get jsonPayload => text()();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// Whose data this is (the signed-in user's id; empty when nobody was
+  /// signed in). Another user on the same phone never reads it.
+  TextColumn get ownerId => text().withDefault(const Constant(''))();
+
   @override
-  Set<Column> get primaryKey => {resourceType, resourceId};
+  Set<Column> get primaryKey => {resourceType, resourceId, ownerId};
 }
 
 @DriftDatabase(tables: [SchemaMetadata, SyncOperations, CachedResources])
@@ -62,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -79,6 +90,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {
         await m.addColumn(syncOperations, syncOperations.retryCount);
         await m.addColumn(syncOperations, syncOperations.lastAttemptAt);
+      }
+      if (from < 5) {
+        await m.addColumn(syncOperations, syncOperations.ownerId);
+        // The cache's key now includes the owner. It is only a read cache the
+        // next successful request refills, so it is rebuilt, not migrated.
+        await m.deleteTable('cached_resources');
+        await m.createTable(cachedResources);
       }
     },
   );

@@ -108,7 +108,7 @@ Runs as its own stream (release R-D). Applies to the Driver and Admin apps; the 
 - [ ] 12.11 Real-device tests: Samsung, Xiaomi or Redmi, Vivo, Oppo or Realme, a stock Android phone and an iPhone; loudness against the old default, battery saver, Do Not Disturb, background kill; hearing-impaired options (vibration, screen flash) (2)
 
 ## Found while fixing the sign-out leak (needs an owner decision)
-- [ ] **Driver app: on-device data after a sign-out.** An expired session does not clear the read cache, and no sign-out removes the unsent offline queue (see STATUS.md). Decide between per-driver queues and cache, or blocking sign-in until the queue is sent, before the pilot (10.4).
+- [x] **Driver app: on-device data after a sign-out.** (fixed: owner-scoped queue and cache, see STATUS.md) An expired session does not clear the read cache, and no sign-out removes the unsent offline queue (see STATUS.md). Decide between per-driver queues and cache, or blocking sign-in until the queue is sent, before the pilot (10.4).
 
 ## Parking lot (not in scope)
 - Hindi, Marathi and other translations; per-language SMS templates with the SMS provider (backend)

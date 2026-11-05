@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_storage/local_storage.dart';
 
 import '../api_provider.dart';
+import '../auth_provider.dart';
 import '../local_database_provider.dart';
 
 /// The on-device read cache, or `null` when the database isn't a real
@@ -16,7 +17,11 @@ import '../local_database_provider.dart';
 /// is a progressive enhancement, never a hard dependency.
 final resourceCacheProvider = Provider<ResourceCache?>((ref) {
   final db = ref.watch(localDatabaseProvider);
-  return db is DriftLocalDatabase ? ResourceCache(db.database) : null;
+  if (db is! DriftLocalDatabase) return null;
+  // Rows belong to the signed-in driver, so a second driver on the same phone
+  // never reads the first one's cached route or orders.
+  final auth = ref.watch(authControllerProvider);
+  return ResourceCache(db.database, owner: () => auth.state.principal?.userId);
 });
 
 /// Cache-first single-resource reads for the driver's route/stop/order data,
