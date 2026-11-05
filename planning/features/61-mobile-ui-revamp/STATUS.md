@@ -28,5 +28,12 @@ Found while building R1 (see PR notes): providers lived in one `ProviderScope` f
 - **Not covered:** photos and signatures on disk for a queued delivery stay until the delivery is sent (the database is encrypted, those files are not); an explicit log out still clears the whole read cache but leaves the queue, which is intended.
 - **Depends on** the `SessionScope` PR: the live counters take their owner when created, and `SessionScope` rebuilds them on sign-out.
 
+### Fix: proof-of-delivery photos and signatures were plain files on disk (done, verified by tests; stacked on the queue-ownership fix)
+- **Cause:** the queue database is encrypted, but the photo and signature of an unsent delivery were written as plain files under the app's support folder, and a file was only deleted after a *successful* send. A discarded or conflicted delivery left its files behind for good.
+- **Encrypted at rest:** `EncryptedMediaStore` (AES-256-GCM, fresh nonce per file, `cryptography` 2.9.0, pure Dart) wraps the file store; the key is a random 256-bit secret in secure storage (Keychain or Keystore), created on first use. A tampered file or a wrong key fails to read instead of returning garbage. A plain file written before the upgrade still reads (so an unsent delivery is not stranded) and is deleted as usual once sent.
+- **No orphans:** discarding a delivery (the driver acknowledging a conflict or giving up on a failed one) deletes its photo and signature; at start-up `purgeOrphanedMedia` removes stored files no queued operation refers to, keeping anything written in the last hour (a delivery writes its media just before it is queued). A *failed* delivery keeps its files, because the driver can still retry it.
+- **Tests:** round trip; the file on disk contains none of the photo and differs per write; wrong key and tampered file rejected; legacy plain file still reads; the key is loaded once; discard deletes media; orphan purge removes old unreferenced files and keeps queued, recent ones.
+- **Limits:** this protects files at rest on the phone; it does not hide them from the app itself while it runs. Deliveries that already succeeded leave their rows (with the payload) in the local database until it is cleared, which is encrypted; pruning old `synced` rows is not done here. Not tested on a real device or with real camera-sized images (the tests use small byte arrays; pure-Dart AES-GCM on a 3 MB photo was not timed).
+
 ## Not done
 Everything in TASKS.md.

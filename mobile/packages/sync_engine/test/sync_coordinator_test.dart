@@ -368,6 +368,55 @@ void main() {
       },
     });
 
+    test('discarding a delivery deletes its photo and signature', () async {
+      deliverAdapter.failUploadsAfter = 0; // offline: it stays queued
+      await coordinator.enqueueOperation('order_deliver', payload());
+      await settle();
+      expect(mediaStore.files, isNotEmpty);
+
+      await coordinator.discardOperation((await onlyOp()).id);
+
+      expect(mediaStore.files, isEmpty);
+      expect(await db.select(db.syncOperations).get(), isEmpty);
+    });
+
+    group('purgeOrphanedMedia', () {
+      test('removes old files no queued delivery refers to, keeps the '
+          'rest', () async {
+        deliverAdapter.failUploadsAfter = 0;
+        await coordinator.enqueueOperation('order_deliver', payload());
+        await settle();
+        // An old orphan, and a fresh file whose delivery is not queued yet.
+        mediaStore.files['pod/old/signature.png'] = [9];
+        mediaStore.modified['pod/old/signature.png'] = DateTime.now().subtract(
+          const Duration(days: 2),
+        );
+        mediaStore.files['pod/new/photo.jpg'] = [8];
+
+        final removed = await coordinator.purgeOrphanedMedia();
+
+        expect(removed, 1);
+        expect(
+          mediaStore.files.keys,
+          containsAll([
+            'pod/x/sig.png', // still queued
+            'pod/x/photo.jpg',
+            'pod/new/photo.jpg', // too new to judge
+          ]),
+        );
+        expect(mediaStore.files.keys, isNot(contains('pod/old/signature.png')));
+      });
+
+      test('without a media store there is nothing to do', () async {
+        final plain = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+        );
+        expect(await plain.purgeOrphanedMedia(), 0);
+      });
+    });
+
     test(
       'uploads both media, folds the blob refs into deliver, cleans up',
       () async {
@@ -512,9 +561,18 @@ void main() {
 
 class _FakeMediaStore implements MediaStore {
   final files = <String, List<int>>{};
+  final modified = <String, DateTime>{};
 
   @override
-  Future<void> write(String key, List<int> bytes) async => files[key] = bytes;
+  Future<void> write(String key, List<int> bytes) async {
+    files[key] = bytes;
+    modified[key] = DateTime.now();
+  }
+
+  @override
+  Future<List<StoredMedia>> list() async => [
+    for (final k in files.keys) StoredMedia(k, modified[k] ?? DateTime.now()),
+  ];
 
   @override
   Future<Uint8List> read(String key) async => Uint8List.fromList(files[key]!);

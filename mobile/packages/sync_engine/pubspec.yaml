@@ -17,6 +17,8 @@ dependencies:
   core:
     path: ../core
   uuid: ^4.5.1
+  # AES-256-GCM for proof-of-delivery files at rest (pure Dart, no plugin).
+  cryptography: ^2.9.0
   dio: ^5.9.0
   drift: ^2.34.3
   connectivity_plus: ^6.1.0

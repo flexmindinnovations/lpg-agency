@@ -73,6 +73,8 @@ class SyncCoordinator {
   void start() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(_pollInterval, (_) => syncNow());
+    // Best-effort tidy-up of files nothing refers to; never blocks start-up.
+    unawaited(purgeOrphanedMedia().then((_) {}, onError: (Object _) {}));
 
     _connSub?.cancel();
     _connSub = _connectivity?.onConnectivityChanged.listen((online) {
@@ -213,7 +215,60 @@ class SyncCoordinator {
   /// local optimistic state is reconciled separately by invalidating the
   /// affected read providers.
   Future<void> discardOperation(String id) async {
+    final op = await (_db.select(
+      _db.syncOperations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    // Its photo and signature go with it: nothing else will ever send them.
+    if (op != null) await _deleteMediaOf(op);
     await (_db.delete(_db.syncOperations)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// The media keys a queued operation points at (`order_deliver` carries
+  /// `media: [{key, ...}]`); empty for every other operation.
+  static List<String> _mediaKeysOf(SyncOperation op) {
+    try {
+      final decoded = jsonDecode(op.payload);
+      if (decoded is! Map || decoded['media'] is! List) return const [];
+      return [
+        for (final m in decoded['media'] as List)
+          if (m is Map && m['key'] is String) m['key'] as String,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _deleteMediaOf(SyncOperation op) async {
+    final store = _mediaStore;
+    if (store == null) return;
+    for (final key in _mediaKeysOf(op)) {
+      await store.delete(key);
+    }
+  }
+
+  /// Deletes stored photos and signatures that no queued operation refers to
+  /// any more (an operation discarded before this existed, a crash between
+  /// writing a file and queueing its delivery). Files written within [grace]
+  /// are kept: a delivery writes its media a moment before it is queued.
+  /// Returns how many files were removed.
+  Future<int> purgeOrphanedMedia({
+    Duration grace = const Duration(hours: 1),
+  }) async {
+    final store = _mediaStore;
+    if (store == null) return 0;
+    final referenced = <String>{
+      for (final op in await _db.select(_db.syncOperations).get())
+        ..._mediaKeysOf(op),
+    };
+    final cutoff = DateTime.now().subtract(grace);
+    var removed = 0;
+    for (final file in await store.list()) {
+      if (referenced.contains(file.key)) continue;
+      if (file.modified.isAfter(cutoff)) continue;
+      await store.delete(file.key);
+      removed++;
+    }
+    return removed;
   }
 
   bool _isBackingOff(SyncOperation op, DateTime now) {

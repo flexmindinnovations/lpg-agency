@@ -14,6 +14,18 @@ abstract interface class MediaStore {
   Future<Uint8List> read(String key);
   Future<void> delete(String key);
   Future<bool> exists(String key);
+
+  /// Every stored file with when it was last written, so files that no queued
+  /// operation refers to any more can be found and removed.
+  Future<List<StoredMedia>> list();
+}
+
+/// One file in a [MediaStore].
+class StoredMedia {
+  const StoredMedia(this.key, this.modified);
+
+  final String key;
+  final DateTime modified;
 }
 
 /// [MediaStore] backed by files under [rootDir].
@@ -49,4 +61,20 @@ class FileMediaStore implements MediaStore {
 
   @override
   Future<bool> exists(String key) => _file(key).exists();
+
+  @override
+  Future<List<StoredMedia>> list() async {
+    if (!await rootDir.exists()) return const [];
+    final found = <StoredMedia>[];
+    await for (final entity in rootDir.list(recursive: true)) {
+      if (entity is! File) continue;
+      found.add(
+        StoredMedia(
+          p.relative(entity.path, from: rootDir.path).replaceAll('\\', '/'),
+          await entity.lastModified(),
+        ),
+      );
+    }
+    return found;
+  }
 }
