@@ -1,6 +1,6 @@
 # Plan: Mobile UI/UX Revamp, i18n, Device Control and Alert Sounds (Customer, Driver, Admin)
 
-> **Status: proposed, awaiting approval (version 4, 2026-11-05).** Updated with the owner's inputs: no transparent glass (a modern, solid, enterprise look instead), i18n with JSON strings from the start, device registration and access control for the Driver and Admin apps, and custom, louder alert sounds built from open-source (CC0-first) domain-themed recordings, used only as notification sounds in the three apps (most urgent for the Driver app). No code is written until the decisions in section 6 are settled.
+> **Status: proposed, awaiting approval (version 5, 2026-11-05).** Updated with the owner's inputs: no transparent glass (a modern, solid, enterprise look instead), i18n with JSON strings from the start, device registration and access control for the Driver and Admin apps, and custom, louder alert sounds built from open-source (CC0-first) domain-themed recordings, used only as notification sounds in the three apps (most urgent for the Driver app), **built last, after the other changes are done**. No code is written until the decisions in section 6 are settled.
 
 ## 1. Goal
 
@@ -9,7 +9,7 @@ Four streams that ship separately:
 1. **UI revamp.** One consistent, stable, modern look across the three apps, built on a single theme engine and one shared component library, with LPG-specific animation, illustrations and icons, first-class tablet layouts, loading skeletons before content (an error screen only when loading really failed), clear validation messages, and wording that suits Indian operations.
 2. **i18n.** Every user-visible string loaded from JSON catalogues (`en.json` now; Hindi, Marathi and other Indian languages later without code changes).
 3. **Device control.** An agency decides which phones may use the Driver and Admin apps: devices are registered to the agency, approved, and can be blocked; a blocked or unknown device cannot use the app.
-4. **Alert sounds.** Custom, clearly louder notification sounds in the style of food-delivery apps, with the Driver app first: a new delivery must be heard on a busy road, and a missed alert must be rare.
+4. **Alert sounds.** Custom, clearly louder notification sounds in the style of food-delivery apps, with the Driver app first: a new delivery must be heard on a busy road, and a missed alert must be rare. **Sequenced last (owner's instruction, 2026-11-05):** the other streams ship first and the sound integration follows once they are done. Until then, alerts keep today's default sound.
 
 ## 2. Where we are today (checked 2026-11-05)
 
@@ -103,7 +103,16 @@ Three size classes (compact, medium, expanded) drive navigation (bar, rail, side
 
 **Privacy.** Device identifiers are personal data under India's DPDP Act. Collect only what is listed above, say why in the app, set a retention period, and never log identifiers in plain text in application logs. Legal wording is marked unverified, to confirm with the agency's adviser.
 
-### 3.8 Alert sounds (Epic 12)
+### 3.8 Alert sounds (Epic 12), built last
+
+**Sequencing.** Epic 12 starts when the UI, i18n and device-control work (E0 to E9, E11) has merged. Reasons: the sound settings screen, the "Make sure you hear alerts" guide and the "New delivery" alert screen are built once with the new components and strings instead of twice; the Android and iOS notification code in each app's push service is touched by the revamp and by device control (blocked-device sign-out), so doing it afterwards avoids conflicts; and the new notification events that device control adds get their sound tier in one pass.
+
+**What earlier epics must do so this is easy later (small, no sound work):**
+- Any new notification event added before Epic 12 (for example "device waiting for approval" and "device blocked" in Epic 11) goes into the catalogue as normal; Epic 12 story 12.0 gives every event without a tier one.
+- Push handling in the apps stays in `push_notification_service.dart` and is not duplicated, so Epic 12 changes one file per app.
+- Strings for the sound settings and setup guide are added to the catalogue when Epic 12 starts, not before.
+- Nothing before Epic 12 changes the push payload shape, so the backend change in 12.3 is a pure addition.
+
 
 **What "louder" can and cannot mean.** An app cannot raise the phone's volume setting. What an app can do, and what delivery apps do:
 - ship a **loud, short, distinctive sound** mastered to a high, consistent loudness (not the quiet default tone), so it cuts through traffic at the same volume setting;
@@ -225,8 +234,8 @@ Working days for one developer with AI assistance, including about a day of revi
 | E9 Admin app rollout | 12 |
 | E10 Quality, accessibility, release | 6 |
 | E11 Device registration and access control | 19.5 |
-| E12 Alert sounds and delivery reliability | 22 |
-| **Total** | **119** |
+| E12 Alert sounds and delivery reliability (built last) | 22.5 |
+| **Total** | **119.5** |
 
 Optional story 11.9 (pairing code) adds 2 days and Play Integrity or App Attest about 2 more; commissioning custom sounds from a designer adds elapsed time but little effort; none of these is counted.
 
@@ -234,23 +243,22 @@ Stories are listed in [TASKS.md](./TASKS.md).
 
 ## 8. Timeline
 
-Three streams run side by side because device control and alert sounds touch the backend, native Android and iOS settings, and sign-in rather than the visual design:
+Two streams run side by side first, because device control touches the backend, the dashboard and the apps' sign-in rather than the visual design. **Alert sounds (Epic 12) follow once those are done.**
 
 - **UI stream (E0 to E10, 77.5 days):** about 8 to 11 weeks with two or three parallel writers; 15 to 18 weeks as one stream in order.
 - **Device stream (E11, 19.5 days):** about 4 to 5 weeks on its own, starting right away. Its waiting and blocked screens are first built with today's components and restyled when the new design system lands.
-- **Alert stream (E12, 22 days):** about 5 to 6 weeks on its own. Its **first slice, the Driver app's louder new-delivery alert** (stories 12.1 to 12.4 for the Driver tiers, the setup guide in lite form), is about 8 days and can ship ahead of everything else.
-- **Combined, with parallel streams: roughly 11 to 14 weeks.** One developer doing everything in order: about 24 weeks.
-- **Narrow option (about 7 weeks):** E0 to E3, the Admin dashboard and Customer home on the new system as the pattern, plus Epic 11 and the Driver alert slice, with the rest later.
+- **Alert stream (E12, 22.5 days), last:** about 5 weeks. It starts when E0 to E9 and E11 have merged and can overlap the quality pass (E10), since it changes notification code rather than screens. Until then, alerts keep today's default sound.
+- **Combined: roughly 14 to 16 weeks.** One developer doing everything in order: about 24 weeks.
+- **Narrow option (about 6 weeks, first part):** E0 to E3, the Admin dashboard and Customer home on the new system as the pattern, plus Epic 11. The rest, and then the alert sounds, follow.
 
 | Release | Weeks | Contents |
 |---|---|---|
 | R1 | 1 to 3 | Dashboard flash fixed in all apps, theme engine, i18n infrastructure, `LpgAsyncView` |
-| R-N1 | 1 to 2 | **Driver app louder alerts**: new sounds, per-tier channels, backend payload, in-app test sound and basic setup guide |
 | R-D | 1 to 5 | Device registration, approval, blocking and enforcement for Driver and Admin apps, new Linked Devices page |
-| R-N2 | 3 to 6 | Admin and Customer sounds, iOS, foreground alerts, repeat-until-acknowledged, brand-specific battery guides, delivery tracking and SMS fallback |
 | R2 | 4 to 7 | Component library v2, icons and illustrations, Customer app on the new system |
 | R3 | 8 to 10 | Driver and Admin apps, tablet layouts |
 | R4 | 11 to 13 | Quality pass, accessibility, performance, pilot feedback |
+| R5 | 11 to 16 | **Alert sounds**: Driver first (louder new-delivery alert, per-tier channels, backend payload, setup guide), then Admin and Customer, iOS, foreground alerts, repeat-until-acknowledged, brand-specific battery guides, delivery tracking and SMS fallback |
 
 ## 9. Testing and done
 

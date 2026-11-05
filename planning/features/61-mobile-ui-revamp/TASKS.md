@@ -88,8 +88,9 @@ Runs as its own stream (release R-D). Applies to the Driver and Admin apps; the 
 - [ ] 11.10 Tests and review: tenant isolation, enforcement matrix (unknown, pending, approved, blocked, removed, over the seat limit) on every sign-in and request path, security review (2)
 - [ ] 11.11 (optional, about +2) Play Integrity and App Attest checks to flag rooted, emulated or cloned installs
 
-## E12 Alert sounds and delivery reliability (22 days)
-Runs as its own stream. **Slice A (Driver quick win, about 8 days, release R-N1)** is marked A; the rest is release R-N2.
+## E12 Alert sounds and delivery reliability (22.5 days), built last
+**Starts only when E0 to E9 and E11 have merged** (owner's instruction, 2026-11-05). Release R5. Inside this epic the Driver comes first: items marked A are the Driver slice (about 8 days); the rest follows.
+- [ ] 12.0 Entry check: confirm the earlier epics are merged; list every notification event, including the ones device control added, and give each a sound tier; add the sound-settings and setup-guide strings to the catalogue (0.5)
 - [ ] 12.1 (A) Audit the push pipeline and write the ADR: event to sound-tier mapping with the domain agent, Android channel plan with versioned IDs, iOS plan (1)
 - [ ] 12.2 (A for Driver tiers) Sounds, open source and CC0 first (2):
   - [ ] 12.2a Shortlist three or four candidates per tier from Freesound (CC0 filter), Kenney and akx/Notifications; check each file's own licence page; avoid NC, ND, SA and unclear licences
