@@ -78,20 +78,18 @@ jobs:
           uv run alembic upgrade head
 
       # The compose file's `minio/minio:latest` is no longer pullable from
-      # Docker Hub (pull access denied), so CI runs the same server from the
-      # quay.io mirror with a pinned tag and the same dev credentials/port.
-      - name: Start object storage (MinIO)
+      # Docker Hub, so CI serves the S3 API on the same port with moto's
+      # standalone server (pinned; fetched from PyPI, nothing to pull).
+      # The storage tests only need an S3-compatible endpoint.
+      - name: Start an S3-compatible object store (moto)
         run: |
-          docker run -d --name lpg-minio -p 59000:9000 \
-            -e MINIO_ROOT_USER=lpg_storage \
-            -e MINIO_ROOT_PASSWORD=dev_only_not_a_real_secret \
-            quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+          nohup uvx --from "moto[server]==5.2.5" moto_server -H 127.0.0.1 -p 59000 > moto.log 2>&1 &
           for i in $(seq 1 30); do
-            curl -fsS http://localhost:59000/minio/health/live && exit 0
+            curl -fsS http://localhost:59000/moto-api/ >/dev/null && exit 0
             sleep 2
           done
-          echo "MinIO did not become healthy" >&2
-          docker logs lpg-minio
+          echo "The object store did not start" >&2
+          cat moto.log
           exit 1
 
       - name: Lint (ruff)
