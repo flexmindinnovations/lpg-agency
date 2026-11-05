@@ -1,6 +1,6 @@
 # Plan: Mobile UI/UX Revamp, i18n, Device Control and Alert Sounds (Customer, Driver, Admin)
 
-> **Status: proposed, awaiting approval (version 3, 2026-11-05).** Updated with the owner's inputs: no transparent glass (a modern, solid, enterprise look instead), i18n with JSON strings from the start, device registration and access control for the Driver and Admin apps, and custom, louder alert sounds (most urgent for the Driver app). No code is written until the decisions in section 6 are settled.
+> **Status: proposed, awaiting approval (version 4, 2026-11-05).** Updated with the owner's inputs: no transparent glass (a modern, solid, enterprise look instead), i18n with JSON strings from the start, device registration and access control for the Driver and Admin apps, and custom, louder alert sounds built from open-source (CC0-first) domain-themed recordings, used only as notification sounds in the three apps (most urgent for the Driver app). No code is written until the decisions in section 6 are settled.
 
 ## 1. Goal
 
@@ -113,14 +113,14 @@ Three size classes (compact, medium, expanded) drive navigation (bar, rail, side
 - play the sound inside the app when it is open (the system shows nothing then);
 - make sure the alert **arrives at all**: high priority, a short time-to-live so old alerts do not ring late, and help with the battery and autostart settings that stop alerts on many Indian phones (Xiaomi, Oppo, Vivo, Realme, Samsung).
 
-**Sound tiers.** Four original sounds with one family feel, mapped from the catalogue:
+**Sound tiers.** Four sounds with one family feel, each with a domain theme, mapped from the catalogue:
 
-| Tier | Sound | Used for |
+| Tier | Sound and domain theme | Used for |
 |---|---|---|
-| Urgent | Loud, 6 to 8 seconds, repeats until opened (Driver and Admin) | Driver: new route or delivery assigned, route cancelled, stop cancelled. Admin: cancellation waiting for approval, failed delivery, order that cannot be assigned, cash shortfall, expiring compliance document |
-| Standard | Clear chime, about 2 seconds | Driver: route re-ordered, reminder. Admin: new order, new complaint, stale unassigned order |
-| Soft | Gentle tone, about 1 second | Order delivered (staff), payment received, invoices |
-| Friendly | Warm, short | Customer: confirmed, out for delivery, delivered |
+| Urgent | Loud, 6 to 8 seconds, repeats until opened (Driver and Admin). Theme: two short truck-horn blasts | Driver: new route or delivery assigned, route cancelled, stop cancelled. Admin: cancellation waiting for approval, failed delivery, order that cannot be assigned, cash shortfall, expiring compliance document |
+| Standard | Clear chime, about 2 seconds. Theme: double bicycle-bell ring | Driver: route re-ordered, reminder. Admin: new order, new complaint, stale unassigned order |
+| Soft | Gentle tone, about 1 second. Theme: cash-register ding | Order delivered (staff), payment received, invoices |
+| Friendly | Warm, short. Theme: soft single bell | Customer: confirmed, out for delivery, delivered |
 
 The mapping is a field on each catalogue entry, so it can be changed without app releases. Per-agency choice of sound per event can follow ADR-068's model later.
 
@@ -135,7 +135,26 @@ The mapping is a field on each catalogue entry, so it can be changed without app
 - A notification settings screen: sound on or off per tier, test sound, a link to the system channel settings.
 - **Delivery tracking**: the app tells the server when an alert was delivered and opened; if an urgent driver alert is not acknowledged within a set time, the server can send an SMS through the existing SMS channel (a cost to confirm).
 
-**Sounds themselves.** Original sounds, commissioned or licensed for commercial use, with the licence kept in the repo. We do not copy any other company's sounds. Mastering target and a loudness check on real phones are part of the work.
+**Sounds themselves: open source, CC0 first, notification use only.**
+
+*Licence rules.*
+- **First choice: CC0** (public domain dedication): no attribution, no restriction on modifying or bundling.
+- **Second choice: CC BY** only if no CC0 sound fits. It needs a credits line in an in-app "Licences" screen.
+- **Not used:** CC BY-NC (non-commercial), CC BY-ND (no changes, but we must trim and master), CC BY-SA (share-alike), Freesound's older "Sampling+", site licences that forbid redistribution or are "personal use" only, AI-generated clips of unclear licence, and any sound taken from another company's app, film or advert.
+- **Our own use rule:** the files go only into the three apps' notification assets (Android raw resources, iOS bundle, and the shared alerts package). They are not used in the dashboard, marketing or anywhere else, and are not republished as a sound pack. CC0 would allow more; this is our policy, as requested.
+- **Paper trail.** A `LICENSES.md` beside the sounds lists every file: source URL, author, licence, the date we checked the licence page, a saved copy of that page, and what we changed. We keep our own copy of each original, because a site can remove a sound later. Uploaders' CC0 declarations are not independently verified by the site, so we choose original field recordings and avoid anything that sounds ripped from a film or a known brand.
+
+*Where candidates come from (checked 2026-11-05, nothing downloaded):*
+
+| Source | Licence as shown | Notes |
+|---|---|---|
+| [Freesound](https://freesound.org) with the "Creative Commons 0" filter | CC0 per sound (re-check each sound's own page) | Largest pool. Truck-horn search returns about 100 CC0 results, including short honks such as "truck real horn honk quick polite warning" (about 3 s) and "Truck_horns" (about 5 s). Bicycle-bell and cash-register searches also return many CC0 results, for example "bell toy cash register ding". Gas-hiss and metal-clang searches are still to do. |
+| [Kenney](https://kenney.nl/assets/category:Audio) packs (Interface Sounds, Digital Audio, UI Audio) | Interface Sounds page states "Creative Commons CC0"; the other packs' pages to be checked | Clean, short UI tones; good for the Standard and Soft tiers. Not domain-themed. |
+| [akx/Notifications](https://github.com/akx/Notifications) | Dual: CC0 or CC BY 3.0, our choice is CC0 | Subtle hand-made tones; would need heavy mastering, so likely only for the Friendly tier. |
+
+*Sound quality work (story 12.2).* Open-source recordings are rarely loud or consistent, so each chosen file is trimmed, faded, shaped and **loudness-mastered** with a committed, repeatable script (ffmpeg): a high, consistent loudness with a true-peak ceiling so it does not clip, exported to Ogg for Android and CAF for iOS (iOS limit: 30 seconds). Targets are proposed and checked on real phones against the default sound, measured the same way. Urgent is built from a truck-horn recording, which is naturally loud and cuts through road noise, edited into a recognisable two-blast pattern so it does not sound like a generic horn.
+
+*Process.* We shortlist three or four candidates per tier, you listen and pick one per tier, and only then do we download them (filename, source and size stated first).
 
 **Safety and courtesy.** Loud means clear, not painful: consistent loudness with headroom, no clipping, and a quiet-hours setting for Admin. Hearing-impaired users get vibration and a screen flash option.
 
@@ -151,7 +170,9 @@ The mapping is a field on each catalogue entry, so it can be changed without app
 | The sound is loud but the alert still does not arrive (battery savers kill the app on many Indian phones) | In-app setup guide per phone brand, high-priority delivery, delivery tracking and an SMS fallback for urgent driver alerts; tested on a real-device matrix |
 | The driver muted or lowered the channel in system settings | The app detects it and warns; test sound button; channel settings link |
 | Changing a sound later does not take effect (Android freezes channel sounds) | Versioned channel IDs from the start |
-| Sound licensing | Original or properly licensed sounds only; licence stored in the repo |
+| Sound licensing | CC0 first, CC BY only with a credits screen, no NC/ND/SA; per-file `LICENSES.md` with a saved copy of the licence page and of the original file; notification-only use |
+| Open-source sounds sound generic or are also used in other apps | Edit and layer (for example a two-blast horn pattern) so the set is recognisable as ours; listen-and-pick by you before anything ships |
+| An uploader's CC0 claim turns out to be wrong | Prefer original field recordings; avoid anything that resembles a film, TV or brand sound; keep the evidence; replacing a file is a one-file change |
 | Moving every string is large and breaks tests that find text | Per feature, with the lint rule and stable keys; update tests alongside |
 | Three apps share one package, so one change touches all | Gallery app and golden tests; roll out per app; small reviewed PRs |
 | Custom icons and illustrations need a designer's eye | Brief in 5.1; decision 6.4 asks who draws; the estimate assumes SVGs we draw ourselves |
@@ -178,7 +199,7 @@ Settled by your last message: no transparent glass; i18n from the start with JSO
 9. **Tablet priority.** Admin first, Customer second, Driver last (recommended)?
 10. **Existing WIP.** Rebuild properly using `wip/mobile-ui-refresh` as a starting point (recommended)?
 11. **Pilot agency.** Is there a real agency, driver and customer to show builds to?
-12. **Sound source.** Commission an original set from a sound designer, license a commercial library, or generate and master our own? (The estimate assumes we source and master a four-sound set.)
+12. **Sound shortlist.** Decided: open-source, CC0-first sounds, used only in the three apps' notifications. What I need: you listen to the shortlist from story 12.2 and pick one per tier. No file is downloaded before that.
 13. **Which events are Urgent.** Is the table in section 3.8 right for Driver and Admin?
 14. **Repeat until opened.** Acceptable for the Driver's new-delivery alert (and for Admin's urgent alerts), given the battery and annoyance cost?
 15. **Quiet hours.** For Admin only, or also an option for drivers outside their shift?

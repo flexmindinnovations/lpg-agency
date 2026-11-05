@@ -91,7 +91,11 @@ Runs as its own stream (release R-D). Applies to the Driver and Admin apps; the 
 ## E12 Alert sounds and delivery reliability (22 days)
 Runs as its own stream. **Slice A (Driver quick win, about 8 days, release R-N1)** is marked A; the rest is release R-N2.
 - [ ] 12.1 (A) Audit the push pipeline and write the ADR: event to sound-tier mapping with the domain agent, Android channel plan with versioned IDs, iOS plan (1)
-- [ ] 12.2 (A for Driver tiers) Sounds: source or commission four original sounds (Urgent, Standard, Soft, Friendly), master to a consistent loudness with headroom, export Android and iOS formats, keep licences in the repo (2)
+- [ ] 12.2 (A for Driver tiers) Sounds, open source and CC0 first (2):
+  - [ ] 12.2a Shortlist three or four candidates per tier from Freesound (CC0 filter), Kenney and akx/Notifications; check each file's own licence page; avoid NC, ND, SA and unclear licences
+  - [ ] 12.2b Owner listens and picks one per tier; only then download (filename, source, size stated first)
+  - [ ] 12.2c Edit and master with a committed ffmpeg script (trim, fade, two-blast horn pattern, loudness and true-peak ceiling), export Ogg for Android and CAF for iOS, measure against the default sound
+  - [ ] 12.2d `LICENSES.md` per sound (URL, author, licence, date checked, saved licence page, our edits), keep the original files, in-app Licences screen only if any CC BY sound is used
 - [ ] 12.3 (A) Backend: add a sound tier to each catalogue entry; FCM messages carry the Android channel, sound, high priority and time-to-live, and the iOS sound and interruption level; tests; per-agency sound override left for later (2)
 - [ ] 12.4 (A for Driver) Android channels in all three apps: one per tier, versioned IDs, alarm-style audio usage and vibration on Urgent, repeat-until-opened on Urgent, old channel removed on upgrade (3)
 - [ ] 12.5 iOS: bundle the sound files, map the payload, time-sensitive interruption level, foreground presentation (1.5)
