@@ -7,14 +7,27 @@ import { filter, map } from 'rxjs/operators';
 import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
+import { DeviceStatus } from '../../models/device-status';
 import { LinkedDeviceResponse } from '../../models/linked-device-response';
 
 export interface ListLinkedDevicesApiV1AdminLicenseDevicesGet$Params {
+
+/**
+ * driver_app or admin_app.
+ */
+  app_type?: (string | null);
+
+/**
+ * Leave out to list every phone still in use (not removed).
+ */
+  status?: (DeviceStatus | null);
 }
 
 export function listLinkedDevicesApiV1AdminLicenseDevicesGet(http: HttpClient, rootUrl: string, params?: ListLinkedDevicesApiV1AdminLicenseDevicesGet$Params, context?: HttpContext): Observable<StrictHttpResponse<Array<LinkedDeviceResponse>>> {
   const rb = new RequestBuilder(rootUrl, listLinkedDevicesApiV1AdminLicenseDevicesGet.PATH, 'get');
   if (params) {
+    rb.query('app_type', params.app_type, {});
+    rb.query('status', params.status, {});
   }
 
   return http.request(
