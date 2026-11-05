@@ -95,7 +95,9 @@ def build_event_catalog() -> list[EventDefinition]:
     definitions: list[EventDefinition] = []
     for notification_type, spec in SPECS.items():
         meta = _META[notification_type]
-        audience = "staff" if spec.audience.value in ("staff", "assignee", "user") else spec.audience.value
+        audience = (
+            "staff" if spec.audience.value in ("staff", "assignee", "user") else spec.audience.value
+        )
         definitions.append(
             EventDefinition(
                 notification_type=notification_type,
