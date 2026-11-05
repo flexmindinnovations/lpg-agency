@@ -876,6 +876,82 @@ void main() {
       expect(tester.hasRunningAnimations, isFalse);
     });
   });
+
+  group('LpgCylinderIllustration', () {
+    testWidgets('renders cylinder vector illustration and accessibility label', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const LpgCylinderIllustration(
+            size: LpgCylinderSize.domestic14kg,
+            state: LpgCylinderState.full,
+          ),
+        ),
+      );
+      expect(find.byType(LpgCylinderIllustration), findsOneWidget);
+    });
+  });
+
+  group('LpgCylinderCard', () {
+    testWidgets('renders title, price, status badge and handles quantity change', (tester) async {
+      int count = 2;
+      await tester.pumpWidget(
+        _wrap(
+          StatefulBuilder(
+            builder: (context, setState) {
+              return LpgCylinderCard(
+                title: '14.2 kg Domestic Cylinder',
+                size: LpgCylinderSize.domestic14kg,
+                priceText: '₹920.00',
+                statusLabel: 'Available',
+                quantity: count,
+                onQuantityChanged: (val) => setState(() => count = val),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(find.text('14.2 kg Domestic Cylinder'), findsOneWidget);
+      expect(find.text('₹920.00'), findsOneWidget);
+      expect(find.text('Available'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Increase'));
+      await tester.pumpAndSettle();
+      expect(count, 3);
+    });
+  });
+
+  group('LpgSegmentedControl', () {
+    testWidgets('renders options, badge counts and updates selected segment', (tester) async {
+      String selected = 'ready';
+      await tester.pumpWidget(
+        _wrap(
+          StatefulBuilder(
+            builder: (context, setState) {
+              return LpgSegmentedControl<String>(
+                selectedValue: selected,
+                segments: const [
+                  LpgSegmentItem(value: 'ready', label: 'Ready', badgeCount: 5),
+                  LpgSegmentItem(value: 'delivered', label: 'Delivered', badgeCount: 12),
+                ],
+                onValueChanged: (val) => setState(() => selected = val),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(find.text('Ready'), findsOneWidget);
+      expect(find.text('5'), findsOneWidget);
+      expect(find.text('Delivered'), findsOneWidget);
+      expect(find.text('12'), findsOneWidget);
+
+      await tester.tap(find.text('Delivered'));
+      await tester.pumpAndSettle();
+      expect(selected, 'delivered');
+    });
+  });
 }
 
 /// A 1x1 transparent PNG, so the splash has a real image to decode.

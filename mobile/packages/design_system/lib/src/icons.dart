@@ -38,12 +38,18 @@ abstract final class LpgIcons {
 
   // Domain
   static const IconData cylinder = LucideIcons.cylinder;
+  static const IconData cylinder14kg = LucideIcons.cylinder;
+  static const IconData cylinder19kg = LucideIcons.cylinder;
+  static const IconData cylinder47kg = LucideIcons.boxes;
   static const IconData flame = LucideIcons.flame;
   static const IconData refill = LucideIcons.fuel;
   static const IconData truck = LucideIcons.truck;
   static const IconData truckFilled = LucideIcons600.truck;
   static const IconData van = LucideIcons.truck;
+  static const IconData vanLoaded = LucideIcons.packageCheck;
+  static const IconData vanUnloaded = LucideIcons.packageX;
   static const IconData route = LucideIcons.route;
+  static const IconData routeActive = LucideIcons.navigation;
   static const IconData package = LucideIcons.package;
   static const IconData inventory = LucideIcons.boxes;
   static const IconData invoice = LucideIcons.fileText;
@@ -51,10 +57,13 @@ abstract final class LpgIcons {
   static const IconData payment = LucideIcons.creditCard;
   static const IconData wallet = LucideIcons.wallet;
   static const IconData cash = LucideIcons.banknote;
+  static const IconData cashHandover = LucideIcons.handCoins;
+  static const IconData cashBook = LucideIcons.bookOpen;
   static const IconData handover = LucideIcons.handCoins;
   static const IconData rupee = LucideIcons.indianRupee;
   static const IconData kyc = LucideIcons.idCard;
   static const IconData badge = LucideIcons.idCard;
+  static const IconData driverBadge = LucideIcons.userCheck;
   static const IconData verified = LucideIcons.badgeCheck;
   static const IconData verifiedFilled = LucideIcons600.badgeCheck;
   static const IconData unverified = LucideIcons.badgeAlert;

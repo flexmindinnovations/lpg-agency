@@ -10,10 +10,16 @@ import '../../../../offline/pending_sync.dart';
 /// Deliveries list. Shows a "pending sync" hint while this stop's last
 /// action is still queued.
 class StopTile extends ConsumerWidget {
-  const StopTile({super.key, required this.stop, this.onTap});
+  const StopTile({
+    super.key,
+    required this.stop,
+    this.onTap,
+    this.selected = false,
+  });
 
   final RouteStopSummary stop;
   final VoidCallback? onTap;
+  final bool selected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,6 +39,7 @@ class StopTile extends ConsumerWidget {
     };
 
     return LpgListTile(
+      selected: selected,
       leadingIcon: icon,
       leadingTone: tone,
       title: 'Order ${LpgFormat.orderNumber(stop.orderNumber, stop.orderId)}',

@@ -10,14 +10,14 @@ import '../../van_load/data/van_load_provider.dart';
 import '../data/active_route_provider.dart';
 import 'widgets/location_sharing_card.dart';
 
-/// The Driver App's home tab: today's route at a glance — status, progress,
-/// the next stop to hit, and the live-location-sharing switch.
+/// The Driver App's home tab: today's route at a glance with responsive 10"+ tablet layout.
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final routeAsync = ref.watch(activeRouteProvider);
+    final isExpandedTablet = LpgBreakpoints.isExpanded(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Today')),
@@ -31,8 +31,6 @@ class TodayScreen extends ConsumerWidget {
         },
         child: routeAsync.when(
           loading: () => const LpgSkeletonList(itemCount: 4),
-          // Wrapped in a ListView so pull-to-refresh still works from the
-          // error state.
           error: (err, _) => ListView(
             padding: LpgSpacing.page,
             children: [
@@ -46,20 +44,82 @@ class TodayScreen extends ConsumerWidget {
             final pendingCash =
                 ref.watch(pendingCashHandoversProvider).value ?? const [];
             final pendingLoad = ref.watch(pendingLoadProvider).value;
+
+            if (route == null && pendingCash.isEmpty && pendingLoad == null) {
+              return ListView(
+                padding: LpgSpacing.page,
+                children: const [
+                  Padding(
+                    padding: EdgeInsets.only(top: LpgSpacing.xxl),
+                    child: LpgEmptyState(
+                      title: 'Nothing on the road yet',
+                      message: 'No route assigned yet.',
+                      icon: LpgIcons.truck,
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            if (isExpandedTablet) {
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: LpgSpacing.page,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left Column (Route Hero & Next Stop)
+                    Expanded(
+                      flex: 6,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (route != null) ...[
+                            _RouteHero(route: route),
+                            const SizedBox(height: LpgSpacing.md),
+                            _RouteStats(route: route),
+                            const SizedBox(height: LpgSpacing.md),
+                            const LpgSectionHeader(title: 'Up next'),
+                            _NextStopCard(route: route),
+                            const SizedBox(height: LpgSpacing.md),
+                            const LpgSectionHeader(title: 'Live location'),
+                            LocationSharingCard(route: route),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: LpgSpacing.xl),
+
+                    // Right Column (Cash & Inventory Tasks)
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const _CashInHandCard(),
+                          const SizedBox(height: LpgSpacing.md),
+                          if (pendingLoad != null) ...[
+                            _PendingLoadCard(route: pendingLoad),
+                            const SizedBox(height: LpgSpacing.md),
+                          ],
+                          for (final view in pendingCash) ...[
+                            _PendingCashCard(view: view),
+                            const SizedBox(height: LpgSpacing.md),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             final sections = <Widget>[
               const _CashInHandCard(),
               if (pendingLoad != null) _PendingLoadCard(route: pendingLoad),
               for (final view in pendingCash) _PendingCashCard(view: view),
-              if (route == null)
-                const Padding(
-                  padding: EdgeInsets.only(top: LpgSpacing.xxl),
-                  child: LpgEmptyState(
-                    title: 'Nothing on the road yet',
-                    message: 'No route assigned yet.',
-                    icon: LpgIcons.truck,
-                  ),
-                )
-              else ...[
+              if (route != null) ...[
                 _RouteHero(route: route),
                 _RouteStats(route: route),
                 const LpgSectionHeader(title: 'Up next'),
@@ -68,8 +128,7 @@ class TodayScreen extends ConsumerWidget {
                 LocationSharingCard(route: route),
               ],
             ];
-            // A handful of sections, so build them all eagerly: the live
-            // location switch must exist even when it's below the fold.
+
             return ListView(
               padding: LpgSpacing.page,
               children: [
@@ -93,8 +152,6 @@ LpgStatusSeverity _routeSeverity(String status) => switch (status) {
   _ => LpgStatusSeverity.info,
 };
 
-/// The headline: how far through today's route the driver is, with the
-/// route's date and the van it runs on.
 class _RouteHero extends ConsumerWidget {
   const _RouteHero({required this.route});
 
@@ -131,6 +188,7 @@ class _RouteHero extends ConsumerWidget {
               LpgStatusBadge(
                 label: LpgFormat.statusLabel(route.status),
                 severity: _routeSeverity(route.status),
+                isLive: route.status == 'in_progress',
               ),
             ],
           ),
@@ -171,7 +229,6 @@ class _RouteHero extends ConsumerWidget {
   }
 }
 
-/// Delivered / remaining / failed at a glance, under the hero.
 class _RouteStats extends StatelessWidget {
   const _RouteStats({required this.route});
 
@@ -263,9 +320,6 @@ class _NextStopCard extends StatelessWidget {
   }
 }
 
-/// Shown while the office has loaded the van but the driver hasn't checked
-/// it yet — their prompt to open the manifest. Soft: it doesn't block
-/// departing.
 class _PendingLoadCard extends StatelessWidget {
   const _PendingLoadCard({required this.route});
 
@@ -294,9 +348,6 @@ class _PendingLoadCard extends StatelessWidget {
   }
 }
 
-/// Nudge shown once a route finishes and its cash still needs declaring —
-/// the route is gone from `activeRouteProvider` by then, so this is the
-/// driver's way back to it.
 class _PendingCashCard extends StatelessWidget {
   const _PendingCashCard({required this.view});
 
@@ -325,8 +376,6 @@ class _PendingCashCard extends StatelessWidget {
   }
 }
 
-/// What the driver is carrying right now: cash to hand over and UPI already
-/// in the agency's account (ADR-066). Hidden when there is nothing.
 class _CashInHandCard extends ConsumerWidget {
   const _CashInHandCard();
 

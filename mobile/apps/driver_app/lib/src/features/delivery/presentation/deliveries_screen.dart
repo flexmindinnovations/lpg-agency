@@ -6,10 +6,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../cash_handover/data/cash_handover_provider.dart';
 import '../data/active_route_provider.dart';
+import 'stop_detail_screen.dart';
 import 'widgets/stop_tile.dart';
 
-/// The Deliveries tab: the current route's stops (→ Stop Detail → depart /
-/// Record Delivery) plus a "Past routes" history section.
+/// The Deliveries tab with phone & 10"+ tablet master-detail layout support.
 class DeliveriesScreen extends ConsumerWidget {
   const DeliveriesScreen({super.key});
 
@@ -20,88 +20,102 @@ class DeliveriesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Deliveries')),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(activeRouteProvider);
-          ref.invalidate(routeHistoryProvider);
-          await ref.read(activeRouteProvider.future);
+      body: LpgMasterDetail(
+        emptyMessage: 'Select a stop to view details, navigate, or record delivery.',
+        emptyIcon: LpgIcons.truck,
+        masterBuilder: (context, controller) {
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(activeRouteProvider);
+              ref.invalidate(routeHistoryProvider);
+              await ref.read(activeRouteProvider.future);
+            },
+            child: ListView(
+              padding: LpgSpacing.page,
+              children: [
+                LpgSectionHeader(
+                  title: 'Current route',
+                  subtitle: routeAsync.value == null
+                      ? null
+                      : _progressLabel(routeAsync.value!),
+                ),
+                routeAsync.when(
+                  loading: () => const _SectionSkeleton(),
+                  error: (err, _) => LpgErrorState(
+                    message: 'Could not load your route.\n$err',
+                    onRetry: () => ref.invalidate(activeRouteProvider),
+                  ),
+                  data: (route) {
+                    if (route == null) {
+                      return const _MutedNote(
+                        'No active route right now.',
+                        icon: LpgIcons.truck,
+                      );
+                    }
+                    return LpgGroupedList(
+                      children: [
+                        for (final stop in route.stops)
+                          StopTile(
+                            selected: controller.selectedId == stop.orderId,
+                            stop: stop,
+                            onTap: () {
+                              if (!controller.open(stop.orderId)) {
+                                context.goNamed(
+                                  'stop',
+                                  pathParameters: {'orderId': stop.orderId},
+                                );
+                              }
+                            },
+                          ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: LpgSpacing.md),
+                const LpgSectionHeader(title: 'Past routes'),
+                historyAsync.when(
+                  loading: () => const _SectionSkeleton(),
+                  error: (err, _) => const _MutedNote(
+                    'Could not load history.',
+                    icon: LpgIcons.error,
+                  ),
+                  data: (routes) {
+                    if (routes.isEmpty) {
+                      return const _MutedNote(
+                        'No finished routes yet.',
+                        icon: LpgIcons.history,
+                      );
+                    }
+                    final pendingCashRouteIds = {
+                      for (final view
+                          in ref.watch(pendingCashHandoversProvider).value ??
+                              const <RouteCashHandover>[])
+                        view.routeId,
+                    };
+                    return LpgGroupedList(
+                      children: [
+                        for (final r in routes)
+                          _HistoryRow(
+                            route: r,
+                            cashPending: pendingCashRouteIds.contains(r.id),
+                            onTap: r.status == 'completed'
+                                ? () => context.pushNamed(
+                                    'cashHandover',
+                                    pathParameters: {'routeId': r.id},
+                                  )
+                                : null,
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
         },
-        child: ListView(
-          padding: LpgSpacing.page,
-          children: [
-            LpgSectionHeader(
-              title: 'Current route',
-              subtitle: routeAsync.value == null
-                  ? null
-                  : _progressLabel(routeAsync.value!),
-            ),
-            routeAsync.when(
-              loading: () => const _SectionSkeleton(),
-              error: (err, _) => LpgErrorState(
-                message: 'Could not load your route.\n$err',
-                onRetry: () => ref.invalidate(activeRouteProvider),
-              ),
-              data: (route) {
-                if (route == null) {
-                  return const _MutedNote(
-                    'No active route right now.',
-                    icon: LpgIcons.truck,
-                  );
-                }
-                return LpgGroupedList(
-                  children: [
-                    for (final stop in route.stops)
-                      StopTile(
-                        stop: stop,
-                        onTap: () => context.goNamed(
-                          'stop',
-                          pathParameters: {'orderId': stop.orderId},
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: LpgSpacing.md),
-            const LpgSectionHeader(title: 'Past routes'),
-            historyAsync.when(
-              loading: () => const _SectionSkeleton(),
-              error: (err, _) => const _MutedNote(
-                'Could not load history.',
-                icon: LpgIcons.error,
-              ),
-              data: (routes) {
-                if (routes.isEmpty) {
-                  return const _MutedNote(
-                    'No finished routes yet.',
-                    icon: LpgIcons.history,
-                  );
-                }
-                final pendingCashRouteIds = {
-                  for (final view
-                      in ref.watch(pendingCashHandoversProvider).value ??
-                          const <RouteCashHandover>[])
-                    view.routeId,
-                };
-                return LpgGroupedList(
-                  children: [
-                    for (final r in routes)
-                      _HistoryRow(
-                        route: r,
-                        cashPending: pendingCashRouteIds.contains(r.id),
-                        onTap: r.status == 'completed'
-                            ? () => context.pushNamed(
-                                'cashHandover',
-                                pathParameters: {'routeId': r.id},
-                              )
-                            : null,
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+        detailBuilder: (context, id) {
+          return StopDetailScreen(orderId: id);
+        },
       ),
     );
   }
@@ -114,8 +128,6 @@ class DeliveriesScreen extends ConsumerWidget {
   }
 }
 
-/// A short shimmer placeholder for one section while it loads — the screen
-/// keeps its two-section shape instead of collapsing to a spinner.
 class _SectionSkeleton extends StatelessWidget {
   const _SectionSkeleton();
 

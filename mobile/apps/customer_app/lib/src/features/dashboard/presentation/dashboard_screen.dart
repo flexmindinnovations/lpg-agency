@@ -10,12 +10,7 @@ import '../../profile/data/profile_provider.dart';
 import '../data/ledger_provider.dart';
 import '../data/notifications_provider.dart';
 
-/// The Customer App's home tab.
-///
-/// Leads with the two things a customer opens the app for: how many empty
-/// cylinders they hold, and ordering a refill. Below that, a live card for
-/// any order already on its way, shortcuts to the screens people reach for
-/// most, and the latest few orders.
+/// The Customer App's home tab with responsive phone & 10"+ tablet layout.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -32,6 +27,8 @@ class DashboardScreen extends ConsumerWidget {
         .trim()
         .split(' ')
         .first;
+
+    final isExpandedTablet = LpgBreakpoints.isExpanded(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -58,54 +55,155 @@ class DashboardScreen extends ConsumerWidget {
           ref.invalidate(ordersProvider);
           ref.invalidate(unreadNotificationCountProvider);
         },
-        child: ListView(
+        child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: LpgSpacing.page,
-          children: [
-            LpgFadeSlideIn(child: _Greeting(firstName: firstName)),
-            const SizedBox(height: LpgSpacing.md),
-            const LpgFadeSlideIn(index: 1, child: _BalanceHero()),
-            const SizedBox(height: LpgSpacing.md),
-            LpgFadeSlideIn(
-              index: 2,
-              child: LpgButton(
-                label: 'Order Gas Refill',
-                onPressed: () => context.push('/orders/new'),
-                icon: LpgIcons.refill,
-                expand: true,
-              ),
-            ),
-            ...ordersAsync.maybeWhen(
-              data: (orders) {
-                final active = orders.where((o) => o.isTrackable).toList();
-                if (active.isEmpty) return const <Widget>[];
-                return [
-                  const SizedBox(height: LpgSpacing.md),
-                  LpgFadeSlideIn(
-                    index: 3,
-                    child: _ActiveOrderCard(order: active.first),
-                  ),
-                ];
-              },
-              orElse: () => const <Widget>[],
-            ),
-            const LpgFadeSlideIn(
-              index: 4,
-              child: LpgSectionHeader(title: 'Quick actions'),
-            ),
-            const LpgFadeSlideIn(index: 5, child: _QuickActions()),
-            LpgFadeSlideIn(
-              index: 6,
-              child: LpgSectionHeader(
-                title: 'Recent orders',
-                actionLabel: 'See all',
-                onAction: () => context.go('/orders'),
-              ),
-            ),
-            _RecentOrders(ordersAsync: ordersAsync),
-          ],
+          child: isExpandedTablet
+              ? _TabletDashboardLayout(
+                  firstName: firstName,
+                  ordersAsync: ordersAsync,
+                )
+              : _PhoneDashboardLayout(
+                  firstName: firstName,
+                  ordersAsync: ordersAsync,
+                ),
         ),
       ),
+    );
+  }
+}
+
+class _PhoneDashboardLayout extends StatelessWidget {
+  const _PhoneDashboardLayout({
+    required this.firstName,
+    required this.ordersAsync,
+  });
+
+  final String? firstName;
+  final AsyncValue<List<OrderResponse>> ordersAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LpgFadeSlideIn(child: _Greeting(firstName: firstName)),
+        const SizedBox(height: LpgSpacing.md),
+        const LpgFadeSlideIn(index: 1, child: _BalanceHero()),
+        const SizedBox(height: LpgSpacing.md),
+        LpgFadeSlideIn(
+          index: 2,
+          child: LpgButton(
+            label: 'Order Gas Refill',
+            onPressed: () => context.push('/orders/new'),
+            icon: LpgIcons.refill,
+            expand: true,
+          ),
+        ),
+        ...ordersAsync.maybeWhen(
+          data: (orders) {
+            final active = orders.where((o) => o.isTrackable).toList();
+            if (active.isEmpty) return const <Widget>[];
+            return [
+              const SizedBox(height: LpgSpacing.md),
+              LpgFadeSlideIn(
+                index: 3,
+                child: _ActiveOrderCard(order: active.first),
+              ),
+            ];
+          },
+          orElse: () => const <Widget>[],
+        ),
+        const LpgFadeSlideIn(
+          index: 4,
+          child: LpgSectionHeader(title: 'Quick actions'),
+        ),
+        const LpgFadeSlideIn(index: 5, child: _QuickActions()),
+        LpgFadeSlideIn(
+          index: 6,
+          child: LpgSectionHeader(
+            title: 'Recent orders',
+            actionLabel: 'See all',
+            onAction: () => context.go('/orders'),
+          ),
+        ),
+        _RecentOrders(ordersAsync: ordersAsync),
+      ],
+    );
+  }
+}
+
+class _TabletDashboardLayout extends StatelessWidget {
+  const _TabletDashboardLayout({
+    required this.firstName,
+    required this.ordersAsync,
+  });
+
+  final String? firstName;
+  final AsyncValue<List<OrderResponse>> ordersAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Greeting(firstName: firstName),
+        const SizedBox(height: LpgSpacing.lg),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left Column (Primary Actions & Balance)
+            Expanded(
+              flex: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _BalanceHero(),
+                  const SizedBox(height: LpgSpacing.md),
+                  LpgButton(
+                    label: 'Order Gas Refill',
+                    onPressed: () => context.push('/orders/new'),
+                    icon: LpgIcons.refill,
+                    expand: true,
+                  ),
+                  ...ordersAsync.maybeWhen(
+                    data: (orders) {
+                      final active = orders.where((o) => o.isTrackable).toList();
+                      if (active.isEmpty) return const <Widget>[];
+                      return [
+                        const SizedBox(height: LpgSpacing.md),
+                        _ActiveOrderCard(order: active.first),
+                      ];
+                    },
+                    orElse: () => const <Widget>[],
+                  ),
+                  const SizedBox(height: LpgSpacing.md),
+                  const LpgSectionHeader(title: 'Quick actions'),
+                  const _QuickActions(),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: LpgSpacing.xl),
+
+            // Right Column (Recent Orders & Account Shortcuts)
+            Expanded(
+              flex: 5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LpgSectionHeader(
+                    title: 'Recent orders',
+                    actionLabel: 'See all',
+                    onAction: () => context.go('/orders'),
+                  ),
+                  _RecentOrders(ordersAsync: ordersAsync),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -130,7 +228,9 @@ class _Greeting extends StatelessWidget {
       children: [
         Text(
           name == null || name.isEmpty ? salutation : '$salutation, $name',
-          style: context.lpgText.headlineSmall,
+          style: context.lpgText.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: LpgSpacing.xs),
         Text(
@@ -144,7 +244,7 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-/// The cylinder balance on the brand gradient.
+/// The cylinder balance on the brand gradient with LPG Cylinder Illustration.
 class _BalanceHero extends ConsumerWidget {
   const _BalanceHero();
 
@@ -163,53 +263,66 @@ class _BalanceHero extends ConsumerWidget {
 
     return LpgHeroCard(
       watermark: LpgIcons.cylinder,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(LpgIcons.cylinder, size: LpgSizes.iconMd),
-              const SizedBox(width: LpgSpacing.sm),
-              Text(
-                'Empty cylinders with you',
-                style: text.labelLarge?.copyWith(color: colors.onHero),
-              ),
-            ],
-          ),
-          const SizedBox(height: LpgSpacing.md),
-          ledgerAsync.when(
-            data: (ledger) {
-              final balances = ledger?.balances ?? const [];
-              final total = balances.fold<int>(0, (s, b) => s + b.quantity);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  LpgCountUp(
-                    value: total,
-                    style: text.displayLarge?.copyWith(color: colors.onHero),
-                  ),
-                  const SizedBox(height: LpgSpacing.xs),
-                  caption(
-                    balances.isNotEmpty
-                        ? 'Across ${balances.length} cylinder '
-                              '${balances.length == 1 ? 'type' : 'types'}'
-                        : 'No outstanding cylinders',
-                  ),
-                ],
-              );
-            },
-            loading: () => Padding(
-              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.sm),
-              child: SizedBox(
-                height: LpgSizes.iconXl,
-                width: LpgSizes.iconXl,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: colors.onHero,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(LpgIcons.cylinder, size: LpgSizes.iconMd),
+                    const SizedBox(width: LpgSpacing.sm),
+                    Text(
+                      'Empty cylinders with you',
+                      style: text.labelLarge?.copyWith(color: colors.onHero),
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: LpgSpacing.md),
+                ledgerAsync.when(
+                  data: (ledger) {
+                    final balances = ledger?.balances ?? const [];
+                    final total = balances.fold<int>(0, (s, b) => s + b.quantity);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        LpgCountUp(
+                          value: total,
+                          style: text.displayLarge?.copyWith(color: colors.onHero),
+                        ),
+                        const SizedBox(height: LpgSpacing.xs),
+                        caption(
+                          balances.isNotEmpty
+                              ? 'Across ${balances.length} cylinder '
+                                    '${balances.length == 1 ? 'type' : 'types'}'
+                              : 'No outstanding cylinders',
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: LpgSpacing.sm),
+                    child: SizedBox(
+                      height: LpgSizes.iconXl,
+                      width: LpgSizes.iconXl,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: colors.onHero,
+                      ),
+                    ),
+                  ),
+                  error: (err, _) => caption('Balance unavailable right now'),
+                ),
+              ],
             ),
-            error: (err, _) => caption('Balance unavailable right now'),
+          ),
+          const SizedBox(width: LpgSpacing.md),
+          const LpgCylinderIllustration(
+            size: LpgCylinderSize.domestic14kg,
+            state: LpgCylinderState.full,
+            height: 72.0,
+            showBadge: false,
           ),
         ],
       ),
@@ -217,8 +330,6 @@ class _BalanceHero extends ConsumerWidget {
   }
 }
 
-/// A delivery that is on its way right now, with a shortcut to live
-/// tracking.
 class _ActiveOrderCard extends StatelessWidget {
   const _ActiveOrderCard({required this.order});
 
@@ -250,12 +361,12 @@ class _ActiveOrderCard extends StatelessWidget {
               ],
             ),
           ),
-          Text(
-            'Track',
-            style: context.lpgText.labelLarge?.copyWith(
-              color: colors.textPrimary,
-            ),
+          LpgStatusBadge(
+            label: 'TRACK LIVE',
+            severity: LpgStatusSeverity.warning,
+            isLive: true,
           ),
+          const SizedBox(width: LpgSpacing.xs),
           Icon(
             LpgIcons.chevronRight,
             size: LpgSizes.iconSm,
@@ -316,16 +427,10 @@ class _RecentOrders extends StatelessWidget {
             ),
           );
         }
-        // `orders` arrives sorted by `requestedDate` (the backend's own
-        // list order, tuned for an operational "what's coming up" view) —
-        // that's not what "recent" means here, since a customer can set a
-        // requested date arbitrarily far in the future or in the past.
-        // Sort by `orderNumber` instead: it's sequential and zero-padded,
-        // so it reflects the order the orders were actually placed in.
         final recent = [
           ...orders,
         ]..sort((a, b) => (b.orderNumber ?? '').compareTo(a.orderNumber ?? ''));
-        final shown = recent.take(3).toList();
+        final shown = recent.take(4).toList();
         return LpgCard(
           padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
           child: Column(

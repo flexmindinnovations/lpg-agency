@@ -14,14 +14,9 @@ import 'receive_stock_sheet.dart';
 import 'stock_move_sheets.dart';
 import 'stock_presentation.dart';
 
-/// What a godown holds right now: filled cylinders per type with whatever
-/// else is on the floor, anything running low, counts waiting to be
-/// approved and the latest movements. From here the office books a truck in
-/// from the OMC and counts the shelves.
 class StockScreen extends ConsumerStatefulWidget {
   const StockScreen({super.key, this.initialGodownId});
 
-  /// The godown to open on; the first one when `null`.
   final String? initialGodownId;
 
   @override
@@ -240,6 +235,8 @@ class _GodownStock extends ConsumerWidget {
         if (s.warehouseId == godown.id) s,
     ];
 
+    final isExpandedTablet = LpgBreakpoints.isExpanded(context);
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: LpgSpacing.page,
@@ -266,6 +263,37 @@ class _GodownStock extends ConsumerWidget {
             final types = groupByCylinderType(lines, [
               for (final t in catalog) t.id,
             ]);
+
+            if (isExpandedTablet) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 6,
+                    child: _HoldingsLeftPane(
+                      godown: godown,
+                      types: types,
+                      names: names,
+                      low: low,
+                      onReceive: onReceive,
+                      onCount: () => onCount(lines),
+                    ),
+                  ),
+                  const SizedBox(width: LpgSpacing.xl),
+                  Expanded(
+                    flex: 5,
+                    child: _HoldingsRightPane(
+                      godown: godown,
+                      names: names,
+                      onReview: onReview,
+                      onMove: (correction) => onMove(lines, correction),
+                      onReturn: () => onReturn(lines),
+                    ),
+                  ),
+                ],
+              );
+            }
+
             return _Holdings(
               godown: godown,
               types: types,
@@ -273,21 +301,211 @@ class _GodownStock extends ConsumerWidget {
               low: low,
               onReceive: onReceive,
               onCount: () => onCount(lines),
+              onReview: onReview,
               onMove: (correction) => onMove(lines, correction),
               onReturn: () => onReturn(lines),
             );
           },
         ),
-        const SectionHeading('On the vans', topGap: LpgSpacing.lg),
+      ],
+    );
+  }
+}
+
+class _HoldingsLeftPane extends StatelessWidget {
+  const _HoldingsLeftPane({
+    required this.godown,
+    required this.types,
+    required this.names,
+    required this.low,
+    required this.onReceive,
+    required this.onCount,
+  });
+
+  final FleetWarehouse godown;
+  final List<TypeStock> types;
+  final Map<String, String> names;
+  final List<ReorderSignal> low;
+  final VoidCallback onReceive;
+  final VoidCallback onCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.lpgText;
+    final colors = context.lpgColors;
+    final filled = types.fold<int>(0, (sum, t) => sum + t.filled);
+    ReorderSignal? signalFor(String typeId) {
+      for (final s in low) {
+        if (s.cylinderTypeId == typeId) return s;
+      }
+      return null;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LpgHeroCard(
+          watermark: LpgIcons.warehouse,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Filled cylinders ready to send',
+                style: text.bodyMedium?.copyWith(color: colors.onHero),
+              ),
+              const SizedBox(height: LpgSpacing.xs),
+              Text(
+                '$filled',
+                style: text.headlineLarge?.copyWith(color: colors.onHero),
+              ),
+              const SizedBox(height: LpgSpacing.xs),
+              Text(
+                godown.name,
+                style: text.bodySmall?.copyWith(color: colors.onHero),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: LpgSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: LpgButton(
+                label: 'Receive stock',
+                icon: LpgIcons.download,
+                expand: true,
+                onPressed: onReceive,
+              ),
+            ),
+            const SizedBox(width: LpgSpacing.md),
+            Expanded(
+              child: LpgButton(
+                label: 'Count stock',
+                icon: LpgIcons.check,
+                variant: LpgButtonVariant.secondary,
+                expand: true,
+                onPressed: onCount,
+              ),
+            ),
+          ],
+        ),
+        for (final s in low) ...[
+          const SizedBox(height: LpgSpacing.md),
+          LpgBanner(
+            tone: s.isCritical ? LpgTone.danger : LpgTone.warning,
+            icon: LpgIcons.warning,
+            title:
+                '${names[s.cylinderTypeId] ?? 'A cylinder type'} is running low',
+            message:
+                '${s.onHand} filled left, reorder at ${s.reorderPoint}'
+                '${s.isCritical ? '. Nearly out.' : '.'}',
+          ),
+        ],
+        SectionHeading('By cylinder type', topGap: LpgSpacing.lg),
+        if (types.isEmpty)
+          Text(
+            'Nothing is recorded at this godown yet. Receive a truck to start.',
+            style: text.bodyMedium?.copyWith(color: colors.textSecondary),
+          )
+        else
+          LpgGroupedList(
+            children: [
+              for (final t in types)
+                LpgListTile(
+                  leadingIcon: LpgIcons.cylinder,
+                  leadingTone: signalFor(t.cylinderTypeId) == null
+                      ? LpgTone.primary
+                      : LpgTone.danger,
+                  title: names[t.cylinderTypeId] ?? 'Cylinder',
+                  subtitle: t.others.isEmpty
+                      ? 'No other stock'
+                      : [
+                          for (final o in t.others)
+                            '${stockStatusLabel(o.key)} ${o.value}',
+                        ].join(' · '),
+                  trailing: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${t.filled}',
+                        style: text.titleMedium?.copyWith(
+                          color: signalFor(t.cylinderTypeId) == null
+                              ? null
+                              : colors.statusDanger,
+                        ),
+                      ),
+                      Text(
+                        'filled',
+                        style: text.bodySmall?.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _HoldingsRightPane extends StatelessWidget {
+  const _HoldingsRightPane({
+    required this.godown,
+    required this.names,
+    required this.onReview,
+    required this.onMove,
+    required this.onReturn,
+  });
+
+  final FleetWarehouse godown;
+  final Map<String, String> names;
+  final ValueChanged<ReconciliationRecord> onReview;
+  final ValueChanged<bool> onMove;
+  final VoidCallback onReturn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeading('On the vans'),
         _OnVans(branchId: godown.branchId, names: names),
-        const SectionHeading(
+        SectionHeading(
           'Counts waiting for approval',
           topGap: LpgSpacing.lg,
         ),
         _PendingCounts(godownId: godown.id, names: names, onReview: onReview),
-        const SectionHeading('Latest movements', topGap: LpgSpacing.lg),
+        SectionHeading('Other stock actions', topGap: LpgSpacing.lg),
+        LpgGroupedList(
+          children: [
+            LpgListTile(
+              leadingIcon: LpgIcons.history,
+              title: 'Change status',
+              subtitle: 'Filled to leaking, damaged to scrap',
+              showChevron: true,
+              onTap: () => onMove(false),
+            ),
+            LpgListTile(
+              leadingIcon: LpgIcons.edit,
+              title: 'Correct stock',
+              subtitle: 'Fix a mistake in the books, with a reason',
+              showChevron: true,
+              onTap: () => onMove(true),
+            ),
+            LpgListTile(
+              leadingIcon: LpgIcons.upload,
+              title: 'Return to OMC',
+              subtitle: 'Empties or defective cylinders back to the plant',
+              showChevron: true,
+              onTap: onReturn,
+            ),
+          ],
+        ),
+        SectionHeading('Latest movements', topGap: LpgSpacing.lg),
         _Movements(godownId: godown.id, names: names),
-        const SizedBox(height: LpgSpacing.xl),
       ],
     );
   }
@@ -301,6 +519,7 @@ class _Holdings extends StatelessWidget {
     required this.low,
     required this.onReceive,
     required this.onCount,
+    required this.onReview,
     required this.onMove,
     required this.onReturn,
   });
@@ -311,6 +530,7 @@ class _Holdings extends StatelessWidget {
   final List<ReorderSignal> low;
   final VoidCallback onReceive;
   final VoidCallback onCount;
+  final ValueChanged<ReconciliationRecord> onReview;
   final ValueChanged<bool> onMove;
   final VoidCallback onReturn;
 
@@ -386,7 +606,7 @@ class _Holdings extends StatelessWidget {
                 '${s.isCritical ? '. Nearly out.' : '.'}',
           ),
         ],
-        const SectionHeading('By cylinder type', topGap: LpgSpacing.lg),
+        SectionHeading('By cylinder type', topGap: LpgSpacing.lg),
         if (types.isEmpty)
           Text(
             'Nothing is recorded at this godown yet. Receive a truck to start.',
@@ -431,7 +651,14 @@ class _Holdings extends StatelessWidget {
                 ),
             ],
           ),
-        const SectionHeading('Other stock actions', topGap: LpgSpacing.lg),
+        SectionHeading('On the vans', topGap: LpgSpacing.lg),
+        _OnVans(branchId: godown.branchId, names: names),
+        SectionHeading(
+          'Counts waiting for approval',
+          topGap: LpgSpacing.lg,
+        ),
+        _PendingCounts(godownId: godown.id, names: names, onReview: onReview),
+        SectionHeading('Other stock actions', topGap: LpgSpacing.lg),
         LpgGroupedList(
           children: [
             LpgListTile(
@@ -457,6 +684,9 @@ class _Holdings extends StatelessWidget {
             ),
           ],
         ),
+        SectionHeading('Latest movements', topGap: LpgSpacing.lg),
+        _Movements(godownId: godown.id, names: names),
+        const SizedBox(height: LpgSpacing.xl),
       ],
     );
   }
@@ -576,8 +806,6 @@ class _Movements extends ConsumerWidget {
   }
 }
 
-/// What each of the branch's vans is carrying now, so the office can see
-/// stock that has left the godown but is not yet delivered.
 class _OnVans extends ConsumerWidget {
   const _OnVans({required this.branchId, required this.names});
 

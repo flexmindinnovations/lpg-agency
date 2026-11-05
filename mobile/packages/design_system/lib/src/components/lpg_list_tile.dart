@@ -23,6 +23,7 @@ class LpgListTile extends StatelessWidget {
     this.onTap,
     this.showChevron = false,
     this.dense = false,
+    this.selected = false,
   });
 
   final String title;
@@ -44,6 +45,9 @@ class LpgListTile extends StatelessWidget {
   /// Tighter vertical padding for rows nested inside a card.
   final bool dense;
 
+  /// Highlighted selected background for master-detail pane selection.
+  final bool selected;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
@@ -55,7 +59,7 @@ class LpgListTile extends StatelessWidget {
             ? null
             : LpgIconBox(icon: leadingIcon!, tone: leadingTone));
 
-    final row = ConstrainedBox(
+    Widget row = ConstrainedBox(
       constraints: const BoxConstraints(minHeight: LpgSizes.touchTarget),
       child: Padding(
         padding: EdgeInsets.symmetric(
@@ -75,7 +79,9 @@ class LpgListTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: text.titleSmall,
+                    style: text.titleSmall?.copyWith(
+                      fontWeight: selected ? FontWeight.bold : FontWeight.w600,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -109,6 +115,16 @@ class LpgListTile extends StatelessWidget {
         ),
       ),
     );
+
+    if (selected) {
+      row = DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.actionPrimaryContainer,
+          borderRadius: BorderRadius.circular(LpgRadius.lg),
+        ),
+        child: row,
+      );
+    }
 
     if (onTap == null) return row;
     return InkWell(
