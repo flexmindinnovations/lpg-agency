@@ -1,25 +1,27 @@
-# Tasks: Mobile UI/UX Revamp
+# Tasks: Mobile UI/UX Revamp, i18n and Device Control
 
-Nothing here is started. Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
+Nothing here is started (plan version 2). Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
 
 ## E0 Discovery and decisions (3 days)
-- [ ] 0.1 Design direction and glass spec: surfaces, blur, tint, fallbacks, where glass is and is not used (1)
-- [ ] 0.2 Strings tooling spike: typed JSON generator versus `gen-l10n`; pick one with a working example in the gallery (1)
+- [ ] 0.1 Design direction: modern solid enterprise look (tonal elevation, radii, type scale, motion language); reference screens for each app (1)
+- [ ] 0.2 i18n tooling spike: typed JSON generator versus `gen-l10n`; runtime locale switch, fallback, plurals, a second test locale; pick one with a working example (1)
 - [ ] 0.3 Performance baseline on a low-end Android device or emulator; set the frame and startup budget (0.5)
 - [ ] 0.4 **Hotfix first:** reproduce the Admin dashboard "error then data", find why the first request fails, fix it, and check Customer and Driver for the same pattern (0.5)
 
-## E1 Theme engine and glass (5 days)
-- [ ] 1.1 Token audit: one source for colour, type, spacing, radius, elevation, motion and blur; remove duplicates and literals (1.5)
-- [ ] 1.2 `LpgThemeEngine`: per-app accent, light, dark and high contrast, density by size class, text-scale clamps, reduce motion and reduce transparency (2)
-- [ ] 1.3 `LpgGlass` primitive with capability fallback; apply to navigation bar, rail, app bar and sheets (1.5)
+## E1 Theme engine and surfaces (4.5 days)
+- [ ] 1.1 Token audit: one source for colour, type, spacing, radius, elevation and motion; remove duplicates and literals (1.5)
+- [ ] 1.2 `LpgThemeEngine`: per-app accent, light, dark and high contrast, density by size class, text-scale clamps, reduce motion (2)
+- [ ] 1.3 Surface and elevation system (solid tonal layers, soft shadows, hairlines) applied to navigation, app bar, cards and sheets (1)
 
-## E2 Strings and copy (8 days)
-- [ ] 2.1 String catalogue infrastructure: file layout, typed keys, placeholders and plurals, CI lint against hardcoded user-visible strings (2)
-- [ ] 2.2 Move and rewrite `design_system` and `core` strings (1)
-- [ ] 2.3 Customer app strings, copy reviewed by the domain agent (1.5)
-- [ ] 2.4 Driver app strings, reviewed by the domain agent (1)
-- [ ] 2.5 Admin app strings, reviewed by the domain agent (2.5)
-- [ ] 2.6 Update tests that look up text; add a test that every key is used and every used key exists (in 2.2 to 2.5)
+## E2 i18n, strings and copy (11 days)
+- [ ] 2.1 i18n infrastructure: JSON catalogue layout per app and `shared`, typed keys, placeholders and plurals, English fallback for missing keys, CI lint against hardcoded user-visible strings (2.5)
+- [ ] 2.2 Runtime language switch (picker, saved per device), `flutter_localizations` for built-in widget text (1)
+- [ ] 2.3 Indian formats per locale (₹ lakh grouping, dates, numbers) and bundled font subsets for Indian scripts (1)
+- [ ] 2.4 Move and rewrite `design_system` and `core` strings (1)
+- [ ] 2.5 Customer app strings, copy reviewed by the domain agent (1.5)
+- [ ] 2.6 Driver app strings, reviewed by the domain agent (1)
+- [ ] 2.7 Admin app strings, reviewed by the domain agent (2.5)
+- [ ] 2.8 Server error codes mapped to catalogue strings (never the server's English text); pseudo-locale test for overflow; tests that look up text updated; every key used and every used key exists (0.5)
 
 ## E3 Async states (5 days)
 - [ ] 3.1 `LpgAsyncView` and sliver form: skeleton, content, empty, error with retry, keep old data on refresh, offline banner (2)
@@ -72,7 +74,21 @@ Nothing here is started. Sizes are working days. Order follows the dependencies;
 - [ ] 10.4 Pilot builds with a real agency, driver and customer; fixes (1)
 - [ ] 10.5 Release notes, `STATUS.md`, `current_phase.md`, ADR, knowledge summary (1)
 
+## E11 Device registration and access control (19.5 days)
+Runs as its own stream (release R-D). Applies to the Driver and Admin apps; the Customer app is excluded pending decision 2.
+- [ ] 11.1 Design and ADR: data model, states (pending, approved, blocked, removed), enforcement points, grandfathering, privacy; confirm on the agency's real phones what can be read (IMEI, Android ID, model) (1)
+- [ ] 11.2 Backend: `admin_app` app type, device table with RLS and migration, repository, register/approve/block/unblock/rename/remove use cases, seat limit from `device_caps`, audit events, domain events (3)
+- [ ] 11.3 Backend enforcement: bind sessions to the install ID at sign-in and refresh, check status on every request and on the realtime connection, error codes `DEVICE_PENDING` and `DEVICE_BLOCKED`, short-lived status cache, revoke refresh tokens on block, push and realtime sign-out (3)
+- [ ] 11.4 Backend API: register from the app, list, pending, approve, block, unblock, rename, remove, admin alert on a new pending device, grandfathering of existing sessions with a grace period (2)
+- [ ] 11.5 Dashboard: Linked Devices page (list, pending, actions, details, IMEI or serial note, filters, history), pending badge in the sidebar, permissions (3)
+- [ ] 11.6 Mobile `device_identity` package: install ID in secure storage, device details collection, `X-Device-Id` header in `api_client`, pending and blocked states in session handling (2)
+- [ ] 11.7 Driver app: waiting-for-approval and blocked screens, offline queue kept and resumed on unblock, immediate sign-out on block (2)
+- [ ] 11.8 Admin app: waiting-for-approval and blocked screens, immediate sign-out on block (1.5)
+- [ ] 11.9 (optional, +2) Pairing-code registration mode as a per-agency setting
+- [ ] 11.10 Tests and review: tenant isolation, enforcement matrix (unknown, pending, approved, blocked, removed, over the seat limit) on every sign-in and request path, security review (2)
+- [ ] 11.11 (optional, about +2) Play Integrity and App Attest checks to flag rooted, emulated or cloned installs
+
 ## Parking lot (not in scope)
-- Hindi and Marathi translations
+- Hindi, Marathi and other translations; per-language SMS templates with the SMS provider (backend)
 - Angular dashboard redesign
 - iOS-specific polish
