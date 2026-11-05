@@ -1,7 +1,9 @@
+// The public named parameters cannot be private initializing formals.
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:typed_data';
 
-import 'package:cryptography/cryptography.dart';
-
+import 'media_cipher.dart';
 import 'media_store.dart';
 
 /// Encrypts everything written to [_inner] (AES-256-GCM, a fresh nonce per
@@ -17,41 +19,36 @@ import 'media_store.dart';
 /// garbage.
 class EncryptedMediaStore implements MediaStore {
   /// [loadKey] returns 32 secret bytes (kept in secure storage in the app);
-  /// it is called once and the result reused.
+  /// it is called once and the result reused. [cipher] defaults to
+  /// [IsolateMediaCipher], which keeps the app responsive; the Driver app
+  /// passes a native-first cipher on phones.
   EncryptedMediaStore(
     this._inner, {
     required Future<List<int>> Function() loadKey,
-  }) : // The public `loadKey` parameter cannot be a private initializing formal.
-       // ignore: prefer_initializing_formals
-       _loadKey = loadKey;
+    MediaCipher cipher = const IsolateMediaCipher(),
+  }) : _loadKey = loadKey,
+       _cipher = cipher;
 
   static const _marker = [0x4c, 0x50, 0x47, 0x4d, 0x31]; // "LPGM1"
-  static final _cipher = AesGcm.with256bits();
 
   final MediaStore _inner;
   final Future<List<int>> Function() _loadKey;
-  SecretKey? _key;
+  final MediaCipher _cipher;
+  List<int>? _key;
 
-  Future<SecretKey> _secret() async => _key ??= SecretKey(await _loadKey());
+  Future<List<int>> _secret() async => _key ??= await _loadKey();
 
   @override
   Future<void> write(String key, List<int> bytes) async {
-    final box = await _cipher.encrypt(bytes, secretKey: await _secret());
-    await _inner.write(key, [..._marker, ...box.concatenation()]);
+    final sealed = await _cipher.encrypt(bytes, await _secret());
+    await _inner.write(key, [..._marker, ...sealed]);
   }
 
   @override
   Future<Uint8List> read(String key) async {
     final stored = await _inner.read(key);
     if (!_hasMarker(stored)) return stored; // written before encryption
-    final box = SecretBox.fromConcatenation(
-      stored.sublist(_marker.length),
-      nonceLength: _cipher.nonceLength,
-      macLength: _cipher.macAlgorithm.macLength,
-    );
-    return Uint8List.fromList(
-      await _cipher.decrypt(box, secretKey: await _secret()),
-    );
+    return _cipher.decrypt(stored.sublist(_marker.length), await _secret());
   }
 
   bool _hasMarker(Uint8List bytes) {

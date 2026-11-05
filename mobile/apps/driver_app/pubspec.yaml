@@ -31,6 +31,9 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.0.0
+  # Native AES-GCM on Android and iOS for proof-of-delivery files. The plugin
+  # registers itself; `main()` chooses how to use it (see `mediaCipher`).
+  cryptography_flutter: ^2.3.4
   go_router: ^17.0.0
   design_system:
     path: ../../packages/design_system
