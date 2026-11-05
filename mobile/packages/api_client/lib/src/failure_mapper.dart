@@ -21,6 +21,16 @@ Failure mapDioError(DioException error) {
       break;
   }
 
+  // A gateway answering for a server that is down or still starting. Its body
+  // is not ours, so it never carries an `error_code`.
+  const gatewayStatuses = {502, 503, 504};
+  if (gatewayStatuses.contains(error.response?.statusCode)) {
+    return const Failure(
+      message: 'The server is busy right now. Please try again.',
+      errorCode: 'SERVER_UNAVAILABLE',
+    );
+  }
+
   final data = error.response?.data;
   if (data is Map<String, dynamic> && data['error_code'] is String) {
     final detail = data['detail'];

@@ -13,6 +13,6 @@ final ledgerProvider = FutureProvider<CylinderLedgerResponse?>((ref) async {
   final result = await api.getLedger(profile.id);
   return result.when(
     onSuccess: (data) => data,
-    onFailure: (failure) => throw Exception(failure.message),
+    onFailure: (failure) => throw FailureException(failure),
   );
 });

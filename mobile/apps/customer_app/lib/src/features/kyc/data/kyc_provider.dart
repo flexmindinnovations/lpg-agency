@@ -18,6 +18,6 @@ final kycDocumentsProvider = FutureProvider<List<KycDocumentResponse>>((
   final result = await api.getMyDocuments(profile.id);
   return result.when(
     onSuccess: (data) => data.items,
-    onFailure: (failure) => throw Exception(failure.message),
+    onFailure: (failure) => throw FailureException(failure),
   );
 });

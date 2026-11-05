@@ -126,6 +126,10 @@ void main() async {
 
   runApp(
     ProviderScope(
+      // One quiet retry of a transient failure (the skeleton stays on screen
+      // meanwhile), then the error/Retry state. Riverpod's default retries ten
+      // times and hides a real error for about half a minute (story 0.4).
+      retry: quietRetry,
       overrides: [
         localDatabaseProvider.overrideWithValue(localDatabase),
         authControllerProvider.overrideWithValue(authController),
