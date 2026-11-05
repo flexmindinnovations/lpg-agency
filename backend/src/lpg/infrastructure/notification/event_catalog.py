@@ -53,6 +53,9 @@ _META: dict[str, _Meta] = {
     ),
     "complaint_raised_staff": _Meta("Complaints", "A customer raised a complaint."),
     "complaint_assigned": _Meta("Complaints", "A complaint was assigned to a staff member."),
+    "device_pending_staff": _Meta(
+        "Phones and access", "A phone signed in to the Driver or Admin app and needs approval."
+    ),
     "delivery_failed_staff": _Meta(
         "Deliveries", "A delivery could not be completed.", critical=True
     ),

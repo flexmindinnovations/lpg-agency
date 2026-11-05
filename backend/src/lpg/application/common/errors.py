@@ -411,6 +411,42 @@ class DeviceLimitReachedError(ConflictError):
     title = "The device limit for this app has been reached."
 
 
+class DeviceRequiredError(ApplicationError):
+    """The session is not tied to a registered phone: the app sent no install
+    ID (or a different one than the session was opened on). A 401 on purpose —
+    the app's silent refresh re-binds it to this phone, and only signs out if
+    that fails too."""
+
+    error_code = "DEVICE_REQUIRED"
+    http_status = 401
+    title = "This phone is not registered with the agency."
+
+
+class DevicePendingError(ApplicationError):
+    """The phone is waiting for an admin to approve it."""
+
+    error_code = "DEVICE_PENDING"
+    http_status = 403
+    title = "This phone is waiting for the agency's approval."
+
+
+class DeviceBlockedError(ApplicationError):
+    """The agency has blocked this phone."""
+
+    error_code = "DEVICE_BLOCKED"
+    http_status = 403
+    title = "This phone has been blocked by the agency."
+
+
+class DeviceRemovedError(ApplicationError):
+    """The agency removed this phone from its list; signing in again asks for
+    approval afresh."""
+
+    error_code = "DEVICE_REMOVED"
+    http_status = 403
+    title = "This phone was removed from the agency's list."
+
+
 class TenantSuspendedError(ConflictError):
     """The tenant's agency has been suspended by a `super_admin` —
     deliberately a **second, independent** check from `LicenseExpiredError`,

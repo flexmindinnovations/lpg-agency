@@ -3575,6 +3575,89 @@
         "title": "DependencyStatus",
         "type": "object"
       },
+      "DeviceHistoryEntryResponse": {
+        "properties": {
+          "action": {
+            "description": "registered, approved, blocked, unblocked, removed or updated.",
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "performed_at": {
+            "format": "date-time",
+            "title": "Performed At",
+            "type": "string"
+          },
+          "to_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Status"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "performed_at",
+          "actor_name",
+          "from_status",
+          "to_status",
+          "display_name"
+        ],
+        "title": "DeviceHistoryEntryResponse",
+        "type": "object"
+      },
+      "DeviceStatus": {
+        "enum": [
+          "pending",
+          "approved",
+          "blocked",
+          "removed"
+        ],
+        "title": "DeviceStatus",
+        "type": "string"
+      },
       "DocumentAttachmentResponse": {
         "description": "A pre-uploaded document image blob ref, staged under a tenant-scoped\nkey before the owning record exists.",
         "properties": {
@@ -5789,13 +5872,37 @@
         "type": "object"
       },
       "LinkedDeviceResponse": {
+        "description": "One phone running the Driver or Admin app. The install ID and the\nhardware ID are never returned (they are stored hashed); `device_ref` and\n`phone_ref` are short fingerprints an admin can compare by eye.",
         "properties": {
           "app_type": {
             "title": "App Type",
             "type": "string"
           },
-          "device_identifier": {
-            "title": "Device Identifier",
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "asset_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "IMEI or serial the admin typed; a note only.",
+            "title": "Asset Note"
+          },
+          "device_ref": {
+            "title": "Device Ref",
             "type": "string"
           },
           "display_name": {
@@ -5806,21 +5913,94 @@
             "title": "Id",
             "type": "string"
           },
-          "is_active": {
-            "title": "Is Active",
-            "type": "boolean"
-          },
           "last_seen_at": {
             "format": "date-time",
             "title": "Last Seen At",
             "type": "string"
+          },
+          "last_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last User Id"
+          },
+          "last_user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last User Name"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "os_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Os Version"
+          },
+          "phone_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Ref"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform"
           },
           "registered_at": {
             "format": "date-time",
             "title": "Registered At",
             "type": "string"
           },
-          "revoked_at": {
+          "removed_at": {
             "anyOf": [
               {
                 "format": "date-time",
@@ -5830,18 +6010,38 @@
                 "type": "null"
               }
             ],
-            "title": "Revoked At"
+            "title": "Removed At"
+          },
+          "status": {
+            "description": "pending, approved, blocked or removed.",
+            "title": "Status",
+            "type": "string"
+          },
+          "status_changed_at": {
+            "format": "date-time",
+            "title": "Status Changed At",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "app_type",
-          "device_identifier",
           "display_name",
+          "status",
+          "manufacturer",
+          "model",
+          "os_version",
+          "app_version",
+          "platform",
+          "device_ref",
+          "phone_ref",
+          "asset_note",
+          "last_user_id",
+          "last_user_name",
           "registered_at",
           "last_seen_at",
-          "revoked_at",
-          "is_active"
+          "status_changed_at",
+          "removed_at"
         ],
         "title": "LinkedDeviceResponse",
         "type": "object"
@@ -7779,6 +7979,19 @@
           "requested_at"
         ],
         "title": "PendingCancellationResponse",
+        "type": "object"
+      },
+      "PendingDeviceCountResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "title": "PendingDeviceCountResponse",
         "type": "object"
       },
       "PlanRouteRequest": {
@@ -12500,6 +12713,38 @@
         "title": "UpdateEmployeeRequest",
         "type": "object"
       },
+      "UpdateLinkedDeviceRequest": {
+        "description": "Only the fields that are sent change. An empty `asset_note` clears it.",
+        "properties": {
+          "asset_note": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Note"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "title": "UpdateLinkedDeviceRequest",
+        "type": "object"
+      },
       "UpdateMyProfileRequest": {
         "properties": {
           "contact_phone": {
@@ -13947,6 +14192,44 @@
     "/api/v1/admin/license/devices": {
       "get": {
         "operationId": "list_linked_devices_api_v1_admin_license_devices_get",
+        "parameters": [
+          {
+            "description": "driver_app or admin_app.",
+            "in": "query",
+            "name": "app_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "driver_app or admin_app.",
+              "title": "App Type"
+            }
+          },
+          {
+            "description": "Leave out to list every phone still in use (not removed).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DeviceStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Leave out to list every phone still in use (not removed).",
+              "title": "Status"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -13961,30 +14244,79 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "List this tenant's linked devices",
+        "summary": "List this agency's phones",
         "tags": [
-          "Administration"
+          "Linked devices"
         ]
       }
     },
-    "/api/v1/admin/license/devices/{device_id}/revoke": {
+    "/api/v1/admin/license/devices/pending-count": {
+      "get": {
+        "operationId": "count_pending_devices_api_v1_admin_license_devices_pending_count_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingDeviceCountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "How many phones are waiting for approval",
+        "tags": [
+          "Linked devices"
+        ]
+      }
+    },
+    "/api/v1/admin/license/devices/{device_id}": {
       "patch": {
-        "operationId": "revoke_linked_device_api_v1_admin_license_devices__device_id__revoke_patch",
+        "operationId": "update_device_api_v1_admin_license_devices__device_id__patch",
         "parameters": [
           {
             "in": "path",
             "name": "device_id",
             "required": true,
             "schema": {
+              "format": "uuid",
               "title": "Device Id",
               "type": "string"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLinkedDeviceRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "204": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedDeviceResponse"
+                }
+              }
+            },
             "description": "Successful Response"
           },
           "422": {
@@ -13998,9 +14330,228 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Revoke a linked device",
+        "summary": "Rename a phone or set its IMEI / serial note",
         "tags": [
-          "Administration"
+          "Linked devices"
+        ]
+      }
+    },
+    "/api/v1/admin/license/devices/{device_id}/approve": {
+      "post": {
+        "operationId": "approve_device_api_v1_admin_license_devices__device_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedDeviceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve a waiting phone",
+        "tags": [
+          "Linked devices"
+        ]
+      }
+    },
+    "/api/v1/admin/license/devices/{device_id}/block": {
+      "post": {
+        "operationId": "block_device_api_v1_admin_license_devices__device_id__block_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedDeviceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Block a phone",
+        "tags": [
+          "Linked devices"
+        ]
+      }
+    },
+    "/api/v1/admin/license/devices/{device_id}/history": {
+      "get": {
+        "operationId": "get_device_history_api_v1_admin_license_devices__device_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceHistoryEntryResponse"
+                  },
+                  "title": "Response Get Device History Api V1 Admin License Devices  Device Id  History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Who did what to this phone",
+        "tags": [
+          "Linked devices"
+        ]
+      }
+    },
+    "/api/v1/admin/license/devices/{device_id}/remove": {
+      "post": {
+        "operationId": "remove_device_api_v1_admin_license_devices__device_id__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedDeviceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove a phone from the list",
+        "tags": [
+          "Linked devices"
+        ]
+      }
+    },
+    "/api/v1/admin/license/devices/{device_id}/unblock": {
+      "post": {
+        "operationId": "unblock_device_api_v1_admin_license_devices__device_id__unblock_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedDeviceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unblock a blocked phone",
+        "tags": [
+          "Linked devices"
         ]
       }
     },

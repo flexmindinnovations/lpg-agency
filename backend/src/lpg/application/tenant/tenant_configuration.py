@@ -14,6 +14,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from lpg.application.common.cqrs import Command
+from lpg.application.common.errors import ValidationError
+from lpg.domain.license.device_control import DEVICE_CONTROL_CONFIG_KEY, DeviceControlMode
 from lpg.domain.tenant.tenant_configuration import TenantConfiguration, TenantConfigurationResolver
 
 if TYPE_CHECKING:
@@ -35,6 +37,11 @@ class SetTenantConfigurationUseCase:
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: SetTenantConfigurationCommand) -> TenantConfiguration:
+        if command.config_key == DEVICE_CONTROL_CONFIG_KEY and not DeviceControlMode.is_valid(
+            command.config_value
+        ):
+            msg = "Device control must be 'off', 'observe' or 'enforce'."
+            raise ValidationError(msg, config_key=command.config_key)
         config = TenantConfiguration(
             uuid.uuid4(),
             command.tenant_id,

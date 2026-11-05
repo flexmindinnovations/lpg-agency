@@ -60,7 +60,6 @@ from lpg.api.v1.dependencies.identity import (
 from lpg.api.v1.dependencies.license import (
     get_license_repository,
     get_license_status_checker,
-    get_linked_device_repository,
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.admin import (
@@ -108,7 +107,6 @@ from lpg.api.v1.schemas.license import (
     ActivateLicenseRequest,
     LicenseResponse,
     LicenseStatusResponse,
-    LinkedDeviceResponse,
 )
 from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLogUseCase
 from lpg.application.audit.ports import AuditLogRepository, AuditTrail
@@ -150,16 +148,9 @@ from lpg.application.license.license_status import (
     GetLicenseStatusQuery,
     GetLicenseStatusUseCase,
 )
-from lpg.application.license.manage_devices import (
-    ListLinkedDevicesQuery,
-    ListLinkedDevicesUseCase,
-    RevokeDeviceCommand,
-    RevokeDeviceUseCase,
-)
 from lpg.application.license.ports import (
     LicenseRepository,
     LicenseStatusChecker,
-    LinkedDeviceRepository,
 )
 from lpg.application.platform.feature_flag import (
     IsFeatureFlagEnabledQuery,
@@ -250,7 +241,6 @@ from lpg.application.tenant.warehouse import (
 from lpg.config.settings import Settings, get_settings
 from lpg.domain.common.gst import GST_STATE_CODES
 from lpg.domain.license.license import License
-from lpg.domain.license.linked_device import LinkedDevice
 from lpg.domain.tenant.cylinder_type import CylinderType
 from lpg.domain.tenant.price_list_proposal import PriceListProposal
 from lpg.domain.tenant.tenant import Tenant
@@ -1046,19 +1036,6 @@ def _license_response(license: License) -> LicenseResponse:
     )
 
 
-def _device_response(device: LinkedDevice) -> LinkedDeviceResponse:
-    return LinkedDeviceResponse(
-        id=str(device.id),
-        app_type=device.app_type,
-        device_identifier=device.device_identifier,
-        display_name=device.display_name,
-        registered_at=device.registered_at,
-        last_seen_at=device.last_seen_at,
-        revoked_at=device.revoked_at,
-        is_active=device.is_active,
-    )
-
-
 @router.get(
     "/license/status",
     response_model=LicenseStatusResponse,
@@ -1102,39 +1079,6 @@ async def activate_license(
         ActivateLicenseCommand(tenant_id=principal.tenant_id, presented_key=body.key)
     )
     return _license_response(license_)
-
-
-@router.get(
-    "/license/devices",
-    response_model=list[LinkedDeviceResponse],
-    summary="List this tenant's linked devices",
-)
-async def list_linked_devices(
-    principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_permission("license:manage_tenant"))
-    ],
-    repository: Annotated[LinkedDeviceRepository, Depends(get_linked_device_repository)],
-) -> list[LinkedDeviceResponse]:
-    use_case = ListLinkedDevicesUseCase(repository)
-    devices = await use_case.execute(ListLinkedDevicesQuery(tenant_id=principal.tenant_id))
-    return [_device_response(device) for device in devices]
-
-
-@router.patch(
-    "/license/devices/{device_id}/revoke", status_code=204, summary="Revoke a linked device"
-)
-async def revoke_linked_device(
-    device_id: str,
-    principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_permission("license:manage_tenant"))
-    ],
-    repository: Annotated[LinkedDeviceRepository, Depends(get_linked_device_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = RevokeDeviceUseCase(repository, unit_of_work)
-    await use_case.execute(
-        RevokeDeviceCommand(tenant_id=principal.tenant_id, device_id=uuid.UUID(device_id))
-    )
 
 
 # -- Staff Users ------------------------------------------------------------------

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
         LicenseFeatureOverride,
         LicenseLifecycleState,
     )
-    from lpg.domain.license.linked_device import LinkedDevice
+    from lpg.domain.license.linked_device import DeviceStatus, LinkedDevice
 
 
 @runtime_checkable
@@ -56,10 +56,18 @@ class LinkedDeviceRepository(Protocol):
     ) -> LinkedDevice | None: ...
 
     async def list_for_tenant(
-        self, tenant_id: uuid.UUID, app_type: str | None = None
-    ) -> Sequence[LinkedDevice]: ...
+        self,
+        tenant_id: uuid.UUID,
+        app_type: str | None = None,
+        status: DeviceStatus | None = None,
+    ) -> Sequence[LinkedDevice]:
+        """Newest first. `status=None` lists every device still in use, i.e.
+        everything except removed ones; ask for `REMOVED` to see those."""
+        ...
 
-    async def count_active_for_app_type(self, tenant_id: uuid.UUID, app_type: str) -> int: ...
+    async def count_with_status(
+        self, tenant_id: uuid.UUID, status: DeviceStatus, app_type: str | None = None
+    ) -> int: ...
 
     async def add(self, device: LinkedDevice) -> None: ...
 
