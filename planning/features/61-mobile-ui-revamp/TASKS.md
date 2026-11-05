@@ -1,6 +1,6 @@
-# Tasks: Mobile UI/UX Revamp, i18n and Device Control
+# Tasks: Mobile UI/UX Revamp, i18n, Device Control and Alert Sounds
 
-Nothing here is started (plan version 2). Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
+Nothing here is started (plan version 3). Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
 
 ## E0 Discovery and decisions (3 days)
 - [ ] 0.1 Design direction: modern solid enterprise look (tonal elevation, radii, type scale, motion language); reference screens for each app (1)
@@ -88,7 +88,24 @@ Runs as its own stream (release R-D). Applies to the Driver and Admin apps; the 
 - [ ] 11.10 Tests and review: tenant isolation, enforcement matrix (unknown, pending, approved, blocked, removed, over the seat limit) on every sign-in and request path, security review (2)
 - [ ] 11.11 (optional, about +2) Play Integrity and App Attest checks to flag rooted, emulated or cloned installs
 
+## E12 Alert sounds and delivery reliability (22 days)
+Runs as its own stream. **Slice A (Driver quick win, about 8 days, release R-N1)** is marked A; the rest is release R-N2.
+- [ ] 12.1 (A) Audit the push pipeline and write the ADR: event to sound-tier mapping with the domain agent, Android channel plan with versioned IDs, iOS plan (1)
+- [ ] 12.2 (A for Driver tiers) Sounds: source or commission four original sounds (Urgent, Standard, Soft, Friendly), master to a consistent loudness with headroom, export Android and iOS formats, keep licences in the repo (2)
+- [ ] 12.3 (A) Backend: add a sound tier to each catalogue entry; FCM messages carry the Android channel, sound, high priority and time-to-live, and the iOS sound and interruption level; tests; per-agency sound override left for later (2)
+- [ ] 12.4 (A for Driver) Android channels in all three apps: one per tier, versioned IDs, alarm-style audio usage and vibration on Urgent, repeat-until-opened on Urgent, old channel removed on upgrade (3)
+- [ ] 12.5 iOS: bundle the sound files, map the payload, time-sensitive interruption level, foreground presentation (1.5)
+- [ ] 12.6 Foreground alerts: shared `alerts` package playing the tier sound with haptics and a banner when the app is open (2)
+- [ ] 12.7 Driver "New delivery" alert that keeps ringing until acknowledged, on a clear alert screen when the app is open (2)
+- [ ] 12.8 (A in lite form) "Make sure you hear alerts" guide: permission, muted-channel detection, per-brand battery and autostart steps for Xiaomi, Oppo, Vivo, Realme and Samsung, a test sound button, volume and Do Not Disturb notes (3)
+- [ ] 12.9 Notification settings screen: sound on or off per tier, test sound, link to system channel settings (1.5)
+- [ ] 12.10 Delivery tracking: apps report delivered and opened; urgent driver alerts not acknowledged in time can trigger an SMS through the existing SMS channel (2)
+- [ ] 12.11 Real-device tests: Samsung, Xiaomi or Redmi, Vivo, Oppo or Realme, a stock Android phone and an iPhone; loudness against the old default, battery saver, Do Not Disturb, background kill; hearing-impaired options (vibration, screen flash) (2)
+
 ## Parking lot (not in scope)
 - Hindi, Marathi and other translations; per-language SMS templates with the SMS provider (backend)
+- Per-agency choice of sound per event (follows the ADR-068 model)
+- Full-screen alerts over the lock screen (restricted by Google Play policy for most apps)
+- iOS Critical Alerts (need a special Apple entitlement)
 - Angular dashboard redesign
 - iOS-specific polish

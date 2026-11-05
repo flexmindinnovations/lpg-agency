@@ -1,14 +1,15 @@
-# Plan: Mobile UI/UX Revamp, i18n and Device Control (Customer, Driver, Admin)
+# Plan: Mobile UI/UX Revamp, i18n, Device Control and Alert Sounds (Customer, Driver, Admin)
 
-> **Status: proposed, awaiting approval (version 2, 2026-11-05).** Updated with the owner's inputs: no transparent glass (a modern, solid, enterprise look instead), i18n with JSON strings from the start, and device registration and access control for the Driver and Admin apps. No code is written until the decisions in section 6 are settled.
+> **Status: proposed, awaiting approval (version 3, 2026-11-05).** Updated with the owner's inputs: no transparent glass (a modern, solid, enterprise look instead), i18n with JSON strings from the start, device registration and access control for the Driver and Admin apps, and custom, louder alert sounds (most urgent for the Driver app). No code is written until the decisions in section 6 are settled.
 
 ## 1. Goal
 
-Three streams that ship separately:
+Four streams that ship separately:
 
 1. **UI revamp.** One consistent, stable, modern look across the three apps, built on a single theme engine and one shared component library, with LPG-specific animation, illustrations and icons, first-class tablet layouts, loading skeletons before content (an error screen only when loading really failed), clear validation messages, and wording that suits Indian operations.
 2. **i18n.** Every user-visible string loaded from JSON catalogues (`en.json` now; Hindi, Marathi and other Indian languages later without code changes).
 3. **Device control.** An agency decides which phones may use the Driver and Admin apps: devices are registered to the agency, approved, and can be blocked; a blocked or unknown device cannot use the app.
+4. **Alert sounds.** Custom, clearly louder notification sounds in the style of food-delivery apps, with the Driver app first: a new delivery must be heard on a busy road, and a missed alert must be rare.
 
 ## 2. Where we are today (checked 2026-11-05)
 
@@ -25,6 +26,13 @@ Three streams that ship separately:
 The dashboard already has a skeleton in its loading branch, so a missing skeleton is not the whole story. The app turns off Riverpod's automatic retry (`retry: (_, _) => null` in `main.dart`), so a first request that fails stays failed, and the shell refetches the dashboard on a realtime `reconnected` event (`app_shell.dart`). A failed first request followed by that refetch gives exactly "error, then data". **Not yet confirmed:** why the first request fails (token not ready, network not up, or the 401 refresh path). Story 0.4 reproduces it with request logging and fixes it first, ahead of the rest.
 
 Intended behaviour for all apps: skeleton until the first response; on failure retry once quietly (still showing the skeleton); show the error only if that also fails; on refresh keep the old data visible.
+
+### Notifications today
+Checked in the backend and the apps:
+- The backend sends a plain FCM `notification` (title and body) plus a `data` block, with **no Android channel, sound, priority or time-to-live settings** (`infrastructure/channels/push_channel.py`). iOS only gets `content-available`.
+- All three apps create **one shared Android channel**, `lpg_default_channel`, at high importance and the **default system sound**. Every event type therefore sounds the same, and it is the quietest sound on the phone.
+- The notification catalogue (`infrastructure/notification/catalog.py`) already lists every event and its audience (customer, driver, staff), so each event can be given a sound tier. Agencies can already switch channels per event (ADR-068); the catalogue marks critical events.
+- Android fixes a channel's sound when the channel is first created, and the user can mute or lower it in system settings. A different sound therefore needs **new channel IDs**, and the app cannot override a muted channel.
 
 ### Why Linked Devices is empty today
 Checked in the backend and the apps:
@@ -95,6 +103,42 @@ Three size classes (compact, medium, expanded) drive navigation (bar, rail, side
 
 **Privacy.** Device identifiers are personal data under India's DPDP Act. Collect only what is listed above, say why in the app, set a retention period, and never log identifiers in plain text in application logs. Legal wording is marked unverified, to confirm with the agency's adviser.
 
+### 3.8 Alert sounds (Epic 12)
+
+**What "louder" can and cannot mean.** An app cannot raise the phone's volume setting. What an app can do, and what delivery apps do:
+- ship a **loud, short, distinctive sound** mastered to a high, consistent loudness (not the quiet default tone), so it cuts through traffic at the same volume setting;
+- play urgent alerts on the **alarm or ringtone audio stream** (Android audio attributes), which users usually keep higher than the notification volume;
+- **repeat** the sound until the notification is opened or dismissed (Android's insistent flag), the way a new-order ring works;
+- add a strong **vibration pattern** and a heads-up banner;
+- play the sound inside the app when it is open (the system shows nothing then);
+- make sure the alert **arrives at all**: high priority, a short time-to-live so old alerts do not ring late, and help with the battery and autostart settings that stop alerts on many Indian phones (Xiaomi, Oppo, Vivo, Realme, Samsung).
+
+**Sound tiers.** Four original sounds with one family feel, mapped from the catalogue:
+
+| Tier | Sound | Used for |
+|---|---|---|
+| Urgent | Loud, 6 to 8 seconds, repeats until opened (Driver and Admin) | Driver: new route or delivery assigned, route cancelled, stop cancelled. Admin: cancellation waiting for approval, failed delivery, order that cannot be assigned, cash shortfall, expiring compliance document |
+| Standard | Clear chime, about 2 seconds | Driver: route re-ordered, reminder. Admin: new order, new complaint, stale unassigned order |
+| Soft | Gentle tone, about 1 second | Order delivered (staff), payment received, invoices |
+| Friendly | Warm, short | Customer: confirmed, out for delivery, delivered |
+
+The mapping is a field on each catalogue entry, so it can be changed without app releases. Per-agency choice of sound per event can follow ADR-068's model later.
+
+**Android.** One notification channel per tier, with **versioned IDs** (for example `lpg_urgent_v1`) so a sound can be changed in a later release; old channels are removed on upgrade. Urgent channels use maximum importance, an alarm-style audio usage, vibration and lights. The backend names the channel and sound in each message. Sounds ship as raw resources.
+
+**iOS.** The same sounds as `.caf` files (under 30 seconds) in the app bundle, named in the push payload, with the "time-sensitive" interruption level so alerts break through Focus modes. iOS cannot go louder than the ring volume, and *Critical Alerts* need a special Apple approval, so they are not planned.
+
+**In the app.**
+- A shared alerts package plays sounds in the foreground with haptics and a banner.
+- The Driver's new-delivery alert **keeps ringing until the driver acknowledges it**, on a clear "New delivery" alert screen when the app is open. Showing a full-screen alert over the lock screen is restricted by Google Play policy for most apps, so it is not planned; a repeating heads-up notification is used instead.
+- A **"Make sure you hear alerts"** guide: notification permission (Android 13 and later), a check that detects a muted or low-importance channel and warns, step-by-step help for each common phone brand's battery and autostart settings, a **test sound** button, a volume reminder and a note about Do Not Disturb.
+- A notification settings screen: sound on or off per tier, test sound, a link to the system channel settings.
+- **Delivery tracking**: the app tells the server when an alert was delivered and opened; if an urgent driver alert is not acknowledged within a set time, the server can send an SMS through the existing SMS channel (a cost to confirm).
+
+**Sounds themselves.** Original sounds, commissioned or licensed for commercial use, with the licence kept in the repo. We do not copy any other company's sounds. Mastering target and a loudness check on real phones are part of the work.
+
+**Safety and courtesy.** Loud means clear, not painful: consistent loudness with headroom, no clipping, and a quiet-hours setting for Admin. Hearing-impaired users get vibration and a screen flash option.
+
 ## 4. Risks
 
 | Risk | Mitigation |
@@ -104,6 +148,10 @@ Three size classes (compact, medium, expanded) drive navigation (bar, rail, side
 | A driver blocked mid-delivery | Queue kept on the phone; clear message; unblock restores sync; decision on policy in section 6 |
 | Reinstall changes the install ID and looks like a new device | Expected; the user shows as a new pending request, the admin removes the old one; Android ID helps spot the same phone |
 | Cloned or rooted devices | Optional Play Integrity and App Attest checks as a later story |
+| The sound is loud but the alert still does not arrive (battery savers kill the app on many Indian phones) | In-app setup guide per phone brand, high-priority delivery, delivery tracking and an SMS fallback for urgent driver alerts; tested on a real-device matrix |
+| The driver muted or lowered the channel in system settings | The app detects it and warns; test sound button; channel settings link |
+| Changing a sound later does not take effect (Android freezes channel sounds) | Versioned channel IDs from the start |
+| Sound licensing | Original or properly licensed sounds only; licence stored in the repo |
 | Moving every string is large and breaks tests that find text | Per feature, with the lint rule and stable keys; update tests alongside |
 | Three apps share one package, so one change touches all | Gallery app and golden tests; roll out per app; small reviewed PRs |
 | Custom icons and illustrations need a designer's eye | Brief in 5.1; decision 6.4 asks who draws; the estimate assumes SVGs we draw ourselves |
@@ -130,6 +178,13 @@ Settled by your last message: no transparent glass; i18n from the start with JSO
 9. **Tablet priority.** Admin first, Customer second, Driver last (recommended)?
 10. **Existing WIP.** Rebuild properly using `wip/mobile-ui-refresh` as a starting point (recommended)?
 11. **Pilot agency.** Is there a real agency, driver and customer to show builds to?
+12. **Sound source.** Commission an original set from a sound designer, license a commercial library, or generate and master our own? (The estimate assumes we source and master a four-sound set.)
+13. **Which events are Urgent.** Is the table in section 3.8 right for Driver and Admin?
+14. **Repeat until opened.** Acceptable for the Driver's new-delivery alert (and for Admin's urgent alerts), given the battery and annoyance cost?
+15. **Quiet hours.** For Admin only, or also an option for drivers outside their shift?
+16. **SMS fallback.** If an urgent driver alert is not acknowledged in a few minutes, send an SMS (extra cost per message)?
+17. **Customer app sounds.** A short friendly custom sound, or leave the system default?
+18. **Test phones.** Which real phones do the drivers and admins use? We need one each of the common brands to test sound and background delivery.
 
 ## 7. Epics, stories and estimates
 
@@ -149,29 +204,33 @@ Working days for one developer with AI assistance, including about a day of revi
 | E9 Admin app rollout | 12 |
 | E10 Quality, accessibility, release | 6 |
 | E11 Device registration and access control | 19.5 |
-| **Total** | **97** |
+| E12 Alert sounds and delivery reliability | 22 |
+| **Total** | **119** |
 
-Optional story 11.9 (pairing code) adds 2 days and Play Integrity or App Attest about 2 more; neither is counted.
+Optional story 11.9 (pairing code) adds 2 days and Play Integrity or App Attest about 2 more; commissioning custom sounds from a designer adds elapsed time but little effort; none of these is counted.
 
 Stories are listed in [TASKS.md](./TASKS.md).
 
 ## 8. Timeline
 
-Two streams run side by side because device control touches the backend, the dashboard and the apps' sign-in, not the visual design:
+Three streams run side by side because device control and alert sounds touch the backend, native Android and iOS settings, and sign-in rather than the visual design:
 
 - **UI stream (E0 to E10, 77.5 days):** about 8 to 11 weeks with two or three parallel writers; 15 to 18 weeks as one stream in order.
 - **Device stream (E11, 19.5 days):** about 4 to 5 weeks on its own, starting right away. Its waiting and blocked screens are first built with today's components and restyled when the new design system lands.
-- **Combined, with parallel streams: roughly 10 to 13 weeks.** One developer doing everything in order: about 20 weeks.
-- **Narrow option (about 6 weeks):** E0 to E3, the Admin dashboard and Customer home on the new system as the pattern, plus Epic 11, with the rest later.
+- **Alert stream (E12, 22 days):** about 5 to 6 weeks on its own. Its **first slice, the Driver app's louder new-delivery alert** (stories 12.1 to 12.4 for the Driver tiers, the setup guide in lite form), is about 8 days and can ship ahead of everything else.
+- **Combined, with parallel streams: roughly 11 to 14 weeks.** One developer doing everything in order: about 24 weeks.
+- **Narrow option (about 7 weeks):** E0 to E3, the Admin dashboard and Customer home on the new system as the pattern, plus Epic 11 and the Driver alert slice, with the rest later.
 
 | Release | Weeks | Contents |
 |---|---|---|
 | R1 | 1 to 3 | Dashboard flash fixed in all apps, theme engine, i18n infrastructure, `LpgAsyncView` |
+| R-N1 | 1 to 2 | **Driver app louder alerts**: new sounds, per-tier channels, backend payload, in-app test sound and basic setup guide |
 | R-D | 1 to 5 | Device registration, approval, blocking and enforcement for Driver and Admin apps, new Linked Devices page |
+| R-N2 | 3 to 6 | Admin and Customer sounds, iOS, foreground alerts, repeat-until-acknowledged, brand-specific battery guides, delivery tracking and SMS fallback |
 | R2 | 4 to 7 | Component library v2, icons and illustrations, Customer app on the new system |
 | R3 | 8 to 10 | Driver and Admin apps, tablet layouts |
 | R4 | 11 to 13 | Quality pass, accessibility, performance, pilot feedback |
 
 ## 9. Testing and done
 
-Per story: analyze clean, tests pass, golden images for new components, phone and tablet sizes checked, accessibility checked (contrast, touch targets, TalkBack labels). Device control adds tenant-isolation tests, an enforcement matrix (unknown, pending, approved, blocked, removed, over the seat limit) for every sign-in and request path, and a security review. Per epic: gallery updated, `STATUS.md` records what was verified and what was not, `planning/current_phase.md` and `knowledge/12-current-status.md` updated. An ADR records the theme engine, strings and device-control decisions once approved.
+Per story: analyze clean, tests pass, golden images for new components, phone and tablet sizes checked, accessibility checked (contrast, touch targets, TalkBack labels). Device control adds tenant-isolation tests, an enforcement matrix (unknown, pending, approved, blocked, removed, over the seat limit) for every sign-in and request path, and a security review. Per epic: gallery updated, `STATUS.md` records what was verified and what was not, `planning/current_phase.md` and `knowledge/12-current-status.md` updated. Alert sounds add a loudness check against the old default on real phones, a delivery test in battery-saver and Do Not Disturb, and a check on each test brand. An ADR records the theme engine, strings, device-control and alert-sound decisions once approved.
