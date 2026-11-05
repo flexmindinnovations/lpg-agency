@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -35,6 +36,10 @@ router = APIRouter(tags=["Realtime"])
 
 # Ping interval to detect dead connections
 _PING_INTERVAL_S = 30.0
+# How often a connected phone is re-checked against the agency's device
+# control (ADR-071), however busy the connection is. The status is cached, so
+# this is cheap. A client that never goes quiet must not escape the check.
+_DEVICE_RECHECK_S = 30.0
 # How long an unauthenticated socket may stay open waiting for its auth frame.
 _AUTH_TIMEOUT_S = 10.0
 
@@ -202,14 +207,16 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     ownership = build_subscription_ownership(state.database)
     active_channels: list[str] = []
 
+    last_device_check = time.monotonic()
     try:
         while True:
             try:
                 message = await asyncio.wait_for(websocket.receive_text(), timeout=_PING_INTERVAL_S)
             except TimeoutError:
-                # Quiet connection: a good moment to notice the phone was
-                # blocked since the last check (cheap — the status is cached).
+                # Quiet connection: notice the phone was blocked since the
+                # last check.
                 denied = await _device_allowed(claims, install_id)
+                last_device_check = time.monotonic()
                 if denied is not None:
                     await websocket.close(code=_CLOSE_POLICY_VIOLATION, reason=denied)
                     return
@@ -218,6 +225,15 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     continue
                 except Exception:  # noqa: BLE001 - send failure means the socket is gone, break
                     break
+
+            # A busy connection is re-checked on a timer too, so a client that
+            # keeps talking cannot outlive a block.
+            if time.monotonic() - last_device_check >= _DEVICE_RECHECK_S:
+                denied = await _device_allowed(claims, install_id)
+                last_device_check = time.monotonic()
+                if denied is not None:
+                    await websocket.close(code=_CLOSE_POLICY_VIOLATION, reason=denied)
+                    return
 
             try:
                 data = json.loads(message)

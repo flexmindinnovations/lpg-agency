@@ -21,6 +21,7 @@ from lpg.application.common.cqrs import Command
 from lpg.application.common.errors import (
     DeviceLimitReachedError,
     NotFoundError,
+    TooManyWaitingDevicesError,
     ValidationError,
 )
 from lpg.domain.license.device_control import CONTROLLED_APP_TYPES, DeviceControlMode
@@ -35,6 +36,11 @@ if TYPE_CHECKING:
 #: Entity name used for every device audit row, explicit and generic alike.
 AUDIT_ENTITY_NAME = "linked_device"
 _AUDIT_ACTION_PREFIX = "device."
+
+#: Most phones one login may have waiting for approval at once. A person has a
+#: phone or two; more means a leaked login or a script, and each waiting phone
+#: raises an alert for the agency admin.
+MAX_WAITING_PER_USER = 5
 
 
 # -- Registration (called when a phone signs in) -----------------------------------
@@ -102,6 +108,7 @@ class RegisterDeviceUseCase:
 
         if existing is None:
             status = await self._starting_status(command, license_)
+            await self._guard_waiting_queue(command, status)
             device = LinkedDevice.register(
                 uuid.uuid4(),
                 command.tenant_id,
@@ -123,7 +130,9 @@ class RegisterDeviceUseCase:
 
         is_new = False
         if existing.status is DeviceStatus.REMOVED:
-            existing.reopen(status=await self._starting_status(command, license_), at=now)
+            status = await self._starting_status(command, license_)
+            await self._guard_waiting_queue(command, status)
+            existing.reopen(status=status, at=now)
             is_new = True
         existing.record_sign_in(
             at=now,
@@ -137,6 +146,21 @@ class RegisterDeviceUseCase:
             await self._audit_registered(existing, command.mode)
         await self._unit_of_work.commit()
         return DeviceRegistration(existing, is_new=is_new)
+
+    async def _guard_waiting_queue(
+        self, command: RegisterDeviceCommand, status: DeviceStatus
+    ) -> None:
+        if status is not DeviceStatus.PENDING or command.user_id is None:
+            return
+        waiting = await self._device_repository.count_waiting_for_user(
+            command.tenant_id, command.user_id
+        )
+        if waiting >= MAX_WAITING_PER_USER:
+            msg = (
+                "Too many phones from this login are waiting for approval. "
+                "Ask your agency to approve or remove some."
+            )
+            raise TooManyWaitingDevicesError(msg, tenant_id=str(command.tenant_id))
 
     async def _starting_status(
         self, command: RegisterDeviceCommand, license_: License

@@ -270,6 +270,16 @@ class SqlAlchemyLinkedDeviceRepository:
         result = await self._uow.session.execute(stmt)
         return result.scalar_one()
 
+    async def count_waiting_for_user(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> int:
+        result = await self._uow.session.execute(
+            select(func.count()).where(
+                LinkedDeviceModel.tenant_id == tenant_id,
+                LinkedDeviceModel.last_user_id == user_id,
+                LinkedDeviceModel.status == DeviceStatus.PENDING.value,
+            )
+        )
+        return result.scalar_one()
+
     async def add(self, device: LinkedDevice) -> None:
         row = LinkedDeviceModel(
             id=device.id,

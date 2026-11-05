@@ -85,7 +85,7 @@ Runs as its own stream (release R-D). Applies to the Driver and Admin apps; the 
 - [ ] 11.7 Driver app: waiting-for-approval and blocked screens, offline queue kept and resumed on unblock, immediate sign-out on block (2)
 - [ ] 11.8 Admin app: waiting-for-approval and blocked screens, immediate sign-out on block (1.5)
 - [ ] 11.9 (optional, +2) Pairing-code registration mode as a per-agency setting
-- [ ] 11.10 Tests and review: tenant isolation, enforcement matrix (unknown, pending, approved, blocked, removed, over the seat limit) on every sign-in and request path, security review (2)
+- [x] 11.10 Tests and review: tenant isolation, enforcement matrix (unknown, pending, approved, blocked, removed, over the seat limit) on every sign-in and request path, security review (2) — done in PR D: `test_device_enforcement_matrix.py` (every state against password and OTP sign-in, refresh, requests, `/devices/me` and a real WebSocket), raw-SQL RLS checks, and `docs/reviews/2026-11-05-device-control-security-review.md` (two findings fixed, residual risks listed; self-review, not independent).
 - [ ] 11.11 (optional, about +2) Play Integrity and App Attest checks to flag rooted, emulated or cloned installs
 
 ## E12 Alert sounds and delivery reliability (22.5 days), built last
