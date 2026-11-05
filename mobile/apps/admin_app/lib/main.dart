@@ -88,18 +88,24 @@ void main() async {
   }
 
   runApp(
-    ProviderScope(
-      // Riverpod 3 retries failed providers with backoff and keeps them in
-      // the loading state meanwhile, so errors never reached the screens'
-      // error/Retry states. Fail fast; the user retries explicitly.
-      retry: (_, _) => null,
-      overrides: [
-        authControllerProvider.overrideWithValue(authController),
-        apiClientProvider.overrideWithValue(apiClient),
-        realtimeClientProvider.overrideWithValue(realtimeClient),
-        pushNotificationServiceProvider.overrideWithValue(pushService),
-      ],
-      child: const AdminApp(),
+    // A new state tree whenever a signed-in session ends, so the next person
+    // on this phone never sees the previous person's cached screens.
+    SessionScope(
+      authController: authController,
+      builder: (context, sessionKey) => ProviderScope(
+        key: sessionKey,
+        // Riverpod 3 retries failed providers with backoff and keeps them in
+        // the loading state meanwhile, so errors never reached the screens'
+        // error/Retry states. Fail fast; the user retries explicitly.
+        retry: (_, _) => null,
+        overrides: [
+          authControllerProvider.overrideWithValue(authController),
+          apiClientProvider.overrideWithValue(apiClient),
+          realtimeClientProvider.overrideWithValue(realtimeClient),
+          pushNotificationServiceProvider.overrideWithValue(pushService),
+        ],
+        child: const AdminApp(),
+      ),
     ),
   );
 }

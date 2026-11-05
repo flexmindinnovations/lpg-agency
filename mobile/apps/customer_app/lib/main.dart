@@ -109,16 +109,22 @@ void main() async {
   }
 
   runApp(
-    ProviderScope(
-      overrides: [
-        localDatabaseProvider.overrideWithValue(localDatabase),
-        syncCoordinatorProvider.overrideWithValue(syncCoordinator),
-        authControllerProvider.overrideWithValue(authController),
-        apiClientProvider.overrideWithValue(apiClient),
-        realtimeClientProvider.overrideWithValue(realtimeClient),
-        pushNotificationServiceProvider.overrideWithValue(pushService),
-      ],
-      child: const CustomerApp(),
+    // A new state tree whenever a signed-in session ends, so the next person
+    // on this phone never sees the previous person's cached screens.
+    SessionScope(
+      authController: authController,
+      builder: (context, sessionKey) => ProviderScope(
+        key: sessionKey,
+        overrides: [
+          localDatabaseProvider.overrideWithValue(localDatabase),
+          syncCoordinatorProvider.overrideWithValue(syncCoordinator),
+          authControllerProvider.overrideWithValue(authController),
+          apiClientProvider.overrideWithValue(apiClient),
+          realtimeClientProvider.overrideWithValue(realtimeClient),
+          pushNotificationServiceProvider.overrideWithValue(pushService),
+        ],
+        child: const CustomerApp(),
+      ),
     ),
   );
 }
