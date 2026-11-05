@@ -12,5 +12,8 @@
 - Notification pipeline surveyed: FCM messages carry no channel, sound or priority; all apps share one default-sound channel.
 - The Admin dashboard "error then data" cause is **not yet confirmed**; story 0.4 reproduces and fixes it.
 
+### Story 0.1: design direction (done)
+[design-direction.md](./design-direction.md): the modern solid enterprise look as rules (tonal elevation, soft shadows, 1 px hairlines, 16 to 20 px radii, type scale, purposeful motion, high contrast, WCAG 2.2 AA), grounded in what the code already has, with one reference screen per app. It is a documentation story: nothing was built or run. Constraint recorded for story 1.1: `tokens.json` is shared with the Angular dashboard. Decision recorded (plan's recommended option): per-app accent proposed as Admin blue, Customer and Driver flame orange; the owner may change it.
+
 ## Not done
 Everything in TASKS.md.
