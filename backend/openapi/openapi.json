@@ -3648,6 +3648,100 @@
         "title": "DeviceHistoryEntryResponse",
         "type": "object"
       },
+      "DeviceInfoRequest": {
+        "description": "What a Driver or Admin app reports about its phone when it signs in or\nrefreshes (ADR-071). Every field is optional: an older build or a platform\nthat hides a value just leaves it out. The install ID itself travels in the\n`X-Device-Id` header, never in a body.",
+        "properties": {
+          "app_version": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "hardware_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Android ID / iOS vendor ID. Stored only as a one-way hash.",
+            "title": "Hardware Id"
+          },
+          "manufacturer": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacturer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The name the user typed.",
+            "title": "Name"
+          },
+          "os_version": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Os Version"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "android or ios.",
+            "title": "Platform"
+          }
+        },
+        "title": "DeviceInfoRequest",
+        "type": "object"
+      },
       "DeviceStatus": {
         "enum": [
           "pending",
@@ -6218,6 +6312,16 @@
       },
       "LoginRequest": {
         "properties": {
+          "device": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceInfoRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "email": {
             "format": "email",
             "title": "Email",
@@ -6276,6 +6380,51 @@
           "custody_type"
         ],
         "title": "MoveCylinderCustodyRequest",
+        "type": "object"
+      },
+      "MyDeviceResponse": {
+        "properties": {
+          "allowed": {
+            "description": "Whether the agency lets this phone use the app right now. Under 'observe' and 'off' this is always true.",
+            "title": "Allowed",
+            "type": "boolean"
+          },
+          "control": {
+            "description": "The agency's device control mode: off, observe or enforce.",
+            "title": "Control",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This phone's state (pending, approved, blocked, removed), or null when the session is not under device control.",
+            "title": "Status"
+          }
+        },
+        "required": [
+          "control",
+          "status",
+          "display_name",
+          "allowed"
+        ],
+        "title": "MyDeviceResponse",
         "type": "object"
       },
       "MyProfileResponse": {
@@ -7574,6 +7723,16 @@
           "code": {
             "title": "Code",
             "type": "string"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceInfoRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "phone_number": {
             "title": "Phone Number",
@@ -9534,6 +9693,16 @@
       "RefreshRequest": {
         "description": "`refresh_token` is optional in the body — the Dashboard's browser\nclient relies on the `HttpOnly` cookie instead\n(`api/v1/routers/auth.py`'s module docstring). Mobile clients, which\ncan't rely on a cookie, supply it here.",
         "properties": {
+          "device": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceInfoRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "refresh_token": {
             "anyOf": [
               {
@@ -18554,6 +18723,27 @@
         "summary": "Consolidated platform-wide summary for the dashboard",
         "tags": [
           "Dashboard"
+        ]
+      }
+    },
+    "/api/v1/devices/me": {
+      "get": {
+        "operationId": "get_my_device_api_v1_devices_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyDeviceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "This phone's approval state and whether the agency lets it in",
+        "tags": [
+          "Device session"
         ]
       }
     },

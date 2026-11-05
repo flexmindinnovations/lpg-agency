@@ -31,6 +31,9 @@ class Audience(StrEnum):
     STAFF = "staff"
     #: One named staff member (the complaint's assignee).
     ASSIGNEE = "assignee"
+    #: One named login of any role (the person signed in on a phone the
+    #: agency just blocked) — named by `target_user_id` in the payload.
+    USER = "user"
 
 
 Facts = Mapping[str, str]
@@ -333,6 +336,16 @@ SPECS: dict[str, NotificationSpec] = {
         audience=Audience.STAFF,
         push=True,
         permission="license:manage_tenant",
+        reference_type="device",
+    ),
+    "device_blocked_user": NotificationSpec(
+        title="This phone was blocked",
+        body=lambda f: (
+            f"Your agency blocked {f.get('device_name') or 'this phone'}. "
+            "Please contact your agency."
+        ),
+        audience=Audience.USER,
+        push=True,
         reference_type="device",
     ),
     "complaint_assigned": NotificationSpec(

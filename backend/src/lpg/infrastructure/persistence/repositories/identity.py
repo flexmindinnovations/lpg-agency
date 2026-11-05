@@ -72,6 +72,7 @@ def _row_to_refresh_token(row: Row[Any]) -> RefreshToken | None:
         rotated_at=row.rotated_at,
         revoked_at=row.revoked_at,
         replaced_by_id=row.replaced_by_id,
+        device_id=row.device_id,
     )
 
 
@@ -193,7 +194,7 @@ class SqlAlchemyRefreshTokenRepository:
                 text(
                     "SELECT identity.auth_save_refresh_token("
                     ":id, :tenant_id, :user_id, :token_hash, :issued_at, :expires_at, "
-                    ":rotated_at, :revoked_at, :replaced_by_id"
+                    ":rotated_at, :revoked_at, :replaced_by_id, :device_id"
                     ")"
                 ),
                 _refresh_token_params(token),
@@ -204,6 +205,13 @@ class SqlAlchemyRefreshTokenRepository:
             await session.execute(
                 text("SELECT identity.auth_revoke_all_refresh_tokens_for_user(:user_id)"),
                 {"user_id": str(user_id)},
+            )
+
+    async def revoke_all_for_device(self, device_id: uuid.UUID) -> None:
+        async for session in self._database.session():
+            await session.execute(
+                text("SELECT identity.auth_revoke_all_refresh_tokens_for_device(:device_id)"),
+                {"device_id": str(device_id)},
             )
 
 
@@ -223,6 +231,7 @@ def _refresh_token_params(token: RefreshToken) -> Mapping[str, object]:
         "rotated_at": token.rotated_at,
         "revoked_at": token.revoked_at,
         "replaced_by_id": str(token.replaced_by_id) if token.replaced_by_id else None,
+        "device_id": str(token.device_id) if token.device_id else None,
     }
 
 

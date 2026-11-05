@@ -279,6 +279,7 @@ ignore_imports = [
     # Notification handlers write in-app rows after commit (their own
     # session) — same reasoning as the handlers above.
     "lpg.api.app -> lpg.infrastructure.events.notification_handlers",
+    "lpg.api.app -> lpg.infrastructure.events.device_handlers",
     "lpg.api.app -> lpg.infrastructure.events.low_stock_handlers",
     "lpg.api.app -> lpg.infrastructure.notification.delivery",
     "lpg.api.app -> lpg.infrastructure.redis.client",
@@ -292,6 +293,10 @@ ignore_imports = [
     "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.unit_of_work",
     # dependencies/realtime.py: the WebSocket subscription gate's ownership
     # lookups (driver record, order owner) — read-only, own session.
+    # dependencies/device.py wires the device-control binder and gate (Redis
+    # caches + the tenant-scoped registrar) from `AppState`.
+    "lpg.api.v1.dependencies.device -> lpg.infrastructure.license.device_access",
+    "lpg.api.v1.dependencies.device -> lpg.infrastructure.redis.cache",
     "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.persistence.database",
     "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.persistence.unit_of_work",
     "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.persistence.repositories.customer",

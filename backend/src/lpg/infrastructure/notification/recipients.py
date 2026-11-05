@@ -185,6 +185,9 @@ class NotificationResolver:
             recipients, push = await self._driver_recipients(
                 notification_type, payload, route, push
             )
+        elif spec.audience is Audience.USER:
+            target = _uuid(payload, "target_user_id")
+            recipients = [target] if target is not None else []
         elif spec.audience is Audience.ASSIGNEE:
             assignee = _uuid(payload, "assigned_to")
             if assignee is not None and await self._recipient_repo().is_active_staff(

@@ -48,6 +48,7 @@ from lpg.api.v1.dependencies.admin import (
     get_warehouse_repository,
 )
 from lpg.api.v1.dependencies.delivery import get_driver_repository, get_vehicle_repository
+from lpg.api.v1.dependencies.device import get_device_control_mode_reader
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_email_sender,
@@ -149,6 +150,7 @@ from lpg.application.license.license_status import (
     GetLicenseStatusUseCase,
 )
 from lpg.application.license.ports import (
+    DeviceControlModeReader,
     LicenseRepository,
     LicenseStatusChecker,
 )
@@ -240,6 +242,7 @@ from lpg.application.tenant.warehouse import (
 )
 from lpg.config.settings import Settings, get_settings
 from lpg.domain.common.gst import GST_STATE_CODES
+from lpg.domain.license.device_control import DEVICE_CONTROL_CONFIG_KEY
 from lpg.domain.license.license import License
 from lpg.domain.tenant.cylinder_type import CylinderType
 from lpg.domain.tenant.price_list_proposal import PriceListProposal
@@ -723,6 +726,7 @@ async def set_tenant_configuration(
         TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
     ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    device_modes: Annotated[DeviceControlModeReader, Depends(get_device_control_mode_reader)],
 ) -> TenantConfigurationResponse:
     use_case = SetTenantConfigurationUseCase(repository, unit_of_work)
     entry = await use_case.execute(
@@ -733,6 +737,9 @@ async def set_tenant_configuration(
             effective_from=body.effective_from,
         )
     )
+    if entry.config_key == DEVICE_CONTROL_CONFIG_KEY:
+        # The new mode applies at once, not when the cached one expires.
+        await device_modes.invalidate(principal.tenant_id)
     return TenantConfigurationResponse(
         id=str(entry.id),
         config_key=entry.config_key,

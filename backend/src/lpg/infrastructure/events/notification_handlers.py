@@ -23,7 +23,11 @@ from lpg.domain.delivery.route import (
     RouteStatusChanged,
     RouteStopsResequenced,
 )
-from lpg.domain.license.linked_device import DevicePendingApproval
+from lpg.domain.license.linked_device import (
+    DevicePendingApproval,
+    DeviceStatus,
+    DeviceStatusChanged,
+)
 from lpg.domain.order.order import (
     BookingCancelled,
     BookingConfirmed,
@@ -198,6 +202,23 @@ def register_notification_handlers(dispatcher: DomainEventDispatcher, notifier: 
             app_label=_APP_LABELS.get(event.app_type),
         )
 
+    async def _on_device_status_changed(event: DomainEvent) -> None:
+        assert isinstance(event, DeviceStatusChanged)
+        # Tell the person signed in on the phone, so a blocked app signs out
+        # even when its live connection is not open.
+        if event.user_id is None or event.new_status not in (
+            DeviceStatus.BLOCKED.value,
+            DeviceStatus.REMOVED.value,
+        ):
+            return
+        await notify(
+            "device_blocked_user",
+            event,
+            device_id=event.device_id,
+            device_name=event.display_name,
+            target_user_id=event.user_id,
+        )
+
     async def _on_cash_shortfall_declared(event: DomainEvent) -> None:
         assert isinstance(event, CashShortfallDeclared)
         # Fires only on a genuine shortfall (BR-32).
@@ -237,5 +258,6 @@ def register_notification_handlers(dispatcher: DomainEventDispatcher, notifier: 
     dispatcher.register(ComplaintRaised, _on_complaint_raised)
     dispatcher.register(ComplaintAssigned, _on_complaint_assigned)
     dispatcher.register(DevicePendingApproval, _on_device_pending)
+    dispatcher.register(DeviceStatusChanged, _on_device_status_changed)
     dispatcher.register(CashShortfallDeclared, _on_cash_shortfall_declared)
     dispatcher.register(RouteLoadConfirmed, _on_route_load_confirmed)
