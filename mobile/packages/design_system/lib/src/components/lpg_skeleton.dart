@@ -49,24 +49,28 @@ class _LpgShimmerState extends State<LpgShimmer>
     final base = colors.surfaceOverlay;
     final highlight = colors.card;
 
-    return Semantics(
-      label: 'Loading',
-      liveRegion: true,
-      child: ExcludeSemantics(
-        child: AnimatedBuilder(
-          animation: _controller,
-          child: widget.child,
-          builder: (context, child) => ShaderMask(
-            blendMode: BlendMode.srcATop,
-            shaderCallback: (bounds) {
-              final dx = (_controller.value * 3 - 1) * bounds.width;
-              return LinearGradient(
-                colors: [base, highlight, base],
-                stops: const [0.35, 0.5, 0.65],
-                transform: _SlideGradient(dx),
-              ).createShader(bounds);
-            },
-            child: child,
+    // One controller per group, and a repaint boundary so the sweep repaints
+    // only the placeholders, never the screen around them.
+    return RepaintBoundary(
+      child: Semantics(
+        label: 'Loading',
+        liveRegion: true,
+        child: ExcludeSemantics(
+          child: AnimatedBuilder(
+            animation: _controller,
+            child: widget.child,
+            builder: (context, child) => ShaderMask(
+              blendMode: BlendMode.srcATop,
+              shaderCallback: (bounds) {
+                final dx = (_controller.value * 3 - 1) * bounds.width;
+                return LinearGradient(
+                  colors: [base, highlight, base],
+                  stops: const [0.35, 0.5, 0.65],
+                  transform: _SlideGradient(dx),
+                ).createShader(bounds);
+              },
+              child: child,
+            ),
           ),
         ),
       ),

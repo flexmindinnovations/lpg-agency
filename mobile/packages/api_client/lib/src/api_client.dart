@@ -8,7 +8,9 @@ const _authEndpointPaths = ['/auth/login', '/auth/refresh', '/auth/otp/verify'];
 /// Owns the configured [Dio] instance shared by every hand-written endpoint
 /// wrapper in this package (`AuthApi` today; future phases add more).
 ///
-/// Bearer-attaches the current access token on every request and performs
+/// Bearer-attaches the current access token on every request (after waiting
+/// for [waitForSession], when given, so a request made while the session is
+/// still being restored waits instead of failing) and performs
 /// one silent refresh-and-retry on a 401 from anything other than the
 /// token-issuing endpoints — the mobile counterpart of the Dashboard's
 /// `authInterceptor`. [getAccessToken]/[refreshAccessToken]/[onSessionExpired]
@@ -23,7 +25,11 @@ final class ApiClient {
     String? Function()? getAccessToken,
     Future<String?> Function()? refreshAccessToken,
     void Function()? onSessionExpired,
-  }) : _getAccessToken = getAccessToken ?? (() => null),
+    Future<void> Function()? waitForSession,
+  }) : // The public named parameter cannot be a private initializing formal.
+       // ignore: prefer_initializing_formals
+       _waitForSession = waitForSession,
+       _getAccessToken = getAccessToken ?? (() => null),
        _refreshAccessToken = refreshAccessToken ?? (() async => null),
        _onSessionExpired = onSessionExpired ?? (() {}) {
     // Explicit timeouts: Dio has none by default, so a stalled connection
@@ -38,7 +44,12 @@ final class ApiClient {
     );
     dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
+        onRequest: (options, handler) async {
+          // Hold every request that needs a session until the start-up
+          // restore has finished, so none is sent with no token and fails.
+          // The auth endpoints (the restore itself, sign-in) never wait.
+          final gate = _waitForSession;
+          if (gate != null && !_isAuthPath(options.path)) await gate();
           final token = _getAccessToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -92,6 +103,10 @@ final class ApiClient {
   }
 
   late final Dio dio;
+
+  final Future<void> Function()? _waitForSession;
+
+  static bool _isAuthPath(String path) => path.contains('/auth/');
 
   final String? Function() _getAccessToken;
   final Future<String?> Function() _refreshAccessToken;

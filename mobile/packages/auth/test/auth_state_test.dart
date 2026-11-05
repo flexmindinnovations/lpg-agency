@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:core/core.dart';
@@ -165,4 +167,50 @@ void main() {
       },
     );
   });
+
+  group('whenSettled', () {
+    test('completes once the start-up restore signs the person in', () async {
+      final controller = AuthController(
+        _FakeAuthRepository(restoreSessionResult: const Success(_principal)),
+      );
+      var settled = false;
+      unawaited(controller.whenSettled.then((_) => settled = true));
+      await Future<void>.delayed(Duration.zero);
+      await controller.whenSettled;
+
+      expect(settled, isTrue);
+      expect(controller.state.status, AuthStatus.authenticated);
+    });
+
+    test('also completes when there is no session to restore', () async {
+      final controller = AuthController(_FakeAuthRepository());
+
+      await controller.whenSettled;
+
+      expect(controller.state.status, AuthStatus.unauthenticated);
+    });
+
+    test('stays unsettled while the restore is still running', () async {
+      final restore = Completer<Result<Principal>>();
+      final controller = AuthController(_PendingRepository(restore.future));
+      var settled = false;
+      unawaited(controller.whenSettled.then((_) => settled = true));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(settled, isFalse);
+      expect(controller.state.status, AuthStatus.unknown);
+
+      restore.complete(const Success(_principal));
+      await controller.whenSettled;
+      expect(settled, isTrue);
+    });
+  });
+}
+
+class _PendingRepository extends _FakeAuthRepository {
+  _PendingRepository(this._restore);
+
+  final Future<Result<Principal>> _restore;
+
+  @override
+  Future<Result<Principal>> restoreSession() => _restore;
 }

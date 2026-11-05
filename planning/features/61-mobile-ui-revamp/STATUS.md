@@ -31,5 +31,14 @@ Flutter 3.47.9 (Dart 3.13.7, stable) was installed in the cloud environment, so 
 
 **Decision recorded (plan's recommended option):** the quiet retry waits 2 seconds, once. Not yet chosen by the owner; change `quietRetryDelay` if it feels long.
 
+### Stories 3.1 to 3.4: async states (done, verified by tests; stacked on story 0.4's branch)
+- **3.1 `LpgAsyncView` and `SliverLpgAsyncView`** (`design_system`): skeleton until the first answer (and its quiet retry), friendly error with Retry, empty state, data kept through refreshes and failed refreshes with a one-line notice, optional offline notice, scrollable-body support, and banner and scrollable error builders. Built on `whenQuiet` from story 0.4.
+- **3.2 Error taxonomy** (`core`): `ErrorKind` (offline, busy, signed out, forbidden, agency blocked, not found, rejected, server, unknown) classified from the backend's real `error_code` values and the client's transport codes; a support code is shown small only where the message cannot say more. Friendly English copy per kind in `LpgErrorCopy`; the server's own sentence is never shown. `FailureCarrier` and `FailureException` moved to `core` (still exported by `api_client`). Copy reviewed by the `lpg-domain-expert` agent; its changes were applied and its per-app variants are recorded in TASKS.md.
+- **3.3 Skeleton blocks** (`LpgSkeletonGroup`, `LpgSkeletonHero`, `LpgSkeletonTileGrid`, `LpgSkeletonCard`): one shimmer per group, inside a repaint boundary, stopped under reduce motion; used so the Admin dashboard, Customer home and Driver Today skeletons match their real layouts. **Shimmer cost was checked structurally by tests, not measured on a device** (no device here; story 0.3 owns the baseline).
+- **3.4 Startup and auth gating**: `AuthController.whenSettled` and `ApiClient(waitForSession:)`; every request except the `/auth/*` endpoints waits until the start-up restore has decided the session, then carries the token. Wired in all three apps. The quiet single retry and its sequence tests are story 0.4's.
+- **Dashboards converted:** Admin (two sections), Customer (balance hero, recent orders), Driver Today. Remaining AsyncValue sites: **68 in 50 files**, listed in TASKS.md (the plan's 129 also counted `Result.when`).
+- **Decision recorded:** the Customer balance hero keeps its own-colour spinner while loading (grey placeholders clash with the gradient); the notice for a failed refresh is off on the Driver Today screen (the shell already shows the offline banner, and the pull-to-refresh list must stay the direct child).
+- **Found, not fixed (in TASKS.md):** provider state survives sign-out (possible previous-user data on a shared phone); per-app wording variants; the Driver's cache reader surfaces raw `DioException`s.
+
 ## Not done
 Everything else in TASKS.md.
