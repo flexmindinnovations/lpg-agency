@@ -31,6 +31,11 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.0.0
+  # Typed JSON string catalogue (story 2.1); generated with `dart run slang`.
+  slang: ^4.19.2
+  slang_flutter: ^4.19.0
+  flutter_localizations:
+    sdk: flutter
   go_router: ^17.0.0
   design_system:
     path: ../../packages/design_system

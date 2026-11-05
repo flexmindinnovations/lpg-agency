@@ -13,6 +13,7 @@ import 'package:realtime/realtime.dart';
 import 'package:sync_engine/sync_engine.dart';
 
 import 'src/auth_provider.dart';
+import 'src/i18n/customer_strings.dart';
 import 'src/features/orders/data/orders_provider.dart';
 import 'src/providers.dart';
 import 'src/push/push_notification_service.dart';
@@ -224,7 +225,10 @@ class _CustomerAppState extends ConsumerState<CustomerApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'LPG Agency',
+      onGenerateTitle: (context) => context.strings.app.title,
+      locale: ref.watch(lpgLocaleProvider),
+      supportedLocales: customerLaunchLocales,
+      localizationsDelegates: customerLocalizationsDelegates,
       theme: LpgTheme.light,
       darkTheme: LpgTheme.dark,
       highContrastTheme: LpgTheme.highContrast,

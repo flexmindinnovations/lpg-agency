@@ -14,6 +14,7 @@ export 'src/tone.dart';
 export 'src/icons.dart';
 export 'src/motion.dart';
 export 'src/format.dart';
+export 'src/i18n/lpg_locale.dart';
 export 'src/i18n/lpg_strings_delegate.dart';
 export 'src/i18n/strings.g.dart' show LpgLocale, LpgStrings;
 export 'src/components/components.dart';

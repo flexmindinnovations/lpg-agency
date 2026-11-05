@@ -19,5 +19,14 @@ Decision and comparison: [i18n-decision.md](./i18n-decision.md). Recommended **s
 - **The Hindi strings are test data**, not reviewed translations; they must be replaced before Hindi is offered.
 - Pre-existing and unchanged: the next free ADR number is 071 on `main`; none was allocated.
 
+### Story 2.1: i18n infrastructure (done, verified by tests and by running the CI checks locally)
+How-to: [i18n-howto.md](./i18n-howto.md).
+- **Catalogues**: one typed JSON catalogue per app plus the shared design-system one (`AdminStrings`, `CustomerStrings`, `DriverStrings`, `LpgStrings`), English fallback, placeholders and plurals, each with a `LocalizationsDelegate`; generated files committed (a `.gitignore` exception, since the repo ignores `*.g.dart`). Each app seeds only its app title; **no existing string was moved** (stories 2.4 to 2.7).
+- **Runtime locale switch plumbing**: `LpgCatalogueDelegate` and `lpgLocaleProvider`, watched by each app's `MaterialApp.router`; Flutter's own widget text is switched with it. **English only at launch**: each app's `supportedLocales` is `[Locale('en')]`, so the unreviewed Hindi test data cannot appear.
+- **CI**: new job `i18n` in `mobile-ci.yml` runs `tools/check_catalogues.sh` (generated code up to date; no stray keys in a translation, which the generator would otherwise drop silently) and the `tools/i18n_lint` package (its own tests, then the hardcoded-string lint against a baseline of 832 strings in 107 files; a file may never go up). Negative case verified by hand: adding a string made the lint exit 1 with the file and line.
+- **Not verified**: the new CI job itself has not run on GitHub (only its commands, locally, on Flutter 3.47.9).
+- **Merge-order note**: the async-state PR adds friendly error copy in `design_system` (`lpg_error_copy.dart`, `lpg_async_view.dart`) as English literals. If it merges after this PR, the lint will flag those files; run `dart run bin/check.dart --root ../.. --update --allow-increase` once at that merge (they move into the catalogue in story 2.4).
+- **Decision recorded:** languages are compiled in (no deferred loading); the lint counts per file, not per line, so editing around an old string does not trip it.
+
 ## Not done
 Everything in TASKS.md.

@@ -1,0 +1,16 @@
+# Typed JSON catalogue for this app's own strings (the shared design-system
+# strings have their own catalogue). Generate with `dart run slang`; the output
+# is committed. See planning/features/61-mobile-ui-revamp/i18n-howto.md.
+base_locale: en
+fallback_strategy: base_locale
+input_directory: lib/src/i18n
+input_file_pattern: .i18n.json
+output_directory: lib/src/i18n
+output_file_name: strings.g.dart
+class_name: CustomerStrings
+enum_name: CustomerLocale
+locale_handling: false
+translation_class_visibility: public
+string_interpolation: braces
+lazy: false
+timestamp: false

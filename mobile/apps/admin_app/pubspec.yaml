@@ -31,6 +31,11 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   intl: ^0.20.3
+  # Typed JSON string catalogue (story 2.1); generated with `dart run slang`.
+  slang: ^4.19.2
+  slang_flutter: ^4.19.0
+  flutter_localizations:
+    sdk: flutter
   image_picker: ^1.2.3
   signature: ^6.4.0
 

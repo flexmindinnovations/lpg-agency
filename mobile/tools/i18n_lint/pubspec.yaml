@@ -1,0 +1,10 @@
+name: i18n_lint
+description: Fails CI on new hardcoded user-visible strings in the mobile apps (story 2.1).
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

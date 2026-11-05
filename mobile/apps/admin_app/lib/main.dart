@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:realtime/realtime.dart';
 
 import 'src/auth_provider.dart';
+import 'src/i18n/admin_strings.dart';
 import 'src/providers.dart';
 import 'src/push/push_notification_service.dart';
 import 'src/router.dart';
@@ -202,7 +203,10 @@ class _AdminAppState extends ConsumerState<AdminApp> {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'LPG Agency Admin',
+      onGenerateTitle: (context) => context.strings.app.title,
+      locale: ref.watch(lpgLocaleProvider),
+      supportedLocales: adminLaunchLocales,
+      localizationsDelegates: adminLocalizationsDelegates,
       theme: LpgTheme.light,
       darkTheme: LpgTheme.dark,
       highContrastTheme: LpgTheme.highContrast,

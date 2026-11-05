@@ -14,7 +14,7 @@ Nothing here is started (plan version 3). Sizes are working days. Order follows 
 - [ ] 1.3 Surface and elevation system (solid tonal layers, soft shadows, hairlines) applied to navigation, app bar, cards and sheets (1)
 
 ## E2 i18n, strings and copy (11 days)
-- [ ] 2.1 i18n infrastructure: JSON catalogue layout per app and `shared`, typed keys, placeholders and plurals, English fallback for missing keys, CI lint against hardcoded user-visible strings (2.5)
+- [x] 2.1 i18n infrastructure: JSON catalogue layout per app and `shared`, typed keys, placeholders and plurals, English fallback for missing keys, CI lint against hardcoded user-visible strings (2.5)
 - [ ] 2.2 Runtime language switch (picker, saved per device), `flutter_localizations` for built-in widget text (1)
 - [ ] 2.3 Indian formats per locale (₹ lakh grouping, dates, numbers) and bundled font subsets for Indian scripts (1)
 - [ ] 2.4 Move and rewrite `design_system` and `core` strings (1)

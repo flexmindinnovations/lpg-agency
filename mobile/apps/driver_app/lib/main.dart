@@ -17,6 +17,7 @@ import 'package:sync_engine/sync_engine.dart';
 
 import 'src/api_provider.dart';
 import 'src/auth_provider.dart';
+import 'src/i18n/driver_strings.dart';
 import 'src/local_database_provider.dart';
 import 'src/offline/media_store_provider.dart';
 import 'src/offline/sync_providers.dart';
@@ -219,7 +220,10 @@ class _DriverAppState extends ConsumerState<DriverApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'LPG Agency',
+      onGenerateTitle: (context) => context.strings.app.title,
+      locale: ref.watch(lpgLocaleProvider),
+      supportedLocales: driverLaunchLocales,
+      localizationsDelegates: driverLocalizationsDelegates,
       theme: LpgTheme.light,
       darkTheme: LpgTheme.dark,
       highContrastTheme: LpgTheme.highContrast,
