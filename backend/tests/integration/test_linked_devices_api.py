@@ -260,8 +260,13 @@ class TestTenantIsolation:
             assert seen.scalar_one() == 1
 
     async def test_the_database_refuses_an_unknown_status(
-        self, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
+        self,
+        admin_engine: AsyncEngine,
+        hasher: Argon2PasswordHasher,
+        postgres_available: bool,
     ) -> None:
+        if not postgres_available:
+            pytest.skip("PostgreSQL is not reachable")
         agency = await seed_agency(admin_engine, hasher)
 
         with pytest.raises(Exception, match=r"ck_linked_device_status|check constraint"):
