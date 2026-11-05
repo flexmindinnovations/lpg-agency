@@ -142,6 +142,10 @@ void _wireRealtimeToAuth(
   authController.addListener(sync);
 }
 
+/// The app's look: one engine, never a hand-built `ThemeData` (story 1.2).
+/// The accent stays the brand's flame orange, as before.
+const _theme = LpgThemeEngine();
+
 class AdminApp extends ConsumerStatefulWidget {
   const AdminApp({super.key});
 
@@ -203,9 +207,12 @@ class _AdminAppState extends ConsumerState<AdminApp> {
 
     return MaterialApp.router(
       title: 'LPG Agency Admin',
-      theme: LpgTheme.light,
-      darkTheme: LpgTheme.dark,
-      highContrastTheme: LpgTheme.highContrast,
+      theme: _theme.light,
+      darkTheme: _theme.dark,
+      highContrastTheme: _theme.highContrast,
+      highContrastDarkTheme: _theme.highContrast,
+      themeMode: ThemeMode.system,
+      builder: _theme.builder,
       routerConfig: router,
     );
   }

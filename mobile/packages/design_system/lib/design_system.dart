@@ -9,7 +9,9 @@ library;
 
 export 'src/tokens.dart';
 export 'src/layout.dart';
+export 'src/surface.dart';
 export 'src/theme.dart';
+export 'src/theme_engine.dart';
 export 'src/tone.dart';
 export 'src/icons.dart';
 export 'src/motion.dart';

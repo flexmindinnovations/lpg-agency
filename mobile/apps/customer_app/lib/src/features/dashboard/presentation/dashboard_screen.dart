@@ -154,12 +154,8 @@ class _BalanceHero extends ConsumerWidget {
     final text = context.lpgText;
     final ledgerAsync = ref.watch(ledgerProvider);
 
-    Widget caption(String value) => Text(
-      value,
-      style: text.bodyMedium?.copyWith(
-        color: colors.onHero.withValues(alpha: 0.8),
-      ),
-    );
+    Widget caption(String value) =>
+        Text(value, style: text.bodyMedium?.copyWith(color: colors.heroMuted));
 
     return LpgHeroCard(
       watermark: LpgIcons.cylinder,

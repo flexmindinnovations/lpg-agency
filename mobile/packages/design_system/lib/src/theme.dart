@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 import 'layout.dart';
+import 'theme_engine.dart';
 import 'tokens.dart';
 
 /// Theme variants, mirroring the web themes exactly.
@@ -47,6 +48,12 @@ class LpgColors extends ThemeExtension<LpgColors> {
     required this.statusInfo,
     required this.heroGradient,
     required this.onHero,
+    required this.heroMuted,
+    required this.heroSubtle,
+    required this.heroTrack,
+    required this.sheet,
+    required this.inverse,
+    required this.onInverse,
     required this.cardShadow,
     required this.floatingShadow,
     required this.isHighContrast,
@@ -93,6 +100,29 @@ class LpgColors extends ThemeExtension<LpgColors> {
   /// Text and icons drawn on [heroGradient].
   final Color onHero;
 
+  /// Secondary text on [heroGradient]: a solid colour, not translucent white,
+  /// so its contrast is the same wherever it sits on the gradient.
+  final Color heroMuted;
+
+  /// A decorative mark on [heroGradient] (the watermark icon): barely lighter
+  /// than the gradient, solid.
+  final Color heroSubtle;
+
+  /// The unfilled part of a progress bar on [heroGradient]: solid.
+  final Color heroTrack;
+
+  /// The surface of things that float above cards: bottom sheets, dialogs,
+  /// menus. One tonal step above [card] in dark mode (where depth is tone),
+  /// plain white in light mode (where depth is shadow).
+  final Color sheet;
+
+  /// The inverse surface: snackbars and toasts. Dark on light themes, light on
+  /// dark themes.
+  final Color inverse;
+
+  /// Text and icons on [inverse].
+  final Color onInverse;
+
   /// Resting elevation for cards (mirrors the `elevation.1` token).
   final List<BoxShadow> cardShadow;
 
@@ -104,6 +134,13 @@ class LpgColors extends ThemeExtension<LpgColors> {
   /// back-computing "is this high contrast?" from some other field's
   /// value, which was the previous (fragile) approach here.
   final bool isHighContrast;
+
+  /// [foreground] laid over [over] (default: [card]) at [strength], as one
+  /// **opaque** colour. This is how every quiet tint is made: surfaces are
+  /// solid, never alpha-blended on screen, so contrast is the same on every
+  /// background.
+  Color tint(Color foreground, double strength, {Color? over}) =>
+      Color.alphaBlend(foreground.withValues(alpha: strength), over ?? card);
 
   @override
   LpgColors copyWith({
@@ -129,6 +166,12 @@ class LpgColors extends ThemeExtension<LpgColors> {
     Color? statusInfo,
     List<Color>? heroGradient,
     Color? onHero,
+    Color? heroMuted,
+    Color? heroSubtle,
+    Color? heroTrack,
+    Color? sheet,
+    Color? inverse,
+    Color? onInverse,
     List<BoxShadow>? cardShadow,
     List<BoxShadow>? floatingShadow,
     bool? isHighContrast,
@@ -158,6 +201,12 @@ class LpgColors extends ThemeExtension<LpgColors> {
       statusInfo: statusInfo ?? this.statusInfo,
       heroGradient: heroGradient ?? this.heroGradient,
       onHero: onHero ?? this.onHero,
+      heroMuted: heroMuted ?? this.heroMuted,
+      heroSubtle: heroSubtle ?? this.heroSubtle,
+      heroTrack: heroTrack ?? this.heroTrack,
+      sheet: sheet ?? this.sheet,
+      inverse: inverse ?? this.inverse,
+      onInverse: onInverse ?? this.onInverse,
       cardShadow: cardShadow ?? this.cardShadow,
       floatingShadow: floatingShadow ?? this.floatingShadow,
       isHighContrast: isHighContrast ?? this.isHighContrast,
@@ -200,6 +249,12 @@ class LpgColors extends ThemeExtension<LpgColors> {
           c(heroGradient[i], other.heroGradient[i]),
       ],
       onHero: c(onHero, other.onHero),
+      heroMuted: c(heroMuted, other.heroMuted),
+      heroSubtle: c(heroSubtle, other.heroSubtle),
+      heroTrack: c(heroTrack, other.heroTrack),
+      sheet: c(sheet, other.sheet),
+      inverse: c(inverse, other.inverse),
+      onInverse: c(onInverse, other.onInverse),
       cardShadow: BoxShadow.lerpList(cardShadow, other.cardShadow, t)!,
       floatingShadow: BoxShadow.lerpList(
         floatingShadow,
@@ -229,6 +284,10 @@ abstract final class LpgTheme {
   // Those are CSS box-shadow strings the generator can't express as Dart, so
   // the same offsets/blur/alpha are restated here, once.
   static const _black = LpgTokens.primitiveColorBlack;
+
+  /// [foreground] at [strength] over [base], as one opaque colour.
+  static Color _solid(Color foreground, double strength, Color base) =>
+      Color.alphaBlend(foreground.withValues(alpha: strength), base);
 
   static final _lightCardShadow = [
     BoxShadow(
@@ -298,6 +357,26 @@ abstract final class LpgTheme {
       LpgTokens.primitiveColorGasBlue500,
     ],
     onHero: LpgTokens.primitiveColorWhite,
+    // 0.92: at 0.8 the muted text on the light end of the gradient measured
+    // 3.97:1, under the 4.5:1 AA floor for body text.
+    heroMuted: _solid(
+      LpgTokens.primitiveColorWhite,
+      0.92,
+      LpgTokens.primitiveColorGasBlue500,
+    ),
+    heroSubtle: _solid(
+      LpgTokens.primitiveColorWhite,
+      0.08,
+      LpgTokens.primitiveColorGasBlue500,
+    ),
+    heroTrack: _solid(
+      LpgTokens.primitiveColorWhite,
+      0.24,
+      LpgTokens.primitiveColorGasBlue500,
+    ),
+    sheet: LpgTokensLight.colorSurfaceBase,
+    inverse: LpgTokens.primitiveColorGray900,
+    onInverse: LpgTokens.primitiveColorWhite,
     cardShadow: _lightCardShadow,
     floatingShadow: _lightFloatingShadow,
     isHighContrast: false,
@@ -329,6 +408,24 @@ abstract final class LpgTheme {
       LpgTokens.primitiveColorGasBlue900,
     ],
     onHero: LpgTokens.primitiveColorWhite,
+    heroMuted: _solid(
+      LpgTokens.primitiveColorWhite,
+      0.8,
+      LpgTokens.primitiveColorGasBlue900,
+    ),
+    heroSubtle: _solid(
+      LpgTokens.primitiveColorWhite,
+      0.08,
+      LpgTokens.primitiveColorGasBlue900,
+    ),
+    heroTrack: _solid(
+      LpgTokens.primitiveColorWhite,
+      0.24,
+      LpgTokens.primitiveColorGasBlue900,
+    ),
+    sheet: LpgTokens.primitiveColorGray800,
+    inverse: LpgTokens.primitiveColorGray50,
+    onInverse: LpgTokens.primitiveColorGray900,
     cardShadow: _darkCardShadow,
     floatingShadow: _darkFloatingShadow,
     isHighContrast: false,
@@ -337,7 +434,7 @@ abstract final class LpgTheme {
   // High contrast: no gradients, no shadows (borders carry separation, per
   // docs/ui/10-color-system.md section 4), and accent collapses to the same
   // action blue so nothing relies on a mid-tone orange for meaning.
-  static const _highContrast = LpgColors(
+  static final _highContrast = LpgColors(
     textPrimary: LpgTokensHighContrast.colorTextPrimary,
     textSecondary: LpgTokensHighContrast.colorTextSecondary,
     textDisabled: LpgTokensHighContrast.colorTextDisabled,
@@ -363,6 +460,18 @@ abstract final class LpgTheme {
       LpgTokensHighContrast.colorActionPrimary,
     ],
     onHero: LpgTokens.primitiveColorWhite,
+    // High contrast keeps hero text pure white (no muted tier) and draws no
+    // watermark, so nothing depends on a tint.
+    heroMuted: LpgTokens.primitiveColorWhite,
+    heroSubtle: LpgTokensHighContrast.colorActionPrimary,
+    heroTrack: _solid(
+      LpgTokens.primitiveColorWhite,
+      0.35,
+      LpgTokensHighContrast.colorActionPrimary,
+    ),
+    sheet: LpgTokensHighContrast.colorSurfaceBase,
+    inverse: LpgTokens.primitiveColorBlack,
+    onInverse: LpgTokens.primitiveColorWhite,
     cardShadow: [],
     floatingShadow: [],
     isHighContrast: true,
@@ -503,8 +612,16 @@ abstract final class LpgTheme {
     ),
   );
 
-  static ThemeData build(LpgThemeVariant variant) {
-    final colors = colorsFor(variant);
+  /// The Flutter theme for [variant]. Apps do not call this directly: they
+  /// hold an `LpgThemeEngine`, which passes its [accent] and [reduceMotion].
+  static ThemeData build(
+    LpgThemeVariant variant, {
+    LpgAccent? accent,
+    bool reduceMotion = false,
+  }) {
+    final colors = accent == null
+        ? colorsFor(variant)
+        : colorsFor(variant).copyWith(accent: accent.forVariant(variant));
     final brightness = variant == LpgThemeVariant.dark
         ? Brightness.dark
         : Brightness.light;
@@ -568,15 +685,17 @@ abstract final class LpgTheme {
       splashFactory: InkSparkle.splashFactory,
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
-          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
-        },
-      ),
+      pageTransitionsTheme: reduceMotion
+          ? lpgInstantPageTransitions
+          : const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+                TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+                TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+              },
+            ),
       appBarTheme: AppBarTheme(
         backgroundColor: colors.canvas,
         foregroundColor: colors.textPrimary,
@@ -778,7 +897,7 @@ abstract final class LpgTheme {
         space: 1,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: colors.card,
+        backgroundColor: colors.sheet,
         surfaceTintColor: Colors.transparent,
         elevation: hc ? 0 : 6,
         shape: RoundedRectangleBorder(
@@ -791,8 +910,8 @@ abstract final class LpgTheme {
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: colors.card,
-        modalBackgroundColor: colors.card,
+        backgroundColor: colors.sheet,
+        modalBackgroundColor: colors.sheet,
         surfaceTintColor: Colors.transparent,
         showDragHandle: true,
         dragHandleColor: colors.borderStrong,
@@ -807,14 +926,14 @@ abstract final class LpgTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: hc
-            ? colors.textPrimary
-            : LpgTokens.primitiveColorGray900,
+        backgroundColor: colors.inverse,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
-          color: LpgTokens.primitiveColorWhite,
+          color: colors.onInverse,
         ),
         actionTextColor: hc
-            ? colors.textInverse
+            ? colors.onInverse
+            : brightness == Brightness.dark
+            ? LpgTokens.primitiveColorGasBlue700
             : LpgTokens.primitiveColorGasBlue300,
         elevation: hc ? 0 : 4,
         shape: RoundedRectangleBorder(
@@ -883,7 +1002,7 @@ abstract final class LpgTheme {
       dropdownMenuTheme: DropdownMenuThemeData(
         textStyle: textTheme.bodyLarge,
         menuStyle: MenuStyle(
-          backgroundColor: WidgetStatePropertyAll(colors.card),
+          backgroundColor: WidgetStatePropertyAll(colors.sheet),
           surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
@@ -893,7 +1012,7 @@ abstract final class LpgTheme {
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: colors.card,
+        color: colors.sheet,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(LpgRadius.lg),
