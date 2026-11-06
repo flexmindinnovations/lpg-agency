@@ -41,7 +41,7 @@ GRACE_PERIOD = timedelta(days=1)
 #: `RECOGNIZED_CONFIG_KEYS`'s fixed-catalog-in-code approach. Dashboard is
 #: deliberately absent: it's a browser session under the existing JWT model,
 #: not a distinct installed app instance that needs linking.
-RECOGNIZED_APP_TYPES = frozenset({"customer_app", "driver_app", "warehouse_app"})
+RECOGNIZED_APP_TYPES = frozenset({"customer_app", "driver_app", "warehouse_app", "admin_app"})
 
 #: Which feature keys a plan tier grants by default. A `LicenseFeatureOverride`
 #: on a specific license always wins over this default (`LicenseEntitlementService`).

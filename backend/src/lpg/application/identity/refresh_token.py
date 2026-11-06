@@ -37,6 +37,7 @@ if TYPE_CHECKING:
         RefreshTokenRepository,
         TokenHasher,
     )
+    from lpg.application.license.device_access import DeviceContext, DeviceSessionBinder
     from lpg.application.license.ports import LicenseStatusChecker
     from lpg.application.tenant.status import TenantStatusChecker
 
@@ -44,6 +45,8 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class RefreshTokenCommand(Command):
     refresh_token: str
+    #: The phone presenting the token, when it is a Driver or Admin app.
+    device: DeviceContext | None = None
 
 
 class RefreshTokenUseCase:
@@ -58,7 +61,9 @@ class RefreshTokenUseCase:
         tenant_status_checker: TenantStatusChecker,
         *,
         refresh_token_ttl: timedelta,
+        device_binder: DeviceSessionBinder | None = None,
     ) -> None:
+        self._device_binder = device_binder
         self._refresh_token_repository = refresh_token_repository
         self._user_repository = user_repository
         self._permission_repository = permission_repository
@@ -109,6 +114,12 @@ class RefreshTokenUseCase:
                 msg = "This tenant's license has expired."
                 raise LicenseExpiredError(msg, tenant_id=str(user.tenant_id))
 
+        binding = (
+            await self._device_binder.rebind(user, command.device, token.device_id)
+            if self._device_binder
+            else None
+        )
+
         new_pair = await issue_tokens(
             user,
             refresh_token_repository=self._refresh_token_repository,
@@ -116,6 +127,7 @@ class RefreshTokenUseCase:
             token_hasher=self._token_hasher,
             jwt_signer=self._jwt_signer,
             refresh_token_ttl=self._refresh_token_ttl,
+            device=binding,
         )
         token.rotate(new_pair.refresh_token_id)
         await self._refresh_token_repository.save(token)

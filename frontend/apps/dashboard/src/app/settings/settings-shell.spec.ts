@@ -2,7 +2,7 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { AuthTokenStore } from '@lpg/shared/data-access';
+import { AuthTokenStore, PendingDevicesStore } from '@lpg/shared/data-access';
 import { SettingsShell } from './settings-shell';
 
 @Component({ template: '<p>section</p>' })
@@ -16,9 +16,10 @@ const ADMIN_PERMISSIONS = [
 ];
 
 describe('SettingsShell', () => {
-  async function open(url: string, permissions: string[]) {
+  async function open(url: string, permissions: string[], waiting = 0) {
     TestBed.configureTestingModule({
       providers: [
+        { provide: PendingDevicesStore, useValue: { count: signal(waiting) } },
         {
           provide: AuthTokenStore,
           useValue: { principal: signal({ permissions: new Set(permissions) }) },
@@ -42,6 +43,7 @@ describe('SettingsShell', () => {
     const html = harness.routeNativeElement as HTMLElement;
     return {
       html,
+      badge: html.querySelector('.settings__badge')?.textContent?.trim() ?? null,
       labels: Array.from(html.querySelectorAll('.settings__link')).map((a) =>
         a.textContent?.trim(),
       ),
@@ -94,5 +96,17 @@ describe('SettingsShell', () => {
     const { html } = await open('/settings/license/devices', ADMIN_PERMISSIONS);
 
     expect(html.querySelector('.settings__content')?.textContent).toContain('section');
+  });
+
+  it('shows how many phones are waiting next to Linked Devices', async () => {
+    const { badge } = await open('/settings/account', ADMIN_PERMISSIONS, 3);
+
+    expect(badge).toBe('3');
+  });
+
+  it('shows no badge when no phone is waiting', async () => {
+    const { badge } = await open('/settings/account', ADMIN_PERMISSIONS, 0);
+
+    expect(badge).toBeNull();
   });
 });
