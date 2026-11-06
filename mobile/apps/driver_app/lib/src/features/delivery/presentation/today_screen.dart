@@ -29,7 +29,7 @@ class TodayScreen extends ConsumerWidget {
           ref.invalidate(pendingLoadProvider);
           return ref.refresh(activeRouteProvider.future);
         },
-        child: routeAsync.when(
+        child: routeAsync.whenQuiet(
           loading: () => const LpgSkeletonList(itemCount: 4),
           // Wrapped in a ListView so pull-to-refresh still works from the
           // error state.

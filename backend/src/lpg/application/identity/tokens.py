@@ -22,6 +22,7 @@ if TYPE_CHECKING:
         RefreshTokenRepository,
         TokenHasher,
     )
+    from lpg.application.license.device_access import DeviceBinding
     from lpg.domain.identity.user import IdentityUser
 
 
@@ -40,6 +41,7 @@ async def issue_tokens(
     token_hasher: TokenHasher,
     jwt_signer: JwtSigner,
     refresh_token_ttl: timedelta,
+    device: DeviceBinding | None = None,
 ) -> TokenPair:
     # Embedded in the `scope` claim (`docs/data/17-api-security.md` §4) —
     # fast, no-database-round-trip authorization for standard endpoints via
@@ -48,16 +50,20 @@ async def issue_tokens(
     # in this claim.
     permission_codes = await permission_repository.get_permission_codes_for_user(user.id)
 
-    access_token = jwt_signer.issue_access_token(
-        {
-            "sub": str(user.id),
-            "name": user.email or user.phone_number or "Unknown User",
-            "tenant_id": str(user.tenant_id) if user.tenant_id else None,
-            "branch_id": str(user.branch_id) if user.branch_id else None,
-            "role": user.role,
-            "scope": " ".join(sorted(permission_codes)),
-        }
-    )
+    claims: dict[str, object] = {
+        "sub": str(user.id),
+        "name": user.email or user.phone_number or "Unknown User",
+        "tenant_id": str(user.tenant_id) if user.tenant_id else None,
+        "branch_id": str(user.branch_id) if user.branch_id else None,
+        "role": user.role,
+        "scope": " ".join(sorted(permission_codes)),
+    }
+    if device is not None:
+        # The phone this session was opened on (ADR-071): every later request
+        # is checked against it.
+        claims["did"] = str(device.device_id)
+        claims["app"] = device.app_type
+    access_token = jwt_signer.issue_access_token(claims)
 
     raw_refresh_token = secrets.token_urlsafe(32)
     refresh_token_id = uuid.uuid4()
@@ -68,6 +74,7 @@ async def issue_tokens(
         token_hash=token_hasher.hash(raw_refresh_token),
         issued_at=now,
         expires_at=now + refresh_token_ttl,
+        device_id=device.device_id if device else None,
     )
     await refresh_token_repository.save(refresh_token)
 

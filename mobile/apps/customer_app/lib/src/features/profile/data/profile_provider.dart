@@ -15,7 +15,7 @@ final profileProvider = FutureProvider<CustomerResponse?>((ref) async {
     final result = await api.getMyProfile();
     return result.when(
       onSuccess: (data) => data,
-      onFailure: (failure) => throw Exception(failure.message),
+      onFailure: (failure) => throw FailureException(failure),
     );
   }
 

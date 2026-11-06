@@ -78,6 +78,11 @@ services:
       - "1"
 
   minio:
+    # KNOWN PROBLEM: this image can no longer be pulled (Docker Hub refuses
+    # `minio/minio`; `quay.io/minio/minio` answers 401 to anonymous pulls), so
+    # `docker compose up` fails here on a machine without a cached copy. No
+    # replacement has been chosen yet — see "Object storage" in README.md for
+    # the workaround. CI does not use this service (it runs moto on :59000).
     image: minio/minio:latest
     container_name: lpg-minio
     restart: unless-stopped

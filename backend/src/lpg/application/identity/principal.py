@@ -30,3 +30,6 @@ class JwtAuthenticatedPrincipal:
     user_display_name: str | None = None
     token_id: uuid.UUID | None = None
     branch_id: uuid.UUID | None = None
+    #: The registered phone the session was opened on (`did` claim), for
+    #: Driver and Admin app sessions under device control (ADR-071).
+    device_id: uuid.UUID | None = None

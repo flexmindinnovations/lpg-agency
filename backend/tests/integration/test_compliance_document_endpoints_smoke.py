@@ -114,7 +114,7 @@ async def test_driver_document_add_list_verify_smoke(
 ) -> None:
     password = "correct horse battery staple 42"
     hasher = Argon2PasswordHasher(integration_settings)
-    _tenant_id, email = await _seed_manager(
+    tenant_id, email = await _seed_manager(
         admin_engine_lpg_test, password_hash=hasher.hash(password)
     )
     token = await _login(client, email=email, password=password)
@@ -126,7 +126,7 @@ async def test_driver_document_add_list_verify_smoke(
         json={
             "doc_type": "driving_licence",
             "document_number": "MH1220110012345",
-            "file_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_dl.png",
+            "file_ref": f"tenant/{tenant_id}/compliance-staging/{uuid.uuid4().hex}_dl.png",
             "expiry_date": "2030-01-01",
         },
         headers=headers,
@@ -141,7 +141,7 @@ async def test_driver_document_add_list_verify_smoke(
         json={
             "doc_type": "driving_licence",
             "document_number": "MH1220110099999",
-            "file_ref": "tenant/x/compliance-staging/other.png",
+            "file_ref": f"tenant/{tenant_id}/compliance-staging/other.png",
             "expiry_date": "2031-01-01",
         },
         headers=headers,
@@ -177,7 +177,7 @@ async def test_warehouse_and_tenant_document_add_list_smoke(
     endpoints, reusing the same generic use cases as driver/vehicle."""
     password = "correct horse battery staple 42"
     hasher = Argon2PasswordHasher(integration_settings)
-    _tenant_id, email = await _seed_manager(
+    tenant_id, email = await _seed_manager(
         admin_engine_lpg_test, password_hash=hasher.hash(password)
     )
     token = await _login(client, email=email, password=password)
@@ -189,7 +189,7 @@ async def test_warehouse_and_tenant_document_add_list_smoke(
         json={
             "doc_type": "peso_form_f",
             "document_number": "PESO/FORM-F/2026/0042",
-            "file_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_peso.png",
+            "file_ref": f"tenant/{tenant_id}/compliance-staging/{uuid.uuid4().hex}_peso.png",
             "expiry_date": "2029-01-01",
         },
         headers=headers,
@@ -208,14 +208,14 @@ async def test_warehouse_and_tenant_document_add_list_smoke(
         json={
             "doc_type": "insurance_policy",
             "document_number": "INS-2026-998877",
-            "file_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_ins.png",
+            "file_ref": f"tenant/{tenant_id}/compliance-staging/{uuid.uuid4().hex}_ins.png",
             "expiry_date": "2027-06-01",
         },
         headers=headers,
     )
     assert add_tenant.status_code == 201, add_tenant.text
     assert add_tenant.json()["owner_type"] == "tenant"
-    assert add_tenant.json()["owner_id"] == str(_tenant_id)
+    assert add_tenant.json()["owner_id"] == str(tenant_id)
 
     list_tenant = await client.get("/api/v1/tenant/documents", headers=headers)
     assert list_tenant.status_code == 200, list_tenant.text
@@ -227,7 +227,7 @@ async def test_warehouse_and_tenant_document_add_list_smoke(
         json={
             "doc_type": "insurance_policy",
             "document_number": "X",
-            "file_ref": "tenant/x/compliance-staging/wrong.png",
+            "file_ref": f"tenant/{tenant_id}/compliance-staging/wrong.png",
             "expiry_date": "2028-01-01",
         },
         headers=headers,
@@ -245,7 +245,7 @@ async def test_warehouse_and_tenant_document_add_list_smoke(
             json={
                 "doc_type": "peso_form_f",
                 "document_number": number,
-                "file_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_peso.png",
+                "file_ref": f"tenant/{tenant_id}/compliance-staging/{uuid.uuid4().hex}_peso.png",
                 "expiry_date": expiry,
             },
             headers=headers,

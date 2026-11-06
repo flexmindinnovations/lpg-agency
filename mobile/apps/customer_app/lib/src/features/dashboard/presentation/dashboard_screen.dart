@@ -177,7 +177,7 @@ class _BalanceHero extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: LpgSpacing.md),
-          ledgerAsync.when(
+          ledgerAsync.whenQuiet(
             data: (ledger) {
               final balances = ledger?.balances ?? const [];
               final total = balances.fold<int>(0, (s, b) => s + b.quantity);
@@ -303,7 +303,7 @@ class _RecentOrders extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ordersAsync.when(
+    return ordersAsync.whenQuiet(
       data: (orders) {
         if (orders.isEmpty) {
           return const LpgCard(

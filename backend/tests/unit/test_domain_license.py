@@ -16,7 +16,7 @@ from lpg.domain.license.license import (
     LicenseFeatureOverride,
     LicenseLifecycleState,
 )
-from lpg.domain.license.linked_device import LinkedDevice
+from lpg.domain.license.linked_device import DeviceStatus, LinkedDevice
 
 _TENANT_A = uuid.UUID("11111111-1111-1111-1111-111111111111")
 _ONE_YEAR = timedelta(days=365)
@@ -263,7 +263,7 @@ class TestLinkedDeviceConstruction:
 
         assert device.is_active is True
 
-    def test_revoking_a_device_makes_it_inactive(self) -> None:
+    def test_removing_a_device_makes_it_inactive(self) -> None:
         device = LinkedDevice(
             uuid.uuid4(),
             _TENANT_A,
@@ -274,11 +274,11 @@ class TestLinkedDeviceConstruction:
             datetime.now(UTC),
         )
 
-        device.revoke(at=datetime.now(UTC))
+        device.remove(by=None, at=datetime.now(UTC))
 
         assert device.is_active is False
 
-    def test_revoking_an_already_revoked_device_raises(self) -> None:
+    def test_removing_an_already_removed_device_raises(self) -> None:
         device = LinkedDevice(
             uuid.uuid4(),
             _TENANT_A,
@@ -287,11 +287,12 @@ class TestLinkedDeviceConstruction:
             "device-123",
             "Test Device",
             datetime.now(UTC),
+            status=DeviceStatus.REMOVED,
             revoked_at=datetime.now(UTC),
         )
 
         with pytest.raises(InvariantViolation):
-            device.revoke(at=datetime.now(UTC))
+            device.remove(by=None, at=datetime.now(UTC))
 
     def test_touch_last_seen_updates_the_timestamp(self) -> None:
         device = LinkedDevice(
