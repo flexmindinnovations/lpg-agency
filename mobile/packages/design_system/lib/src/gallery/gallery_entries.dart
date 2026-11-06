@@ -214,6 +214,45 @@ final List<GalleryEntry> galleryEntries = [
       ],
     );
   }),
+  GalleryEntry('illustration_library', (context) {
+    // Every picture, so a new or redrawn SVG is seen in all three themes.
+    const tones = [
+      LpgTone.primary,
+      LpgTone.success,
+      LpgTone.warning,
+      LpgTone.danger,
+      LpgTone.info,
+      LpgTone.accent,
+    ];
+    final tiles = [
+      for (final (i, art) in LpgIllustration.values.indexed)
+        LpgMetricTile(
+          label: art.name,
+          value: '${i + 1}',
+          icon: LpgIcons.cylinder,
+          tone: tones[i % tones.length],
+          illustration: art,
+        ),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < tiles.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: LpgSpacing.smd),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tiles[i]),
+                const SizedBox(width: LpgSpacing.smd),
+                Expanded(child: tiles[i + 1]),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }),
   GalleryEntry('cards_and_tiles', (context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

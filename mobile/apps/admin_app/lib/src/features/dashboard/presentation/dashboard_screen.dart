@@ -336,6 +336,7 @@ class _Body extends StatelessWidget {
             label: 'Awaiting confirmation',
             value: '$booked',
             icon: LpgIcons.pending,
+            illustration: LpgIllustration.pendingOrder,
             tone: LpgTone.warning,
             attention: booked > 0,
             onTap: () => onOrders('Booked'),
@@ -344,6 +345,7 @@ class _Body extends StatelessWidget {
             label: 'Ready to send out',
             value: '$waiting',
             icon: LpgIcons.truck,
+            illustration: LpgIllustration.cylinders,
             tone: LpgTone.info,
             attention: waiting > 0,
             onTap: () => context.goNamed('dispatch'),
@@ -352,12 +354,14 @@ class _Body extends StatelessWidget {
             label: 'Out for delivery',
             value: '$outNow',
             icon: LpgIcons.navigate,
+            illustration: LpgIllustration.route,
             onTap: () => onOrders('Out for delivery'),
           ),
           MetricTile(
             label: 'Failed today',
             value: '${o.failedToday}',
             icon: LpgIcons.warning,
+            illustration: LpgIllustration.failed,
             tone: LpgTone.danger,
             attention: o.failedToday > 0,
             onTap: () => onOrders('Failed'),
@@ -377,6 +381,7 @@ class _Body extends StatelessWidget {
                 ? '–'
                 : '$freeDrivers of ${activeDrivers.length}',
             icon: LpgIcons.user,
+            illustration: LpgIllustration.driver,
             tone: freeDrivers == 0 && fleet != null
                 ? LpgTone.warning
                 : LpgTone.success,
@@ -388,6 +393,7 @@ class _Body extends StatelessWidget {
             label: 'Vans free',
             value: fleet == null ? '–' : '$freeVans of ${activeVans.length}',
             icon: LpgIcons.van,
+            illustration: LpgIllustration.van,
             tone: freeVans == 0 && fleet != null
                 ? LpgTone.warning
                 : LpgTone.success,
@@ -407,6 +413,7 @@ class _Body extends StatelessWidget {
                 ? '${cash!.handoversAwaitingReview} to review'
                 : null,
             icon: LpgIcons.cash,
+            illustration: LpgIllustration.wallet,
             tone: LpgTone.accent,
             attention: (cash?.handoversAwaitingReview ?? 0) > 0,
             onTap: () => context.pushNamed('cash_book'),
@@ -416,6 +423,7 @@ class _Body extends StatelessWidget {
             value: LpgFormat.currencyWhole(inv?.outstandingAmount ?? 0),
             caption: '${inv?.outstandingCount ?? 0} invoices',
             icon: LpgIcons.invoice,
+            illustration: LpgIllustration.invoice,
             onTap: () => context.pushNamed('invoices'),
           ),
           MetricTile(
@@ -423,6 +431,7 @@ class _Body extends StatelessWidget {
             value: LpgFormat.currencyWhole(inv?.overdueAmount ?? 0),
             caption: '${inv?.overdueCount ?? 0} invoices',
             icon: LpgIcons.clock,
+            illustration: LpgIllustration.overdue,
             tone: LpgTone.danger,
             attention: (inv?.overdueCount ?? 0) > 0,
             onTap: () => context.pushNamed('invoices'),
@@ -431,6 +440,7 @@ class _Body extends StatelessWidget {
             label: 'Open complaints',
             value: '${ops.openComplaints}',
             icon: LpgIcons.complaint,
+            illustration: LpgIllustration.complaint,
             tone: LpgTone.warning,
             attention: ops.openComplaints > 0,
             onTap: () => context.pushNamed('complaints'),
@@ -439,6 +449,7 @@ class _Body extends StatelessWidget {
             label: 'Low-stock godowns',
             value: '${ops.lowStockCount}',
             icon: LpgIcons.warehouse,
+            illustration: LpgIllustration.warehouse,
             tone: LpgTone.danger,
             attention: ops.lowStockCount > 0,
             onTap: () => context.pushNamed('stock'),

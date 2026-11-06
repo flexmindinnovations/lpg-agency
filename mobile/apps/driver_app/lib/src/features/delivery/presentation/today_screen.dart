@@ -314,6 +314,7 @@ class _CashInHandCard extends ConsumerWidget {
       label: 'Cash in hand',
       value: LpgFormat.currency(held.cashAmount),
       icon: LpgIcons.cash,
+      illustration: LpgIllustration.wallet,
       tone: LpgTone.info,
       caption: held.upiAmount > 0
           ? '${LpgFormat.currency(held.upiAmount)} paid by UPI, not yours to hand over'

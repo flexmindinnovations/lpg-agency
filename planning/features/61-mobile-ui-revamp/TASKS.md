@@ -62,7 +62,8 @@ Epic 11 (device control) was built first and is merged into this branch; release
 - [ ] 5.2 Custom domain icon set (about 40 icons) as an icon font, mapped in `LpgIcons` (3)
 - [ ] 5.3 Illustrations: finish cylinder, add van, godown, receipt and 6 to 8 empty, success and error scenes (3)
 - [ ] 5.4 Micro-animations: success tick, van moving, leak warning, each with a still fallback (1)
-- [x] 5.5 Illustrated stat cards, pilot: `LpgMetricTile(illustration:)` with four drawn pictures (banknotes, cash received, shortfall, excess), used on the Admin Cash book's four handover tiles. Open: pictures for the other tiles (dashboard, customers, invoices, Driver Today), the Customer app's cards, a decision on whether to keep the pilot's style (see STATUS.md)
+- [x] 5.5 Illustrated stat cards, pilot: `LpgMetricTile(illustration:)` with four drawn pictures (banknotes, cash received, shortfall, excess), used on the Admin Cash book's four handover tiles. Superseded in part by 5.6
+- [x] 5.6 Shared SVG illustrations: the pictures are SVG files in `design_system/assets/illustrations/` (no path data in Dart), recoloured to the tile's tone at render time; 16 pictures; every stat tile in the Admin and Driver apps has one. Open: `LpgActionCard` (Customer dashboard, Driver nudges) and the Customer app's other cards, per-part motion, SVG authoring beyond these 16
 
 ## E6 Tablet and adaptive layout (6 days)
 - [ ] 6.1 Size classes and a responsive layout system: content width, grid, spacing (1)

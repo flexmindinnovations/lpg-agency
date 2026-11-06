@@ -17,6 +17,9 @@ dependencies:
   # future swap is a one-file change. Regular weight for idle states, Fill
   # for selected ones.
   lucide_icons_flutter: ^4.0.0
+  # Draws the illustration files in `assets/illustrations/`. Pictures live as
+  # SVG files, never as path data in Dart.
+  flutter_svg: ^2.3.0
   intl: ^0.20.2
   # `ErrorKind` and the error classification the friendly messages hang on.
   core:
@@ -36,6 +39,11 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
+  # Illustrations are plain SVG files drawn in four placeholder greys that
+  # `LpgIllustrationArt` swaps for the tile's tone at render time (see
+  # assets/illustrations/README.md).
+  assets:
+    - assets/illustrations/
   # Inter is bundled rather than fetched at runtime: no network request on
   # first launch, and identical metrics on every device. Apps reference it
   # through `LpgTheme`, which sets `fontFamily: 'packages/design_system/Inter'`.
