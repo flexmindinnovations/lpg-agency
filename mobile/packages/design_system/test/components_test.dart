@@ -1084,8 +1084,10 @@ void main() {
       expect(calm, isNot(urgent));
     });
 
-    testWidgets('draws the attention bar only when asked', (tester) async {
-      Future<int> bars({required bool attention}) async {
+    testWidgets('has no bar down its left edge, attention or not', (
+      tester,
+    ) async {
+      for (final attention in [true, false]) {
         await tester.pumpWidget(
           _wrap(
             LpgMetricTile(
@@ -1096,19 +1098,14 @@ void main() {
             ),
           ),
         );
-        return find
-            .byWidgetPredicate(
-              (w) =>
-                  w is SizedBox &&
-                  w.width == LpgMetricTile.railWidth &&
-                  w.child is ColoredBox,
-            )
-            .evaluate()
-            .length;
-      }
 
-      expect(await bars(attention: true), 1);
-      expect(await bars(attention: false), 0);
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is SizedBox && w.width == 4 && w.child is ColoredBox,
+          ),
+          findsNothing,
+        );
+      }
     });
   });
 

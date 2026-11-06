@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import '../icons.dart';
 import '../layout.dart';
 import '../theme.dart';
-import 'lpg_section_label.dart';
 
 /// The title above a group of content ("Recent orders", "Today's stops"),
-/// led by a short accent bar, with an optional trailing text action
-/// ("See all").
+/// with an optional trailing text action ("See all").
 class LpgSectionHeader extends StatelessWidget {
   const LpgSectionHeader({
     super.key,
@@ -38,8 +36,6 @@ class LpgSectionHeader extends StatelessWidget {
         // than sitting on the subtitle's baseline (CA-14).
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const LpgAccentBar(),
-          const SizedBox(width: LpgSpacing.smd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
