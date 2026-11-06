@@ -31,6 +31,9 @@ Flutter 3.47.9 (Dart 3.13.7, stable) was installed in the cloud environment, so 
 
 **Decision recorded (plan's recommended option):** the quiet retry waits 2 seconds, once. Not yet chosen by the owner; change `quietRetryDelay` if it feels long.
 
+### Story 0.1: design direction (done)
+[design-direction.md](./design-direction.md): the modern solid enterprise look as rules (tonal elevation, soft shadows, 1 px hairlines, 16 to 20 px radii, type scale, purposeful motion, high contrast, WCAG 2.2 AA), grounded in what the code already has, with one reference screen per app. It is a documentation story: nothing was built or run. Constraint recorded for story 1.1: `tokens.json` is shared with the Angular dashboard. Decision recorded (plan's recommended option): per-app accent proposed as Admin blue, Customer and Driver flame orange; the owner may change it.
+
 ## Not done
 Everything else in TASKS.md (epics E2 from 2.2, E4 to E10 and E12).
 
