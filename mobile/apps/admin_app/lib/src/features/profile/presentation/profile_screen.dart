@@ -7,9 +7,20 @@ import '../../../api_result.dart';
 import '../../../auth_provider.dart';
 import '../../../providers.dart';
 import '../data/profile_provider.dart';
+import 'edit_profile_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _edit(BuildContext context, AdminProfile profile) async {
+    final saved = await LpgFeedback.showSheet<bool>(
+      context,
+      title: 'Edit profile',
+      builder: (_) => EditProfileSheet(profile: profile),
+    );
+    if (saved != true || !context.mounted) return;
+    LpgFeedback.showToast(context, 'Profile updated.', tone: LpgTone.success);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -70,9 +81,23 @@ class ProfileScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(height: LpgSpacing.md),
+                  LpgButton(
+                    label: 'Edit profile',
+                    icon: LpgIcons.edit,
+                    variant: LpgButtonVariant.secondary,
+                    expand: true,
+                    onPressed: () => _edit(context, profile),
+                  ),
                   const SizedBox(height: LpgSpacing.lg),
                   Text('System Overview', style: text.titleSmall),
                   const SizedBox(height: LpgSpacing.sm),
+                  if (profile.contactPhone != null)
+                    LpgListTile(
+                      title: 'Contact phone',
+                      subtitle: profile.contactPhone,
+                      leadingIcon: LpgIcons.phone,
+                    ),
                   LpgListTile(
                     title: 'Role & Access Level',
                     subtitle: LpgFormat.sentence(profile.role),
@@ -90,6 +115,7 @@ class ProfileScreen extends ConsumerWidget {
             LpgButton(
               label: 'Sign Out',
               variant: LpgButtonVariant.destructive,
+              expand: true,
               onPressed: () async {
                 // Drop this device's FCM token first so a shared handset
                 // stops getting this user's alerts; it must not block the

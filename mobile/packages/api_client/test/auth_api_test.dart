@@ -42,6 +42,78 @@ void main() {
       );
     });
 
+    test('myProfile reads the own profile', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      String? path;
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        path = options.path;
+        return jsonResponse({
+          'user_id': 'u1',
+          'email': 'admin@example.com',
+          'role': 'agency_admin',
+          'display_name': 'Asha Rao',
+          'contact_phone': '+91 98765 43210',
+        }, 200);
+      });
+
+      final result = await AuthApi(client.dio).myProfile();
+
+      final profile = result.when(onSuccess: (p) => p, onFailure: (_) => null);
+      expect(path, '/api/v1/auth/me/profile');
+      expect(profile?.displayName, 'Asha Rao');
+      expect(profile?.contactPhone, '+91 98765 43210');
+    });
+
+    test(
+      'updateMyProfile PATCHes both fields and returns the result',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        String? method;
+        Object? body;
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          method = options.method;
+          body = options.data;
+          return jsonResponse({
+            'user_id': 'u1',
+            'email': 'admin@example.com',
+            'role': 'agency_admin',
+            'display_name': 'Asha R',
+            'contact_phone': null,
+          }, 200);
+        });
+
+        final result = await AuthApi(
+          client.dio,
+        ).updateMyProfile(displayName: 'Asha R', contactPhone: '');
+
+        expect(method, 'PATCH');
+        expect(body, {'display_name': 'Asha R', 'contact_phone': ''});
+        expect(
+          result.when(onSuccess: (p) => p.displayName, onFailure: (_) => null),
+          'Asha R',
+        );
+      },
+    );
+
+    test(
+      'updateMyProfile reports a validation failure from the server',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter(
+          (options) => jsonResponse({'detail': 'Enter a phone number.'}, 422),
+        );
+
+        final result = await AuthApi(
+          client.dio,
+        ).updateMyProfile(displayName: 'A', contactPhone: 'abc');
+
+        expect(
+          result.when(onSuccess: (_) => 'ok', onFailure: (_) => 'failed'),
+          'failed',
+        );
+      },
+    );
+
     test('login maps a 200 into a Success(TokenPair)', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
       client.dio.httpClientAdapter = FakeHttpClientAdapter(

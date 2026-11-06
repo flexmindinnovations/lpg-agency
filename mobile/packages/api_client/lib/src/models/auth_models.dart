@@ -45,3 +45,29 @@ class Principal {
   final String? displayName;
   final String? email;
 }
+
+/// `GET`/`PATCH /auth/me/profile`: the signed-in staff member's own name and
+/// contact number.
+class MyProfile {
+  const MyProfile({
+    required this.userId,
+    required this.role,
+    this.email,
+    this.displayName,
+    this.contactPhone,
+  });
+
+  factory MyProfile.fromJson(Map<String, dynamic> json) => MyProfile(
+    userId: json['user_id'] as String,
+    role: json['role'] as String,
+    email: json['email'] as String?,
+    displayName: json['display_name'] as String?,
+    contactPhone: json['contact_phone'] as String?,
+  );
+
+  final String userId;
+  final String role;
+  final String? email;
+  final String? displayName;
+  final String? contactPhone;
+}
