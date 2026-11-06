@@ -44,12 +44,18 @@ class LpgGlassLook {
   /// small orbs into it.
   static const cardBlurSigma = 14.0;
 
-  /// How much of the grain shows on a card, 0 to 1. The opacity search below
-  /// counts a grain speck at this strength on top of the glass, so the grain
-  /// can never push text under 4.5:1. A sheet floats over arbitrary content,
-  /// so it has less room and a finer grain.
-  static const grainStrength = 0.09;
-  static const sheetGrainStrength = 0.04;
+  /// How much of the grain is laid under a card's fill, 0 to 1 (it shows
+  /// through the see-through fill at roughly half this). The grain is under the
+  /// fill and so never touches text; the opacity search below still counts a
+  /// speck at this strength in what the fill is laid over. A sheet floats over
+  /// arbitrary content, so it has less room and a finer grain.
+  static const grainStrength = 0.2;
+  static const sheetGrainStrength = 0.08;
+
+  /// Text on glass keeps this contrast on the worst
+  /// pixel behind it, so it reads crisply, not just legally. Well above the
+  /// 4.5:1 the page itself is held to.
+  static const readableContrast = 6.0;
 
   static final Expando<LpgGlassLook> _cache = Expando();
 
@@ -93,7 +99,7 @@ class LpgGlassLook {
   }
 
   /// The smallest opacity from [target] up to 1 at which text stays readable
-  /// on [fill] laid over every one of [behind], with a grain [speck] on top.
+  /// on [fill] laid over every one of [behind], with a grain [speck] under it.
   static double _smallest(
     double target,
     Color fill,
@@ -104,14 +110,14 @@ class LpgGlassLook {
   ) {
     bool readable(double alpha) {
       for (final back in behind) {
-        final glass = colors.tint(
-          speck,
-          grain,
-          over: Color.alphaBlend(fill.withValues(alpha: alpha), back),
+        // The grain sits under the fill (never over the text), so it is part
+        // of what the fill is laid over.
+        final glass = Color.alphaBlend(
+          fill.withValues(alpha: alpha),
+          colors.tint(speck, grain, over: back),
         );
         for (final text in [colors.textPrimary, colors.textSecondary]) {
-          if (LpgBackdropLook.contrast(text, glass) <
-              LpgBackdropLook.minTextContrast) {
+          if (LpgBackdropLook.contrast(text, glass) < readableContrast) {
             return false;
           }
         }
@@ -259,7 +265,7 @@ class _LpgGlassPaneState extends State<LpgGlassPane> {
     Widget pane = Stack(
       fit: StackFit.passthrough,
       children: [
-        widget.child,
+        // Under the content, never over it: the grain must not touch text.
         Positioned.fill(
           child: ExcludeSemantics(
             child: IgnorePointer(
@@ -272,6 +278,7 @@ class _LpgGlassPaneState extends State<LpgGlassPane> {
             ),
           ),
         ),
+        widget.child,
       ],
     );
     final sigma = widget.blurSigma;
