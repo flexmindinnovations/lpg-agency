@@ -62,7 +62,8 @@ Future<void> _pump(
 }
 
 const _ledgerError = 'Balance unavailable right now';
-const _ordersError = 'Failed to load recent orders. Pull down to try again.';
+// The recent-orders section shows the friendly banner for a lost connection.
+const _ordersError = 'No internet';
 const _after = Duration(milliseconds: 100);
 
 Future<void> _pastRetryDelay(WidgetTester tester) async {

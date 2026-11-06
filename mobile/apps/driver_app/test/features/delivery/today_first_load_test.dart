@@ -71,12 +71,12 @@ void main() {
     await _pump(tester, _script([_offline, null]));
 
     await tester.pump(_after);
-    expect(find.byType(LpgSkeletonList), findsOneWidget);
+    expect(find.byType(LpgSkeletonGroup), findsOneWidget);
     expect(find.byType(LpgErrorState), findsNothing);
 
     await tester.pump(quietRetryDelay - const Duration(milliseconds: 300));
     expect(find.byType(LpgErrorState), findsNothing);
-    expect(find.byType(LpgSkeletonList), findsOneWidget);
+    expect(find.byType(LpgSkeletonGroup), findsOneWidget);
 
     await _pastRetryDelay(tester);
     expect(find.byType(LpgErrorState), findsNothing);

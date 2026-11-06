@@ -53,6 +53,8 @@ void main() async {
       );
     },
     onSessionExpired: () => authController.handleSessionExpired(),
+    // Requests made while the session is still being restored wait for it.
+    waitForSession: () => authController.whenSettled,
   );
 
   // Device control (ADR-071): plug the phone's identity into the API client

@@ -173,8 +173,25 @@ class _BalanceHero extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: LpgSpacing.md),
-          ledgerAsync.whenQuiet(
-            data: (ledger) {
+          LpgAsyncView<CylinderLedgerResponse?>(
+            value: ledgerAsync,
+            showStaleNotice: false,
+            // Grey placeholders would clash with the gradient, so the hero
+            // keeps a spinner in its own colour while it waits.
+            skeleton: Padding(
+              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.sm),
+              child: SizedBox(
+                height: LpgSizes.iconXl,
+                width: LpgSizes.iconXl,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: colors.onHero,
+                ),
+              ),
+            ),
+            errorBuilder: (context, error, retry) =>
+                caption('Balance unavailable right now'),
+            data: (context, ledger) {
               final balances = ledger?.balances ?? const [];
               final total = balances.fold<int>(0, (s, b) => s + b.quantity);
               return Column(
@@ -194,18 +211,6 @@ class _BalanceHero extends ConsumerWidget {
                 ],
               );
             },
-            loading: () => Padding(
-              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.sm),
-              child: SizedBox(
-                height: LpgSizes.iconXl,
-                width: LpgSizes.iconXl,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: colors.onHero,
-                ),
-              ),
-            ),
-            error: (err, _) => caption('Balance unavailable right now'),
           ),
         ],
       ),
@@ -299,8 +304,14 @@ class _RecentOrders extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ordersAsync.whenQuiet(
-      data: (orders) {
+    return LpgAsyncView<List<OrderResponse>>(
+      value: ordersAsync,
+      // The section is small, so a failure is a banner, not a full screen;
+      // pulling down refreshes it.
+      errorBuilder: lpgErrorBanner,
+      showStaleNotice: false,
+      skeleton: const LpgSkeletonList(itemCount: 3, padding: EdgeInsets.zero),
+      data: (context, orders) {
         if (orders.isEmpty) {
           return const LpgCard(
             variant: LpgCardVariant.outlined,
@@ -348,12 +359,6 @@ class _RecentOrders extends StatelessWidget {
           ),
         );
       },
-      loading: () =>
-          const LpgSkeletonList(itemCount: 3, padding: EdgeInsets.zero),
-      error: (error, stack) => const LpgBanner(
-        tone: LpgTone.danger,
-        message: 'Failed to load recent orders. Pull down to try again.',
-      ),
     );
   }
 }

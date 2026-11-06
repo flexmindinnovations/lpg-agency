@@ -7,6 +7,8 @@
 /// for how screens are expected to use it and how to rebrand.
 library;
 
+export 'src/async/lpg_async_view.dart';
+export 'src/async/lpg_error_copy.dart';
 export 'src/async/quiet_when.dart';
 export 'src/tokens.dart';
 export 'src/layout.dart';

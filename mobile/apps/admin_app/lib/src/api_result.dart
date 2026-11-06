@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:core/core.dart';
 
 /// A failed API call surfaced through a provider's `AsyncError`, carrying the

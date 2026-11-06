@@ -71,6 +71,8 @@ void main() async {
       );
     },
     onSessionExpired: () => authController.handleSessionExpired(),
+    // Requests made while the session is still being restored wait for it.
+    waitForSession: () => authController.whenSettled,
   );
   authRepository = ApiAuthRepository(
     authApi: AuthApi(apiClient.dio),
