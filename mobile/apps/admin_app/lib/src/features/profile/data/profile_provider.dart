@@ -13,6 +13,7 @@ class AdminProfile {
     this.agencyName,
     this.ownName,
     this.contactPhone,
+    this.avatarUrl,
   });
 
   /// What to show: the name, or the email, or "Admin".
@@ -23,6 +24,10 @@ class AdminProfile {
 
   /// A number colleagues can use to reach this person (`null` when none).
   final String? contactPhone;
+
+  /// A link to the profile picture, or `null` when there is none. It stops
+  /// working after a while, so it is read again each time the profile loads.
+  final String? avatarUrl;
   final String role;
   final String? email;
 
@@ -58,6 +63,7 @@ final adminProfileProvider = FutureProvider<AdminProfile>((ref) async {
     displayName: ownName ?? principal.email ?? 'Admin',
     ownName: ownName,
     contactPhone: own?.contactPhone,
+    avatarUrl: own?.avatarUrl,
     role: principal.role,
     email: principal.email,
     agencyName: agencyName,

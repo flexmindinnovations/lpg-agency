@@ -424,6 +424,39 @@ void main() {
     expect(LpgAvatar.initialsOf(''), '?');
   });
 
+  testWidgets('LpgAvatar shows only initials when there is no picture', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(const LpgAvatar(name: 'Asha Rao')));
+    expect(find.text('AR'), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+
+    await tester.pumpWidget(
+      _wrap(const LpgAvatar(name: 'Asha Rao', imageUrl: '')),
+    );
+    expect(find.byType(Image), findsNothing);
+  });
+
+  testWidgets(
+    'LpgAvatar loads the picture and keeps the initials if it fails',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const LpgAvatar(
+            name: 'Asha Rao',
+            imageUrl: 'https://files.test/expired-link.png',
+          ),
+        ),
+      );
+      expect(find.byType(Image), findsOneWidget);
+
+      // The test HTTP client refuses every request, like an expired link.
+      await tester.pumpAndSettle();
+      expect(find.text('AR'), findsOneWidget);
+      expect(find.bySemanticsLabel('Asha Rao'), findsOneWidget);
+    },
+  );
+
   testWidgets('LpgTimeline labels each step with its state', (tester) async {
     await tester.pumpWidget(
       _wrap(

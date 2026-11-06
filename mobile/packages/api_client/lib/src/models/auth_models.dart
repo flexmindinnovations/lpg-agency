@@ -55,6 +55,7 @@ class MyProfile {
     this.email,
     this.displayName,
     this.contactPhone,
+    this.avatarUrl,
   });
 
   factory MyProfile.fromJson(Map<String, dynamic> json) => MyProfile(
@@ -63,6 +64,7 @@ class MyProfile {
     email: json['email'] as String?,
     displayName: json['display_name'] as String?,
     contactPhone: json['contact_phone'] as String?,
+    avatarUrl: json['avatar_url'] as String?,
   );
 
   final String userId;
@@ -70,4 +72,9 @@ class MyProfile {
   final String? email;
   final String? displayName;
   final String? contactPhone;
+
+  /// A link to the profile picture that stops working after a while (the
+  /// server makes a new one on every read), or `null` when there is none.
+  /// Show it; never store it.
+  final String? avatarUrl;
 }

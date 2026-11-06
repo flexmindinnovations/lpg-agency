@@ -8,7 +8,7 @@ Goal: the signed-in agency admin can change their own details and picture from t
 
 ## Scope, in order
 1. **Name and phone from the Admin app** (mobile only; no backend change). A sheet on the Profile screen; the email stays read-only. Sign-out button full width.
-2. **Profile picture** (needs the backend): an `avatar_ref` on the staff user (migration), a use case that sets or clears it, `POST /auth/me/avatar` (image only, size limit, tenant-scoped key), the profile response carrying a displayable URL, tests including tenant isolation and an audit entry. In the app: pick from camera or gallery, upload, show it in `LpgAvatar` (new optional image) on the Profile card and anywhere else the user's avatar is shown.
+2. **Profile picture** (needs the backend; built, see STATUS.md): an `avatar_ref` on the staff user (migration), a use case that sets or clears it, `POST /auth/me/avatar` (image only, size limit, tenant-scoped key), the profile response carrying a displayable URL, tests including tenant isolation and an audit entry. In the app: pick from camera or gallery, upload, show it in `LpgAvatar` (new optional image) on the Profile card and anywhere else the user's avatar is shown.
 
 ## Guardrails
 - The email is the sign-in identifier and is not editable here.

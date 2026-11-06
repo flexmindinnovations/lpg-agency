@@ -1,22 +1,34 @@
 # Status: Admin app editable profile
 
-**In progress.** Step 1 (name and phone, full-width Sign Out) is built, tested and checked on the emulator. The picture (steps 5 to 8) is not started: it needs a backend change.
+**Built and checked on a device**, in two parts: name, phone and full-width Sign Out (PR #153), and the profile picture (this branch, stacked on #153).
 
 ## Done (2026-11-06)
-- `AuthApi.myProfile()` and `updateMyProfile()` in `api_client`, with tests (read, PATCH of both fields, a refused save).
-- Admin Profile screen: an "Edit profile" button opens a sheet with name and contact phone (same phone rule as the server, checked before sending); the contact phone shows on the screen once set; Sign Out is full width.
-- Widget tests in `admin_app/test/profile_test.dart`: validation, saving sends both fields trimmed, a bad phone sends nothing, the server's reason shows when a save is refused, Edit button present and Sign Out spans the page.
-- `flutter analyze` clean and tests pass in `api_client` (142), `admin_app` (132), `design_system`, `customer_app`, `driver_app`.
+- Name and phone: `AuthApi.myProfile()` / `updateMyProfile()`, an "Edit profile" sheet, the contact phone shown once set, Sign Out full width.
+- Profile picture, backend:
+  - `identity.identity_user.avatar_ref` (nullable, migration `e4b7a1c9d3f2`). It holds the storage key, never a URL.
+  - `POST /auth/me/avatar` (multipart `file`) and `DELETE /auth/me/avatar`. A picture must be JPEG, PNG, WebP or HEIC, at most 5 MB, and its first bytes must match the type it claims; anything else is a 422 and nothing is stored.
+  - Stored at `tenant/{tenant_id}/avatars/{user_id}/{random}.{ext}`. A new name each time, the old object is deleted, and a failed save removes the new upload.
+  - `GET` / `PATCH /auth/me/profile` and the two new routes return `avatar_url`, a link that expires after an hour and is made on every read.
+  - Each change is audited (`own_avatar`, `set` or `removed`) without the key.
+  - OpenAPI spec regenerated (additions only).
+- Profile picture, app:
+  - `LpgAvatar(imageUrl:)`: the picture fades in over the initials; while loading, or if the link fails or has expired, the initials stay.
+  - Admin Profile: the avatar has a camera badge; tapping it offers Take photo, Choose from gallery and (when there is one) Remove photo. A chosen photo is shrunk to at most 1024 px before it is sent; the type is read from the file's bytes.
 
-## Verified on the emulator (Pixel 10 Pro, local backend)
-Edit profile sheet opens; with the keyboard up, Save changes stays pinned above it; a real save of a name and phone showed "Profile updated.", the phone on the screen, and after a restart the name "Asha Rao" with AR initials on the card. The values were then cleared again, so the dev account is back as it was.
-
-## Found while checking
-`GET /auth/me` can return a stale name right after an edit, so the app now reads the name and phone from `GET /auth/me/profile` (a test covers it). Not investigated on the backend: why `/auth/me` lags.
+## Verified
+- Backend: `ruff check` and `ruff format`, `mypy --strict`, `import-linter` (7 contracts kept), 1,686 unit tests pass. The new integration tests (keep / replace / remove, another agency cannot reach the picture, HTTP round trip through MinIO including fetching the link and seeing it stop working after removal) pass against a freshly migrated PostgreSQL database.
+- App: format, analyze and tests in `design_system`, `api_client`, `admin_app`, `customer_app` and `driver_app` (see the PR for counts).
+- Emulator (Pixel 10 Pro, local backend and MinIO): picked a picture from the gallery, saw it in the profile circle, removed it and saw the initials and "Profile picture removed."; the database column and the stored object were gone afterwards. The dev account is back as it was.
 
 ## Not verified
-- A refused save (the server's 422) on a device; it is covered by a widget test only.
-- Anywhere else the app might show the principal's name (none found in the Admin app).
+- Taking a photo with the camera on a device (the gallery path was run; the camera path is covered by a widget test with a fake picker).
+- A refused upload (422) on a device; covered by a widget test and an HTTP integration test.
+- The expired-link case on a device: after about an hour the link stops working and the initials show until the profile is read again. Covered by a widget test only.
+- The full integration suite: the shared `lpg_test` database on this machine is at a migration from another branch, so the profile tests were run against a fresh database built from this branch's migrations. CI builds its own.
 
-## Open decision
-- Where profile pictures are stored and served (the existing staged-document storage, with a URL for the owner's tenant only) is proposed in PLAN.md; confirm before building steps 5 to 8.
+## Notes
+- The link points at the storage endpoint. In local development that is `localhost:59000`, so an emulator needs `adb reverse tcp:59000 tcp:59000` to show the picture; a deployed environment needs a storage endpoint the phones can reach (the same need as the existing invoice and KYC links).
+- Dozens of integration test files hard-code the `lpg_test` database name and ignore `LPG_TEST_ADMIN_DATABASE_URL`. Left alone; worth one tidy-up task.
+
+## Decision (was open)
+Pictures use the existing object storage under the user's own `tenant/{id}/avatars/` prefix, served by a short-lived signed link (same approach as invoices and KYC documents). No new storage service.
