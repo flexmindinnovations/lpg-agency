@@ -97,6 +97,9 @@ describe('NotificationService', () => {
       expect(
         service.routeFor(notification({ reference_type: 'route', reference_id: 'r1' })),
       ).toEqual({ commands: ['/dispatch'] });
+      expect(
+        service.routeFor(notification({ reference_type: 'device', reference_id: 'd1' })),
+      ).toEqual({ commands: ['/settings/license/devices'] });
       expect(service.routeFor(notification({ reference_type: 'invoice' }))).toEqual({
         commands: ['/invoices'],
       });

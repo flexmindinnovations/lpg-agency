@@ -231,6 +231,11 @@ class RefreshTokenRepository(Protocol):
         """
         ...
 
+    async def revoke_all_for_device(self, device_id: uuid.UUID) -> None:
+        """End every live session opened on one registered phone (ADR-071) —
+        what blocking or removing the phone does."""
+        ...
+
 
 @runtime_checkable
 class PasswordResetTokenRepository(Protocol):

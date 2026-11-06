@@ -1708,6 +1708,38 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 - **One page with tabs but no per-section routes** — rejected: loses deep links, lazy loading and route-level guards.
 - **Keep separate sidebar entries** — rejected: four of the Administration group's ten items were rarely-used agency settings crowding the operational list.
 
+## ADR-071: Device Registration and Access Control for the Driver and Admin Apps
+
+**Status:** Accepted (2026-11-05, owner-approved plan `planning/features/61-mobile-ui-revamp/`, Epic 11). Legal wording under *Privacy* is **unverified** and needs the agency's adviser.
+
+**Context:** Linked Devices (Settings) was always empty: nothing registered a phone, revoking had no effect, and there was no `admin_app` type. An agency could not decide which phones may use the Driver and Admin apps, and a lost or ex-employee phone could not be shut out.
+
+**Decision:**
+- **Identity.** Each app instance makes a random install ID kept in secure storage and sends it as `X-Device-Id` (plus `X-App-Type`) on every request. The server stores only its SHA-256 (`platform.linked_device.device_identifier`); the Android ID / iOS vendor ID is stored the same way (`hardware_ref`). IMEI and serial cannot be read by normal apps on Android 10+ and never on iOS, so they are an optional admin-typed note (`asset_note`), not a proof. Model, manufacturer, OS and app version, platform and a user-typed device name are stored in plain text.
+- **States.** `pending`, `approved`, `blocked`, `removed` (moves: pending→approved/blocked; approved→blocked; blocked→approved; anything but removed→removed; a removed phone that signs in again reopens as pending). Only **approved** phones hold a seat against the plan's `device_caps` for that app type (`admin_app` is uncapped by default). Approving or unblocking over the limit is refused with `DEVICE_LIMIT_REACHED`; nothing is ever auto-evicted.
+- **Per-agency mode `device_control`** (tenant configuration key, validated on write): `off` (default; nothing enforced, nothing recorded), `observe` (phones register themselves, approved while seats remain, nobody blocked) and `enforce`. It replaces the plan's grace-period wording: a deploy changes nothing for existing agencies, and an admin moves an agency from `off` through `observe` to `enforce`. An unreadable value means `off`, never `enforce`.
+- **Scope.** Driver and Admin apps only. The Customer app is not registered or approved (many households install freely; an OTP login). Staff on the web dashboard carry no device and are unaffected; a *driver* login is always treated as the Driver app, so it cannot dodge the check by omitting headers.
+- **Who decides.** Agency admin (`license:manage_tenant`); managers do not approve devices.
+- **Enforcement (server-side).** The app sends `X-Device-Id` (its install ID) and `X-App-Type` on every request, and its phone details in the `device` object of the sign-in, OTP-verify and refresh bodies. Sign-in and refresh record the phone and put its record id in the access token (`did`, `app` claims) and on the refresh token (`identity.refresh_token.device_id`). Every authenticated request goes through `get_tenant_context`, which checks the phone against a Redis-cached status (about 30 s, cleared at once by an admin action); the realtime connection checks at connect, on token refresh and on every quiet 30-second cycle. A request whose `X-Device-Id` does not hash to the phone recorded in the token is refused, so a stolen token is useless on another phone. Under `enforce`: pending/blocked/removed phones are refused (`DEVICE_PENDING`, `DEVICE_BLOCKED`, `DEVICE_REMOVED`, 403); a driver session with no phone, or a session on a different phone, gets `DEVICE_REQUIRED` (401) so the app's silent refresh re-binds it. A waiting phone can sign in (it needs a session to ask) but only reaches `GET /devices/me`. A refresh token opened on a phone can be redeemed only from that phone. Blocking or removing revokes that phone's refresh tokens (post-commit handler, `identity.auth_revoke_all_refresh_tokens_for_device`), clears the cached status and publishes `device.status_changed` on the user's realtime channel; the user also gets a `device_blocked_user` push. The message carries no identifier: the app asks `GET /devices/me`.
+- **Hardening (security review, `docs/reviews/2026-11-05-device-control-security-review.md`).** A connected phone is re-checked every 30 seconds however busy its connection is, and one login may have at most 5 phones waiting for approval (`DEVICE_QUEUE_FULL`).
+- **Audit.** Register, approve, block, unblock, remove and rename/note each write a named audit entry (`device.registered` …) in the same transaction as the change; the generic ORM audit hook also records the row diff, except for `last_seen_at`-only updates. The IMEI/serial note text is never written to an audit entry.
+- **Offline drivers.** A blocked driver's queued deliveries stay on the phone untouched and resume on unblock; nothing is wiped.
+
+**Consequences:**
+- A phone that signs in under `enforce` before an admin approves it gets a session that can only ask "am I approved yet?"; the app shows "Waiting for approval".
+- `device_identifier` and `hardware_ref` are one-way hashes: the dashboard shows an 8-character reference (`device_ref`, `phone_ref`) to tell phones apart, not the IDs. A reinstall changes the install ID and looks like a new phone; the Android-ID reference helps an admin recognise it.
+- The dashboard is deliberately outside device control, so an admin password still works there. For the same reason the Admin app is only as strong as the staff password: someone holding it can use the API without the app's headers and is treated as a dashboard session. Device control stops a *phone*, not a credential; remove the person's login to stop that.
+- Cache lag: the status cache lives about 30 seconds and the mode about 60 seconds; an admin action also clears the status cache at once.
+- Old `PATCH /admin/license/devices/{id}/revoke` is replaced by `POST …/remove` (it never had anything to act on).
+
+**Privacy (DPDP — unverified legal wording):** collect only the fields above; say why in the app ("so your agency knows which phones are using its apps"); no identifier is written to application logs in plain text; a retention period for removed devices is still to be set with the agency's adviser.
+
+**Alternatives Considered:**
+- **Pairing code first** — stricter but adds a step for every new phone; kept as optional story 11.9, not built.
+- **Hardware IDs (IMEI/serial) as the key** — not readable by normal apps; rejected.
+- **Grace period after release** — replaced by the `off`/`observe`/`enforce` mode, which is explicit and reversible.
+- **Checking the device only at sign-in** — rejected: a blocked phone would keep working until its token expired.
+
 ## Deferred Decisions
 
 Decisions deliberately left open, each with a defined trigger point:

@@ -34,6 +34,8 @@ from lpg.api.v1.routers import (
     dashboard,
     delivery,
     dev_tools,
+    device_session,
+    devices,
     documents,
     employee,
     health,
@@ -67,6 +69,7 @@ from lpg.infrastructure.events.auto_assignment_handlers import (
 from lpg.infrastructure.events.cylinder_ledger_handlers import (
     register_cylinder_ledger_handlers,
 )
+from lpg.infrastructure.events.device_handlers import register_device_handlers
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.events.low_stock_handlers import register_low_stock_handlers
 from lpg.infrastructure.events.notification_handlers import (
@@ -221,6 +224,7 @@ async def lifespan(
     realtime_publisher = RedisRealtimePublisher(redis_client)
     _state.realtime_publisher = realtime_publisher
     register_realtime_handlers(_state.event_dispatcher, realtime_publisher)
+    register_device_handlers(_state.event_dispatcher, database, redis_client, realtime_publisher)
 
     _state.storage = storage
     _state.jwt_signer = jwt_signer
@@ -332,6 +336,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # API v1
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(admin.router, prefix=settings.api_v1_prefix)
+    app.include_router(devices.router, prefix=settings.api_v1_prefix)
+    app.include_router(device_session.router, prefix=settings.api_v1_prefix)
     app.include_router(ai.router, prefix=settings.api_v1_prefix)
     app.include_router(platform.router, prefix=settings.api_v1_prefix)
     # `onboarding_draft.router`'s literal `/customers/onboarding-drafts` path

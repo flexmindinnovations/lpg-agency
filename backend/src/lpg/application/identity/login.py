@@ -48,6 +48,7 @@ if TYPE_CHECKING:
         RefreshTokenRepository,
         TokenHasher,
     )
+    from lpg.application.license.device_access import DeviceContext, DeviceSessionBinder
     from lpg.application.license.ports import LicenseStatusChecker
     from lpg.application.tenant.status import TenantStatusChecker
 
@@ -56,6 +57,8 @@ if TYPE_CHECKING:
 class LoginCommand(Command):
     email: str
     password: str
+    #: The phone this sign-in comes from, when it is a Driver or Admin app.
+    device: DeviceContext | None = None
 
 
 class LoginUseCase:
@@ -73,7 +76,9 @@ class LoginUseCase:
         lockout_threshold: int,
         lockout_duration: timedelta,
         refresh_token_ttl: timedelta,
+        device_binder: DeviceSessionBinder | None = None,
     ) -> None:
+        self._device_binder = device_binder
         self._user_repository = user_repository
         self._refresh_token_repository = refresh_token_repository
         self._permission_repository = permission_repository
@@ -137,6 +142,12 @@ class LoginUseCase:
                 msg = "This tenant's license has expired."
                 raise LicenseExpiredError(msg, tenant_id=str(user.tenant_id))
 
+        # Device control (ADR-071): refuse a blocked phone before any state is
+        # recorded, and bind the session to the phone it comes from.
+        binding = (
+            await self._device_binder.bind(user, command.device) if self._device_binder else None
+        )
+
         user.record_successful_login()
         await self._user_repository.save(user)
 
@@ -147,4 +158,5 @@ class LoginUseCase:
             token_hasher=self._token_hasher,
             jwt_signer=self._jwt_signer,
             refresh_token_ttl=self._refresh_token_ttl,
+            device=binding,
         )

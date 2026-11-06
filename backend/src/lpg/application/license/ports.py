@@ -13,12 +13,15 @@ if TYPE_CHECKING:
     import uuid
     from collections.abc import Sequence
 
+    from lpg.application.license.device_access import DeviceAccess
+    from lpg.application.license.manage_devices import DeviceRegistration, RegisterDeviceCommand
+    from lpg.domain.license.device_control import DeviceControlMode
     from lpg.domain.license.license import (
         License,
         LicenseFeatureOverride,
         LicenseLifecycleState,
     )
-    from lpg.domain.license.linked_device import LinkedDevice
+    from lpg.domain.license.linked_device import DeviceStatus, LinkedDevice
 
 
 @runtime_checkable
@@ -56,10 +59,22 @@ class LinkedDeviceRepository(Protocol):
     ) -> LinkedDevice | None: ...
 
     async def list_for_tenant(
-        self, tenant_id: uuid.UUID, app_type: str | None = None
-    ) -> Sequence[LinkedDevice]: ...
+        self,
+        tenant_id: uuid.UUID,
+        app_type: str | None = None,
+        status: DeviceStatus | None = None,
+    ) -> Sequence[LinkedDevice]:
+        """Newest first. `status=None` lists every device still in use, i.e.
+        everything except removed ones; ask for `REMOVED` to see those."""
+        ...
 
-    async def count_active_for_app_type(self, tenant_id: uuid.UUID, app_type: str) -> int: ...
+    async def count_with_status(
+        self, tenant_id: uuid.UUID, status: DeviceStatus, app_type: str | None = None
+    ) -> int: ...
+
+    async def count_waiting_for_user(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> int:
+        """Phones waiting for approval whose last sign-in was this user."""
+        ...
 
     async def add(self, device: LinkedDevice) -> None: ...
 
@@ -77,3 +92,35 @@ class LicenseStatusChecker(Protocol):
     async def get_status(self, tenant_id: uuid.UUID) -> LicenseLifecycleState: ...
 
     async def invalidate(self, tenant_id: uuid.UUID) -> None: ...
+
+
+@runtime_checkable
+class DeviceControlModeReader(Protocol):
+    """The agency's `device_control` mode, read through a short-lived cache —
+    consulted on every Driver and Admin app request."""
+
+    async def get(self, tenant_id: uuid.UUID) -> DeviceControlMode: ...
+
+    async def invalidate(self, tenant_id: uuid.UUID) -> None:
+        """Forget the cached mode — called when an admin changes it, so the
+        new mode applies at once rather than within a minute."""
+        ...
+
+
+@runtime_checkable
+class DeviceAccessReader(Protocol):
+    """One phone's status and identifier hash, read through a short-lived
+    cache that an admin decision clears at once."""
+
+    async def get(self, tenant_id: uuid.UUID, device_id: uuid.UUID) -> DeviceAccess | None: ...
+
+    async def invalidate(self, tenant_id: uuid.UUID, device_id: uuid.UUID) -> None: ...
+
+
+@runtime_checkable
+class DeviceRegistrar(Protocol):
+    """Records a phone at sign-in. The caller has no tenant session yet (sign-in
+    happens before any), so the implementation opens its own tenant-scoped
+    transaction and runs `RegisterDeviceUseCase` in it."""
+
+    async def register(self, command: RegisterDeviceCommand) -> DeviceRegistration: ...

@@ -5,6 +5,7 @@ import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
+import 'package:device_identity/device_identity.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:realtime/realtime.dart';
 
 import 'src/auth_provider.dart';
+import 'src/device_provider.dart';
 import 'src/i18n/admin_strings.dart';
 import 'src/providers.dart';
 import 'src/push/push_notification_service.dart';
@@ -53,6 +55,16 @@ void main() async {
     onSessionExpired: () => authController.handleSessionExpired(),
   );
 
+  // Device control (ADR-071): plug the phone's identity into the API client
+  // *before* anything calls the server — the session restore is the first
+  // request, and it must already carry the install ID.
+  final deviceControl = await DeviceControl.setUp(
+    dio: apiClient.dio,
+    appType: 'admin_app',
+    // Blocked: sign out.
+    onBlocked: () => authController.logout(),
+  );
+
   authRepository = StaffOnlyAuthRepository(
     ApiAuthRepository(
       authApi: AuthApi(apiClient.dio),
@@ -66,6 +78,7 @@ void main() async {
   realtimeClient = RealtimeClient(
     wsBaseUrl: _wsBaseUrl(_apiBaseUrl),
     getAccessToken: () => authRepository.accessToken,
+    getInstallId: () => deviceControl.identity.installId,
     // The socket's token was rejected (expired): any authenticated call runs
     // the API client's single 401 -> refresh path, and the socket's own
     // reconnect then picks up the new token.
@@ -74,6 +87,14 @@ void main() async {
     },
   );
   _wireRealtimeToAuth(authController, realtimeClient);
+  deviceControl.followSession(
+    session: authController,
+    isAuthenticated: () => authController.state.isAuthenticated,
+  );
+  // The agency approved or blocked this phone: ask the server where it stands.
+  realtimeClient.subscribeToDeviceChanges().listen(
+    (_) => unawaited(deviceControl.access.refresh()),
+  );
 
   // Push notifications. Isolated in try/catch: a missing/invalid
   // google-services.json (or a device without Play Services) must not take
@@ -96,6 +117,7 @@ void main() async {
       retry: (_, _) => null,
       overrides: [
         authControllerProvider.overrideWithValue(authController),
+        deviceControlProvider.overrideWithValue(deviceControl),
         apiClientProvider.overrideWithValue(apiClient),
         realtimeClientProvider.overrideWithValue(realtimeClient),
         pushNotificationServiceProvider.overrideWithValue(pushService),
