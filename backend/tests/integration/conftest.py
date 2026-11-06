@@ -130,3 +130,11 @@ async def _flush_auth_rate_limits(redis_available: bool) -> AsyncIterator[None]:
         finally:
             await client.aclose()
     yield
+
+
+# Fixtures for the device-control suites (see `device_support.py`).
+from tests.integration.device_support import (  # noqa: E402, F401 - re-exported fixtures
+    devices_client,
+    devices_database,
+    devices_hasher,
+)

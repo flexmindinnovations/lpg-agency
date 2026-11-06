@@ -6,194 +6,50 @@ raw SQL as the non-superuser `lpg_app` role.
 
 from __future__ import annotations
 
-import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
-from asgi_lifespan import LifespanManager
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
-from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
-from lpg.infrastructure.persistence.database import Database
+from tests.integration.device_support import (
+    login_headers,
+    seed_agency,
+    seed_device,
+    set_device_cap,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from fastapi import FastAPI
+    from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncEngine
 
-    from lpg.config.settings import Settings
+    from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
+    from lpg.infrastructure.persistence.database import Database
 
 pytestmark = pytest.mark.integration
 
-_PASSWORD = "correct horse battery staple 42"
+
+@pytest.fixture
+def client(devices_client: AsyncClient) -> AsyncClient:
+    return devices_client
 
 
 @pytest.fixture
-async def client(
-    integration_settings: Settings,
-    postgres_available: bool,
-    redis_available: bool,
-    monkeypatch: pytest.MonkeyPatch,
-) -> AsyncIterator[AsyncClient]:
-    if not postgres_available:
-        pytest.skip("PostgreSQL is not reachable")
-    if not redis_available:
-        pytest.skip("Redis is not reachable")
-
-    monkeypatch.setenv("LPG_ENVIRONMENT", "local")
-    monkeypatch.setenv("LPG_DATABASE_URL", str(integration_settings.database_url))
-    monkeypatch.setenv("LPG_REDIS_URL", str(integration_settings.redis_url))
-
-    from lpg.api.app import create_app
-    from lpg.config.settings import get_settings
-
-    get_settings.cache_clear()
-    app: FastAPI = create_app(integration_settings)
-    async with LifespanManager(app):
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:
-            yield http_client
-    get_settings.cache_clear()
+def hasher(devices_hasher: Argon2PasswordHasher) -> Argon2PasswordHasher:
+    return devices_hasher
 
 
 @pytest.fixture
-async def database(
-    integration_settings: Settings, postgres_available: bool
-) -> AsyncIterator[Database]:
-    if not postgres_available:
-        pytest.skip("PostgreSQL is not reachable")
-    db = Database(integration_settings)
-    db.connect()
-    try:
-        yield db
-    finally:
-        await db.disconnect()
-
-
-class Agency:
-    """A seeded tenant with an agency admin and a manager."""
-
-    def __init__(self, tenant_id: uuid.UUID, admin_email: str, manager_email: str) -> None:
-        self.tenant_id = tenant_id
-        self.admin_email = admin_email
-        self.manager_email = manager_email
-
-
-async def _seed_agency(engine: AsyncEngine, hasher: Argon2PasswordHasher) -> Agency:
-    suffix = uuid.uuid4().hex[:10]
-    admin_email = f"admin-{suffix}@devices.example"
-    manager_email = f"manager-{suffix}@devices.example"
-    password_hash = hasher.hash(_PASSWORD)
-    async with engine.begin() as conn:
-        tenant_id = (
-            await conn.execute(
-                text(
-                    "INSERT INTO tenant.tenant (id, name, slug, primary_contact_email) "
-                    "VALUES (gen_random_uuid(), :name, :slug, 'ops@example.com') RETURNING id"
-                ),
-                {"name": f"Devices Co {suffix}", "slug": f"devices-{suffix}"},
-            )
-        ).scalar_one()
-        for email, role in ((admin_email, "agency_admin"), (manager_email, "manager")):
-            user_id = (
-                await conn.execute(
-                    text(
-                        "INSERT INTO identity.identity_user "
-                        "(id, tenant_id, email, password_hash, role) "
-                        "VALUES (gen_random_uuid(), :tenant_id, :email, :hash, :role) "
-                        "RETURNING id"
-                    ),
-                    {
-                        "tenant_id": str(tenant_id),
-                        "email": email,
-                        "hash": password_hash,
-                        "role": role,
-                    },
-                )
-            ).scalar_one()
-            await conn.execute(
-                text(
-                    "INSERT INTO identity.identity_user_permission "
-                    "(id, user_id, permission_id, created_at) "
-                    "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
-                    "FROM identity.role_permission rp "
-                    "JOIN identity.role r ON r.id = rp.role_id WHERE r.code = :role"
-                ),
-                {"user_id": user_id, "role": role},
-            )
-    return Agency(uuid.UUID(str(tenant_id)), admin_email, manager_email)
-
-
-async def _seed_device(
-    engine: AsyncEngine,
-    tenant_id: uuid.UUID,
-    *,
-    status: str = "pending",
-    app_type: str = "driver_app",
-    name: str = "Redmi 12",
-) -> uuid.UUID:
-    async with engine.begin() as conn:
-        license_id = (
-            await conn.execute(
-                text("SELECT id FROM platform.license WHERE tenant_id = :t"),
-                {"t": str(tenant_id)},
-            )
-        ).scalar_one()
-        device_id = (
-            await conn.execute(
-                text(
-                    "INSERT INTO platform.linked_device "
-                    "(id, tenant_id, license_id, app_type, device_identifier, display_name, "
-                    "status, model, last_user_name, status_changed_at) "
-                    "VALUES (gen_random_uuid(), :t, :l, :app, :ident, :name, :status, "
-                    "'Redmi 12', 'Ravi', now()) RETURNING id"
-                ),
-                {
-                    "t": str(tenant_id),
-                    "l": str(license_id),
-                    "app": app_type,
-                    "ident": uuid.uuid4().hex + uuid.uuid4().hex,
-                    "name": name,
-                    "status": status,
-                },
-            )
-        ).scalar_one()
-    return uuid.UUID(str(device_id))
-
-
-async def _set_device_cap(engine: AsyncEngine, tenant_id: uuid.UUID, caps: dict[str, Any]) -> None:
-    import json
-
-    async with engine.begin() as conn:
-        await conn.execute(
-            text(
-                "UPDATE platform.license SET device_caps = CAST(:caps AS jsonb) "
-                "WHERE tenant_id = :t"
-            ),
-            {"caps": json.dumps(caps), "t": str(tenant_id)},
-        )
-
-
-async def _headers(client: AsyncClient, email: str) -> dict[str, str]:
-    response = await client.post("/api/v1/auth/login", json={"email": email, "password": _PASSWORD})
-    assert response.status_code == 200, response.text
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
-
-
-@pytest.fixture
-def hasher(integration_settings: Settings) -> Argon2PasswordHasher:
-    return Argon2PasswordHasher(integration_settings)
+def database(devices_database: Database) -> Database:
+    return devices_database
 
 
 class TestAdminActions:
     async def test_full_decision_flow_with_history(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
-        agency = await _seed_agency(admin_engine, hasher)
-        device_id = await _seed_device(admin_engine, agency.tenant_id)
-        headers = await _headers(client, agency.admin_email)
+        agency = await seed_agency(admin_engine, hasher)
+        device_id = await seed_device(admin_engine, agency.tenant_id)
+        headers = await login_headers(client, agency.admin_email)
 
         listed = await client.get("/api/v1/admin/license/devices", headers=headers)
         assert listed.status_code == 200, listed.text
@@ -242,9 +98,9 @@ class TestAdminActions:
     async def test_an_invalid_move_is_a_conflict_not_a_server_error(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
-        agency = await _seed_agency(admin_engine, hasher)
-        device_id = await _seed_device(admin_engine, agency.tenant_id, status="approved")
-        headers = await _headers(client, agency.admin_email)
+        agency = await seed_agency(admin_engine, hasher)
+        device_id = await seed_device(admin_engine, agency.tenant_id, status="approved")
+        headers = await login_headers(client, agency.admin_email)
 
         response = await client.post(
             f"/api/v1/admin/license/devices/{device_id}/approve", headers=headers
@@ -255,11 +111,11 @@ class TestAdminActions:
     async def test_the_plans_seat_limit_stops_an_approval(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
-        agency = await _seed_agency(admin_engine, hasher)
-        await _set_device_cap(admin_engine, agency.tenant_id, {"driver_app": 1})
-        await _seed_device(admin_engine, agency.tenant_id, status="approved")
-        waiting = await _seed_device(admin_engine, agency.tenant_id, name="Second")
-        headers = await _headers(client, agency.admin_email)
+        agency = await seed_agency(admin_engine, hasher)
+        await set_device_cap(admin_engine, agency.tenant_id, {"driver_app": 1})
+        await seed_device(admin_engine, agency.tenant_id, status="approved")
+        waiting = await seed_device(admin_engine, agency.tenant_id, name="Second")
+        headers = await login_headers(client, agency.admin_email)
 
         response = await client.post(
             f"/api/v1/admin/license/devices/{waiting}/approve", headers=headers
@@ -271,12 +127,12 @@ class TestAdminActions:
     async def test_filters_by_app_type_and_status(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
-        agency = await _seed_agency(admin_engine, hasher)
-        await _seed_device(admin_engine, agency.tenant_id, app_type="driver_app", status="pending")
-        admin_phone = await _seed_device(
+        agency = await seed_agency(admin_engine, hasher)
+        await seed_device(admin_engine, agency.tenant_id, app_type="driver_app", status="pending")
+        admin_phone = await seed_device(
             admin_engine, agency.tenant_id, app_type="admin_app", status="approved"
         )
-        headers = await _headers(client, agency.admin_email)
+        headers = await login_headers(client, agency.admin_email)
 
         admin_only = await client.get(
             "/api/v1/admin/license/devices?app_type=admin_app", headers=headers
@@ -295,9 +151,9 @@ class TestAccessControl:
     async def test_a_manager_cannot_see_or_decide_on_devices(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
-        agency = await _seed_agency(admin_engine, hasher)
-        device_id = await _seed_device(admin_engine, agency.tenant_id)
-        headers = await _headers(client, agency.manager_email)
+        agency = await seed_agency(admin_engine, hasher)
+        device_id = await seed_device(admin_engine, agency.tenant_id)
+        headers = await login_headers(client, agency.manager_email)
 
         for method, path in (
             ("get", "/api/v1/admin/license/devices"),
@@ -324,10 +180,10 @@ class TestTenantIsolation:
     async def test_one_agency_cannot_list_or_change_anothers_devices(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
-        agency_a = await _seed_agency(admin_engine, hasher)
-        agency_b = await _seed_agency(admin_engine, hasher)
-        device_a = await _seed_device(admin_engine, agency_a.tenant_id)
-        headers_b = await _headers(client, agency_b.admin_email)
+        agency_a = await seed_agency(admin_engine, hasher)
+        agency_b = await seed_agency(admin_engine, hasher)
+        device_a = await seed_device(admin_engine, agency_a.tenant_id)
+        headers_b = await login_headers(client, agency_b.admin_email)
 
         assert (await client.get("/api/v1/admin/license/devices", headers=headers_b)).json() == []
         assert (
@@ -361,9 +217,9 @@ class TestTenantIsolation:
     async def test_row_level_security_blocks_raw_sql_across_agencies(
         self, database: Database, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
-        agency_a = await _seed_agency(admin_engine, hasher)
-        agency_b = await _seed_agency(admin_engine, hasher)
-        device_a = await _seed_device(admin_engine, agency_a.tenant_id)
+        agency_a = await seed_agency(admin_engine, hasher)
+        agency_b = await seed_agency(admin_engine, hasher)
+        device_a = await seed_device(admin_engine, agency_a.tenant_id)
         async with admin_engine.connect() as conn:
             license_a = (
                 await conn.execute(
@@ -411,7 +267,7 @@ class TestTenantIsolation:
     ) -> None:
         if not postgres_available:
             pytest.skip("PostgreSQL is not reachable")
-        agency = await _seed_agency(admin_engine, hasher)
+        agency = await seed_agency(admin_engine, hasher)
 
         with pytest.raises(Exception, match=r"ck_linked_device_status|check constraint"):
-            await _seed_device(admin_engine, agency.tenant_id, status="trusted")
+            await seed_device(admin_engine, agency.tenant_id, status="trusted")
