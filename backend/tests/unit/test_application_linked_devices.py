@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from lpg.application.common.errors import DeviceLimitReachedError, NotFoundError, ValidationError
+from lpg.application.common.errors import (
+    DeviceLimitReachedError,
+    NotFoundError,
+    TooManyWaitingDevicesError,
+    ValidationError,
+)
 from lpg.application.license.manage_devices import (
     ChangeDeviceStatusCommand,
     ChangeDeviceStatusUseCase,
@@ -109,6 +114,15 @@ class FakeDevices:
             if d.tenant_id == tenant_id
             and d.status is status
             and (app_type is None or d.app_type == app_type)
+        )
+
+    async def count_waiting_for_user(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> int:
+        return sum(
+            1
+            for d in self.rows.values()
+            if d.tenant_id == tenant_id
+            and d.last_user_id == user_id
+            and d.status is DeviceStatus.PENDING
         )
 
     async def add(self, device: LinkedDevice) -> None:
@@ -274,6 +288,41 @@ async def test_a_removed_phone_that_signs_in_again_waits_for_approval_again() ->
         "device.removed",
         "device.registered",
     ]
+
+
+async def test_one_login_cannot_flood_the_approval_queue() -> None:
+    from lpg.application.license.manage_devices import MAX_WAITING_PER_USER
+
+    devices, audit, _, register, _ = _setup()
+    for i in range(MAX_WAITING_PER_USER):
+        await register.execute(_register_command(identifier=f"phone-{i}"))
+
+    with pytest.raises(TooManyWaitingDevicesError):
+        await register.execute(_register_command(identifier="one-too-many"))
+
+    assert len(devices.rows) == MAX_WAITING_PER_USER
+    assert len(audit.entries) == MAX_WAITING_PER_USER
+
+
+async def test_a_phone_already_waiting_can_still_sign_in_when_the_queue_is_full() -> None:
+    from lpg.application.license.manage_devices import MAX_WAITING_PER_USER
+
+    *_, register, _ = _setup()
+    for i in range(MAX_WAITING_PER_USER):
+        await register.execute(_register_command(identifier=f"phone-{i}"))
+
+    again = await register.execute(_register_command(identifier="phone-0"))
+
+    assert again.device.status is DeviceStatus.PENDING
+
+
+async def test_observe_mode_is_not_limited_by_the_queue_guard() -> None:
+    *_, register, _ = _setup({"driver_app": None})
+    for i in range(8):
+        result = await register.execute(
+            _register_command(identifier=f"p-{i}", mode=DeviceControlMode.OBSERVE)
+        )
+        assert result.device.status is DeviceStatus.APPROVED
 
 
 # -- Admin decisions ------------------------------------------------------------------

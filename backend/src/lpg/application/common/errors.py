@@ -411,6 +411,15 @@ class DeviceLimitReachedError(ConflictError):
     title = "The device limit for this app has been reached."
 
 
+class TooManyWaitingDevicesError(ConflictError):
+    """One login already has the most phones it may have waiting for approval.
+    Stops a leaked or careless login from flooding the agency's approval queue
+    and its alerts."""
+
+    error_code = "DEVICE_QUEUE_FULL"
+    title = "Too many phones from this login are waiting for approval."
+
+
 class DeviceRequiredError(ApplicationError):
     """The session is not tied to a registered phone: the app sent no install
     ID (or a different one than the session was opened on). A 401 on purpose —
