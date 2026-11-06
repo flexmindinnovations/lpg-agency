@@ -11,8 +11,8 @@ import 'theme.dart';
 /// themes by tone (each level a lighter fill), and high contrast by a 2 px
 /// border with no shadow.
 ///
-/// Cards are slightly see-through, so the paper page shows softly through them
-/// (see `LpgGlassLook`); sheets are frosted glass (see `LpgGlass`) when they
+/// Cards are frosted glass: slightly see-through and lightly blurred, with a
+/// fine grain, so the paper page shows softly through them (see `LpgGlassLook`); sheets are frosted glass (see `LpgGlass`) when they
 /// float over content and solid otherwise. Every other level, and every level
 /// in high contrast, is a solid fill.
 enum LpgSurfaceLevel {
@@ -54,7 +54,7 @@ extension LpgSurfaceColors on LpgColors {
     }
     return isHighContrast
         ? BorderSide(color: borderStrong, width: 2)
-        : BorderSide(color: borderDefault);
+        : BorderSide(color: outline);
   }
 }
 
@@ -94,24 +94,26 @@ class LpgSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     final shape = radius ?? radiusFor(level);
-    final seeThrough = level == LpgSurfaceLevel.card && !colors.isHighContrast;
-    final box = DecoratedBox(
+    // A card is frosted glass: see-through, lightly blurred, with a fine
+    // grain. Its shadow is drawn outside its shape (see LpgGlass), because a
+    // shadow behind a see-through fill would show through it.
+    if (level == LpgSurfaceLevel.card && !colors.isHighContrast) {
+      return LpgGlass(
+        level: level,
+        radius: shape,
+        shadow: shadow,
+        padding: padding,
+        child: child,
+      );
+    }
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: seeThrough ? colors.cardGlass : colors.surfaceFor(level),
+        color: colors.surfaceFor(level),
         borderRadius: shape,
         border: Border.fromBorderSide(colors.hairlineFor(level)),
-        // A shadow behind a see-through fill would show through it, so a
-        // see-through surface draws its shadow outside its own shape.
-        boxShadow: shadow && !seeThrough ? colors.shadowFor(level) : null,
+        boxShadow: shadow ? colors.shadowFor(level) : null,
       ),
       child: padding == null ? child : Padding(padding: padding!, child: child),
     );
-    return seeThrough && shadow
-        ? LpgGlassShadow(
-            shadows: colors.shadowFor(level),
-            radius: shape,
-            child: box,
-          )
-        : box;
   }
 }

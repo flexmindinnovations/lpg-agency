@@ -692,13 +692,9 @@ class _LiveTrips extends StatelessWidget {
                         LpgSpacing.md,
                         LpgSpacing.smd,
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(LpgRadius.full),
-                        child: LinearProgressIndicator(
-                          value: done / total,
-                          minHeight: 6,
-                          backgroundColor: colors.borderDefault,
-                        ),
+                      child: LpgProgressBar(
+                        value: done / total,
+                        semanticsLabel: 'Trip progress',
                       ),
                     ),
                 ],

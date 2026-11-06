@@ -6,6 +6,20 @@ import '../theme.dart';
 import '../tone.dart';
 import 'lpg_icon_box.dart';
 
+/// Tells the [LpgListTile]s below it that their list has a chevron column, so a
+/// row with trailing content but no chevron keeps the column's space empty and
+/// its trailing content lines up with the rows that have one.
+/// [LpgGroupedList] provides it.
+class LpgChevronColumn extends InheritedWidget {
+  const LpgChevronColumn({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LpgChevronColumn>() != null;
+
+  @override
+  bool updateShouldNotify(LpgChevronColumn old) => false;
+}
+
 /// A themed list row — order, complaint, notification and address rows.
 ///
 /// Leading icon on a tinted square ([LpgIconBox]), title and optional
@@ -22,6 +36,7 @@ class LpgListTile extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.showChevron = false,
+    this.reserveChevronSpace = false,
     this.dense = false,
   });
 
@@ -40,6 +55,14 @@ class LpgListTile extends StatelessWidget {
 
   /// Shows a trailing chevron after [trailing], signalling navigation.
   final bool showChevron;
+
+  /// Leaves the chevron's space empty when there is no chevron, so the
+  /// trailing content of a row that does not open anything lines up with its
+  /// neighbours that do (a list where only some rows open a detail screen).
+  /// An [LpgGroupedList] does this by itself for its direct [LpgListTile]s
+  /// when any of them has a chevron; set it by hand for a row that is wrapped
+  /// in another widget there.
+  final bool reserveChevronSpace;
 
   /// Tighter vertical padding for rows nested inside a card.
   final bool dense;
@@ -111,7 +134,9 @@ class LpgListTile extends StatelessWidget {
                   size: LpgSizes.iconSm,
                   color: colors.textSecondary,
                 ),
-              ],
+              ] else if (trailing != null &&
+                  (reserveChevronSpace || LpgChevronColumn.of(context)))
+                const SizedBox(width: LpgSpacing.xs + LpgSizes.iconSm),
             ],
           ),
         ),

@@ -129,19 +129,7 @@ class MoreScreen extends ConsumerWidget {
         padding: LpgSpacing.page,
         children: [
           for (final (heading, items) in groups) ...[
-            Padding(
-              padding: const EdgeInsets.only(
-                top: LpgSpacing.md,
-                bottom: LpgSpacing.sm,
-              ),
-              child: Text(
-                heading.toUpperCase(),
-                style: context.lpgText.labelSmall?.copyWith(
-                  color: context.lpgColors.textSecondary,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
+            LpgSectionLabel(heading),
             LpgGroupedList(
               children: [for (final item in items) _MoreTile(item: item)],
             ),

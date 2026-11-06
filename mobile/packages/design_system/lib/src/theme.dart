@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 
 import 'components/lpg_backdrop.dart';
+import 'glass.dart';
 import 'layout.dart';
 import 'theme_engine.dart';
 import 'tokens.dart';
@@ -143,6 +144,19 @@ class LpgColors extends ThemeExtension<LpgColors> {
   /// background.
   Color tint(Color foreground, double strength, {Color? over}) =>
       Color.alphaBlend(foreground.withValues(alpha: strength), over ?? card);
+
+  /// The outline of a card, chip or field. The plain [borderDefault] is a pale
+  /// hairline made for a white page and disappears on a see-through card over
+  /// the page's colour washes, so this is the text colour at about a quarter of its
+  /// strength: always a step darker than what is behind it. High contrast
+  /// keeps its strong border.
+  Color get outline =>
+      isHighContrast ? borderStrong : tint(textPrimary, 0.28, over: card);
+
+  /// The line between the rows of a list: the same idea, a little lighter than
+  /// the [outline] so rows stay quiet.
+  Color get rowDivider =>
+      isHighContrast ? borderStrong : tint(textPrimary, 0.2, over: card);
 
   @override
   LpgColors copyWith({
@@ -491,6 +505,14 @@ abstract final class LpgTheme {
   /// order, so `value ~/ 100 - 1` is the index (700 -> values[6] -> w700).
   static FontWeight _weight(int value) => FontWeight.values[value ~/ 100 - 1];
 
+  /// The small text on a phone (captions, sub-lines, labels): one point larger
+  /// and one weight heavier than the shared caption token (12 / 400), which is
+  /// sized for a desktop dashboard. Thin 12-point text was hard to read on a
+  /// see-through card. The web keeps the token; moving it there is a decision
+  /// for the shared tokens (`design-tokens/tokens.json`).
+  static const int _smallTextSize = LpgTokens.typographyCaptionFontSize + 1;
+  static const int _smallTextWeight = 500;
+
   static TextStyle _style({
     required int size,
     required int weight,
@@ -586,8 +608,8 @@ abstract final class LpgTheme {
       color: colors.textPrimary,
     ),
     bodySmall: _style(
-      size: LpgTokens.typographyCaptionFontSize,
-      weight: LpgTokens.typographyBodySmallFontWeight,
+      size: _smallTextSize,
+      weight: _smallTextWeight,
       height: LpgTokens.typographyBodySmallLineHeight,
       color: colors.textSecondary,
     ),
@@ -599,15 +621,15 @@ abstract final class LpgTheme {
       color: colors.textPrimary,
     ),
     labelMedium: _style(
-      size: LpgTokens.typographyCaptionFontSize,
-      weight: LpgTokens.typographyLabelFontWeight,
+      size: _smallTextSize,
+      weight: _smallTextWeight,
       height: LpgTokens.typographyLabelLineHeight,
       letterSpacing: 0.2,
       color: colors.textSecondary,
     ),
     labelSmall: _style(
-      size: LpgTokens.typographyCaptionFontSize,
-      weight: LpgTokens.typographyCaptionFontWeight,
+      size: _smallTextSize,
+      weight: _smallTextWeight,
       height: LpgTokens.typographyCaptionLineHeight,
       letterSpacing: 0.3,
       color: colors.textSecondary,
@@ -630,10 +652,7 @@ abstract final class LpgTheme {
     final textTheme = _textTheme(colors);
     final hc = colors.isHighContrast;
     final borderWidth = hc ? 2.0 : 1.0;
-    final cardBorder = BorderSide(
-      color: hc ? colors.borderStrong : colors.borderDefault,
-      width: borderWidth,
-    );
+    final cardBorder = BorderSide(color: colors.outline, width: borderWidth);
 
     final colorScheme =
         ColorScheme.fromSeed(
@@ -712,10 +731,11 @@ abstract final class LpgTheme {
             ),
       appBarTheme: AppBarTheme(
         // See-through while the page is at rest so the paper runs up behind
-        // the title; solid once content scrolls under it.
+        // the title, and still see-through (a lighter glass, like the
+        // navigation bar) once content scrolls under it.
         backgroundColor: WidgetStateColor.resolveWith(
           (states) => states.contains(WidgetState.scrolledUnder)
-              ? colors.canvas
+              ? colors.barGlass
               : Colors.transparent,
         ),
         foregroundColor: colors.textPrimary,
@@ -726,10 +746,11 @@ abstract final class LpgTheme {
             : SystemUiOverlayStyle.light),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        // A hairline appears once content scrolls underneath, instead of a
-        // permanent divider.
-        scrolledUnderElevation: hc ? 0 : 0.5,
-        shadowColor: colors.borderStrong,
+        // No elevation shadow: behind a see-through bar it would show through
+        // as a grey patch. High contrast, which is solid, keeps its border
+        // from the bar's own shape instead.
+        scrolledUnderElevation: 0,
+        shadowColor: Colors.transparent,
         centerTitle: false,
         titleSpacing: LpgSpacing.mdl,
         titleTextStyle: textTheme.titleLarge,
@@ -850,7 +871,7 @@ abstract final class LpgTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colors.card,
+        fillColor: colors.cardGlass,
         hintStyle: textTheme.bodyLarge?.copyWith(color: colors.textDisabled),
         labelStyle: textTheme.bodyLarge?.copyWith(color: colors.textSecondary),
         floatingLabelStyle: textTheme.labelLarge?.copyWith(
@@ -864,17 +885,15 @@ abstract final class LpgTheme {
           horizontal: LpgSpacing.md,
           vertical: LpgSpacing.md,
         ),
-        border: inputBorder(colors.borderDefault),
-        enabledBorder: inputBorder(
-          hc ? colors.borderStrong : colors.borderDefault,
-        ),
-        disabledBorder: inputBorder(colors.borderDefault),
+        border: inputBorder(colors.outline),
+        enabledBorder: inputBorder(colors.outline),
+        disabledBorder: inputBorder(colors.outline),
         focusedBorder: inputBorder(colors.borderFocus, 2),
         errorBorder: inputBorder(colors.statusDanger),
         focusedErrorBorder: inputBorder(colors.statusDanger, 2),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: colors.card,
+        backgroundColor: colors.cardGlass,
         selectedColor: colors.actionPrimaryContainer,
         disabledColor: colors.surfaceOverlay,
         labelStyle: textTheme.labelLarge,
@@ -894,7 +913,7 @@ abstract final class LpgTheme {
           backgroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.selected)
                 ? colors.actionPrimaryContainer
-                : colors.card,
+                : colors.cardGlass,
           ),
           foregroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.selected)
@@ -917,7 +936,7 @@ abstract final class LpgTheme {
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: hc ? colors.borderStrong : colors.borderDefault,
+        color: colors.rowDivider,
         thickness: hc ? 2 : 1,
         space: 1,
       ),

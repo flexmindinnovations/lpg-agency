@@ -17,7 +17,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  _AuthMethod _authMethod = _AuthMethod.phoneOtp;
+  // Email and password is the usual way in for staff, so it is what the screen
+  // opens on; the phone code is one tap away.
+  _AuthMethod _authMethod = _AuthMethod.emailPassword;
 
   // Phone OTP controllers
   final _tenantIdController = TextEditingController();

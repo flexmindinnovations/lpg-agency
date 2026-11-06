@@ -45,7 +45,10 @@ class StopTile extends ConsumerWidget {
               icon: LpgIcons.upload,
             )
           : null,
-      showChevron: onTap != null && !pending,
+      showChevron: onTap != null,
+      // A stop that cannot be opened keeps its status badge in line with the
+      // stops that can.
+      reserveChevronSpace: true,
       onTap: onTap,
     );
   }

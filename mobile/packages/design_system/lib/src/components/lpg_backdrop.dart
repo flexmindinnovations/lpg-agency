@@ -1,16 +1,16 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../grain.dart';
 import '../theme.dart';
 import '../tone.dart';
 
 /// The page behind every screen: a sheet of paper with a few soft, blurred
 /// colour washes and a fine grain.
 ///
-/// It paints only the page. Cards, sheets and every other surface stay solid
-/// on top of it, so nothing is seen through anything, and the washes and grain
+/// It paints only the page. Cards and sheets are frosted glass laid over it
+/// (see `LpgGlass`), so the washes show softly through them, and the washes and grain
 /// are sized so secondary text on the page still clears 4.5:1 (see
 /// [LpgBackdropLook]). In high contrast the page is plain.
 ///
@@ -25,34 +25,11 @@ class LpgBackdrop extends StatefulWidget {
   State<LpgBackdrop> createState() => _LpgBackdropState();
 }
 
-/// The grain tile, decoded once for the whole app.
-abstract final class _Grain {
-  static const asset = 'packages/design_system/assets/textures/paper_grain.png';
-  static final ValueNotifier<ui.Image?> image = ValueNotifier(null);
-  static bool _loading = false;
-
-  static Future<void> ensureLoaded() async {
-    if (image.value != null || _loading) return;
-    _loading = true;
-    try {
-      final data = await rootBundle.load(asset);
-      final codec = await ui.instantiateImageCodec(
-        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-      );
-      image.value = (await codec.getNextFrame()).image;
-    } on Object {
-      // No grain is fine: the washes alone still make the page.
-    } finally {
-      _loading = false;
-    }
-  }
-}
-
 class _LpgBackdropState extends State<LpgBackdrop> {
   @override
   void initState() {
     super.initState();
-    _Grain.ensureLoaded();
+    LpgGrain.ensureLoaded();
   }
 
   @override
@@ -72,7 +49,7 @@ class _LpgBackdropState extends State<LpgBackdrop> {
               // transitions only move that picture.
               child: RepaintBoundary(
                 child: ValueListenableBuilder<ui.Image?>(
-                  valueListenable: _Grain.image,
+                  valueListenable: LpgGrain.image,
                   builder: (context, grain, _) => CustomPaint(
                     painter: _BackdropPainter(look: look, grain: grain),
                   ),
@@ -94,6 +71,7 @@ class LpgBackdropWash {
     required this.color,
     required this.centre,
     required this.radius,
+    this.sigma = 64,
   });
 
   /// An opaque colour: the page tinted towards a tone.
@@ -104,6 +82,11 @@ class LpgBackdropWash {
 
   /// Its radius, as a fraction of the page's width.
   final double radius;
+
+  /// How far its edge is blurred, in logical pixels. The big washes are
+  /// blurred until no edge shows; the small orbs less, so a glass card laid
+  /// over one has something to show through it.
+  final double sigma;
 }
 
 /// What the page looks like in one theme, worked out from that theme's own
@@ -142,10 +125,10 @@ class LpgBackdropLook {
 
   /// The washes stop this far above [minTextContrast], leaving the rest of
   /// the room for the grain so the page is never smooth-but-tinted only.
-  static const _grainReserve = 0.16;
+  static const _grainReserve = 0.45;
 
   /// What each wash and the grain would like to be if contrast allowed it.
-  static const _washTarget = 0.16;
+  static const _washTarget = 0.34;
   static const _grainTarget = 0.07;
 
   static double contrast(Color a, Color b) {
@@ -177,7 +160,12 @@ class LpgBackdropLook {
     final base = colors.surfaceBase;
     final text = colors.textSecondary;
 
-    LpgBackdropWash wash(LpgTone tone, Offset centre, double radius) {
+    LpgBackdropWash wash(
+      LpgTone tone,
+      Offset centre,
+      double radius, [
+      double sigma = 64,
+    ]) {
       final hue = tone.foreground(colors);
       final strength = _largest(
         _washTarget,
@@ -189,6 +177,7 @@ class LpgBackdropLook {
         color: colors.tint(hue, strength, over: base),
         centre: centre,
         radius: radius,
+        sigma: sigma,
       );
     }
 
@@ -196,6 +185,10 @@ class LpgBackdropLook {
       wash(LpgTone.primary, const Offset(0.95, 0.06), 0.62),
       wash(LpgTone.accent, const Offset(0.02, 0.46), 0.56),
       wash(LpgTone.info, const Offset(0.9, 0.98), 0.66),
+      // Two smaller, crisper orbs in the middle of the page, where cards sit:
+      // glass over a flat page looks like a plain card, over these it shows.
+      wash(LpgTone.accent, const Offset(0.78, 0.40), 0.26, 30),
+      wash(LpgTone.info, const Offset(0.16, 0.74), 0.30, 34),
     ];
 
     // The grain lands on the page or on a wash; take the one text reads worst
@@ -248,14 +241,6 @@ class _BackdropPainter extends CustomPainter {
   final LpgBackdropLook look;
   final ui.Image? grain;
 
-  /// Blur radius of a wash, in logical pixels: large enough that no edge is
-  /// ever seen.
-  static const _sigma = 64.0;
-
-  /// The grain tile is drawn at this scale, so a speck is about one device
-  /// pixel on a typical phone.
-  static const _grainScale = 0.5;
-
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
@@ -269,25 +254,14 @@ class _BackdropPainter extends CustomPainter {
         wash.radius * size.width,
         Paint()
           ..color = wash.color
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, _sigma),
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, wash.sigma),
       );
     }
     canvas.restore();
 
     final tile = grain;
-    if (tile == null || look.grainStrength <= 0) return;
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = ImageShader(
-          tile,
-          TileMode.repeated,
-          TileMode.repeated,
-          Matrix4.diagonal3Values(_grainScale, _grainScale, 1).storage,
-          filterQuality: FilterQuality.medium,
-        )
-        ..color = Color.fromRGBO(255, 255, 255, look.grainStrength),
-    );
+    if (tile == null) return;
+    LpgGrain.paint(canvas, rect, tile, look.grainStrength);
   }
 
   @override
