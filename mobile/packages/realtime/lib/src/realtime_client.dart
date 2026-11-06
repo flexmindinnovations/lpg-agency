@@ -55,15 +55,21 @@ final class RealtimeClient {
     required String? Function() getAccessToken,
     RealtimeSocket Function(Uri uri)? connect,
     Future<void> Function()? onTokenRejected,
+    String? Function()? getInstallId,
   }) : _wsBaseUrl = wsBaseUrl,
        _getAccessToken = getAccessToken,
        _connect = connect ?? connectRealtimeSocket,
-       _onTokenRejected = onTokenRejected;
+       _onTokenRejected = onTokenRejected,
+       _getInstallId = getInstallId;
 
   final String _wsBaseUrl;
   final String? Function() _getAccessToken;
   final RealtimeSocket Function(Uri uri) _connect;
   final Future<void> Function()? _onTokenRejected;
+
+  /// The phone's install ID, for apps under device control (ADR-071). Sent in
+  /// the auth frame so the server can check the phone behind the connection.
+  final String? Function()? _getInstallId;
 
   RealtimeSocket? _socket;
   StreamSubscription<dynamic>? _socketSubscription;
@@ -109,7 +115,14 @@ final class RealtimeClient {
       onDone: () => _handleDisconnect(socket),
       onError: (Object _, StackTrace _) => _handleDisconnect(socket),
     );
-    socket.send(jsonEncode({'type': 'auth', 'token': token}));
+    final installId = _getInstallId?.call();
+    socket.send(
+      jsonEncode({
+        'type': 'auth',
+        'token': token,
+        if (installId != null && installId.isNotEmpty) 'device_id': installId,
+      }),
+    );
   }
 
   /// Closes the connection permanently — no further reconnect attempts.
@@ -157,6 +170,15 @@ final class RealtimeClient {
   Stream<Map<String, dynamic>> subscribeToNotifications() {
     _addIntent('notifications');
     return _messages.stream.where((m) => m['type'] == 'notification.new');
+  }
+
+  /// The agency changed the state of the phone this user is signed in on
+  /// (`device.status_changed`: approved, blocked, removed). The message names
+  /// no phone and carries no identifier; the app asks the server where it
+  /// stands (`GET /devices/me`).
+  Stream<Map<String, dynamic>> subscribeToDeviceChanges() {
+    _addIntent('notifications');
+    return _messages.stream.where((m) => m['type'] == 'device.status_changed');
   }
 
   /// Read-state changes for the signed-in user's notifications made on any

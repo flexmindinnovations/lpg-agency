@@ -52,7 +52,24 @@ def get_tenant_status_checker() -> TenantStatusChecker:
 
 
 async def get_tenant_context(request: Request) -> TenantContext:
-    """FastAPI dependency resolving the current request's tenant context.
+    """FastAPI dependency resolving the current request's tenant context
+    (see `_resolve_tenant_context` for everything it checks).
+    """
+    return await _resolve_tenant_context(request, enforce_device_status=True)
+
+
+async def get_tenant_context_any_device_state(request: Request) -> TenantContext:
+    """Same as `get_tenant_context`, except a phone that is waiting for
+    approval or has been blocked is let through. Only for the endpoint such a
+    phone must still reach to learn its own state (`GET /devices/me`); the
+    session must still belong to the phone making the call."""
+    return await _resolve_tenant_context(request, enforce_device_status=False)
+
+
+async def _resolve_tenant_context(
+    request: Request, *, enforce_device_status: bool
+) -> TenantContext:
+    """Resolve the current request's tenant context.
 
     ``JwtTenantResolver`` is constructed fresh per call rather than cached
     as a module-level singleton (unlike Phase 2's ``HeaderTenantResolver``):
@@ -84,6 +101,7 @@ async def get_tenant_context(request: Request) -> TenantContext:
     docstring has the reasoning) — agency suspension is checked first,
     since it's the more fundamental block.
     """
+    from lpg.api.v1.dependencies.device import get_device_access_gate, install_id_from
     from lpg.api.v1.dependencies.identity import get_jwt_signer
     from lpg.api.v1.dependencies.license import get_license_status_checker
     from lpg.application.common.errors import LicenseExpiredError, TenantSuspendedError
@@ -108,5 +126,20 @@ async def get_tenant_context(request: Request) -> TenantContext:
     if license_status in (LicenseLifecycleState.BLOCKED, LicenseLifecycleState.REVOKED):
         msg = "This tenant's license has expired."
         raise LicenseExpiredError(msg, tenant_id=str(context.tenant_id))
+
+    # Device control (ADR-071): a Driver or Admin app session is checked
+    # against the phone it was opened on, on every request — so blocking a
+    # phone takes effect within seconds, not at the next token expiry.
+    # Everything else (web dashboard, Customer app) returns before any I/O.
+    role = getattr(context, "role", "")
+    device_id = getattr(context, "device_id", None)
+    if device_id is not None or role == "driver":
+        await get_device_access_gate().check(
+            tenant_id=context.tenant_id,
+            role=role,
+            device_id=device_id,
+            install_id=install_id_from(request),
+            enforce_status=enforce_device_status,
+        )
 
     return context

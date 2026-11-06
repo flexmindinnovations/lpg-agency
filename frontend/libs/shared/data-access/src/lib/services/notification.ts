@@ -208,6 +208,8 @@ export class NotificationService {
         return { commands: ['/compliance-calendar'] };
       case 'price_list_proposal':
         return { commands: ['/admin/price-lists'] };
+      case 'device':
+        return { commands: ['/settings/license/devices'] };
       default:
         return null;
     }
