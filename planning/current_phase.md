@@ -58,6 +58,8 @@ LPG Agency Management Platform
 
 **QA fixes** ✅ **DONE** — 2026-10-21. Fixes for the 2026-10-20 QA pass across inventory, users and licences, realtime notifications, dashboard UI conventions, GST and invoices (GST per cylinder type, exclusive by default), the customer and driver apps, and orders and complaints (cylinder cap, credit limit, order editing, reschedule, cancellation rejection). ADR-057 to ADR-063. See [`planning/features/47-qa-fixes/STATUS.md`](./features/47-qa-fixes/STATUS.md).
 
+**Mobile UI revamp (feature 61), release R1 in progress** — 2026-11-05. Stories 0.1, 0.2, 0.4, 1.1 to 1.3, 2.1 and 3.1 to 3.4 are implemented as separate PRs stacked on the plan branch (#122): quiet retry of a failed first load in all three apps, i18n tooling decision and infrastructure (typed JSON catalogues, English only at launch, a CI lint against new hardcoded strings), the theme engine and solid surface layers, and `LpgAsyncView` with a friendly error taxonomy. Verified with Flutter analyze and tests; nothing was run on a device. See [`planning/features/61-mobile-ui-revamp/STATUS.md`](./features/61-mobile-ui-revamp/STATUS.md).
+
 **Recommended next:** Mobile Application Development (Phase 19 execution).
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).

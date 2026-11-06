@@ -29,20 +29,29 @@ class TodayScreen extends ConsumerWidget {
           ref.invalidate(pendingLoadProvider);
           return ref.refresh(activeRouteProvider.future);
         },
-        child: routeAsync.when(
-          loading: () => const LpgSkeletonList(itemCount: 4),
-          // Wrapped in a ListView so pull-to-refresh still works from the
-          // error state.
-          error: (err, _) => ListView(
+        child: LpgAsyncView<RouteSummary?>(
+          value: routeAsync,
+          onRetry: () => ref.invalidate(activeRouteProvider),
+          // The shell already shows the offline banner, and a notice here
+          // would stop the pull-to-refresh list being the direct child.
+          showStaleNotice: false,
+          // Scrollable, so pull-to-refresh also works while loading: the
+          // route hero, its stats and the next stop, where they will be.
+          skeleton: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: LpgSpacing.page,
-            children: [
-              LpgErrorState(
-                message: 'Could not load your route.\n$err',
-                onRetry: () => ref.invalidate(activeRouteProvider),
+            children: const [
+              LpgSkeletonGroup(
+                children: [
+                  LpgSkeletonHero(height: 160),
+                  LpgSkeletonTileGrid(columns: 3, rows: 1, tileHeight: 72),
+                  LpgSkeletonCard(lines: 3),
+                ],
               ),
             ],
           ),
-          data: (route) {
+          errorBuilder: lpgScrollableError,
+          data: (context, route) {
             final pendingCash =
                 ref.watch(pendingCashHandoversProvider).value ?? const [];
             final pendingLoad = ref.watch(pendingLoadProvider).value;
@@ -123,9 +132,7 @@ class _RouteHero extends ConsumerWidget {
               Expanded(
                 child: Text(
                   "Today's route",
-                  style: text.titleSmall?.copyWith(
-                    color: colors.onHero.withValues(alpha: 0.85),
-                  ),
+                  style: text.titleSmall?.copyWith(color: colors.heroMuted),
                 ),
               ),
               LpgStatusBadge(
@@ -138,9 +145,7 @@ class _RouteHero extends ConsumerWidget {
             const SizedBox(height: LpgSpacing.xs),
             Text(
               subtitle,
-              style: text.bodySmall?.copyWith(
-                color: colors.onHero.withValues(alpha: 0.85),
-              ),
+              style: text.bodySmall?.copyWith(color: colors.heroMuted),
             ),
           ],
           const SizedBox(height: LpgSpacing.md),
@@ -158,7 +163,7 @@ class _RouteHero extends ConsumerWidget {
               builder: (context, value, _) => LinearProgressIndicator(
                 value: value,
                 minHeight: LpgSpacing.sm,
-                backgroundColor: colors.onHero.withValues(alpha: 0.24),
+                backgroundColor: colors.heroTrack,
                 valueColor: AlwaysStoppedAnimation<Color>(colors.onHero),
                 semanticsLabel: 'Route progress',
                 semanticsValue: '${(progress * 100).round()}%',

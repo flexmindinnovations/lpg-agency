@@ -90,9 +90,7 @@ class NotificationsScreen extends ConsumerWidget {
                       ColoredBox(
                         color: item.isRead
                             ? Colors.transparent
-                            : colors.actionPrimaryContainer.withValues(
-                                alpha: 0.45,
-                              ),
+                            : colors.tint(colors.actionPrimaryContainer, 0.45),
                         child: LpgListTile(
                           onTap: () => _open(context, ref, item),
                           leadingIcon: switch (item.referenceType) {

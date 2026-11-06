@@ -44,8 +44,15 @@ class AuthController extends ChangeNotifier {
 
   final AuthRepository _repository;
   AuthSessionState _state = const AuthSessionState.unknown();
+  final Completer<void> _settled = Completer<void>();
 
   AuthSessionState get state => _state;
+
+  /// Completes once the start-up restore has decided the session either way
+  /// (signed in or signed out), and stays complete. Wired into
+  /// `ApiClient.waitForSession` so a request made at start-up waits for a
+  /// ready session instead of being sent without a token.
+  Future<void> get whenSettled => _settled.future;
 
   Future<Result<Principal>> login({
     required String email,
@@ -89,6 +96,7 @@ class AuthController extends ChangeNotifier {
   Future<void> logout() async {
     await _repository.logout();
     _state = const AuthSessionState.unauthenticated();
+    _markSettled();
     notifyListeners();
   }
 
@@ -98,6 +106,7 @@ class AuthController extends ChangeNotifier {
   void handleSessionExpired() {
     if (_state.status == AuthStatus.unauthenticated) return;
     _state = const AuthSessionState.unauthenticated();
+    _markSettled();
     notifyListeners();
   }
 
@@ -114,11 +123,16 @@ class AuthController extends ChangeNotifier {
 
   Future<void> _restoreOnStartup() => restoreSession();
 
+  void _markSettled() {
+    if (!_settled.isCompleted) _settled.complete();
+  }
+
   void _apply(Result<Principal> result) {
     _state = result.when(
       onSuccess: AuthSessionState.authenticated,
       onFailure: (_) => const AuthSessionState.unauthenticated(),
     );
+    _markSettled();
     notifyListeners();
   }
 }

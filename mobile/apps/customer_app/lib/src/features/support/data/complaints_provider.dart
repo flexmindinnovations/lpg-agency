@@ -30,7 +30,7 @@ final complaintsProvider = FutureProvider<List<ComplaintResponse>>((ref) async {
     final result = await api.getMyComplaints();
     return result.when(
       onSuccess: (data) => data.items,
-      onFailure: (failure) => throw Exception(failure.message),
+      onFailure: (failure) => throw FailureException(failure),
     );
   }
 
@@ -44,6 +44,6 @@ final complaintDetailProvider =
       final result = await api.getComplaint(id);
       return result.when(
         onSuccess: (data) => data,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
     });

@@ -15,7 +15,7 @@ final ordersProvider = FutureProvider<List<OrderResponse>>((ref) async {
     final result = await api.getMyOrders();
     return result.when(
       onSuccess: (data) => data.items,
-      onFailure: (failure) => throw Exception(failure.message),
+      onFailure: (failure) => throw FailureException(failure),
     );
   }
 
@@ -33,7 +33,7 @@ final orderDetailProvider = FutureProvider.autoDispose
       final result = await api.getOrder(id);
       return result.when(
         onSuccess: (data) => data,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
     });
 
@@ -57,7 +57,7 @@ final deliveryCodeProvider = FutureProvider.autoDispose.family<String?, String>(
     final result = await ref.watch(orderApiProvider).getDeliveryCode(orderId);
     return result.when(
       onSuccess: (code) => code,
-      onFailure: (failure) => throw Exception(failure.message),
+      onFailure: (failure) => throw FailureException(failure),
     );
   },
 );
@@ -72,7 +72,7 @@ final pendingCancellationProvider = FutureProvider.autoDispose
           .getPendingCancellation(orderId);
       return result.when(
         onSuccess: (request) => request,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
     });
 
@@ -85,6 +85,6 @@ final orderHistoryProvider = FutureProvider.autoDispose
           .getStatusHistory(orderId);
       return result.when(
         onSuccess: (entries) => entries,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
     });
