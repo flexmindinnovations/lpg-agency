@@ -1,0 +1,17 @@
+{
+  "common": {
+    "retry": "फिर कोशिश करें",
+    "cancel": "रद्द करें"
+  },
+  "async": {
+    "errorTitle": "कुछ गड़बड़ हो गई",
+    "updating": "अपडेट हो रहा है…",
+    "lastUpdated": "{time: String} को अपडेट किया"
+  },
+  "stock": {
+    "cylinders": {
+      "one": "{n} सिलेंडर",
+      "other": "{n} सिलेंडर"
+    }
+  }
+}

@@ -90,9 +90,7 @@ class NotificationsScreen extends ConsumerWidget {
                       ColoredBox(
                         color: item.isRead
                             ? Colors.transparent
-                            : colors.actionPrimaryContainer.withValues(
-                                alpha: 0.45,
-                              ),
+                            : colors.tint(colors.actionPrimaryContainer, 0.45),
                         child: Builder(
                           builder: (context) {
                             final (icon, tone) = _iconFor(

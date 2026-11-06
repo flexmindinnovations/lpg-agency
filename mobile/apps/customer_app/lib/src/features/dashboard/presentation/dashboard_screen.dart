@@ -154,12 +154,8 @@ class _BalanceHero extends ConsumerWidget {
     final text = context.lpgText;
     final ledgerAsync = ref.watch(ledgerProvider);
 
-    Widget caption(String value) => Text(
-      value,
-      style: text.bodyMedium?.copyWith(
-        color: colors.onHero.withValues(alpha: 0.8),
-      ),
-    );
+    Widget caption(String value) =>
+        Text(value, style: text.bodyMedium?.copyWith(color: colors.heroMuted));
 
     return LpgHeroCard(
       watermark: LpgIcons.cylinder,
@@ -177,7 +173,7 @@ class _BalanceHero extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: LpgSpacing.md),
-          ledgerAsync.when(
+          ledgerAsync.whenQuiet(
             data: (ledger) {
               final balances = ledger?.balances ?? const [];
               final total = balances.fold<int>(0, (s, b) => s + b.quantity);
@@ -303,7 +299,7 @@ class _RecentOrders extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ordersAsync.when(
+    return ordersAsync.whenQuiet(
       data: (orders) {
         if (orders.isEmpty) {
           return const LpgCard(

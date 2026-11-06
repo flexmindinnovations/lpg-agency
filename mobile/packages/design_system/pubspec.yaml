@@ -10,11 +10,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Built-in widget text (date pickers, dialogs, back button) per language.
+  flutter_localizations:
+    sdk: flutter
   # The one icon set both apps draw from, always through `LpgIcons` so a
   # future swap is a one-file change. Regular weight for idle states, Fill
   # for selected ones.
   lucide_icons_flutter: ^4.0.0
   intl: ^0.20.2
+  # `AsyncValue` (the async view helpers) and `Notifier` (the runtime language):
+  # the pure-Dart package, no Flutter binding. Apps already depend on
+  # flutter_riverpod 3.
+  riverpod: ^3.0.0
+  # Typed JSON string catalogues (story 0.2). Runtime part only; the
+  # generator is run with `dart run slang`, no build_runner involved.
+  slang: ^4.19.2
+  slang_flutter: ^4.19.0
 
 dev_dependencies:
   flutter_test:

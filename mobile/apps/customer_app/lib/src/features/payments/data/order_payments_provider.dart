@@ -11,7 +11,7 @@ final orderPaymentsProvider = FutureProvider.autoDispose
           .listOrderPayments(orderId);
       return result.when(
         onSuccess: (items) => items,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
     });
 
