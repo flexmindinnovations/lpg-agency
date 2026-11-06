@@ -197,6 +197,7 @@ void main() {
         coordinator = SyncCoordinator(
           database: db,
           apiClient: apiClient,
+          currentOwner: () => owner,
           onDeviceRefused: refusals.add,
         );
         fakeAdapter
@@ -220,7 +221,11 @@ void main() {
     test(
       'stops the pass at the first refusal and leaves the rest alone',
       () async {
-        coordinator = SyncCoordinator(database: db, apiClient: apiClient);
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+        );
         fakeAdapter
           ..responseStatus = 403
           ..responseData = '{"error_code": "DEVICE_BLOCKED"}';
