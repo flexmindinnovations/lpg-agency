@@ -84,7 +84,7 @@ class LpgBanner extends StatelessWidget {
                         style: TextButton.styleFrom(
                           foregroundColor: fg,
                           padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, LpgSizes.touchTarget),
+                          minimumSize: const Size.square(LpgSizes.touchTarget),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(actionLabel!),

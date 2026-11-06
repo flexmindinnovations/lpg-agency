@@ -95,7 +95,9 @@ class LpgListTile extends StatelessWidget {
             ),
             if (trailing != null) ...[
               const SizedBox(width: LpgSpacing.smd),
-              trailing!,
+              // Flexible, so a wide status chip shares the row with the title
+              // at large text sizes instead of pushing past the edge.
+              Flexible(child: trailing!),
             ],
             if (showChevron) ...[
               const SizedBox(width: LpgSpacing.xs),

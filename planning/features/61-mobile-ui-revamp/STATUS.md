@@ -140,6 +140,8 @@ Two new design-system components, checked on the emulator with hot reload and co
 
 **4.4 motion kit, mostly already there.** Count-up, spring press feedback, staggered entrances, skeleton shimmer, a bounded pulse and reduce-motion handling existed and were left as they are. Added `LpgHaptics` (selection, success, warning), used by the quantity stepper, choice chips, bottom tabs and the Driver's delivery-error buzz. Not done: shared-axis page transitions, which need the `animations` package (a new dependency); pages still use the platform transitions.
 
+**4.5 gallery, golden tests, accessibility sweep.** New `ComponentGallery` page and `galleryEntries` (exported from `package:design_system/gallery.dart`), covering nine groups of components. Two test files run over them: golden pictures in three themes (27 files under `test/goldens/`, compared with a 0.5% tolerance because anti-aliasing differs a little between Windows and Linux), and an accessibility sweep in every theme at normal and double text size (overflow, 48 dp labelled tap targets, contrast). The sweep found three real defects, now fixed: the status chip in a list row and the status-badge label overflowed at double text size, and the banner action was only 32 dp wide. Verified by running the full `design_system`, `admin_app`, `customer_app` and `driver_app` suites locally (all pass, analyze and format clean). **Not verified:** the goldens were made on Windows and have not yet run on CI's Linux runner; if they differ by more than the tolerance there, regenerate or raise the tolerance. Known, not fixed: light-theme info blue on its tint is 4.37:1 (story 10.1). Not built: the runnable example app.
+
 ## Not done
 Everything else in TASKS.md (epics E2 from 2.2, E4 to E10 and E12).
 
