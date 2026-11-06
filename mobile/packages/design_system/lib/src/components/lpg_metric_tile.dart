@@ -37,9 +37,8 @@ class LpgMetricTile extends StatelessWidget {
   /// tile's tone behind the figure (bottom right). Purely decorative: it
   /// never changes what the tile says or where its content sits.
   ///
-  /// The label and caption then use the primary text colour: the secondary
-  /// one only just clears 4.5:1 on a plain card, so it cannot sit over any
-  /// tint.
+  /// The label and caption then use the primary text colour, which keeps
+  /// the most room over the strongest tint of the picture.
   final LpgIllustration? illustration;
 
   /// A smaller line under the label ("3 invoices").
