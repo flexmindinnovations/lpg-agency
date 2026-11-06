@@ -60,6 +60,17 @@ Built in stacked PRs, each opened against `docs/mobile-ui-revamp-plan`: **A1** b
 - **Block is event-driven**: the decision commits first, then a handler clears the cache and revokes tokens. Handlers log failures instead of failing the admin's request, because request checks read the database truth within 30 s anyway.
 
 
+### Done in B (dashboard)
+- Settings > Linked Devices is a real page: the `device_control` switch (Off, Watch only, Approve phones), state tabs with the waiting count, an app filter, a table (phone, model, software, app and version, signed in as, state, first and last seen), and a drawer per phone with actions, rename, IMEI/serial note and change history.
+- Pending badge on the sidebar Settings item and next to Linked Devices in the Settings nav; it refreshes from a live `device_pending_staff` message and every 2 minutes, for users holding `license:manage_tenant` only.
+- A `device` notification opens the Linked Devices page.
+- Generated API client regenerated; only device-related changes kept. The committed client was already behind the committed OpenAPI spec for an unrelated order-settlement endpoint; that drift is **not** included here.
+
+### Decisions taken in B
+- Words for the admin are plain: "Waiting" (not pending), "Watch only", "Approve phones".
+- Switching to "Approve phones" asks first and says how many phones are still waiting.
+- The generic Configuration page is untouched; the mode lives on this page only.
+
 ### Done in C (mobile)
 - New package `mobile/packages/device_identity` (added to `mobile-ci.yml`): random install ID in secure storage; phone details (maker, model, OS, app version, platform, Android ID / iOS vendor ID); `DeviceInterceptor` adds `X-Device-Id` / `X-App-Type` to every request and the `device` object to the sign-in, OTP-verify and refresh bodies, and reports `DEVICE_*` refusals; `DeviceApi` (`GET /devices/me`); `DeviceAccessController` (allowed / pending / blocked); `DeviceControl` (router redirect, follows the session and app resume); three screens (name this phone, waiting, blocked).
 - Driver and Admin apps: `main.dart` calls `DeviceControl.setUp` right after creating the `ApiClient` and before the session restore (the restore is the first request and must carry the install ID); routers merge the device state into `refreshListenable` and call `deviceControl.redirect` first. Wording lives in one file per app (`lib/src/device_strings.dart`).

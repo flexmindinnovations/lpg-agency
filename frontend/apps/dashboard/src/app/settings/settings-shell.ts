@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthTokenStore } from '@lpg/shared/data-access';
+import { Badge } from 'primeng/badge';
+import { AuthTokenStore, PendingDevicesStore } from '@lpg/shared/data-access';
 import { visibleSettingsGroups } from './settings-sections';
 
 /**
@@ -14,7 +15,7 @@ import { visibleSettingsGroups } from './settings-sections';
 @Component({
   selector: 'lpg-settings-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, Badge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="settings">
@@ -34,6 +35,14 @@ import { visibleSettingsGroups } from './settings-sections';
                   >
                     <i [class]="section.icon" aria-hidden="true"></i>
                     <span>{{ section.label }}</span>
+                    @if (section.route === devicesRoute && pendingPhones() > 0) {
+                      <p-badge
+                        class="settings__badge"
+                        [value]="pendingPhones()"
+                        severity="danger"
+                        [attr.aria-label]="pendingPhones() + ' phones waiting for approval'"
+                      />
+                    }
                   </a>
                 </li>
               }
@@ -117,6 +126,10 @@ import { visibleSettingsGroups } from './settings-sections';
       .settings__link:hover {
         background: var(--color-surface-overlay);
         color: var(--color-text-primary);
+      }
+
+      .settings__badge {
+        margin-inline-start: auto;
       }
 
       .settings__link:focus-visible {
@@ -203,6 +216,11 @@ import { visibleSettingsGroups } from './settings-sections';
 })
 export class SettingsShell {
   private readonly tokenStore = inject(AuthTokenStore);
+  private readonly pendingDevices = inject(PendingDevicesStore);
+
+  /** Phones waiting for approval — shown next to Linked Devices. */
+  protected readonly pendingPhones = this.pendingDevices.count;
+  protected readonly devicesRoute = '/settings/license/devices';
 
   protected readonly groups = computed(() => {
     const permissions = this.tokenStore.principal()?.permissions;
