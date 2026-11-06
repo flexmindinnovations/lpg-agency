@@ -22,6 +22,7 @@ class LpgListTile extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.showChevron = false,
+    this.reserveChevronSpace = false,
     this.dense = false,
   });
 
@@ -40,6 +41,11 @@ class LpgListTile extends StatelessWidget {
 
   /// Shows a trailing chevron after [trailing], signalling navigation.
   final bool showChevron;
+
+  /// Leaves the chevron's space empty when there is no chevron, so the
+  /// trailing content of a row that does not open anything lines up with its
+  /// neighbours that do (a list where only some rows open a detail screen).
+  final bool reserveChevronSpace;
 
   /// Tighter vertical padding for rows nested inside a card.
   final bool dense;
@@ -111,7 +117,8 @@ class LpgListTile extends StatelessWidget {
                   size: LpgSizes.iconSm,
                   color: colors.textSecondary,
                 ),
-              ],
+              ] else if (reserveChevronSpace)
+                const SizedBox(width: LpgSpacing.xs + LpgSizes.iconSm),
             ],
           ),
         ),
