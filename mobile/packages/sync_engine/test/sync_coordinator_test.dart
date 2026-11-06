@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_storage/local_storage.dart';
 import 'package:sync_engine/sync_engine.dart';
@@ -459,6 +460,135 @@ void main() {
         );
       },
     );
+  });
+
+  group('pruning old sent operations', () {
+    final longAgo = DateTime.now().subtract(const Duration(days: 30));
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+
+    Future<void> insert(
+      String id,
+      String status, {
+      DateTime? createdAt,
+      DateTime? attemptedAt,
+    }) => db
+        .into(db.syncOperations)
+        .insert(
+          SyncOperationsCompanion.insert(
+            id: id,
+            type: 'order_depart',
+            payload: '{"customer": "Asha Patil"}',
+            idempotencyKey: 'key-$id',
+            status: drift.Value(status),
+            createdAt: drift.Value(createdAt ?? longAgo),
+            lastAttemptAt: drift.Value(attemptedAt),
+            ownerId: const drift.Value('driver-1'),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final op in await db.select(db.syncOperations).get()) op.id,
+    };
+
+    test(
+      'deletes operations sent more than a week ago, keeps recent ones',
+      () async {
+        await insert('old', 'synced', attemptedAt: longAgo);
+        await insert('recent', 'synced', attemptedAt: yesterday);
+
+        final removed = await coordinator.pruneSyncedOperations();
+
+        expect(removed, 1);
+        expect(await ids(), {'recent'});
+      },
+    );
+
+    test('never touches unsent work, however old', () async {
+      for (final status in [
+        'pending',
+        'error',
+        'syncing',
+        'failed',
+        'conflict',
+      ]) {
+        await insert(status, status, attemptedAt: longAgo);
+      }
+
+      final removed = await coordinator.pruneSyncedOperations();
+
+      expect(removed, 0);
+      expect(await ids(), {
+        'pending',
+        'error',
+        'syncing',
+        'failed',
+        'conflict',
+      });
+    });
+
+    test(
+      'a sent row with no attempt time is judged by when it was created',
+      () async {
+        await insert('old-no-attempt', 'synced', createdAt: longAgo);
+        await insert('new-no-attempt', 'synced', createdAt: yesterday);
+
+        await coordinator.pruneSyncedOperations();
+
+        expect(await ids(), {'new-no-attempt'});
+      },
+    );
+
+    test('the retention is adjustable', () async {
+      await insert(
+        'two-days',
+        'synced',
+        attemptedAt: DateTime.now().subtract(const Duration(days: 2)),
+      );
+
+      expect(
+        await coordinator.pruneSyncedOperations(
+          olderThan: const Duration(days: 3),
+        ),
+        0,
+      );
+      expect(
+        await coordinator.pruneSyncedOperations(
+          olderThan: const Duration(days: 1),
+        ),
+        1,
+      );
+    });
+
+    test(
+      'a normal sync pass tidies up, without touching what it just sent',
+      () async {
+        await insert('old', 'synced', attemptedAt: longAgo);
+        fakeAdapter.responseStatus = 200;
+
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o1'),
+        );
+        await settle();
+
+        final remaining = await db.select(db.syncOperations).get();
+        expect(remaining.map((o) => o.id), isNot(contains('old')));
+        expect(
+          remaining.single.status,
+          'synced',
+          reason: 'just sent, kept a week',
+        );
+      },
+    );
+
+    test('starting the coordinator tidies up too', () async {
+      await insert('old', 'synced', attemptedAt: longAgo);
+
+      coordinator.start();
+      await settle();
+
+      expect(await ids(), isEmpty);
+    });
   });
 
   group('whose queue it is', () {

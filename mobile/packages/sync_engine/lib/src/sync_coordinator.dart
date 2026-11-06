@@ -65,6 +65,7 @@ class SyncCoordinator {
   final int _maxRetries;
 
   bool _isSyncing = false;
+  DateTime? _lastTidyAt;
   Timer? _syncTimer;
   StreamSubscription<bool>? _connSub;
 
@@ -73,8 +74,8 @@ class SyncCoordinator {
   void start() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(_pollInterval, (_) => syncNow());
-    // Best-effort tidy-up of files nothing refers to; never blocks start-up.
-    unawaited(purgeOrphanedMedia().then((_) {}, onError: (Object _) {}));
+    // Best-effort housekeeping; never blocks start-up.
+    unawaited(_tidyUp());
 
     _connSub?.cancel();
     _connSub = _connectivity?.onConnectivityChanged.listen((online) {
@@ -141,6 +142,50 @@ class SyncCoordinator {
     } finally {
       _isSyncing = false;
     }
+    if (_tidyDue) unawaited(_tidyUp());
+  }
+
+  /// How often housekeeping may run while the app stays open.
+  static const _tidyEvery = Duration(hours: 6);
+
+  bool get _tidyDue =>
+      _lastTidyAt == null ||
+      DateTime.now().difference(_lastTidyAt!) >= _tidyEvery;
+
+  /// Housekeeping: forget old finished operations and files nothing refers to.
+  /// Best-effort: a failure here must never get in the way of sending.
+  Future<void> _tidyUp() async {
+    _lastTidyAt = DateTime.now();
+    try {
+      await pruneSyncedOperations();
+      await purgeOrphanedMedia();
+    } catch (_) {
+      // Tried again next time.
+    }
+  }
+
+  /// Deletes operations that were sent successfully more than [olderThan] ago.
+  ///
+  /// A sent operation is never retried (its idempotency key lives on the
+  /// server) and nothing in the apps reads it, but its payload still holds
+  /// customer details, so it should not sit on the phone for ever. A week is
+  /// kept as a short window for finding out what a driver sent. Operations
+  /// that are waiting, retrying, failed or in conflict are **never** touched:
+  /// they are unsent work. Returns how many rows were removed.
+  Future<int> pruneSyncedOperations({
+    Duration olderThan = const Duration(days: 7),
+  }) {
+    final cutoff = DateTime.now().subtract(olderThan);
+    return (_db.delete(_db.syncOperations)..where(
+          (t) =>
+              t.status.equals('synced') &
+              // When it was sent; the creation time for the rare row with no
+              // attempt recorded.
+              (t.lastAttemptAt.isSmallerThanValue(cutoff) |
+                  (t.lastAttemptAt.isNull() &
+                      t.createdAt.isSmallerThanValue(cutoff))),
+        ))
+        .go();
   }
 
   /// Operations queued before owners existed belong to whoever signs in first
