@@ -91,6 +91,31 @@ final class ResourceCache {
     )..where((t) => t.updatedAt.isSmallerThanValue(cutoff))).go();
   }
 
+  /// Deletes the rows of **everyone but the signed-in user** that have not been
+  /// written for [olderThan] (2 days by default): the cache of a driver who has
+  /// signed out of this phone, and whose data nobody here should be holding on
+  /// to. Returns how many were removed.
+  ///
+  /// It does nothing when nobody is signed in (the cache's owner is unknown),
+  /// so it can never mistake a driver whose session is still being restored for
+  /// a stranger and delete their offline data. The grace period lets a driver
+  /// who signs back in after a shift change still find their route cached;
+  /// anything not refreshed since is refilled by their next online fetch. Rows
+  /// of the signed-in user are never touched here, however old.
+  Future<int> pruneOtherOwners({
+    Duration olderThan = const Duration(days: 2),
+  }) async {
+    final owner = _owner?.call();
+    if (owner == null || owner.isEmpty) return 0;
+    final cutoff = DateTime.now().subtract(olderThan);
+    return (_db.delete(_db.cachedResources)..where(
+          (t) =>
+              t.ownerId.equals(owner).not() &
+              t.updatedAt.isSmallerThanValue(cutoff),
+        ))
+        .go();
+  }
+
   /// All cached rows of one type, e.g. every `'order'` row for a list
   /// screen's offline fallback. Ordered most-recently-updated first.
   Future<List<Map<String, dynamic>>> readAll(String resourceType) async {

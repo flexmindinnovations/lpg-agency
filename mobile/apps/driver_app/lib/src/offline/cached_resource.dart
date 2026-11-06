@@ -27,9 +27,22 @@ final resourceCacheProvider = Provider<ResourceCache?>((ref) {
     db.database,
     owner: () => auth.state.principal?.userId,
   );
-  // Forget rows nobody has refreshed for two weeks (a driver who no longer uses
-  // this phone, an order nobody opened). Best-effort, off the critical path.
+  // Housekeeping, best-effort and off the critical path:
+  // - rows nobody has refreshed for two weeks (an order nobody opened);
+  // - once a driver is signed in, the rows of every *other* driver who used
+  //   this phone and has not been back for two days. This waits for a signed-in
+  //   user (the cache is built before the session is restored, and a driver
+  //   whose session is still loading must not be mistaken for a stranger), so
+  //   it runs on every change to signed in.
   unawaited(cache.pruneStale().then((_) {}, onError: (Object _) {}));
+  void pruneOtherDrivers() {
+    if (!auth.state.isAuthenticated) return;
+    unawaited(cache.pruneOtherOwners().then((_) {}, onError: (Object _) {}));
+  }
+
+  pruneOtherDrivers();
+  auth.addListener(pruneOtherDrivers);
+  ref.onDispose(() => auth.removeListener(pruneOtherDrivers));
   return cache;
 });
 
