@@ -174,6 +174,8 @@ Two new design-system components, checked on the emulator with hot reload and co
 
 **5.14 follow-up (section titles).** The grey light "CUSTOMERS AND BILLING" style labels were hard to read on glass. New `LpgSectionLabel` (bold capitals, weight 800, main text colour, letter-spacing 1) replaces the hand-built label on the Admin More screen. **Then, at the owner's request, the left-edge bars were removed everywhere:** the accent bar that this change had put in front of section titles (`LpgAccentBar` deleted), and the solid bar down the left edge of `LpgActionCard` ("On its way") and of an attention `LpgMetricTile` (`railWidth` deleted; an attention tile still shows its reason in its caption, in the tone colour, as its doc already said). **Verified:** design_system and the three app suites and analyze; seen on the emulator in the Customer app Home and Profile in light and dark (the Track row in My Orders now shows its chevron and lines up). Seen on the emulator after the bars were removed: Admin More and Dashboard. **Not verified:** the Customer "On its way" card and the Admin attention tiles on a device after the bar was removed (covered by tests only).
 
+**5.14 follow-up (Driver Next stop padding, Admin sign-in default).** The Driver Today "Next stop" card had 12 above its row and 16 below its button; a 4 padding above the row evens them out. The Admin sign-in screen now opens on Email & Password (the phone code is one tap away) instead of Phone OTP; the fields are not prefilled. New `login_default_test.dart`.
+
 ## Not done
 Everything else in TASKS.md (epics E2 from 2.2, E4 to E10 and E12).
 

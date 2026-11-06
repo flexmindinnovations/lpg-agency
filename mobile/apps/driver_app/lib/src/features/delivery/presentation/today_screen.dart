@@ -221,12 +221,17 @@ class _NextStopCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: Column(
         children: [
-          LpgListTile(
-            leadingIcon: LpgIcons.navigate,
-            title: 'Next stop · Stop ${next.sequenceNumber}',
-            subtitle:
-                'Order ${LpgFormat.orderNumber(next.orderNumber, next.orderId)}',
-            onTap: open,
+          // The row has 12 of its own padding above it; add 4 so the space
+          // above the row matches the 16 below the button.
+          Padding(
+            padding: const EdgeInsets.only(top: LpgSpacing.xs),
+            child: LpgListTile(
+              leadingIcon: LpgIcons.navigate,
+              title: 'Next stop · Stop ${next.sequenceNumber}',
+              subtitle:
+                  'Order ${LpgFormat.orderNumber(next.orderNumber, next.orderId)}',
+              onTap: open,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
