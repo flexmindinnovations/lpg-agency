@@ -591,6 +591,148 @@ void main() {
     });
   });
 
+  group('pruning old failed operations', () {
+    final longAgo = DateTime.now().subtract(const Duration(days: 90));
+    final tenDaysAgo = DateTime.now().subtract(const Duration(days: 10));
+
+    Future<void> insert(
+      String id,
+      String status, {
+      DateTime? createdAt,
+      DateTime? attemptedAt,
+      String payload = '{}',
+    }) => db
+        .into(db.syncOperations)
+        .insert(
+          SyncOperationsCompanion.insert(
+            id: id,
+            type: 'order_deliver',
+            payload: payload,
+            idempotencyKey: 'key-$id',
+            status: drift.Value(status),
+            createdAt: drift.Value(createdAt ?? longAgo),
+            lastAttemptAt: drift.Value(attemptedAt),
+            ownerId: const drift.Value('driver-1'),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final op in await db.select(db.syncOperations).get()) op.id,
+    };
+
+    test(
+      'deletes failed operations untouched for a month, keeps newer',
+      () async {
+        await insert('old', 'failed', attemptedAt: longAgo);
+        await insert('recent', 'failed', attemptedAt: tenDaysAgo);
+
+        final removed = await coordinator.pruneFailedOperations();
+
+        expect(removed, 1);
+        expect(await ids(), {'recent'});
+      },
+    );
+
+    test('leaves conflicts and every waiting or retrying row alone', () async {
+      for (final status in [
+        'conflict',
+        'pending',
+        'error',
+        'syncing',
+        'synced',
+      ]) {
+        await insert(status, status, attemptedAt: longAgo);
+      }
+
+      final removed = await coordinator.pruneFailedOperations();
+
+      expect(removed, 0);
+      expect(await ids(), {
+        'conflict',
+        'pending',
+        'error',
+        'syncing',
+        'synced',
+      });
+    });
+
+    test(
+      'a failed row with no attempt time is judged by when it was created',
+      () async {
+        await insert('old-no-attempt', 'failed', createdAt: longAgo);
+        await insert('new-no-attempt', 'failed', createdAt: tenDaysAgo);
+
+        await coordinator.pruneFailedOperations();
+
+        expect(await ids(), {'new-no-attempt'});
+      },
+    );
+
+    test('the retention is adjustable', () async {
+      await insert('ten-days', 'failed', attemptedAt: tenDaysAgo);
+
+      expect(
+        await coordinator.pruneFailedOperations(
+          olderThan: const Duration(days: 20),
+        ),
+        0,
+      );
+      expect(
+        await coordinator.pruneFailedOperations(
+          olderThan: const Duration(days: 5),
+        ),
+        1,
+      );
+    });
+
+    test(
+      'its photo and signature are deleted with it, a newer one\'s are not',
+      () async {
+        final store = _FakeMediaStore()
+          ..files['pod/old/signature.png'] = [1]
+          ..files['pod/old/delivery.jpg'] = [2]
+          ..files['pod/new/signature.png'] = [3];
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+          mediaStore: store,
+        );
+        String payload(String id) => jsonEncode({
+          'media': [
+            {'key': 'pod/$id/signature.png'},
+            if (id == 'old') {'key': 'pod/old/delivery.jpg'},
+          ],
+        });
+        await insert(
+          'old',
+          'failed',
+          attemptedAt: longAgo,
+          payload: payload('old'),
+        );
+        await insert(
+          'new',
+          'failed',
+          attemptedAt: tenDaysAgo,
+          payload: payload('new'),
+        );
+
+        await coordinator.pruneFailedOperations();
+
+        expect(store.files.keys, ['pod/new/signature.png']);
+      },
+    );
+
+    test('starting the coordinator prunes them too', () async {
+      await insert('old', 'failed', attemptedAt: longAgo);
+
+      coordinator.start();
+      await settle();
+
+      expect(await ids(), isEmpty);
+    });
+  });
+
   group('whose queue it is', () {
     Future<List<SyncOperation>> all() => db.select(db.syncOperations).get();
 

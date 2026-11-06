@@ -158,10 +158,43 @@ class SyncCoordinator {
     _lastTidyAt = DateTime.now();
     try {
       await pruneSyncedOperations();
+      await pruneFailedOperations();
       await purgeOrphanedMedia();
     } catch (_) {
       // Tried again next time.
     }
+  }
+
+  /// Deletes operations that **failed for good** (retries used up, or a
+  /// permanent refusal) more than [olderThan] ago, together with their photo
+  /// and signature. Returns how many were removed.
+  ///
+  /// Unlike [pruneSyncedOperations] this throws away work that never reached
+  /// the server, so the window is long (30 days by default): it is only for a
+  /// failure that nobody retried or discarded in a month. A driver who looks at
+  /// the sync screen can still retry or discard any of them before then. Rows
+  /// in `conflict` (a stale change the server already moved on from) and every
+  /// waiting or retrying row are left alone.
+  Future<int> pruneFailedOperations({
+    Duration olderThan = const Duration(days: 30),
+  }) async {
+    final cutoff = DateTime.now().subtract(olderThan);
+    final stale =
+        await (_db.select(_db.syncOperations)..where(
+              (t) =>
+                  t.status.equals('failed') &
+                  (t.lastAttemptAt.isSmallerThanValue(cutoff) |
+                      (t.lastAttemptAt.isNull() &
+                          t.createdAt.isSmallerThanValue(cutoff))),
+            ))
+            .get();
+    for (final op in stale) {
+      await _deleteMediaOf(op); // nothing else will ever send them
+      await (_db.delete(
+        _db.syncOperations,
+      )..where((t) => t.id.equals(op.id))).go();
+    }
+    return stale.length;
   }
 
   /// Deletes operations that were sent successfully more than [olderThan] ago.
