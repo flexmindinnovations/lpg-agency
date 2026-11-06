@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'components/lpg_backdrop.dart';
 import 'layout.dart';
 import 'theme.dart';
 import 'tokens.dart';
@@ -121,12 +122,24 @@ extension LpgDensityContext on BuildContext {
 /// the app is asked to reduce motion.
 const lpgInstantPageTransitions = PageTransitionsTheme(
   builders: {
-    TargetPlatform.android: _InstantPageTransitionsBuilder(),
-    TargetPlatform.iOS: _InstantPageTransitionsBuilder(),
-    TargetPlatform.macOS: _InstantPageTransitionsBuilder(),
-    TargetPlatform.linux: _InstantPageTransitionsBuilder(),
-    TargetPlatform.windows: _InstantPageTransitionsBuilder(),
-    TargetPlatform.fuchsia: _InstantPageTransitionsBuilder(),
+    TargetPlatform.android: LpgBackdropTransitions(
+      _InstantPageTransitionsBuilder(),
+    ),
+    TargetPlatform.iOS: LpgBackdropTransitions(
+      _InstantPageTransitionsBuilder(),
+    ),
+    TargetPlatform.macOS: LpgBackdropTransitions(
+      _InstantPageTransitionsBuilder(),
+    ),
+    TargetPlatform.linux: LpgBackdropTransitions(
+      _InstantPageTransitionsBuilder(),
+    ),
+    TargetPlatform.windows: LpgBackdropTransitions(
+      _InstantPageTransitionsBuilder(),
+    ),
+    TargetPlatform.fuchsia: LpgBackdropTransitions(
+      _InstantPageTransitionsBuilder(),
+    ),
   },
 );
 

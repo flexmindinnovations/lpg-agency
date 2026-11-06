@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 
+import 'components/lpg_backdrop.dart';
 import 'layout.dart';
 import 'theme_engine.dart';
 import 'tokens.dart';
@@ -677,7 +679,9 @@ abstract final class LpgTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: colors.canvas,
+      // Transparent: the page (paper, washes, grain) is drawn under every
+      // route by `LpgBackdropTransitions`, and a scaffold lets it show.
+      scaffoldBackgroundColor: Colors.transparent,
       canvasColor: colors.canvas,
       fontFamily: fontFamily,
       textTheme: textTheme,
@@ -689,16 +693,37 @@ abstract final class LpgTheme {
           ? lpgInstantPageTransitions
           : const PageTransitionsTheme(
               builders: {
-                TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
-                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-                TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
-                TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+                TargetPlatform.android: LpgBackdropTransitions(
+                  PredictiveBackPageTransitionsBuilder(),
+                ),
+                TargetPlatform.iOS: LpgBackdropTransitions(
+                  CupertinoPageTransitionsBuilder(),
+                ),
+                TargetPlatform.macOS: LpgBackdropTransitions(
+                  CupertinoPageTransitionsBuilder(),
+                ),
+                TargetPlatform.linux: LpgBackdropTransitions(
+                  FadeForwardsPageTransitionsBuilder(),
+                ),
+                TargetPlatform.windows: LpgBackdropTransitions(
+                  FadeForwardsPageTransitionsBuilder(),
+                ),
               },
             ),
       appBarTheme: AppBarTheme(
-        backgroundColor: colors.canvas,
+        // See-through while the page is at rest so the paper runs up behind
+        // the title; solid once content scrolls under it.
+        backgroundColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.scrolledUnder)
+              ? colors.canvas
+              : Colors.transparent,
+        ),
         foregroundColor: colors.textPrimary,
+        // Said outright: with a see-through bar Flutter would judge the icons
+        // from a transparent colour and always pick white ones.
+        systemOverlayStyle: (brightness == Brightness.light
+            ? SystemUiOverlayStyle.dark
+            : SystemUiOverlayStyle.light),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         // A hairline appears once content scrolls underneath, instead of a

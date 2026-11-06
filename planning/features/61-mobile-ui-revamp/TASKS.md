@@ -65,6 +65,7 @@ Epic 11 (device control) was built first and is merged into this branch; release
 - [x] 5.5 Illustrated stat cards, pilot: `LpgMetricTile(illustration:)` with four drawn pictures (banknotes, cash received, shortfall, excess), used on the Admin Cash book's four handover tiles. Superseded in part by 5.6
 - [x] 5.6 Shared SVG illustrations: the pictures are SVG files in `design_system/assets/illustrations/` (no path data in Dart), recoloured to the tile's tone at render time; 16 pictures; every stat tile in the Admin and Driver apps has one. Open: `LpgActionCard` (Customer dashboard, Driver nudges) and the Customer app's other cards, per-part motion, SVG authoring beyond these 16
 - [x] 5.7 Bottom navigation: icons only, the active tab grows into a pill with its label; one continuous motion between tabs (pill widths ease from one tab to the next, label wipes in, icon pops as it fills), instant under reduce-motion. The tablet rail is unchanged
+- [x] 5.8 Paper page background: a sheet of paper under every screen with soft blurred colour washes and a fine grain, sized so secondary text keeps 4.5:1 (faint in the light theme, clearly visible in dark). Cards and all other surfaces stay solid. Open: a darker light-theme secondary text token (story 10.1) to let the light page show more; login screens still paint their own plain page
 
 ## E6 Tablet and adaptive layout (6 days)
 - [ ] 6.1 Size classes and a responsive layout system: content width, grid, spacing (1)

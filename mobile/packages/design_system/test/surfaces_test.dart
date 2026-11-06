@@ -228,6 +228,10 @@ void main() {
       // Animated brand effects (glints, ripples), not surfaces.
       'lpg_splash.dart',
       'lpg_timeline.dart',
+      // The page's grain is a see-through speckle by nature. It is drawn on
+      // the page only, never on a surface, and sized by a contrast test
+      // (backdrop_test.dart).
+      'lpg_backdrop.dart',
     };
 
     Iterable<File> sources() sync* {
@@ -250,6 +254,20 @@ void main() {
           if (RegExp(
             r'BackdropFilter|ImageFilter\.blur|ImageFiltered',
           ).hasMatch(f.readAsStringSync()))
+            f.path,
+      ];
+
+      expect(offenders, isEmpty);
+    });
+
+    test('the only soft edge is the page backdrop', () {
+      // The owner allowed one exception to "no blur": soft colour washes on
+      // the page itself, behind solid cards. A mask blur on a drawn shape,
+      // never a filter over other content.
+      final offenders = [
+        for (final f in sources())
+          if (f.uri.pathSegments.last != 'lpg_backdrop.dart' &&
+              RegExp(r'MaskFilter\.blur').hasMatch(f.readAsStringSync()))
             f.path,
       ];
 
