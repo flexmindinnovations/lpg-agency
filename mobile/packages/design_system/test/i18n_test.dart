@@ -2,6 +2,8 @@
 // system's own catalogue (en.i18n.json, plus hi.i18n.json as a test locale).
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:riverpod/riverpod.dart'
+    show ProviderContainer, ProviderSubscription;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -36,7 +38,7 @@ Widget _materialApp(Locale locale) => MaterialApp(
   ),
 );
 
-void main() {
+void spikeTests() {
   testWidgets('English is the base: values, placeholders, plurals', (
     tester,
   ) async {
@@ -122,6 +124,95 @@ void main() {
       expect(DateFormat.yMMMd('en_IN').format(day), '12 Nov 2026');
       expect(DateFormat.yMMMd('hi_IN').format(day), contains('नव'));
       expect(DateFormat.yMMMd('mr_IN').format(day), contains('नोव्हें'));
+    });
+  });
+}
+
+// Story 2.1: the shared plumbing every app uses.
+class _Strings {
+  const _Strings(this.greeting);
+
+  final String greeting;
+}
+
+_Strings _resolve(Locale locale) => locale.languageCode == 'hi'
+    ? const _Strings('namaste')
+    : const _Strings('hello');
+
+/// A `MaterialApp` whose language follows [lpgLocaleProvider], the way each
+/// app's root widget does.
+class _Host extends StatefulWidget {
+  const _Host(this.container);
+
+  final ProviderContainer container;
+
+  @override
+  State<_Host> createState() => _HostState();
+}
+
+class _HostState extends State<_Host> {
+  late final ProviderSubscription<Locale?> _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = widget.container.listen(
+      lpgLocaleProvider,
+      (_, _) => setState(() {}),
+    );
+  }
+
+  @override
+  void dispose() {
+    _sub.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    locale: widget.container.read(lpgLocaleProvider),
+    supportedLocales: const [Locale('en'), Locale('hi')],
+    localizationsDelegates: [
+      const LpgCatalogueDelegate<_Strings>(_resolve),
+      ...lpgFlutterDelegates,
+    ],
+    home: Builder(
+      builder: (context) =>
+          Text(Localizations.of<_Strings>(context, _Strings)!.greeting),
+    ),
+  );
+}
+
+void main() {
+  spikeTests();
+  group('LpgCatalogueDelegate and the runtime language', () {
+    testWidgets('delivers the catalogue for the app locale and switches with '
+        'the locale provider', (tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(_Host(container));
+      expect(find.text('hello'), findsOneWidget);
+
+      container.read(lpgLocaleProvider.notifier).select(const Locale('hi'));
+      await tester.pumpAndSettle();
+      expect(find.text('namaste'), findsOneWidget);
+
+      container.read(lpgLocaleProvider.notifier).select(null);
+      await tester.pumpAndSettle();
+      expect(find.text('hello'), findsOneWidget);
+    });
+
+    testWidgets('a language the catalogue lacks falls back to the resolver\'s '
+        'default', (tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container.read(lpgLocaleProvider.notifier).select(const Locale('mr'));
+
+      await tester.pumpWidget(_Host(container));
+      await tester.pumpAndSettle();
+
+      expect(find.text('hello'), findsOneWidget);
     });
   });
 }

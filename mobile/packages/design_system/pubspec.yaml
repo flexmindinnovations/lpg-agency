@@ -18,8 +18,9 @@ dependencies:
   # for selected ones.
   lucide_icons_flutter: ^4.0.0
   intl: ^0.20.2
-  # `AsyncValue` only (the pure-Dart package, no Flutter binding): the async
-  # view helpers take it directly. Apps already depend on flutter_riverpod 3.
+  # `AsyncValue` (the async view helpers) and `Notifier` (the runtime language):
+  # the pure-Dart package, no Flutter binding. Apps already depend on
+  # flutter_riverpod 3.
   riverpod: ^3.0.0
   # Typed JSON string catalogues (story 0.2). Runtime part only; the
   # generator is run with `dart run slang`, no build_runner involved.
