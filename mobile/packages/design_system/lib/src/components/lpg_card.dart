@@ -66,7 +66,7 @@ class LpgCard extends StatelessWidget {
     } else if (variant == LpgCardVariant.tonal) {
       side = BorderSide.none;
     } else {
-      side = BorderSide(color: colors.borderDefault);
+      side = BorderSide(color: colors.outline);
     }
     final shape = RoundedRectangleBorder(
       borderRadius: LpgRadius.cardRadius,

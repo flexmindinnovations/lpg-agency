@@ -227,6 +227,33 @@ void main() {
     );
   });
 
+  testWidgets('a grouped list keeps trailing content in line when only some '
+      'rows have a chevron', (tester) async {
+    const icon = Icon(LpgIcons.success);
+    await tester.pumpWidget(
+      _wrap(
+        LpgGroupedList(
+          children: [
+            LpgListTile(
+              title: 'Opens',
+              trailing: icon,
+              showChevron: true,
+              onTap: () {},
+            ),
+            const LpgListTile(title: 'Does not open', trailing: icon),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final icons = find.byIcon(LpgIcons.success);
+    expect(
+      tester.getTopRight(icons.at(1)).dx,
+      tester.getTopRight(icons.at(0)).dx,
+    );
+  });
+
   testWidgets('LpgListTile renders title, subtitle and trailing', (
     tester,
   ) async {

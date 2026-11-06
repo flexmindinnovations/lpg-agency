@@ -112,7 +112,7 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
     final bar = DecoratedBox(
       decoration: BoxDecoration(
         // See-through, like a card: the page shows softly through the bar.
-        color: colors.cardGlass,
+        color: colors.barGlass,
         border: Border(
           top: BorderSide(
             color: colors.isHighContrast

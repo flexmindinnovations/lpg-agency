@@ -54,7 +54,7 @@ extension LpgSurfaceColors on LpgColors {
     }
     return isHighContrast
         ? BorderSide(color: borderStrong, width: 2)
-        : BorderSide(color: borderDefault);
+        : BorderSide(color: outline);
   }
 }
 

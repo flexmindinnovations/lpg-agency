@@ -24,7 +24,11 @@ import 'theme.dart';
 /// contrast is not glass at all: fully opaque.
 @immutable
 class LpgGlassLook {
-  const LpgGlassLook({required this.cardAlpha, required this.sheetAlpha});
+  const LpgGlassLook({
+    required this.cardAlpha,
+    required this.sheetAlpha,
+    this.barAlpha = 1,
+  });
 
   /// Opacity of a card's fill, 0 to 1.
   final double cardAlpha;
@@ -32,8 +36,14 @@ class LpgGlassLook {
   /// Opacity of a frosted sheet's fill, 0 to 1.
   final double sheetAlpha;
 
+  /// Opacity of a bar's fill (the navigation bar, the header once the page is
+  /// scrolled), 0 to 1. A bar holds only short, bold labels and icons, so it is
+  /// sized to AA's 4.5:1 rather than the 6:1 of a card and is more see-through.
+  final double barAlpha;
+
   /// What each would like to be if contrast allowed it.
   static const cardTarget = 0.55;
+  static const barTarget = 0.4;
   static const sheetTarget = 0.78;
 
   /// How much the backdrop behind a frosted sheet is blurred, in logical px.
@@ -57,6 +67,9 @@ class LpgGlassLook {
   /// 4.5:1 the page itself is held to.
   static const readableContrast = 6.0;
 
+  /// What a bar's text and icons keep (WCAG AA for normal text).
+  static const barContrast = LpgBackdropLook.minTextContrast;
+
   static final Expando<LpgGlassLook> _cache = Expando();
 
   static LpgGlassLook of(LpgColors colors) =>
@@ -64,7 +77,7 @@ class LpgGlassLook {
 
   static LpgGlassLook _compute(LpgColors colors) {
     if (colors.isHighContrast) {
-      return const LpgGlassLook(cardAlpha: 1, sheetAlpha: 1);
+      return const LpgGlassLook(cardAlpha: 1, sheetAlpha: 1, barAlpha: 1);
     }
 
     final page = LpgBackdropLook.of(colors);
@@ -95,6 +108,15 @@ class LpgGlassLook {
         page.speck,
         sheetGrainStrength,
       ),
+      barAlpha: _smallest(
+        barTarget,
+        colors.card,
+        pageSamples,
+        colors,
+        page.speck,
+        grainStrength,
+        minContrast: barContrast,
+      ),
     );
   }
 
@@ -106,8 +128,9 @@ class LpgGlassLook {
     List<Color> behind,
     LpgColors colors,
     Color speck,
-    double grain,
-  ) {
+    double grain, {
+    double minContrast = readableContrast,
+  }) {
     bool readable(double alpha) {
       for (final back in behind) {
         // The grain sits under the fill (never over the text), so it is part
@@ -117,7 +140,7 @@ class LpgGlassLook {
           colors.tint(speck, grain, over: back),
         );
         for (final text in [colors.textPrimary, colors.textSecondary]) {
-          if (LpgBackdropLook.contrast(text, glass) < readableContrast) {
+          if (LpgBackdropLook.contrast(text, glass) < minContrast) {
             return false;
           }
         }
@@ -143,10 +166,11 @@ class LpgGlassLook {
   bool operator ==(Object other) =>
       other is LpgGlassLook &&
       other.cardAlpha == cardAlpha &&
-      other.sheetAlpha == sheetAlpha;
+      other.sheetAlpha == sheetAlpha &&
+      other.barAlpha == barAlpha;
 
   @override
-  int get hashCode => Object.hash(cardAlpha, sheetAlpha);
+  int get hashCode => Object.hash(cardAlpha, sheetAlpha, barAlpha);
 }
 
 extension LpgGlassColors on LpgColors {
@@ -154,6 +178,10 @@ extension LpgGlassColors on LpgColors {
   /// [LpgGlassLook] allows. Opaque in high contrast.
   Color get cardGlass =>
       card.withValues(alpha: LpgGlassLook.of(this).cardAlpha);
+
+  /// The see-through fill of a bar: the navigation bar, and the header once the
+  /// page is scrolled. Lighter than a card's (see [LpgGlassLook.barAlpha]).
+  Color get barGlass => card.withValues(alpha: LpgGlassLook.of(this).barAlpha);
 
   /// The see-through fill of a frosted sheet. Only ever use it together with a
   /// blur (see [LpgGlass]): on its own, content behind it would show through.

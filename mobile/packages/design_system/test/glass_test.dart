@@ -73,6 +73,54 @@ void main() {
       }
     });
 
+    test(
+      'a bar is more see-through than a card but keeps AA text contrast',
+      () {
+        for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
+          final c = LpgTheme.colorsFor(v);
+          final page = LpgBackdropLook.of(c);
+          expect(
+            LpgGlassLook.of(c).barAlpha,
+            lessThan(LpgGlassLook.of(c).cardAlpha),
+          );
+
+          for (final w in [
+            c.canvas,
+            page.base,
+            ...page.washes.map((w) => w.color),
+          ]) {
+            final back = c.tint(
+              page.speck,
+              LpgGlassLook.grainStrength,
+              over: w,
+            );
+            final bar = Color.alphaBlend(c.barGlass, back);
+            expect(
+              _contrast(c.textPrimary, bar),
+              greaterThanOrEqualTo(4.5),
+              reason: '$v',
+            );
+            expect(
+              _contrast(c.textSecondary, bar),
+              greaterThanOrEqualTo(4.5),
+              reason: '$v',
+            );
+          }
+        }
+      },
+    );
+
+    test(
+      'card outlines and row dividers are a clear step darker than the card',
+      () {
+        for (final v in [LpgThemeVariant.light]) {
+          final c = LpgTheme.colorsFor(v);
+          expect(_contrast(c.outline, c.card), greaterThanOrEqualTo(1.6));
+          expect(_contrast(c.rowDivider, c.card), greaterThanOrEqualTo(1.4));
+        }
+      },
+    );
+
     test('text on a frosted sheet stays at 6:1 over black or white '
         'content, the extremes a blur can average to', () {
       for (final v in LpgThemeVariant.values) {
