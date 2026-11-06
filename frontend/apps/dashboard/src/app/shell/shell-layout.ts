@@ -8,6 +8,8 @@ import {
   AuthTokenStore,
   HARD_NAVIGATE,
   LicenseStatusStore,
+  PendingDevicesStore,
+  WebSocketService,
 } from '@lpg/shared/data-access';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
@@ -17,6 +19,10 @@ import { NotificationDrawer } from '@lpg/notification/ui-drawer';
 import { CommandPaletteComponent } from '../command-palette/command-palette.component';
 import { CommandPaletteService } from '../command-palette/command-palette.service';
 import { visibleSettingsGroups } from '../settings/settings-sections';
+
+/** How often the Settings badge re-counts phones waiting for approval, as a
+ * fallback for a missed live message. */
+const PENDING_DEVICES_REFRESH_MS = 120_000;
 
 /** How often to nag a tenant in its license grace period — matches
  * `NotificationBell`'s own 5-minute polling interval convention. */
@@ -145,6 +151,8 @@ export class ShellLayout {
   private readonly tokenStore = inject(AuthTokenStore);
   private readonly hardNavigate = inject(HARD_NAVIGATE);
   private readonly licenseStatusStore = inject(LicenseStatusStore);
+  private readonly pendingDevices = inject(PendingDevicesStore);
+  private readonly realtime = inject(WebSocketService);
   private readonly messageService = inject(MessageService);
   protected readonly commandPalette = inject(CommandPaletteService);
 
@@ -152,6 +160,7 @@ export class ShellLayout {
   protected readonly role = computed(() => this.authService.principal()?.role ?? '');
 
   constructor() {
+    this.watchPendingDevices();
     // Nags every 5 minutes while the license is in its 1-day grace window
     // — full access continues, this is a reminder to renew, not a block.
     // Keeps nav usable throughout, unlike the hard `licenseGuard` gate.
@@ -170,6 +179,25 @@ export class ShellLayout {
       });
   }
 
+  /** Only an agency admin can approve phones, so only they get the badge. */
+  private watchPendingDevices(): void {
+    const canApprove = () => this.tokenStore.principal()?.permissions.has('license:manage_tenant');
+    interval(PENDING_DEVICES_REFRESH_MS)
+      .pipe(startWith(0), takeUntilDestroyed())
+      .subscribe(() => {
+        if (canApprove()) this.pendingDevices.refresh();
+      });
+    this.realtime.messages$.pipe(takeUntilDestroyed()).subscribe((message) => {
+      if (
+        canApprove() &&
+        message.type === 'notification.new' &&
+        message['notification_type'] === 'device_pending_staff'
+      ) {
+        this.pendingDevices.refresh();
+      }
+    });
+  }
+
   protected onSignOut(): void {
     // A full page load, so signing out lands on the login page even from a tab left open
     // across a deploy, where the router can no longer fetch the lazy-loaded login chunk.
@@ -180,6 +208,7 @@ export class ShellLayout {
   protected readonly navGroups = computed<readonly NavGroup[]>(() => {
     const principal = this.tokenStore.principal();
     const can = (code: string) => principal?.permissions.has(code) ?? false;
+    const pendingPhones = this.pendingDevices.count();
     // `driver` holds these permission codes only for narrow, single-record
     // API calls tied to their own delivery workflow, not to browse the
     // full staff-facing list/planning page — same reasoning and role list
@@ -342,7 +371,15 @@ export class ShellLayout {
       // Always shown: Settings opens on the personal Account section, which
       // every role has; agency-wide sections appear inside it by permission.
       {
-        items: [{ label: 'Settings', icon: 'pi pi-cog', route: '/settings' }],
+        items: [
+          {
+            label: 'Settings',
+            icon: 'pi pi-cog',
+            route: '/settings',
+            // Phones waiting for the agency admin's approval.
+            badge: can('license:manage_tenant') && pendingPhones > 0 ? pendingPhones : undefined,
+          },
+        ],
       },
     ];
   });
