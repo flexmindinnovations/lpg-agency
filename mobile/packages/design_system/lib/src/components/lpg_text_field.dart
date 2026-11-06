@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../icons.dart';
 import '../layout.dart';
 import '../theme.dart';
 
@@ -8,12 +9,16 @@ import '../theme.dart';
 /// [LpgDropdownField] and any custom control a screen builds, so every
 /// field in every form is labelled the same way.
 class LpgFieldLabel extends StatelessWidget {
-  const LpgFieldLabel(this.text, {super.key, this.isRequired = false});
+  const LpgFieldLabel(
+    this.text, {
+    super.key,
+    this.isRequired = false,
+    this.hasError = false,
+  });
 
   final String text;
-
-  /// Appends a required marker, announced to screen readers as "required".
   final bool isRequired;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +41,7 @@ class LpgFieldLabel extends StatelessWidget {
           ],
         ),
         style: context.lpgText.labelLarge?.copyWith(
-          color: colors.textSecondary,
+          color: hasError ? colors.statusDanger : colors.textSecondary,
         ),
       ),
     );
@@ -47,7 +52,7 @@ class LpgFieldLabel extends StatelessWidget {
 /// fill, radius and focus colour all come from `LpgTheme`'s
 /// `inputDecorationTheme`, so this widget only adds the label and the
 /// options screens actually need.
-class LpgTextField extends StatelessWidget {
+class LpgTextField extends StatefulWidget {
   const LpgTextField({
     super.key,
     required this.label,
@@ -110,55 +115,114 @@ class LpgTextField extends StatelessWidget {
   final Iterable<String>? autofillHints;
 
   @override
+  State<LpgTextField> createState() => _LpgTextFieldState();
+}
+
+class _LpgTextFieldState extends State<LpgTextField> {
+  final GlobalKey<FormFieldState<String>> _fieldKey = GlobalKey();
+
+  void _handleChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller?.addListener(_handleChange);
+  }
+
+  @override
+  void didUpdateWidget(LpgTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.removeListener(_handleChange);
+      widget.controller?.addListener(_handleChange);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller?.removeListener(_handleChange);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
+    final hasError =
+        _fieldKey.currentState?.hasError ?? widget.errorText != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // The visible label is a sibling of the input, so screen readers
-        // would announce an unnamed text field. The input carries the label
-        // itself (CA-12) and the sibling is hidden from semantics so it is
-        // not read twice.
-        if (label.isNotEmpty)
-          ExcludeSemantics(child: LpgFieldLabel(label, isRequired: isRequired)),
+        if (widget.label.isNotEmpty)
+          ExcludeSemantics(
+            child: LpgFieldLabel(
+              widget.label,
+              isRequired: widget.isRequired,
+              hasError: hasError,
+            ),
+          ),
         Semantics(
-          label: label.isEmpty
+          label: widget.label.isEmpty
               ? null
-              : (isRequired ? '$label, required' : label),
+              : (widget.isRequired
+                    ? '${widget.label}, required'
+                    : widget.label),
           child: TextFormField(
-            controller: controller,
-            initialValue: controller == null ? initialValue : null,
-            keyboardType: keyboardType,
-            textInputAction: textInputAction,
-            textCapitalization: textCapitalization,
-            inputFormatters: inputFormatters,
-            obscureText: obscureText,
-            maxLines: obscureText ? 1 : maxLines,
-            maxLength: maxLength,
-            enabled: enabled,
-            readOnly: readOnly,
-            validator: validator,
-            onChanged: onChanged,
-            onFieldSubmitted: onSubmitted,
-            onTap: onTap,
-            autofocus: autofocus,
-            focusNode: focusNode,
-            autofillHints: autofillHints,
+            key: _fieldKey,
+            controller: widget.controller,
+            initialValue: widget.controller == null
+                ? widget.initialValue
+                : null,
+            keyboardType: widget.keyboardType,
+            textInputAction: widget.textInputAction,
+            textCapitalization: widget.textCapitalization,
+            inputFormatters: widget.inputFormatters,
+            obscureText: widget.obscureText,
+            maxLines: widget.obscureText ? 1 : widget.maxLines,
+            maxLength: widget.maxLength,
+            enabled: widget.enabled,
+            readOnly: widget.readOnly,
+            validator: (value) {
+              final error = widget.validator?.call(value);
+              // Defer state update until after build to refresh the label color
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) setState(() {});
+              });
+              return error;
+            },
+            onChanged: (val) {
+              if (hasError) _fieldKey.currentState?.validate();
+              widget.onChanged?.call(val);
+            },
+            onFieldSubmitted: widget.onSubmitted,
+            onTap: widget.onTap,
+            autofocus: widget.autofocus,
+            focusNode: widget.focusNode,
+            autofillHints: widget.autofillHints,
             style: context.lpgText.bodyLarge?.copyWith(
-              color: enabled ? colors.textPrimary : colors.textSecondary,
+              color: widget.enabled ? colors.textPrimary : colors.textSecondary,
             ),
             decoration: InputDecoration(
-              hintText: hintText,
-              errorText: errorText,
-              helperText: helperText,
-              prefixText: prefixText,
-              prefixIcon: prefixIcon == null
+              hintText: widget.hintText,
+              errorText: widget.errorText,
+              helperText: widget.helperText,
+              prefixText: widget.prefixText,
+              prefixIcon: widget.prefixIcon == null
                   ? null
-                  : Icon(prefixIcon, size: LpgSizes.iconMd),
-              suffixIcon: suffixIcon,
-              fillColor: enabled ? colors.card : colors.surfaceOverlay,
+                  : Icon(widget.prefixIcon, size: LpgSizes.iconMd),
+              suffixIcon:
+                  widget.suffixIcon ??
+                  (hasError
+                      ? Icon(
+                          LpgIcons.error,
+                          color: colors.statusDanger,
+                          size: LpgSizes.iconMd,
+                        )
+                      : null),
+              fillColor: widget.enabled ? colors.card : colors.surfaceOverlay,
             ),
           ),
         ),
