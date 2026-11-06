@@ -1,16 +1,38 @@
 # Status: Mobile UI/UX Revamp, i18n, Device Control and Alert Sounds
 
-**Plan approved by the owner; Epic 11 (device registration and access control) is being built first, in stacked PRs. Everything else is not started.** (Plan version 5, 2026-11-05.)
+**Plan approved by the owner. Epic 11 (device registration and access control) was built first, in stacked PRs now merged into the plan branch (see the Epic 11 section below). Release R1 (epics E0 to E3) follows, one story per PR stacked on the plan branch `docs/mobile-ui-revamp-plan` (PR #122), and is in progress.** (Plan version 5, 2026-11-05.) Tick state is in [TASKS.md](./TASKS.md).
+
+## How things were verified in this stage
+Flutter 3.47.9 (Dart 3.13.7, stable) was installed in the cloud environment, so `dart format --set-exit-if-changed .`, `flutter analyze` and `flutter test` were **actually run** for every package and app a PR touches (the commands CI runs, `.github/workflows/mobile-ci.yml`). Nothing could be run on a device or emulator: **UI behaviour is verified by widget and provider tests only**, never by looking at a running app.
+
+**Known flaky tests (pre-existing, not caused by this work).** In `driver_app`, `test/offline/delivery_mutations_test.dart` ("departStop moves the cached order optimistically...") and `test/features/delivery/location_sharing_test.dart` ("reports a fix while the route is in progress") fail intermittently in full-suite runs and pass alone. Confirmed on an unchanged checkout of the plan branch (one pass, one fail in two full runs). The final full `driver_app` run for story 0.4 passed (112 tests) on the third attempt. They are timing-dependent and worth a separate fix.
 
 ## Done so far
 - `lpg-domain-expert` agent created (`.claude/agents/lpg-domain-expert.md`) for wording, flow and domain-visual reviews.
-- Existing in-progress UI work saved on branch `wip/mobile-ui-refresh` (unverified).
-- Current state surveyed (PLAN.md section 2), including why Linked Devices is empty: no code registers a device, revoking has no effect, and there is no `admin_app` type.
-- Owner's inputs recorded: no transparent glass, i18n with JSON catalogues, device control for Driver and Admin, louder custom alert sounds (Driver first).
-- Sequencing decided: alert sounds (Epic 12) are built last, after the UI, i18n and device-control work; alerts keep the default sound until then.
-- Sound sourcing decided: open source, CC0 first, domain-themed, used only in the three apps' notifications. Candidate sources and licences checked on 2026-11-05 (Freesound CC0 filter, Kenney, akx/Notifications); nothing downloaded yet.
-- Notification pipeline surveyed: FCM messages carry no channel, sound or priority; all apps share one default-sound channel.
-- The Admin dashboard "error then data" cause is **not yet confirmed**; story 0.4 reproduces and fixes it.
+- Existing in-progress UI work saved on branch `wip/mobile-ui-refresh` (unverified); reference only.
+- Current state surveyed (PLAN.md section 2), including why Linked Devices is empty.
+- Owner's inputs recorded: no transparent glass, i18n with JSON catalogues, device control for Driver and Admin, louder custom alert sounds (Driver first); alert sounds sequenced last.
+
+### Story 0.4: dashboard "error, then data" (done, verified by tests)
+**What the code showed.**
+- Admin turned Riverpod's retry **off** (`retry: (_, _) => null`), so the first failed request showed the error screen at once. The shell's realtime `reconnected` refetch then produced the data: exactly "error, then data".
+- Customer and Driver did the opposite: they kept Riverpod's **default** retry, which retries *every* failure (including a 403 or 404) up to ten times with growing delays, so a real error hid behind a skeleton for about half a minute.
+- On a refresh, a quiet retry (or a failed refresh) swapped the old numbers for a skeleton or an error, because Riverpod's `when` flags cannot express "keep old data, but show the skeleton during a first-load retry".
+
+**What is NOT confirmed.** *Why the first request fails on the owner's device.* It could not be reproduced here (no device, no backend). The 401 refresh path was checked by reading the code and is not the cause at start-up: the router only builds the dashboard once the session is authenticated, token refresh is single-flight, and the first request carries a fresh token. The remaining candidates are a transient network or server failure at start (radio not up yet, or a gateway answering 502/503/504 while the server wakes), which is what the sequence tests simulate. The fix is a policy that absorbs any such transient failure; if the error still appears on a device after this, the cause is something else and the next step is request logging on that device.
+
+**Fix (all three apps).**
+- `api_client`: `quietRetry` (one retry, after `quietRetryDelay` of 2 s, only for transient failures: no network, 502/503/504, or an unstructured response; a structured answer such as `FORBIDDEN` or `NOT_FOUND` is shown at once) and `isTransientError`. `mapDioError` now maps 502/503/504 to `SERVER_UNAVAILABLE`. `FailureCarrier` and `FailureException` carry the error code through providers; the Customer and Driver providers now throw `FailureException(failure)` instead of `Exception(failure.message)` (same printed message, plus the code).
+- `design_system`: `AsyncValue.whenQuiet` (value present: show it; no value and loading or retrying: skeleton; neither: error). It adds a dependency on the pure-Dart `riverpod` package and is the seed of `LpgAsyncView` (story 3.1).
+- Each app's `ProviderScope(retry: quietRetry)`. Admin dashboard (both sections), Customer home (balance and recent orders) and Driver Today use `whenQuiet`.
+- The other ~125 hand-written `.when(...)` sites keep their current behaviour: the first-load rule (skeleton during the quiet retry, error after) now holds everywhere through the app-wide retry; "keep old data on refresh" holds only on the screens converted above and is rolled out with story 3.1 onwards.
+
+**Tests added** (all pass): `api_client/test/quiet_retry_test.dart`; `design_system/test/quiet_when_test.dart` (the exact provider states, including a retrying first load); `admin_app/test/dashboard_first_load_test.dart` (a reproduction with retries off showing the error, then data; plus quiet retry, bad gateway, error after two failures, no retry of a refusal, old data kept through a failed refresh); `customer_app/test/features/dashboard/dashboard_first_load_test.dart`; `driver_app/test/features/delivery/today_first_load_test.dart`.
+
+**Decision recorded (plan's recommended option):** the quiet retry waits 2 seconds, once. Not yet chosen by the owner; change `quietRetryDelay` if it feels long.
+
+### Story 0.1: design direction (done)
+[design-direction.md](./design-direction.md): the modern solid enterprise look as rules (tonal elevation, soft shadows, 1 px hairlines, 16 to 20 px radii, type scale, purposeful motion, high contrast, WCAG 2.2 AA), grounded in what the code already has, with one reference screen per app. It is a documentation story: nothing was built or run. Constraint recorded for story 1.1: `tokens.json` is shared with the Angular dashboard. Decision recorded (plan's recommended option): per-app accent proposed as Admin blue, Customer and Driver flame orange; the owner may change it.
 
 ### Story 0.2: i18n tooling spike (done, verified by tests)
 Decision and comparison: [i18n-decision.md](./i18n-decision.md). Recommended **slang** (typed JSON, `locale_handling: false`, one `LocalizationsDelegate` per catalogue) over `gen-l10n`; the choice was close and is cheap to reverse. Working example in `design_system` with a second test locale (`hi`) proves: JSON per locale, typed keys (a wrong key is an analyzer error), typed placeholders, plurals, English fallback, runtime switch through `MaterialApp.locale` (also switching Flutter's built-in widget text via `flutter_localizations`), and Indian number and date formats through `intl`. Package versions were read from pub.dev (slang 4.19.2, slang_flutter 4.19.0).
@@ -18,6 +40,16 @@ Decision and comparison: [i18n-decision.md](./i18n-decision.md). Recommended **s
 - **Open product decision (not blocking):** digits for Marathi (native by default in `intl`) versus Latin everywhere for money; recommended Latin. See the decision note.
 - **The Hindi strings are test data**, not reviewed translations; they must be replaced before Hindi is offered.
 - Pre-existing and unchanged: the next free ADR number is 071 on `main`; none was allocated.
+
+### Stories 1.1 to 1.3: token audit, theme engine, surfaces (done, verified by tests)
+Details: [token-audit.md](./token-audit.md).
+- **1.1 Token audit.** One map of where each token kind lives; no colour literals and no blur existed. Twelve translucent fills made solid (`LpgColors.tint`, `heroMuted/heroSubtle/heroTrack`). A test scans the design system and the three apps and fails on blur or alpha-blended fills outside a short allow-list. Found and fixed muted hero text under AA (3.97:1 to above 4.5:1).
+- **1.2 `LpgThemeEngine`.** One engine per app (`accent`, text-scale limit, `reduceMotion`), with light, dark and high-contrast themes from the single token source, `LpgDensity` by size class (`LpgSizeClass`), a text-scale clamp, and reduce motion (platform or forced; page transitions go instant). The three apps use it and build no `ThemeData`.
+- **1.3 Surfaces.** Four solid layers (canvas, card, sheet, inverse), `LpgSurface`, hairlines and shadows from one place; dialogs, sheets and menus use the sheet layer, snackbars the inverse layer. `tokens.json` was not touched, so the web build is unaffected.
+- **Behaviour changes (deliberate, all small):** Admin now passes the high-contrast theme in dark mode too; dark-mode snackbars are light (inverse layer) instead of card-coloured; text scale is capped at 2.0x; page transitions are instant under reduce motion; solid tints replace translucent ones.
+- **Decision recorded:** the per-app accent stays flame orange everywhere (today's colours) so migration changes nothing; the per-app accents proposed in the design note are a one-line change per app once the owner chooses.
+- **Found, not fixed (needs a decision, see token-audit.md):** in the light theme, status tone colours as text on their tinted container are under 4.5:1 (accent, success, warning, danger, info, neutral). They come from shared web tokens. A test pins the list so it can only shrink; story 10.1 decides.
+- **WIP branch:** `wip/mobile-ui-refresh` was not merged or consulted for code; nothing in this change comes from it.
 
 ### Story 2.1: i18n infrastructure (done, verified by tests and by running the CI checks locally)
 How-to: [i18n-howto.md](./i18n-howto.md).
@@ -29,7 +61,8 @@ How-to: [i18n-howto.md](./i18n-howto.md).
 - **Decision recorded:** languages are compiled in (no deferred loading); the lint counts per file, not per line, so editing around an old string does not trip it.
 
 ## Not done
-Everything in TASKS.md.
+Everything else in TASKS.md (epics E2 from 2.2, E4 to E10 and E12).
+
 
 
 ## Epic 11: device registration and access control (in progress)

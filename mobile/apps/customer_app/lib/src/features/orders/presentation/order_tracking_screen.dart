@@ -353,7 +353,7 @@ class _MapOverlay extends StatelessWidget {
     final colors = context.lpgColors;
     return DecoratedBox(
       decoration: ShapeDecoration(
-        color: colors.card.withValues(alpha: colors.isHighContrast ? 1 : 0.94),
+        color: colors.card,
         shape: shape is StadiumBorder
             ? StadiumBorder(side: BorderSide(color: colors.borderDefault))
             : RoundedRectangleBorder(

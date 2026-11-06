@@ -197,7 +197,7 @@ class _ApproximateBanner extends StatelessWidget {
         vertical: LpgSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: colors.card.withValues(alpha: 0.95),
+        color: colors.card,
         borderRadius: BorderRadius.circular(LpgRadius.lg),
         border: Border.all(color: colors.borderDefault),
       ),

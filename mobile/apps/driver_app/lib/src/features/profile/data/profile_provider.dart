@@ -16,6 +16,6 @@ final driverProfileProvider = FutureProvider<DriverMe>((ref) async {
   final result = await ref.watch(driverApiProvider).getMe();
   return result.when(
     onSuccess: (profile) => profile,
-    onFailure: (failure) => throw Exception(failure.message),
+    onFailure: (failure) => throw FailureException(failure),
   );
 });

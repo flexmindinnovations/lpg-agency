@@ -111,10 +111,11 @@ void main() async {
 
   runApp(
     ProviderScope(
-      // Riverpod 3 retries failed providers with backoff and keeps them in
-      // the loading state meanwhile, so errors never reached the screens'
-      // error/Retry states. Fail fast; the user retries explicitly.
-      retry: (_, _) => null,
+      // One quiet retry of a transient failure (the skeleton stays on screen
+      // meanwhile), then the error/Retry state. Riverpod's default retries ten
+      // times and hides a real error; no retry at all showed an error for a
+      // blip a second attempt clears (story 0.4).
+      retry: quietRetry,
       overrides: [
         authControllerProvider.overrideWithValue(authController),
         deviceControlProvider.overrideWithValue(deviceControl),
@@ -164,6 +165,10 @@ void _wireRealtimeToAuth(
   sync();
   authController.addListener(sync);
 }
+
+/// The app's look: one engine, never a hand-built `ThemeData` (story 1.2).
+/// The accent stays the brand's flame orange, as before.
+const _theme = LpgThemeEngine();
 
 class AdminApp extends ConsumerStatefulWidget {
   const AdminApp({super.key});
@@ -229,9 +234,12 @@ class _AdminAppState extends ConsumerState<AdminApp> {
       locale: ref.watch(lpgLocaleProvider),
       supportedLocales: adminLaunchLocales,
       localizationsDelegates: adminLocalizationsDelegates,
-      theme: LpgTheme.light,
-      darkTheme: LpgTheme.dark,
-      highContrastTheme: LpgTheme.highContrast,
+      theme: _theme.light,
+      darkTheme: _theme.dark,
+      highContrastTheme: _theme.highContrast,
+      highContrastDarkTheme: _theme.highContrast,
+      themeMode: ThemeMode.system,
+      builder: _theme.builder,
       routerConfig: router,
     );
   }
