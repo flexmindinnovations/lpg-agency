@@ -31,6 +31,7 @@ abstract final class LpgIcons {
   static const IconData todayFilled = LucideIcons600.calendarCheck;
   static const IconData deliveries = LucideIcons.truck;
   static const IconData deliveriesFilled = LucideIcons600.truck;
+  static const IconData chevronLeft = LucideIcons.chevronLeft;
   static const IconData chevronRight = LucideIcons.chevronRight;
   static const IconData chevronDown = LucideIcons.chevronDown;
   static const IconData back = LucideIcons.arrowLeft;

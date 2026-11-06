@@ -116,7 +116,9 @@ void main() {
       final next = find.widgetWithIcon(IconButton, LpgIcons.chevronRight);
       expect(tester.widget<IconButton>(next).onPressed, isNull);
 
-      await tester.tap(find.widgetWithIcon(IconButton, LpgIcons.back));
+      // Both day buttons are the same kind of icon, one each way.
+      expect(find.widgetWithIcon(IconButton, LpgIcons.back), findsNothing);
+      await tester.tap(find.widgetWithIcon(IconButton, LpgIcons.chevronLeft));
       await tester.pumpAndSettle();
 
       final yesterday = DateTime.now().subtract(const Duration(days: 1));
