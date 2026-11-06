@@ -29,6 +29,7 @@ export 'lpg_progress_bar.dart';
 export 'lpg_quantity_stepper.dart';
 export 'lpg_quick_action.dart';
 export 'lpg_section_header.dart';
+export 'lpg_section_label.dart';
 export 'lpg_sheet_layout.dart';
 export 'lpg_skeleton.dart';
 export 'lpg_skeleton_blocks.dart';

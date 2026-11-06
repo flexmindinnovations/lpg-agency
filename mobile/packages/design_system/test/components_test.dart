@@ -1589,6 +1589,34 @@ void main() {
       semantics.dispose();
     });
   });
+
+  group('section headings', () {
+    testWidgets('a label is bold capitals in the main text colour', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(const LpgSectionLabel('Godown and papers')),
+      );
+
+      final text = tester.widget<Text>(find.text('GODOWN AND PAPERS'));
+      final colors = LpgTheme.colorsFor(LpgThemeVariant.light);
+      expect(text.style?.color, colors.textPrimary);
+      expect(text.style?.fontWeight, FontWeight.w800);
+    });
+
+    testWidgets('a header is still announced as a heading, once', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(_wrap(const LpgSectionHeader(title: 'Recent')));
+
+      expect(
+        tester.getSemantics(find.text('Recent')),
+        matchesSemantics(label: 'Recent', isHeader: true),
+      );
+      semantics.dispose();
+    });
+  });
 }
 
 /// A 1x1 transparent PNG, so the splash has a real image to decode.
