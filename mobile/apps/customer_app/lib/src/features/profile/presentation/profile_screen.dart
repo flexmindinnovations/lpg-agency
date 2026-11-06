@@ -177,6 +177,10 @@ class ProfileScreen extends ConsumerWidget {
                     onTap: () => context.push('/profile/payments'),
                   ),
                 ),
+                const SizedBox(height: LpgSpacing.md),
+                LpgThemeModePicker(
+                  controller: ref.read(lpgThemeModeControllerProvider),
+                ),
                 const SizedBox(height: LpgSpacing.xl),
                 LpgButton(
                   label: 'Log Out',

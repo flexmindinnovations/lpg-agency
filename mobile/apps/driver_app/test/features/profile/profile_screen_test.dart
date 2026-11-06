@@ -90,11 +90,20 @@ Widget _host(AuthController controller, Future<DriverMe> Function() profile) =>
       child: MaterialApp(theme: LpgTheme.light, home: const ProfileScreen()),
     );
 
+/// The profile is a long list; give the test window room for all of it, so
+/// every row (including the appearance picker above Log Out) is built.
+void _tall(WidgetTester tester) {
+  tester.view.physicalSize = const Size(400, 1400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   group('Driver ProfileScreen', () {
     testWidgets('renders the driver identity, licence and vehicle', (
       tester,
     ) async {
+      _tall(tester);
       await tester.pumpWidget(
         _host(
           AuthController(_RecordingAuthRepository()),
@@ -119,6 +128,7 @@ void main() {
     testWidgets('shows "Not on a route" when there is no vehicle', (
       tester,
     ) async {
+      _tall(tester);
       await tester.pumpWidget(
         _host(AuthController(_RecordingAuthRepository()), () async => _me()),
       );
@@ -128,6 +138,7 @@ void main() {
     });
 
     testWidgets('Log Out calls the auth controller', (tester) async {
+      _tall(tester);
       final repo = _RecordingAuthRepository();
       await tester.pumpWidget(_host(AuthController(repo), () async => _me()));
       await tester.pumpAndSettle();

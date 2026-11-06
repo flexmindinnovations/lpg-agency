@@ -42,6 +42,7 @@ class LpgStringsHi extends LpgStrings with BaseTranslations<LpgLocale, LpgString
 	@override late final LpgStrings$common$hi common = LpgStrings$common$hi._(_root);
 	@override late final LpgStrings$async$hi async = LpgStrings$async$hi._(_root);
 	@override late final LpgStrings$stock$hi stock = LpgStrings$stock$hi._(_root);
+	@override late final LpgStrings$appearance$hi appearance = LpgStrings$appearance$hi._(_root);
 }
 
 // Path: common
@@ -80,6 +81,20 @@ class LpgStrings$stock$hi extends LpgStrings$stock$en {
 	);
 }
 
+// Path: appearance
+class LpgStrings$appearance$hi extends LpgStrings$appearance$en {
+	LpgStrings$appearance$hi._(LpgStringsHi root) : this._root = root, super.internal(root);
+
+	final LpgStringsHi _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'दिखावट';
+	@override String get hint => 'फ़ोन के अनुसार चलाएँ, या हमेशा लाइट या डार्क रखें।';
+	@override String get system => 'फ़ोन के अनुसार';
+	@override String get light => 'लाइट';
+	@override String get dark => 'डार्क';
+}
+
 /// The flat map containing all translations for locale <hi>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -94,6 +109,11 @@ extension on LpgStringsHi {
 			'async.updating' => 'अपडेट हो रहा है…',
 			'async.lastUpdated' => ({required String time}) => '${time} को अपडेट किया',
 			'stock.cylinders' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('hi'))(n, one: '${n} सिलेंडर', other: '${n} सिलेंडर', ), 
+			'appearance.title' => 'दिखावट',
+			'appearance.hint' => 'फ़ोन के अनुसार चलाएँ, या हमेशा लाइट या डार्क रखें।',
+			'appearance.system' => 'फ़ोन के अनुसार',
+			'appearance.light' => 'लाइट',
+			'appearance.dark' => 'डार्क',
 			_ => null,
 		};
 	}

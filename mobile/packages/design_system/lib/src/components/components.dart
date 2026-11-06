@@ -35,5 +35,6 @@ export 'lpg_splash.dart';
 export 'lpg_stat_tile.dart';
 export 'lpg_status_badge.dart';
 export 'lpg_text_field.dart';
+export 'lpg_theme_mode_picker.dart';
 export 'lpg_timeline.dart';
 export 'lpg_upi_qr_card.dart';

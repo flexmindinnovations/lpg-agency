@@ -38,6 +38,7 @@ class LpgStrings with BaseTranslations<LpgLocale, LpgStrings> {
 	late final LpgStrings$common$en common = LpgStrings$common$en.internal(_root);
 	late final LpgStrings$async$en async = LpgStrings$async$en.internal(_root);
 	late final LpgStrings$stock$en stock = LpgStrings$stock$en.internal(_root);
+	late final LpgStrings$appearance$en appearance = LpgStrings$appearance$en.internal(_root);
 }
 
 // Path: common
@@ -91,6 +92,30 @@ class LpgStrings$stock$en {
 	String get onlyInEnglish => 'This line exists only in English.';
 }
 
+// Path: appearance
+class LpgStrings$appearance$en {
+	LpgStrings$appearance$en.internal(this._root);
+
+	final LpgStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Appearance'
+	String get title => 'Appearance';
+
+	/// en: 'Match your phone, or always use light or dark.'
+	String get hint => 'Match your phone, or always use light or dark.';
+
+	/// en: 'Match phone'
+	String get system => 'Match phone';
+
+	/// en: 'Light'
+	String get light => 'Light';
+
+	/// en: 'Dark'
+	String get dark => 'Dark';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -106,6 +131,11 @@ extension on LpgStrings {
 			'async.lastUpdated' => ({required String time}) => 'Updated ${time}',
 			'stock.cylinders' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} cylinder', other: '${n} cylinders', ), 
 			'stock.onlyInEnglish' => 'This line exists only in English.',
+			'appearance.title' => 'Appearance',
+			'appearance.hint' => 'Match your phone, or always use light or dark.',
+			'appearance.system' => 'Match phone',
+			'appearance.light' => 'Light',
+			'appearance.dark' => 'Dark',
 			_ => null,
 		};
 	}

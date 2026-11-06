@@ -45,5 +45,9 @@ const lpgLocalizationsDelegates = <LocalizationsDelegate<dynamic>>[
 
 /// `context.lpgStrings.common.retry`
 extension LpgStringsContext on BuildContext {
-  LpgStrings get lpgStrings => Localizations.of<LpgStrings>(this, LpgStrings)!;
+  /// English when no [LpgStringsDelegate] is above (a bare `MaterialApp` in a
+  /// test or a preview), so a shared widget never fails for a missing setup.
+  LpgStrings get lpgStrings =>
+      Localizations.of<LpgStrings>(this, LpgStrings) ??
+      LpgLocale.en.buildSync();
 }
