@@ -25,6 +25,7 @@ export 'lpg_master_detail.dart';
 export 'lpg_illustration.dart';
 export 'lpg_metric_tile.dart';
 export 'lpg_navigation_bar.dart';
+export 'lpg_progress_bar.dart';
 export 'lpg_quantity_stepper.dart';
 export 'lpg_quick_action.dart';
 export 'lpg_section_header.dart';

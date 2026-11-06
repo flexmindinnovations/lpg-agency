@@ -491,6 +491,14 @@ abstract final class LpgTheme {
   /// order, so `value ~/ 100 - 1` is the index (700 -> values[6] -> w700).
   static FontWeight _weight(int value) => FontWeight.values[value ~/ 100 - 1];
 
+  /// The small text on a phone (captions, sub-lines, labels): one point larger
+  /// and one weight heavier than the shared caption token (12 / 400), which is
+  /// sized for a desktop dashboard. Thin 12-point text was hard to read on a
+  /// see-through card. The web keeps the token; moving it there is a decision
+  /// for the shared tokens (`design-tokens/tokens.json`).
+  static const int _smallTextSize = LpgTokens.typographyCaptionFontSize + 1;
+  static const int _smallTextWeight = 500;
+
   static TextStyle _style({
     required int size,
     required int weight,
@@ -586,8 +594,8 @@ abstract final class LpgTheme {
       color: colors.textPrimary,
     ),
     bodySmall: _style(
-      size: LpgTokens.typographyCaptionFontSize,
-      weight: LpgTokens.typographyBodySmallFontWeight,
+      size: _smallTextSize,
+      weight: _smallTextWeight,
       height: LpgTokens.typographyBodySmallLineHeight,
       color: colors.textSecondary,
     ),
@@ -599,15 +607,15 @@ abstract final class LpgTheme {
       color: colors.textPrimary,
     ),
     labelMedium: _style(
-      size: LpgTokens.typographyCaptionFontSize,
-      weight: LpgTokens.typographyLabelFontWeight,
+      size: _smallTextSize,
+      weight: _smallTextWeight,
       height: LpgTokens.typographyLabelLineHeight,
       letterSpacing: 0.2,
       color: colors.textSecondary,
     ),
     labelSmall: _style(
-      size: LpgTokens.typographyCaptionFontSize,
-      weight: LpgTokens.typographyCaptionFontWeight,
+      size: _smallTextSize,
+      weight: _smallTextWeight,
       height: LpgTokens.typographyCaptionLineHeight,
       letterSpacing: 0.3,
       color: colors.textSecondary,

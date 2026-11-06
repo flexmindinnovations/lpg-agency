@@ -1500,6 +1500,38 @@ void main() {
       expect(tester.hasRunningAnimations, isFalse);
     });
   });
+
+  group('LpgProgressBar', () {
+    testWidgets('the filled part stands out from the track by 3:1 or more', (
+      tester,
+    ) async {
+      for (final v in LpgThemeVariant.values) {
+        final c = LpgTheme.colorsFor(v);
+        final track = c.tint(c.textSecondary, 0.25, over: c.card);
+
+        expect(
+          LpgBackdropLook.contrast(c.actionPrimary, track),
+          greaterThanOrEqualTo(3),
+          reason: '$v',
+        );
+      }
+    });
+
+    testWidgets('reports its progress to a screen reader', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LpgTheme.build(LpgThemeVariant.light),
+          home: const Scaffold(
+            body: LpgProgressBar(value: 0.5, semanticsLabel: 'Trip progress'),
+          ),
+        ),
+      );
+
+      expect(find.bySemanticsLabel('Trip progress'), findsOneWidget);
+      semantics.dispose();
+    });
+  });
 }
 
 /// A 1x1 transparent PNG, so the splash has a real image to decode.
