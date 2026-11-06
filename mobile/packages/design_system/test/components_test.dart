@@ -832,6 +832,53 @@ void main() {
     });
   });
 
+  group('LpgHeroCard', () {
+    Future<double> contentWidth(
+      WidgetTester tester, {
+      required bool keepClear,
+      IconData? watermark = Icons.receipt_long,
+    }) async {
+      await tester.pumpWidget(
+        _wrap(
+          LpgHeroCard(
+            watermark: watermark,
+            keepClearOfWatermark: keepClear,
+            child: const SizedBox(
+              key: Key('content'),
+              width: double.infinity,
+              height: 10,
+            ),
+          ),
+        ),
+      );
+      return tester.getSize(find.byKey(const Key('content'))).width;
+    }
+
+    testWidgets('lets the content use the full width by default', (
+      tester,
+    ) async {
+      final plain = await contentWidth(tester, keepClear: false);
+      final noWatermark = await contentWidth(
+        tester,
+        keepClear: true,
+        watermark: null,
+      );
+
+      expect(noWatermark, plain);
+    });
+
+    testWidgets('keeps the content out of the watermark corner when asked', (
+      tester,
+    ) async {
+      final plain = await contentWidth(tester, keepClear: false);
+      final clear = await contentWidth(tester, keepClear: true);
+
+      expect(clear, lessThan(plain));
+      // The icon reaches 80 logical pixels into the content box.
+      expect(plain - clear, closeTo(80, 0.5));
+    });
+  });
+
   group('LpgSplash', () {
     testWidgets('shows the name, tagline and badge once it has played', (
       tester,

@@ -7,6 +7,15 @@ Flutter 3.47.9 (Dart 3.13.7, stable) was installed in the cloud environment, so 
 
 **Known flaky tests (pre-existing, not caused by this work).** In `driver_app`, `test/offline/delivery_mutations_test.dart` ("departStop moves the cached order optimistically...") and `test/features/delivery/location_sharing_test.dart` ("reports a fix while the route is in progress") fail intermittently in full-suite runs and pass alone. Confirmed on an unchanged checkout of the plan branch (one pass, one fail in two full runs). The final full `driver_app` run for story 0.4 passed (112 tests) on the third attempt. They are timing-dependent and worth a separate fix.
 
+## What is visible on a phone today (checked on the emulator, 2026-11-06)
+Flutter 3.47.9, Pixel 10 Pro emulator, debug builds against the local backend. All three apps build, and `flutter analyze` and `flutter test` pass in every package and app.
+
+**The screens still look like the old design.** What has merged is the foundation only: the design direction note, the token audit, the theme engine, solid surfaces (E1), the i18n plumbing (2.1), `LpgAsyncView` (E3), and device control (E11). Together they change very little on screen (slightly different surfaces and snackbars, no translucent fills, a quiet retry at start-up). `LpgAsyncView` is used on three screens only: the Admin, Customer and Driver dashboards (Driver: Today). No existing string has been moved into a catalogue (2.4 to 2.8). Not started, so not visible: the new component library (E4), domain icons and illustrations (E5), tablet and adaptive layouts (E6), and the screen-by-screen rollouts for Customer, Driver and Admin (E7 to E9). The visible redesign starts with E4 and E7 to E9.
+
+**Found on the emulator and fixed in the change that adds this section:** the Admin hero card's stats line ran into its watermark icon (new `keepClearOfWatermark` option); the sign-in "OTP has expired" message also appeared for a code that had already been used (now "This code is no longer valid. Please request a new code."); the main Android manifests allowed plain-HTTP traffic in release builds (removed; the debug manifests keep it for local testing against `http://10.0.2.2:8000`).
+
+**Device control, checked on the emulator against the local backend:** a fresh sign-in under `enforce` registers the phone as waiting; approving it lets the driver in; blocking it signs the running app out within seconds. Story 11.1 (what a real phone can report) is still open.
+
 ## Done so far
 - `lpg-domain-expert` agent created (`.claude/agents/lpg-domain-expert.md`) for wording, flow and domain-visual reviews.
 - Existing in-progress UI work saved on branch `wip/mobile-ui-refresh` (unverified); reference only.

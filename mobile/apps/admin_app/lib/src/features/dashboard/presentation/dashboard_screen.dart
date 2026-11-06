@@ -212,6 +212,7 @@ class _Body extends StatelessWidget {
       LpgHeroCard(
         onTap: () => onOrders('All'),
         watermark: LpgIcons.orders,
+        keepClearOfWatermark: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
