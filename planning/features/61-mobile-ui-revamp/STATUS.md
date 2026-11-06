@@ -34,6 +34,13 @@ Flutter 3.47.9 (Dart 3.13.7, stable) was installed in the cloud environment, so 
 ### Story 0.1: design direction (done)
 [design-direction.md](./design-direction.md): the modern solid enterprise look as rules (tonal elevation, soft shadows, 1 px hairlines, 16 to 20 px radii, type scale, purposeful motion, high contrast, WCAG 2.2 AA), grounded in what the code already has, with one reference screen per app. It is a documentation story: nothing was built or run. Constraint recorded for story 1.1: `tokens.json` is shared with the Angular dashboard. Decision recorded (plan's recommended option): per-app accent proposed as Admin blue, Customer and Driver flame orange; the owner may change it.
 
+### Story 0.2: i18n tooling spike (done, verified by tests)
+Decision and comparison: [i18n-decision.md](./i18n-decision.md). Recommended **slang** (typed JSON, `locale_handling: false`, one `LocalizationsDelegate` per catalogue) over `gen-l10n`; the choice was close and is cheap to reverse. Working example in `design_system` with a second test locale (`hi`) proves: JSON per locale, typed keys (a wrong key is an analyzer error), typed placeholders, plurals, English fallback, runtime switch through `MaterialApp.locale` (also switching Flutter's built-in widget text via `flutter_localizations`), and Indian number and date formats through `intl`. Package versions were read from pub.dev (slang 4.19.2, slang_flutter 4.19.0).
+- **Gap found:** a key that exists only in a translation is silently dropped by the generator; story 2.1 adds a CI check.
+- **Open product decision (not blocking):** digits for Marathi (native by default in `intl`) versus Latin everywhere for money; recommended Latin. See the decision note.
+- **The Hindi strings are test data**, not reviewed translations; they must be replaced before Hindi is offered.
+- Pre-existing and unchanged: the next free ADR number is 071 on `main`; none was allocated.
+
 ### Stories 1.1 to 1.3: token audit, theme engine, surfaces (done, verified by tests)
 Details: [token-audit.md](./token-audit.md).
 - **1.1 Token audit.** One map of where each token kind lives; no colour literals and no blur existed. Twelve translucent fills made solid (`LpgColors.tint`, `heroMuted/heroSubtle/heroTrack`). A test scans the design system and the three apps and fails on blur or alpha-blended fills outside a short allow-list. Found and fixed muted hero text under AA (3.97:1 to above 4.5:1).
