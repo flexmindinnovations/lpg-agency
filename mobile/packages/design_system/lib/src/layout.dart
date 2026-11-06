@@ -99,3 +99,25 @@ abstract final class LpgBreakpoints {
   static bool isWide(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= medium;
 }
+
+/// Material 3's three window size classes, the one input to density and to
+/// which navigation a screen shows.
+enum LpgSizeClass {
+  /// A phone in portrait.
+  compact,
+
+  /// A large phone in landscape or a small tablet.
+  medium,
+
+  /// A 10" tablet or larger.
+  expanded;
+
+  static LpgSizeClass fromWidth(double width) {
+    if (width >= LpgBreakpoints.expanded) return expanded;
+    if (width >= LpgBreakpoints.medium) return medium;
+    return compact;
+  }
+
+  static LpgSizeClass of(BuildContext context) =>
+      fromWidth(MediaQuery.sizeOf(context).width);
+}

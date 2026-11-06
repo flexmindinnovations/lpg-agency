@@ -25,15 +25,15 @@ extension LpgToneColors on LpgTone {
     LpgTone.neutral => colors.textSecondary,
   };
 
-  /// The tone's quiet fill, behind [foreground]. High contrast keeps fills
-  /// plain (the border carries the tone instead) so text contrast never
-  /// depends on a tint.
+  /// The tone's quiet fill, behind [foreground]: a solid tint over the card
+  /// colour (never translucent). High contrast keeps fills plain (the border
+  /// carries the tone instead) so text contrast never depends on a tint.
   Color container(LpgColors colors) {
     if (colors.isHighContrast) return colors.card;
     return switch (this) {
       LpgTone.primary => colors.actionPrimaryContainer,
       LpgTone.neutral => colors.surfaceOverlay,
-      _ => foreground(colors).withValues(alpha: 0.12),
+      _ => colors.tint(foreground(colors), 0.12),
     };
   }
 }

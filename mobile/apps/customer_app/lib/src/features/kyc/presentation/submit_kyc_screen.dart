@@ -369,7 +369,7 @@ class _PhotoPicker extends StatelessWidget {
                       Image.memory(bytes, fit: BoxFit.cover),
                       if (uploading)
                         ColoredBox(
-                          color: colors.surfaceOverlay.withValues(alpha: 0.7),
+                          color: colors.surfaceOverlay,
                           child: const Center(child: LpgLoadingIndicator()),
                         )
                       else

@@ -193,6 +193,10 @@ void _wirePushRegistrationToAuth(
   });
 }
 
+/// The app's look: one engine, never a hand-built `ThemeData` (story 1.2).
+/// The accent stays the brand's flame orange, as before.
+const _theme = LpgThemeEngine();
+
 class DriverApp extends ConsumerStatefulWidget {
   const DriverApp({super.key});
 
@@ -252,11 +256,12 @@ class _DriverAppState extends ConsumerState<DriverApp> {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'LPG Agency',
-      theme: LpgTheme.light,
-      darkTheme: LpgTheme.dark,
-      highContrastTheme: LpgTheme.highContrast,
-      highContrastDarkTheme: LpgTheme.highContrast,
+      theme: _theme.light,
+      darkTheme: _theme.dark,
+      highContrastTheme: _theme.highContrast,
+      highContrastDarkTheme: _theme.highContrast,
       themeMode: ThemeMode.system,
+      builder: _theme.builder,
       routerConfig: ref.watch(routerProvider),
       debugShowCheckedModeBanner: false,
     );

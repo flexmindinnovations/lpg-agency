@@ -123,9 +123,7 @@ class _RouteHero extends ConsumerWidget {
               Expanded(
                 child: Text(
                   "Today's route",
-                  style: text.titleSmall?.copyWith(
-                    color: colors.onHero.withValues(alpha: 0.85),
-                  ),
+                  style: text.titleSmall?.copyWith(color: colors.heroMuted),
                 ),
               ),
               LpgStatusBadge(
@@ -138,9 +136,7 @@ class _RouteHero extends ConsumerWidget {
             const SizedBox(height: LpgSpacing.xs),
             Text(
               subtitle,
-              style: text.bodySmall?.copyWith(
-                color: colors.onHero.withValues(alpha: 0.85),
-              ),
+              style: text.bodySmall?.copyWith(color: colors.heroMuted),
             ),
           ],
           const SizedBox(height: LpgSpacing.md),
@@ -158,7 +154,7 @@ class _RouteHero extends ConsumerWidget {
               builder: (context, value, _) => LinearProgressIndicator(
                 value: value,
                 minHeight: LpgSpacing.sm,
-                backgroundColor: colors.onHero.withValues(alpha: 0.24),
+                backgroundColor: colors.heroTrack,
                 valueColor: AlwaysStoppedAnimation<Color>(colors.onHero),
                 semanticsLabel: 'Route progress',
                 semanticsValue: '${(progress * 100).round()}%',
