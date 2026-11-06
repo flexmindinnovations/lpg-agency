@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../haptics.dart';
 import '../motion.dart';
 import '../theme.dart';
 
@@ -67,7 +68,10 @@ class LpgNavigationBar extends StatelessWidget {
         maxScaleFactor: 1.1,
         child: NavigationBar(
           selectedIndex: selectedIndex,
-          onDestinationSelected: onDestinationSelected,
+          onDestinationSelected: (index) {
+            if (index != selectedIndex) LpgHaptics.selection();
+            onDestinationSelected(index);
+          },
           animationDuration: LpgMotion.large(context),
           destinations: [
             for (final d in destinations)

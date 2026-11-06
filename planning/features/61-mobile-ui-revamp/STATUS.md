@@ -134,6 +134,8 @@ Two new design-system components, checked on the emulator with hot reload and co
 
 **4.3c, second part.** New `LpgActionCard` for "something is happening or needs you": a tinted card with the same solid bar as an attention tile, an icon, a title, a message, an action verb and a chevron, read as one button by a screen reader. Used for Customer Home's live order ("On its way / Track") and Driver Today's van-load and cash-pending cards ("Declare"). Section headers: bolder title and a chevron on the action ("See all ›"). The timeline already met the direction (solid markers, bounded pulse, reduce-motion, semantics) so it was not changed. Small charts are not built: a sparkline needs a data source.
 
+**4.4 motion kit, mostly already there.** Count-up, spring press feedback, staggered entrances, skeleton shimmer, a bounded pulse and reduce-motion handling existed and were left as they are. Added `LpgHaptics` (selection, success, warning), used by the quantity stepper, choice chips, bottom tabs and the Driver's delivery-error buzz. Not done: shared-axis page transitions, which need the `animations` package (a new dependency); pages still use the platform transitions.
+
 ## Not done
 Everything else in TASKS.md (epics E2 from 2.2, E4 to E10 and E12).
 

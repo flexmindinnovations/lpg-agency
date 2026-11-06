@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../icons.dart';
+import '../haptics.dart';
 import '../layout.dart';
 import '../motion.dart';
 import '../theme.dart';
@@ -35,7 +36,12 @@ class LpgQuantityStepper extends StatelessWidget {
     Widget button(IconData icon, String tooltip, bool enabled, int next) =>
         IconButton.filledTonal(
           tooltip: tooltip,
-          onPressed: enabled ? () => onChanged!(next) : null,
+          onPressed: enabled
+              ? () {
+                  LpgHaptics.selection();
+                  onChanged!(next);
+                }
+              : null,
           style: IconButton.styleFrom(
             backgroundColor: colors.actionPrimaryContainer,
             foregroundColor: colors.onActionPrimaryContainer,
