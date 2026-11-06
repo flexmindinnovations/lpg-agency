@@ -60,6 +60,36 @@ Built in stacked PRs, each opened against `docs/mobile-ui-revamp-plan`: **A1** b
 - **Block is event-driven**: the decision commits first, then a handler clears the cache and revokes tokens. Handlers log failures instead of failing the admin's request, because request checks read the database truth within 30 s anyway.
 
 
+### Done in B (dashboard)
+- Settings > Linked Devices is a real page: the `device_control` switch (Off, Watch only, Approve phones), state tabs with the waiting count, an app filter, a table (phone, model, software, app and version, signed in as, state, first and last seen), and a drawer per phone with actions, rename, IMEI/serial note and change history.
+- Pending badge on the sidebar Settings item and next to Linked Devices in the Settings nav; it refreshes from a live `device_pending_staff` message and every 2 minutes, for users holding `license:manage_tenant` only.
+- A `device` notification opens the Linked Devices page.
+- Generated API client regenerated; only device-related changes kept. The committed client was already behind the committed OpenAPI spec for an unrelated order-settlement endpoint; that drift is **not** included here.
+
+### Decisions taken in B
+- Words for the admin are plain: "Waiting" (not pending), "Watch only", "Approve phones".
+- Switching to "Approve phones" asks first and says how many phones are still waiting.
+- The generic Configuration page is untouched; the mode lives on this page only.
+
+### Done in C (mobile)
+- New package `mobile/packages/device_identity` (added to `mobile-ci.yml`): random install ID in secure storage; phone details (maker, model, OS, app version, platform, Android ID / iOS vendor ID); `DeviceInterceptor` adds `X-Device-Id` / `X-App-Type` to every request and the `device` object to the sign-in, OTP-verify and refresh bodies, and reports `DEVICE_*` refusals; `DeviceApi` (`GET /devices/me`); `DeviceAccessController` (allowed / pending / blocked); `DeviceControl` (router redirect, follows the session and app resume); three screens (name this phone, waiting, blocked).
+- Driver and Admin apps: `main.dart` calls `DeviceControl.setUp` right after creating the `ApiClient` and before the session restore (the restore is the first request and must carry the install ID); routers merge the device state into `refreshListenable` and call `deviceControl.redirect` first. Wording lives in one file per app (`lib/src/device_strings.dart`).
+- `RealtimeClient`: optional `getInstallId` (sent as `device_id` in the auth frame) and `subscribeToDeviceChanges()`. A `device.status_changed` message makes the app ask the server where it stands.
+- `SyncCoordinator`: a `DEVICE_*` refusal puts the operation back as `pending`, stops the pass, calls `onDeviceRefused`; nothing is failed, counted or discarded. The Driver app resumes with `syncNow` when the phone is allowed again.
+- Wording was reviewed by the `lpg-domain-expert` agent and adopted (no menu path for drivers, an explicit "do not delete the app or clear its data" warning, a full list of what is sent, no security promise).
+
+### Decisions taken in C
+- **Name step:** the user names the phone once, before the first sign-in (default: the model). A session that began before this version silently takes the model as its name instead of being interrupted.
+- **Blocked:** the app signs the user out and shows the blocked screen; "Try signing in again" leaves it, and the server refuses again if the phone is still blocked. Local data is never wiped.
+- **Waiting state is forgotten** when the user signs out of a waiting phone.
+- **`android_id` ^0.5.2** rather than 0.6.0, so the apps' minimum Flutter version does not rise (0.6.0 needs 3.47).
+- **Push:** a blocked user gets a visible `device_blocked_user` push (from A2). The app does not act on the push itself; it asks the server when it next comes to the foreground, or at once if the live connection is open.
+
+### Not verified in C
+- Nothing was run on a device or emulator (none available). Screens, the Android ID plugin, secure storage and the real realtime close behaviour are verified by Flutter tests and analysis only.
+- Whether Google Play's rules and India's DPDP Act need a disclosure for the Android ID is unverified (the privacy line is plain wording, not legal advice).
+- Open questions for a real agency (from the wording review): who should a driver call, should the screen show a call button with a number the agency sets, and can an office user ever approve their own phone.
+
 ### Done in D (tests and security review)
 - Enforcement matrix and hardening tests (see the review). Two real findings fixed: a chatty realtime client escaped the periodic device re-check, and one login could flood the approval queue (now capped at 5 waiting phones, `DEVICE_QUEUE_FULL`).
 - Security review written up at `docs/reviews/2026-11-05-device-control-security-review.md`. It is a self-review with adversarial tests, not an independent review or a penetration test. Main residual risk: device control stops a phone, not a credential (the web dashboard and header-less staff sessions are not controlled).

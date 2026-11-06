@@ -215,6 +215,74 @@ void main() {
       },
     );
 
+    test(
+      'the auth frame names the phone when the app has an install ID',
+      () async {
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => 'jwt-123',
+          getInstallId: () => 'install-id-0123456789',
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+
+        client.subscribeToNotifications();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          sockets.single.sent.first,
+          jsonEncode({
+            'type': 'auth',
+            'token': 'jwt-123',
+            'device_id': 'install-id-0123456789',
+          }),
+        );
+        await client.disconnect();
+      },
+    );
+
+    test(
+      'subscribeToDeviceChanges passes only device.status_changed',
+      () async {
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => 'jwt-123',
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+        final events = <Map<String, dynamic>>[];
+        client.subscribeToDeviceChanges().listen(events.add);
+        await Future<void>.delayed(Duration.zero);
+        sockets.single.ready();
+        await Future<void>.delayed(Duration.zero);
+
+        sockets.single.emit({'type': 'notification.new'});
+        sockets.single.emit({
+          'type': 'device.status_changed',
+          'status': 'blocked',
+        });
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events, [
+          {'type': 'device.status_changed', 'status': 'blocked'},
+        ]);
+        expect(sockets.single.sentAfterAuth, [
+          jsonEncode({
+            'subscribe': ['notifications'],
+          }),
+        ]);
+        await client.disconnect();
+      },
+    );
+
     test('updateAccessToken re-authenticates in-band once ready', () async {
       var token = 'jwt-1';
       final sockets = <_FakeSocket>[];
