@@ -90,8 +90,8 @@ class _AddAddressSheetState extends ConsumerState<AddAddressSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -157,19 +157,14 @@ class _AddAddressSheetState extends ConsumerState<AddAddressSheet> {
               if (!_busy && v != null) setState(() => _type = v);
             },
           ),
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          LpgButton(
-            label: 'Save address',
-            icon: LpgIcons.check,
-            isLoading: _busy,
-            expand: true,
-            onPressed: _busy ? null : _submit,
-          ),
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Save address',
+        primaryIcon: LpgIcons.check,
+        isLoading: _busy,
+        onPrimary: _busy ? null : _submit,
+        error: _error,
       ),
     );
   }

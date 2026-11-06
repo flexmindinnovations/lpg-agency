@@ -82,8 +82,8 @@ class _CountStockSheetState extends ConsumerState<CountStockSheet> {
     final colors = context.lpgColors;
     final catalog = ref.watch(cylinderCatalogProvider);
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -133,19 +133,14 @@ class _CountStockSheetState extends ConsumerState<CountStockSheet> {
             ],
             enabled: !_busy,
           ),
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          LpgButton(
-            label: 'Record count',
-            icon: LpgIcons.check,
-            isLoading: _busy,
-            expand: true,
-            onPressed: _busy ? null : _submit,
-          ),
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Record count',
+        primaryIcon: LpgIcons.check,
+        isLoading: _busy,
+        onPrimary: _busy ? null : _submit,
+        error: _error,
       ),
     );
   }

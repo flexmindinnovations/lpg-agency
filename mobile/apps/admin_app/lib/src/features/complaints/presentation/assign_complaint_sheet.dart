@@ -52,72 +52,69 @@ class _AssignComplaintSheetState extends ConsumerState<AssignComplaintSheet> {
     final text = context.lpgText;
     final colors = context.lpgColors;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Who should take this complaint?',
-          style: text.bodyMedium?.copyWith(color: colors.textSecondary),
-        ),
-        const SizedBox(height: LpgSpacing.md),
-        staffAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(LpgSpacing.lg),
-            child: Center(child: LpgLoadingIndicator()),
+    return LpgSheetLayout(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Who should take this complaint?',
+            style: text.bodyMedium?.copyWith(color: colors.textSecondary),
           ),
-          error: (err, _) => LpgErrorState(
-            message: errorMessage(err),
-            onRetry: () => ref.invalidate(complaintAssigneesProvider),
-          ),
-          data: (staff) {
-            if (staff.isEmpty) {
-              return const LpgBanner(
-                tone: LpgTone.warning,
-                message: 'No staff can take complaints yet.',
-              );
-            }
-            return ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.4,
-              ),
-              child: SingleChildScrollView(
-                child: LpgGroupedList(
-                  children: [
-                    for (final s in staff)
-                      LpgListTile(
-                        leading: LpgAvatar(name: s.name),
-                        title: s.name,
-                        subtitle: LpgFormat.sentence(s.role),
-                        trailing: _selected == s.userId
-                            ? Icon(
-                                LpgIcons.success,
-                                color: colors.actionPrimary,
-                              )
-                            : null,
-                        onTap: _busy
-                            ? null
-                            : () => setState(() => _selected = s.userId),
-                      ),
-                  ],
+          const SizedBox(height: LpgSpacing.md),
+          staffAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(LpgSpacing.lg),
+              child: Center(child: LpgLoadingIndicator()),
+            ),
+            error: (err, _) => LpgErrorState(
+              message: errorMessage(err),
+              onRetry: () => ref.invalidate(complaintAssigneesProvider),
+            ),
+            data: (staff) {
+              if (staff.isEmpty) {
+                return const LpgBanner(
+                  tone: LpgTone.warning,
+                  message: 'No staff can take complaints yet.',
+                );
+              }
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.4,
                 ),
-              ),
-            );
-          },
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: LpgSpacing.sm),
-          LpgBanner(tone: LpgTone.danger, message: _error!),
+                child: SingleChildScrollView(
+                  child: LpgGroupedList(
+                    children: [
+                      for (final s in staff)
+                        LpgListTile(
+                          leading: LpgAvatar(name: s.name),
+                          title: s.name,
+                          subtitle: LpgFormat.sentence(s.role),
+                          trailing: _selected == s.userId
+                              ? Icon(
+                                  LpgIcons.success,
+                                  color: colors.actionPrimary,
+                                )
+                              : null,
+                          onTap: _busy
+                              ? null
+                              : () => setState(() => _selected = s.userId),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ],
-        const SizedBox(height: LpgSpacing.lg),
-        LpgButton(
-          label: 'Assign',
-          icon: LpgIcons.check,
-          isLoading: _busy,
-          expand: true,
-          onPressed: _busy || _selected == null ? null : _submit,
-        ),
-      ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Assign',
+        primaryIcon: LpgIcons.check,
+        isLoading: _busy,
+        onPrimary: _selected == null ? null : _submit,
+        error: _error,
+      ),
     );
   }
 }

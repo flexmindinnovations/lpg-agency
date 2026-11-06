@@ -88,8 +88,8 @@ class _ReceiveStockSheetState extends ConsumerState<ReceiveStockSheet> {
     final colors = context.lpgColors;
     final catalog = ref.watch(cylinderCatalogProvider);
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -159,19 +159,14 @@ class _ReceiveStockSheetState extends ConsumerState<ReceiveStockSheet> {
             textCapitalization: TextCapitalization.characters,
             enabled: !_busy,
           ),
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          LpgButton(
-            label: 'Add to stock',
-            icon: LpgIcons.download,
-            isLoading: _busy,
-            expand: true,
-            onPressed: _busy ? null : _submit,
-          ),
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Add to stock',
+        primaryIcon: LpgIcons.download,
+        isLoading: _busy,
+        onPrimary: _busy ? null : _submit,
+        error: _error,
       ),
     );
   }
