@@ -55,3 +55,9 @@ These three screens are converted first in epics E3 (async states) and E9, E7, E
 
 ## Not decided here
 Final accent per app (proposal above), custom domain icons and illustrations (E5), component specifications (E4), motion kit details (E4.4).
+
+## Illustrated stat cards (pilot, story 5.5)
+A stat card may carry one flat illustration behind its figure, drawn in the card's own tone. It stays inside the no-transparency rule: every layer is an opaque tint (`LpgColors.tint`), the largest shapes the faintest. Rules that keep it safe:
+- **Text colour.** Secondary text only just clears 4.5:1 on a plain card, so a tile with a picture uses the primary text colour for its label and caption. The strongest layer must keep primary text at 4.5:1 for every tone in every theme (a test holds this).
+- **Motion.** The picture settles in once and breathes three times, then rests, so a screen of them is lively when it opens and still afterwards. Reduce-motion draws the finished picture and never moves it. High contrast draws nothing.
+- **Decorative only.** Excluded from semantics and touches; the tile reads and behaves the same with or without it, and its content does not move.

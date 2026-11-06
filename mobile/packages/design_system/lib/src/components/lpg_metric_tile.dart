@@ -6,6 +6,7 @@ import '../theme.dart';
 import '../tone.dart';
 import 'lpg_card.dart';
 import 'lpg_icon_box.dart';
+import 'lpg_illustration.dart';
 
 /// A big, tappable number for a dashboard: tinted icon, the figure in heavy
 /// tabular numerals so columns of tiles line up, a label, and an optional
@@ -25,11 +26,21 @@ class LpgMetricTile extends StatelessWidget {
     this.tone = LpgTone.primary,
     this.onTap,
     this.attention = false,
+    this.illustration,
   });
 
   final String label;
   final String value;
   final IconData icon;
+
+  /// A picture of what the number is about, drawn large and faint in the
+  /// tile's tone behind the figure (bottom right). Purely decorative: it
+  /// never changes what the tile says or where its content sits.
+  ///
+  /// The label and caption then use the primary text colour: the secondary
+  /// one only just clears 4.5:1 on a plain card, so it cannot sit over any
+  /// tint.
+  final LpgIllustration? illustration;
 
   /// A smaller line under the label ("3 invoices").
   final String? caption;
@@ -48,6 +59,9 @@ class LpgMetricTile extends StatelessWidget {
     final colors = context.lpgColors;
     final tappable = onTap != null;
     final railColor = tone.foreground(colors);
+    final quiet = illustration == null
+        ? colors.textSecondary
+        : colors.textPrimary;
     final figure = (text.headlineMedium ?? const TextStyle()).copyWith(
       fontWeight: FontWeight.w800,
       fontFeatures: const [FontFeature.tabularFigures()],
@@ -62,6 +76,15 @@ class LpgMetricTile extends StatelessWidget {
         padding: EdgeInsets.zero,
         child: Stack(
           children: [
+            if (illustration != null)
+              Positioned(
+                right: -LpgSpacing.smd,
+                bottom: -LpgSpacing.smd,
+                child: LpgIllustrationArt(
+                  illustration: illustration!,
+                  tone: tone,
+                ),
+              ),
             if (attention)
               Positioned.fill(
                 right: null,
@@ -101,9 +124,7 @@ class LpgMetricTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     label,
-                    style: text.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                    style: text.bodySmall?.copyWith(color: quiet),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -113,7 +134,9 @@ class LpgMetricTile extends StatelessWidget {
                       child: Text(
                         caption!,
                         style: text.labelMedium?.copyWith(
-                          color: attention ? railColor : colors.textSecondary,
+                          color: attention && illustration == null
+                              ? railColor
+                              : quiet,
                           fontWeight: FontWeight.w700,
                         ),
                         maxLines: 1,
