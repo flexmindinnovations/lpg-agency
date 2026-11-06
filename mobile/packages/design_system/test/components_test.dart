@@ -1086,6 +1086,58 @@ void main() {
     });
   });
 
+  group('LpgActionRow', () {
+    testWidgets('right aligns the buttons with the standard gap', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          SizedBox(
+            // The test font is wide, so give the buttons room to share a line.
+            width: 700,
+            child: LpgActionRow(
+              children: [
+                LpgButton(label: 'Dispute', onPressed: () {}),
+                LpgButton(label: 'Accept & Verify', onPressed: () {}),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final first = tester.getRect(find.byType(LpgButton).first);
+      final last = tester.getRect(find.byType(LpgButton).last);
+      final rowRight = tester.getTopRight(find.byType(LpgActionRow)).dx;
+      expect(last.right, rowRight, reason: 'the main action is at the edge');
+      expect(last.left - first.right, LpgActionRow.gap);
+      expect(first.top, last.top);
+    });
+
+    testWidgets('wraps onto a second line, still right aligned, when full', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          SizedBox(
+            width: 200,
+            child: LpgActionRow(
+              children: [
+                LpgButton(label: 'Dispute the amount', onPressed: () {}),
+                LpgButton(label: 'Accept & Verify', onPressed: () {}),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final first = tester.getRect(find.byType(LpgButton).first);
+      final last = tester.getRect(find.byType(LpgButton).last);
+      expect(last.top, greaterThan(first.bottom));
+      expect(last.right, tester.getTopRight(find.byType(LpgActionRow)).dx);
+      expect(first.right, last.right);
+    });
+  });
+
   group('LpgSheetLayout and LpgSheetActions', () {
     testWidgets('the footer stays on screen while a long body scrolls', (
       tester,

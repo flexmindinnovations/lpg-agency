@@ -47,6 +47,40 @@ final List<GalleryEntry> galleryEntries = [
       ],
     );
   }),
+  GalleryEntry('action_row', (context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LpgActionRow(
+          children: [
+            LpgButton(
+              label: 'Dispute',
+              variant: LpgButtonVariant.destructive,
+              onPressed: _noop,
+            ),
+            LpgButton(label: 'Accept & Verify', onPressed: _noop),
+          ],
+        ),
+        _gap,
+        LpgActionRow(
+          children: [
+            LpgButton(
+              label: 'Cancel',
+              variant: LpgButtonVariant.text,
+              onPressed: _noop,
+            ),
+            LpgButton(
+              label: 'Discard',
+              variant: LpgButtonVariant.secondary,
+              icon: LpgIcons.delete,
+              onPressed: _noop,
+            ),
+            LpgButton(label: 'Retry', icon: LpgIcons.sync, onPressed: _noop),
+          ],
+        ),
+      ],
+    );
+  }),
   GalleryEntry('fields', (context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

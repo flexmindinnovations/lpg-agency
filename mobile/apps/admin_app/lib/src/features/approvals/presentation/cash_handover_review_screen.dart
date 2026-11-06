@@ -241,28 +241,23 @@ class _CashHandoverReviewScreenState
                 maxLines: 3,
               ),
               const SizedBox(height: LpgSpacing.xxl),
-              Row(
+              LpgActionRow(
                 children: [
-                  Expanded(
-                    child: LpgButton(
-                      label: 'Dispute',
-                      variant: LpgButtonVariant.destructive,
-                      isLoading: _loading && _pendingOutcome == 'disputed',
-                      onPressed: _loading
-                          ? null
-                          : () => _submitReview('disputed'),
-                    ),
+                  LpgButton(
+                    label: 'Dispute',
+                    variant: LpgButtonVariant.destructive,
+                    isLoading: _loading && _pendingOutcome == 'disputed',
+                    onPressed: _loading
+                        ? null
+                        : () => _submitReview('disputed'),
                   ),
-                  const SizedBox(width: LpgSpacing.md),
-                  Expanded(
-                    child: LpgButton(
-                      label: 'Accept & Verify',
-                      variant: LpgButtonVariant.primary,
-                      isLoading: _loading && _pendingOutcome == 'accepted',
-                      onPressed: _loading
-                          ? null
-                          : () => _submitReview('accepted'),
-                    ),
+                  LpgButton(
+                    label: 'Accept & Verify',
+                    variant: LpgButtonVariant.primary,
+                    isLoading: _loading && _pendingOutcome == 'accepted',
+                    onPressed: _loading
+                        ? null
+                        : () => _submitReview('accepted'),
                   ),
                 ],
               ),
