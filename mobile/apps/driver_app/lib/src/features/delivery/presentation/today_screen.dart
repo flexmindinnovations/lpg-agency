@@ -260,21 +260,15 @@ class _PendingLoadCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = route.loadedLines.fold<int>(0, (s, l) => s + l.quantity);
 
-    return LpgCard(
-      variant: LpgCardVariant.tonal,
+    return LpgActionCard(
       tone: LpgTone.info,
-      padding: EdgeInsets.zero,
+      icon: LpgIcons.inventory,
+      title: 'Check your van load',
+      message: total == 0
+          ? "Review today's route manifest"
+          : "$total cylinder${total == 1 ? '' : 's'} for today's route",
       onTap: () =>
           context.pushNamed('vanLoad', pathParameters: {'routeId': route.id}),
-      child: LpgListTile(
-        leadingIcon: LpgIcons.inventory,
-        leadingTone: LpgTone.info,
-        title: 'Check your van load',
-        subtitle: total == 0
-            ? "Review today's route manifest"
-            : "$total cylinder${total == 1 ? '' : 's'} for today's route",
-        showChevron: true,
-      ),
     );
   }
 }
@@ -289,22 +283,16 @@ class _PendingCashCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LpgCard(
-      variant: LpgCardVariant.tonal,
-      tone: LpgTone.warning,
-      padding: EdgeInsets.zero,
+    return LpgActionCard(
+      icon: LpgIcons.handover,
+      title: 'Cash reconciliation pending',
+      message:
+          'Declare ${LpgFormat.currency(view.expectedAmount)} from your '
+          '${LpgFormat.date(view.routeDate)} route',
+      actionLabel: 'Declare',
       onTap: () => context.pushNamed(
         'cashHandover',
         pathParameters: {'routeId': view.routeId},
-      ),
-      child: LpgListTile(
-        leadingIcon: LpgIcons.handover,
-        leadingTone: LpgTone.warning,
-        title: 'Cash reconciliation pending',
-        subtitle:
-            'Declare ${LpgFormat.currency(view.expectedAmount)} from your '
-            '${LpgFormat.date(view.routeDate)} route',
-        showChevron: true,
       ),
     );
   }

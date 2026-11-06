@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../icons.dart';
 import '../layout.dart';
 import '../theme.dart';
 
@@ -41,7 +42,12 @@ class LpgSectionHeader extends StatelessWidget {
               children: [
                 Semantics(
                   header: true,
-                  child: Text(title, style: text.titleMedium),
+                  child: Text(
+                    title,
+                    style: text.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: LpgSpacing.xs / 2),
@@ -62,7 +68,14 @@ class LpgSectionHeader extends StatelessWidget {
                 minimumSize: const Size(0, LpgSizes.touchTarget),
                 padding: const EdgeInsets.symmetric(horizontal: LpgSpacing.sm),
               ),
-              child: Text(actionLabel!),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(actionLabel!),
+                  const SizedBox(width: LpgSpacing.xs),
+                  const Icon(LpgIcons.chevronRight, size: LpgSizes.iconSm),
+                ],
+              ),
             ),
         ],
       ),
