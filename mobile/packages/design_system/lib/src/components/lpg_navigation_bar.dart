@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../glass.dart';
 import '../haptics.dart';
 import '../layout.dart';
 import '../motion.dart';
@@ -37,8 +38,8 @@ class LpgNavDestination {
 /// reduce-motion setting the change is instant.
 ///
 /// The active tab is marked by shape, a filled icon and a visible label, not
-/// by colour alone. On the card surface, lifted off content by a hairline (a
-/// 2 px border in high contrast).
+/// by colour alone. On a see-through card surface, lifted off content by a
+/// hairline (a 2 px border and fully opaque in high contrast).
 class LpgNavigationBar extends StatefulWidget {
   const LpgNavigationBar({
     super.key,
@@ -110,7 +111,8 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.card,
+        // See-through, like a card: the page shows softly through the bar.
+        color: colors.cardGlass,
         border: Border(
           top: BorderSide(
             color: colors.isHighContrast

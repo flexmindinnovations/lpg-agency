@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
+import 'glass.dart';
 import 'layout.dart';
 import 'theme.dart';
 
 /// The solid layers every surface belongs to, lowest to highest.
 ///
-/// Depth is made of **tone**, **soft shadow** and a **1 px hairline**, never of
-/// transparency or blur. Light themes step mostly by shadow (white cards on a
-/// faintly tinted canvas), dark themes by tone (each level a lighter solid),
-/// and high contrast by a 2 px border with no shadow.
+/// Depth is made of **tone**, **soft shadow** and a **1 px hairline**. Light
+/// themes step mostly by shadow (white cards on a faintly tinted canvas), dark
+/// themes by tone (each level a lighter fill), and high contrast by a 2 px
+/// border with no shadow.
+///
+/// Cards are slightly see-through, so the paper page shows softly through them
+/// (see `LpgGlassLook`); sheets are frosted glass (see `LpgGlass`) when they
+/// float over content and solid otherwise. Every other level, and every level
+/// in high contrast, is a solid fill.
 enum LpgSurfaceLevel {
   /// The page behind everything.
   canvas,
@@ -52,8 +58,9 @@ extension LpgSurfaceColors on LpgColors {
   }
 }
 
-/// A solid container drawn from the surface system: [level]'s fill, hairline
-/// and shadow, with the radius that level uses (cards 18 px, sheets 24 px).
+/// A container drawn from the surface system: [level]'s fill, hairline and
+/// shadow, with the radius that level uses (cards 18 px, sheets 24 px). A card
+/// is see-through (the page shows softly through it); other levels are solid.
 ///
 /// Use this instead of hand-building a `DecoratedBox` with a colour, so every
 /// custom surface follows the theme in all three variants.
@@ -87,14 +94,24 @@ class LpgSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     final shape = radius ?? radiusFor(level);
-    return DecoratedBox(
+    final seeThrough = level == LpgSurfaceLevel.card && !colors.isHighContrast;
+    final box = DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.surfaceFor(level),
+        color: seeThrough ? colors.cardGlass : colors.surfaceFor(level),
         borderRadius: shape,
         border: Border.fromBorderSide(colors.hairlineFor(level)),
-        boxShadow: shadow ? colors.shadowFor(level) : null,
+        // A shadow behind a see-through fill would show through it, so a
+        // see-through surface draws its shadow outside its own shape.
+        boxShadow: shadow && !seeThrough ? colors.shadowFor(level) : null,
       ),
       child: padding == null ? child : Padding(padding: padding!, child: child),
     );
+    return seeThrough && shadow
+        ? LpgGlassShadow(
+            shadows: colors.shadowFor(level),
+            radius: shape,
+            child: box,
+          )
+        : box;
   }
 }

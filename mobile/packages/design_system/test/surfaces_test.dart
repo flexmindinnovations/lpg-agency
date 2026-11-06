@@ -168,12 +168,18 @@ void main() {
       final colors = LpgTheme.colorsFor(LpgThemeVariant.light);
       final d = decoration(tester);
 
-      expect(d.color, colors.card);
+      // A card is see-through, so its shadow is drawn outside its shape by
+      // LpgGlassShadow rather than under the whole box.
+      expect(d.color, colors.cardGlass);
       expect(
         d.border,
         Border.fromBorderSide(colors.hairlineFor(LpgSurfaceLevel.card)),
       );
-      expect(d.boxShadow, colors.cardShadow);
+      expect(d.boxShadow, isNull);
+      expect(
+        tester.widget<LpgGlassShadow>(find.byType(LpgGlassShadow)).shadows,
+        colors.cardShadow,
+      );
       expect(d.borderRadius, LpgRadius.cardRadius);
     });
 
@@ -220,9 +226,12 @@ void main() {
     });
   });
 
-  group('no glass', () {
-    // The owner's decision: solid surfaces only. This scans the source of the
-    // design system and the three apps so it cannot creep back in.
+  group('where glass is allowed', () {
+    // Glass is a see-through fill and blur, and both are easy to misuse: a
+    // see-through fill over text is unreadable, and a backdrop filter in every
+    // list row costs frames. So both live in one file (glass.dart), sized by a
+    // contrast test (glass_test.dart). This scans the source of the design
+    // system and the three apps so it cannot spread.
     const allowedTranslucency = {
       // Shadows are translucent by nature; `tint` blends to an opaque colour.
       'theme.dart',
@@ -233,6 +242,8 @@ void main() {
       // the page only, never on a surface, and sized by a contrast test
       // (backdrop_test.dart).
       'lpg_backdrop.dart',
+      // The one place glass fills are made (glass_test.dart sizes them).
+      'glass.dart',
     };
 
     Iterable<File> sources() sync* {
@@ -249,12 +260,13 @@ void main() {
       }
     }
 
-    test('no blur anywhere', () {
+    test('backdrop blur lives only in glass.dart', () {
       final offenders = [
         for (final f in sources())
-          if (RegExp(
-            r'BackdropFilter|ImageFilter\.blur|ImageFiltered',
-          ).hasMatch(f.readAsStringSync()))
+          if (f.uri.pathSegments.last != 'glass.dart' &&
+              RegExp(
+                r'BackdropFilter|ImageFilter\.blur|ImageFiltered',
+              ).hasMatch(f.readAsStringSync()))
             f.path,
       ];
 
@@ -262,9 +274,8 @@ void main() {
     });
 
     test('the only soft edge is the page backdrop', () {
-      // The owner allowed one exception to "no blur": soft colour washes on
-      // the page itself, behind solid cards. A mask blur on a drawn shape,
-      // never a filter over other content.
+      // Soft colour washes on the page itself: a mask blur on a drawn shape,
+      // never a filter over other content (that is glass.dart's job).
       final offenders = [
         for (final f in sources())
           if (f.uri.pathSegments.last != 'lpg_backdrop.dart' &&

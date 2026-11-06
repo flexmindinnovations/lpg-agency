@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../glass.dart';
 import '../layout.dart';
 import '../motion.dart';
 import '../theme.dart';
@@ -54,9 +55,11 @@ class LpgCard extends StatelessWidget {
     final colors = context.lpgColors;
     final hc = colors.isHighContrast;
 
+    // Elevated and outlined cards are slightly see-through, so the page shows
+    // softly through them; a tonal card is an opaque tint of its tone.
     final fill = variant == LpgCardVariant.tonal
         ? tone.container(colors)
-        : colors.card;
+        : colors.cardGlass;
     final BorderSide side;
     if (hc) {
       side = BorderSide(color: colors.borderStrong, width: 2);
@@ -72,13 +75,11 @@ class LpgCard extends StatelessWidget {
 
     final content = Padding(padding: padding, child: child);
 
-    Widget card = DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: LpgRadius.cardRadius,
-        boxShadow: variant == LpgCardVariant.elevated && !hc
-            ? colors.cardShadow
-            : null,
-      ),
+    Widget card = LpgGlassShadow(
+      shadows: variant == LpgCardVariant.elevated && !hc
+          ? colors.cardShadow
+          : const [],
+      radius: LpgRadius.cardRadius,
       child: Material(
         color: fill,
         shape: shape,
