@@ -671,9 +671,9 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(LpgNavigationBar), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
-    await tester.tap(find.text('Alerts'));
+    await tester.tap(find.byTooltip('Alerts, 2 new'));
     expect(selected, 1);
   });
 
@@ -726,7 +726,7 @@ void main() {
 
     testWidgets('uses a bottom bar on a phone', (tester) async {
       await pumpAt(tester, const Size(390, 844));
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(LpgNavigationBar), findsOneWidget);
       expect(find.byType(NavigationRail), findsNothing);
       expect(tester.getSize(find.byKey(const Key('body'))).width, 390);
     });
@@ -736,7 +736,7 @@ void main() {
     ) async {
       await pumpAt(tester, const Size(820, 1180));
       expect(find.byType(NavigationRail), findsOneWidget);
-      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byType(LpgNavigationBar), findsNothing);
       expect(
         tester.getSize(find.byKey(const Key('body'))).width,
         lessThanOrEqualTo(LpgBreakpoints.contentMaxWidth),

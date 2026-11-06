@@ -54,11 +54,11 @@ void main() {
       await tester.pumpWidget(_app());
       await tester.pumpAndSettle();
 
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(LpgNavigationBar), findsOneWidget);
       expect(find.text('TODAY BODY'), findsOneWidget);
       for (final label in ['Today', 'Deliveries', 'Alerts', 'Profile']) {
         expect(
-          find.widgetWithText(NavigationDestination, label),
+          find.byTooltip(label),
           findsOneWidget,
         );
       }
@@ -98,7 +98,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NavigationRail), findsOneWidget);
-      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byType(LpgNavigationBar), findsNothing);
       expect(find.text('TODAY BODY'), findsOneWidget);
       expect(find.text('3'), findsOneWidget);
     });

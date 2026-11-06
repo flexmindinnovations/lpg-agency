@@ -126,7 +126,7 @@ void main() {
 
     expect(find.text('LPG Agency'), findsOneWidget);
     expect(find.byType(LpgSplash), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(LpgNavigationBar), findsNothing);
   });
 
   testWidgets('an authenticated session lands on the Today tab in the shell', (
@@ -139,7 +139,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(LpgNavigationBar), findsOneWidget);
     expect(find.widgetWithText(AppBar, 'Today'), findsOneWidget);
     expect(find.text('No route assigned yet.'), findsOneWidget);
   });
@@ -153,7 +153,7 @@ void main() {
     await tester.pumpAndSettle();
 
     for (final label in ['Today', 'Deliveries', 'Alerts', 'Profile']) {
-      expect(find.widgetWithText(NavigationDestination, label), findsOneWidget);
+      expect(find.byTooltip(label), findsOneWidget);
     }
   });
 
@@ -171,7 +171,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Driver Sign In'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(LpgNavigationBar), findsNothing);
   });
 
   group('device control (ADR-071)', () {
@@ -211,7 +211,7 @@ void main() {
 
         expect(find.text('Waiting for approval'), findsOneWidget);
         expect(find.text('Van 2 phone'), findsOneWidget);
-        expect(find.byType(NavigationBar), findsNothing);
+        expect(find.byType(LpgNavigationBar), findsNothing);
       },
     );
 
@@ -228,7 +228,7 @@ void main() {
 
         expect(find.text('This phone is blocked'), findsOneWidget);
         expect(find.textContaining('Do not delete the app'), findsOneWidget);
-        expect(find.byType(NavigationBar), findsNothing);
+        expect(find.byType(LpgNavigationBar), findsNothing);
       },
     );
 
@@ -259,7 +259,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(LpgNavigationBar), findsOneWidget);
     });
   });
 }
