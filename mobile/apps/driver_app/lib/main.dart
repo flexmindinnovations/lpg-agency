@@ -53,6 +53,25 @@ String _wsBaseUrl(String apiBaseUrl) => apiBaseUrl
 /// The on-device database and the auth session are both established here,
 /// before the first frame, so the rest of the app can assume both are
 /// always ready (ADR-008 offline-first; Phase 6 authentication).
+/// How proof-of-delivery files are encrypted. On Android and iOS the phone's
+/// own AES (through `cryptography_flutter`) is tried first, off the UI thread;
+/// if it is unavailable or fails, pure-Dart AES runs on a background isolate,
+/// so the app never freezes on a large photo. Elsewhere it is the isolate
+/// cipher. Build with `--dart-define=NATIVE_MEDIA_CIPHER=false` to force the
+/// isolate cipher (a switch for comparing speed on a real phone).
+const _nativeMediaCipher = bool.fromEnvironment(
+  'NATIVE_MEDIA_CIPHER',
+  defaultValue: true,
+);
+
+MediaCipher get _mediaCipher =>
+    _nativeMediaCipher && (Platform.isAndroid || Platform.isIOS)
+    ? FallbackMediaCipher(
+        const InProcessMediaCipher(),
+        const IsolateMediaCipher(),
+      )
+    : const IsolateMediaCipher();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -102,10 +121,16 @@ void main() async {
   );
   authController = AuthController(authRepository);
 
-  final mediaStore = FileMediaStore(
-    Directory(
-      p.join((await getApplicationSupportDirectory()).path, 'pod_media'),
+  // Proof-of-delivery photos and signatures waiting to be sent are encrypted
+  // on disk with a key held in secure storage, like the database itself.
+  final MediaStore mediaStore = EncryptedMediaStore(
+    FileMediaStore(
+      Directory(
+        p.join((await getApplicationSupportDirectory()).path, 'pod_media'),
+      ),
     ),
+    loadKey: () => loadOrCreateSecureKeyBytes('driver_app.pod_media_key'),
+    cipher: _mediaCipher,
   );
 
   syncCoordinator = SyncCoordinator(

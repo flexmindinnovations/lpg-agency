@@ -74,6 +74,7 @@ class SyncCoordinator {
   bool _deviceRefused = false;
 
   bool _isSyncing = false;
+  DateTime? _lastTidyAt;
   Timer? _syncTimer;
   StreamSubscription<bool>? _connSub;
 
@@ -82,6 +83,8 @@ class SyncCoordinator {
   void start() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(_pollInterval, (_) => syncNow());
+    // Best-effort housekeeping; never blocks start-up.
+    unawaited(_tidyUp());
 
     _connSub?.cancel();
     _connSub = _connectivity?.onConnectivityChanged.listen((online) {
@@ -152,6 +155,100 @@ class SyncCoordinator {
     } finally {
       _isSyncing = false;
     }
+    if (_tidyDue) unawaited(_tidyUp());
+  }
+
+  /// How often housekeeping may run while the app stays open.
+  static const _tidyEvery = Duration(hours: 6);
+
+  bool get _tidyDue =>
+      _lastTidyAt == null ||
+      DateTime.now().difference(_lastTidyAt!) >= _tidyEvery;
+
+  /// Housekeeping: forget old finished operations and files nothing refers to.
+  /// Best-effort: a failure here must never get in the way of sending.
+  Future<void> _tidyUp() async {
+    _lastTidyAt = DateTime.now();
+    try {
+      await pruneSyncedOperations();
+      await pruneFailedOperations();
+      await pruneConflictedOperations();
+      await purgeOrphanedMedia();
+    } catch (_) {
+      // Tried again next time.
+    }
+  }
+
+  /// Deletes operations that **failed for good** (retries used up, or a
+  /// permanent refusal) more than [olderThan] ago, together with their photo
+  /// and signature. Returns how many were removed.
+  ///
+  /// Unlike [pruneSyncedOperations] this throws away work that never reached
+  /// the server, so the window is long (30 days by default): it is only for a
+  /// failure that nobody retried or discarded in a month. A driver who looks at
+  /// the sync screen can still retry or discard any of them before then.
+  Future<int> pruneFailedOperations({
+    Duration olderThan = const Duration(days: 30),
+  }) => _pruneStale('failed', olderThan);
+
+  /// Deletes operations the server **rejected as stale** (a `409`: someone
+  /// else, usually the office, had already moved that order on) more than
+  /// [olderThan] ago, together with their photo and signature. Returns how many
+  /// were removed.
+  ///
+  /// The server is authoritative for a conflict, so what is thrown away is a
+  /// change it already decided against; the driver only ever had to
+  /// acknowledge it. The window is still 30 days by default, so a driver who
+  /// has not looked at the sync screen in a month is the only one who loses
+  /// the note. Waiting, retrying and failed rows are untouched.
+  Future<int> pruneConflictedOperations({
+    Duration olderThan = const Duration(days: 30),
+  }) => _pruneStale('conflict', olderThan);
+
+  /// Deletes operations in [status] whose last attempt (or creation, if none
+  /// was recorded) is older than [olderThan], with their media.
+  Future<int> _pruneStale(String status, Duration olderThan) async {
+    final cutoff = DateTime.now().subtract(olderThan);
+    final stale =
+        await (_db.select(_db.syncOperations)..where(
+              (t) =>
+                  t.status.equals(status) &
+                  (t.lastAttemptAt.isSmallerThanValue(cutoff) |
+                      (t.lastAttemptAt.isNull() &
+                          t.createdAt.isSmallerThanValue(cutoff))),
+            ))
+            .get();
+    for (final op in stale) {
+      await _deleteMediaOf(op); // nothing else will ever send them
+      await (_db.delete(
+        _db.syncOperations,
+      )..where((t) => t.id.equals(op.id))).go();
+    }
+    return stale.length;
+  }
+
+  /// Deletes operations that were sent successfully more than [olderThan] ago.
+  ///
+  /// A sent operation is never retried (its idempotency key lives on the
+  /// server) and nothing in the apps reads it, but its payload still holds
+  /// customer details, so it should not sit on the phone for ever. A week is
+  /// kept as a short window for finding out what a driver sent. Operations
+  /// that are waiting, retrying, failed or in conflict are **never** touched:
+  /// they are unsent work. Returns how many rows were removed.
+  Future<int> pruneSyncedOperations({
+    Duration olderThan = const Duration(days: 7),
+  }) {
+    final cutoff = DateTime.now().subtract(olderThan);
+    return (_db.delete(_db.syncOperations)..where(
+          (t) =>
+              t.status.equals('synced') &
+              // When it was sent; the creation time for the rare row with no
+              // attempt recorded.
+              (t.lastAttemptAt.isSmallerThanValue(cutoff) |
+                  (t.lastAttemptAt.isNull() &
+                      t.createdAt.isSmallerThanValue(cutoff))),
+        ))
+        .go();
   }
 
   /// Operations queued before owners existed belong to whoever signs in first
@@ -226,7 +323,60 @@ class SyncCoordinator {
   /// local optimistic state is reconciled separately by invalidating the
   /// affected read providers.
   Future<void> discardOperation(String id) async {
+    final op = await (_db.select(
+      _db.syncOperations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    // Its photo and signature go with it: nothing else will ever send them.
+    if (op != null) await _deleteMediaOf(op);
     await (_db.delete(_db.syncOperations)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// The media keys a queued operation points at (`order_deliver` carries
+  /// `media: [{key, ...}]`); empty for every other operation.
+  static List<String> _mediaKeysOf(SyncOperation op) {
+    try {
+      final decoded = jsonDecode(op.payload);
+      if (decoded is! Map || decoded['media'] is! List) return const [];
+      return [
+        for (final m in decoded['media'] as List)
+          if (m is Map && m['key'] is String) m['key'] as String,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _deleteMediaOf(SyncOperation op) async {
+    final store = _mediaStore;
+    if (store == null) return;
+    for (final key in _mediaKeysOf(op)) {
+      await store.delete(key);
+    }
+  }
+
+  /// Deletes stored photos and signatures that no queued operation refers to
+  /// any more (an operation discarded before this existed, a crash between
+  /// writing a file and queueing its delivery). Files written within [grace]
+  /// are kept: a delivery writes its media a moment before it is queued.
+  /// Returns how many files were removed.
+  Future<int> purgeOrphanedMedia({
+    Duration grace = const Duration(hours: 1),
+  }) async {
+    final store = _mediaStore;
+    if (store == null) return 0;
+    final referenced = <String>{
+      for (final op in await _db.select(_db.syncOperations).get())
+        ..._mediaKeysOf(op),
+    };
+    final cutoff = DateTime.now().subtract(grace);
+    var removed = 0;
+    for (final file in await store.list()) {
+      if (referenced.contains(file.key)) continue;
+      if (file.modified.isAfter(cutoff)) continue;
+      await store.delete(file.key);
+      removed++;
+    }
+    return removed;
   }
 
   bool _isBackingOff(SyncOperation op, DateTime now) {

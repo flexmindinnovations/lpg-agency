@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_storage/local_storage.dart';
 import 'package:path/path.dart' as p;
@@ -144,6 +145,151 @@ void main() {
       expect(await scoped.read('route_active', 'current'), isNull);
       owner = 'driver-1';
       expect(await scoped.read('route_active', 'current'), isNull);
+    });
+  });
+
+  group('pruneStale', () {
+    final longAgo = DateTime.now().subtract(const Duration(days: 40));
+    final lastWeek = DateTime.now().subtract(const Duration(days: 7));
+
+    Future<void> insert(String owner, String id, DateTime updatedAt) => db
+        .database
+        .into(db.database.cachedResources)
+        .insert(
+          CachedResourcesCompanion.insert(
+            resourceType: 'route_active',
+            resourceId: id,
+            jsonPayload: '{"id": "$id"}',
+            ownerId: Value(owner),
+            updatedAt: Value(updatedAt),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final r
+          in await db.database.select(db.database.cachedResources).get())
+        r.resourceId,
+    };
+
+    test('deletes rows not written for two weeks, whoever owns them', () async {
+      await insert('driver-1', 'old-1', longAgo);
+      await insert('driver-2', 'old-2', longAgo);
+      await insert('driver-1', 'recent', lastWeek);
+
+      final removed = await cache.pruneStale();
+
+      expect(removed, 2);
+      expect(await ids(), {'recent'});
+    });
+
+    test(
+      'keeps a row that was just refreshed, even if it started old',
+      () async {
+        await insert('driver-1', 'r', longAgo);
+        await ResourceCache(
+          db.database,
+          owner: () => 'driver-1',
+        ).write('route_active', 'r', {'id': 'r', 'fresh': true});
+
+        expect(await cache.pruneStale(), 0);
+        expect(await ids(), {'r'});
+      },
+    );
+
+    test('the retention is adjustable', () async {
+      await insert('driver-1', 'a-week-old', lastWeek);
+
+      expect(await cache.pruneStale(), 0);
+      expect(await cache.pruneStale(olderThan: const Duration(days: 3)), 1);
+    });
+
+    test('an empty cache is fine', () async {
+      expect(await cache.pruneStale(), 0);
+    });
+  });
+
+  group('pruneOtherOwners (drivers who have signed out of this phone)', () {
+    final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3));
+    final lastHour = DateTime.now().subtract(const Duration(hours: 1));
+
+    Future<void> insert(String owner, String id, DateTime updatedAt) => db
+        .database
+        .into(db.database.cachedResources)
+        .insert(
+          CachedResourcesCompanion.insert(
+            resourceType: 'route_active',
+            resourceId: id,
+            jsonPayload: '{"id": "$id"}',
+            ownerId: Value(owner),
+            updatedAt: Value(updatedAt),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final r
+          in await db.database.select(db.database.cachedResources).get())
+        r.resourceId,
+    };
+
+    ResourceCache signedInAs(String? who) =>
+        ResourceCache(db.database, owner: () => who);
+
+    test('deletes other users\' rows older than two days', () async {
+      await insert('driver-1', 'mine-old', threeDaysAgo);
+      await insert('driver-2', 'theirs-old', threeDaysAgo);
+      await insert('driver-3', 'theirs-old-too', threeDaysAgo);
+
+      final removed = await signedInAs('driver-1').pruneOtherOwners();
+
+      expect(removed, 2);
+      expect(await ids(), {'mine-old'}, reason: 'own rows are never touched');
+    });
+
+    test(
+      'keeps another user\'s recent rows, so a shift change can come back',
+      () async {
+        await insert('driver-2', 'theirs-recent', lastHour);
+
+        expect(await signedInAs('driver-1').pruneOtherOwners(), 0);
+        expect(await ids(), {'theirs-recent'});
+      },
+    );
+
+    test(
+      'does nothing while nobody is signed in (a session being restored)',
+      () async {
+        await insert('driver-1', 'returning-driver', threeDaysAgo);
+
+        expect(await signedInAs(null).pruneOtherOwners(), 0);
+        expect(await ResourceCache(db.database).pruneOtherOwners(), 0);
+        expect(await ids(), {'returning-driver'});
+      },
+    );
+
+    test(
+      'rows written with no one signed in count as someone else\'s',
+      () async {
+        await insert('', 'anonymous', threeDaysAgo);
+
+        expect(await signedInAs('driver-1').pruneOtherOwners(), 1);
+      },
+    );
+
+    test('the grace period is adjustable', () async {
+      await insert('driver-2', 'theirs', threeDaysAgo);
+
+      expect(
+        await signedInAs(
+          'driver-1',
+        ).pruneOtherOwners(olderThan: const Duration(days: 5)),
+        0,
+      );
+      expect(
+        await signedInAs(
+          'driver-1',
+        ).pruneOtherOwners(olderThan: const Duration(days: 1)),
+        1,
+      );
     });
   });
 }
