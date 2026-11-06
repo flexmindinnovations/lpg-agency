@@ -12,7 +12,6 @@ import { ConfirmationService } from 'primeng/api';
 import { Drawer } from 'primeng/drawer';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
-import { SelectButton } from 'primeng/selectbutton';
 import { Tag } from 'primeng/tag';
 import {
   AdminTenantConfigurationService,
@@ -32,6 +31,7 @@ import {
   PageHeaderComponent,
   SectionCardComponent,
   StatusChipCell,
+  ToggleGroupComponent,
   formatTimestamp,
   type DataGridColumn,
 } from '@lpg/shared/ui';
@@ -77,7 +77,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
     Drawer,
     InputText,
     Select,
-    SelectButton,
+    ToggleGroupComponent,
     Tag,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -94,27 +94,21 @@ const DEVICE_CONTROL_KEY = 'device_control';
 
       <lpg-section-card class="control">
         <h2 class="section-title" id="device-control-title">Who can use the apps</h2>
-        <p-selectbutton
+        <lpg-toggle-group
           [options]="modeOptions"
-          [ngModel]="mode()"
-          (ngModelChange)="chooseMode($event)"
-          optionLabel="label"
-          optionValue="value"
-          [allowEmpty]="false"
+          [value]="mode()"
+          (valueChange)="chooseMode($event)"
           [disabled]="savingMode()"
-          ariaLabelledBy="device-control-title"
+          ariaLabel="Who can use the apps"
         />
         <p class="control__help" aria-live="polite">{{ modeHelp() }}</p>
       </lpg-section-card>
 
       <div class="filters">
-        <p-selectbutton
+        <lpg-toggle-group
           [options]="tabOptions()"
-          [ngModel]="tab()"
-          (ngModelChange)="chooseTab($event)"
-          optionLabel="label"
-          optionValue="value"
-          [allowEmpty]="false"
+          [value]="tab()"
+          (valueChange)="chooseTab($event)"
           ariaLabel="Show phones by state"
         />
         <p-select
@@ -386,14 +380,15 @@ export class LinkedDevicesPage implements OnInit {
   protected noteDraft = '';
 
   protected readonly tabOptions = computed(() => [
-    { label: 'All', value: 'all' as const },
+    { label: 'All', value: 'all' as const, icon: 'pi pi-list' },
     {
       label: this.pendingCount() > 0 ? `Waiting (${this.pendingCount()})` : 'Waiting',
       value: 'pending' as const,
+      icon: 'pi pi-clock',
     },
-    { label: 'Approved', value: 'approved' as const },
-    { label: 'Blocked', value: 'blocked' as const },
-    { label: 'Removed', value: 'removed' as const },
+    { label: 'Approved', value: 'approved' as const, icon: 'pi pi-check-circle' },
+    { label: 'Blocked', value: 'blocked' as const, icon: 'pi pi-ban' },
+    { label: 'Removed', value: 'removed' as const, icon: 'pi pi-trash' },
   ]);
 
   protected readonly appOptions = [
