@@ -63,6 +63,17 @@ final List<GalleryEntry> galleryEntries = [
           ],
         ),
         _gap,
+        LpgActionRow.equal(
+          children: [
+            LpgButton(
+              label: 'Dispute',
+              variant: LpgButtonVariant.destructive,
+              onPressed: _noop,
+            ),
+            LpgButton(label: 'Accept & Verify', onPressed: _noop),
+          ],
+        ),
+        _gap,
         LpgActionRow(
           children: [
             LpgButton(

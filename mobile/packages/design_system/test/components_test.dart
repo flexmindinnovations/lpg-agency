@@ -1169,6 +1169,57 @@ void main() {
       expect(last.right, tester.getTopRight(find.byType(LpgActionRow)).dx);
       expect(first.right, last.right);
     });
+
+    // The visible button, not the widget around it: a button's own box is
+    // what has to be an equal share.
+    final shown = find.descendant(
+      of: find.byType(LpgButton),
+      matching: find.byType(Material),
+    );
+
+    Future<void> pumpEqual(WidgetTester tester, {double textScale = 1.0}) =>
+        tester.pumpWidget(
+          _wrap(
+            MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+              child: SizedBox(
+                width: 400,
+                child: LpgActionRow.equal(
+                  children: [
+                    LpgButton(label: 'Dispute', onPressed: () {}),
+                    LpgButton(label: 'Accept & Verify', onPressed: () {}),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('equal: the buttons share the row in equal halves', (
+      tester,
+    ) async {
+      await pumpEqual(tester);
+
+      final first = tester.getRect(shown.first);
+      final last = tester.getRect(shown.last);
+      expect(first.width, last.width);
+      expect(first.left, tester.getTopLeft(find.byType(LpgActionRow)).dx);
+      expect(last.right, tester.getTopRight(find.byType(LpgActionRow)).dx);
+      expect(last.left - first.right, LpgActionRow.gap);
+      expect(first.top, last.top);
+    });
+
+    testWidgets('equal: at large text the buttons stack, each full width', (
+      tester,
+    ) async {
+      await pumpEqual(tester, textScale: 2.0);
+
+      final first = tester.getRect(shown.first);
+      final last = tester.getRect(shown.last);
+      expect(first.width, 400);
+      expect(last.width, 400);
+      expect(last.top - first.bottom, LpgActionRow.gap);
+    });
   });
 
   group('LpgSheetLayout and LpgSheetActions', () {

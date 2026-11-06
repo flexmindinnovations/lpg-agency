@@ -241,7 +241,7 @@ class _CashHandoverReviewScreenState
                 maxLines: 3,
               ),
               const SizedBox(height: LpgSpacing.xxl),
-              LpgActionRow(
+              LpgActionRow.equal(
                 children: [
                   LpgButton(
                     label: 'Dispute',
