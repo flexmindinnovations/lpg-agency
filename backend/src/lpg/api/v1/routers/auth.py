@@ -28,6 +28,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from lpg.api.v1.dependencies.admin import get_audit_trail, get_staff_user_repository
+from lpg.api.v1.dependencies.device import device_context_from, get_device_session_binder
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_customer_login_provisioner,
@@ -99,6 +100,7 @@ from lpg.application.identity.ports import (
 )
 from lpg.application.identity.refresh_token import RefreshTokenCommand, RefreshTokenUseCase
 from lpg.application.identity.tokens import TokenPair
+from lpg.application.license.device_access import DeviceSessionBinder
 from lpg.application.license.ports import LicenseStatusChecker
 from lpg.application.tenant.status import TenantStatusChecker
 from lpg.config.settings import Settings, get_settings
@@ -148,6 +150,7 @@ def _resolve_refresh_token(request: Request, body_token: str | None) -> str | No
 @router.post("/login", response_model=TokenResponse, summary="Dashboard staff login")
 async def login(
     body: LoginRequest,
+    request: Request,
     response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
     user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
@@ -160,6 +163,7 @@ async def login(
     jwt_signer: Annotated[JwtSigner, Depends(get_jwt_signer)],
     license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     tenant_status_checker: Annotated[TenantStatusChecker, Depends(get_tenant_status_checker)],
+    device_binder: Annotated[DeviceSessionBinder, Depends(get_device_session_binder)],
     _rate_limit: Annotated[
         None,
         Depends(require_rate_limit(key_prefix="auth:login", limit=10, window_seconds=60)),
@@ -177,8 +181,15 @@ async def login(
         lockout_threshold=settings.login_lockout_threshold,
         lockout_duration=timedelta(minutes=settings.login_lockout_duration_minutes),
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
+        device_binder=device_binder,
     )
-    token_pair = await use_case.execute(LoginCommand(email=body.email, password=body.password))
+    token_pair = await use_case.execute(
+        LoginCommand(
+            email=body.email,
+            password=body.password,
+            device=device_context_from(request, body.device),
+        )
+    )
     _set_refresh_cookie(response, token_pair, settings)
     return TokenResponse(
         access_token=token_pair.access_token, refresh_token=token_pair.refresh_token
@@ -214,6 +225,7 @@ async def otp_request(
 @router.post("/otp/verify", response_model=TokenResponse, summary="Verify an OTP and log in")
 async def otp_verify(
     body: OtpVerifyRequest,
+    request: Request,
     response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
@@ -230,6 +242,7 @@ async def otp_verify(
     customer_login_provisioner: Annotated[
         CustomerLoginProvisioner, Depends(get_customer_login_provisioner)
     ],
+    device_binder: Annotated[DeviceSessionBinder, Depends(get_device_session_binder)],
     # Per-IP throttle on top of the per-code attempt cap in `OtpService`.
     _rate_limit: Annotated[
         None,
@@ -255,10 +268,16 @@ async def otp_verify(
         tenant_status_checker,
         customer_login_provisioner=customer_login_provisioner,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
+        device_binder=device_binder,
     )
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
     token_pair = await use_case.execute(
-        VerifyOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number, code=body.code)
+        VerifyOtpCommand(
+            tenant_id=tenant_uuid,
+            phone_number=body.phone_number,
+            code=body.code,
+            device=device_context_from(request, body.device),
+        )
     )
     _set_refresh_cookie(response, token_pair, settings)
     return TokenResponse(
@@ -281,6 +300,7 @@ async def refresh(
     jwt_signer: Annotated[JwtSigner, Depends(get_jwt_signer)],
     license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     tenant_status_checker: Annotated[TenantStatusChecker, Depends(get_tenant_status_checker)],
+    device_binder: Annotated[DeviceSessionBinder, Depends(get_device_session_binder)],
     _rate_limit: Annotated[
         None,
         Depends(require_rate_limit(key_prefix="auth:refresh", limit=60, window_seconds=60)),
@@ -300,8 +320,13 @@ async def refresh(
         license_status_checker,
         tenant_status_checker,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
+        device_binder=device_binder,
     )
-    token_pair = await use_case.execute(RefreshTokenCommand(refresh_token=raw_token))
+    token_pair = await use_case.execute(
+        RefreshTokenCommand(
+            refresh_token=raw_token, device=device_context_from(request, body.device)
+        )
+    )
     _set_refresh_cookie(response, token_pair, settings)
     return TokenResponse(
         access_token=token_pair.access_token, refresh_token=token_pair.refresh_token

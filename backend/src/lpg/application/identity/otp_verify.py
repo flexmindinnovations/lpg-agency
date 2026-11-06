@@ -48,6 +48,7 @@ if TYPE_CHECKING:
         RefreshTokenRepository,
         TokenHasher,
     )
+    from lpg.application.license.device_access import DeviceContext, DeviceSessionBinder
     from lpg.application.license.ports import LicenseStatusChecker
     from lpg.application.tenant.status import TenantStatusChecker
 
@@ -57,6 +58,8 @@ class VerifyOtpCommand(Command):
     tenant_id: uuid.UUID
     phone_number: str
     code: str
+    #: The phone this sign-in comes from, when it is a Driver app.
+    device: DeviceContext | None = None
 
 
 class VerifyOtpUseCase:
@@ -73,7 +76,9 @@ class VerifyOtpUseCase:
         *,
         customer_login_provisioner: CustomerLoginProvisioner,
         refresh_token_ttl: timedelta,
+        device_binder: DeviceSessionBinder | None = None,
     ) -> None:
+        self._device_binder = device_binder
         self._otp_store = otp_store
         self._user_repository = user_repository
         self._refresh_token_repository = refresh_token_repository
@@ -116,6 +121,10 @@ class VerifyOtpUseCase:
             msg = "This tenant's license has expired."
             raise LicenseExpiredError(msg, tenant_id=str(command.tenant_id))
 
+        binding = (
+            await self._device_binder.bind(user, command.device) if self._device_binder else None
+        )
+
         user.record_successful_login()
         await self._user_repository.save(user)
 
@@ -126,4 +135,5 @@ class VerifyOtpUseCase:
             token_hasher=self._token_hasher,
             jwt_signer=self._jwt_signer,
             refresh_token_ttl=self._refresh_token_ttl,
+            device=binding,
         )

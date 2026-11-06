@@ -1,10 +1,13 @@
 import 'package:auth/auth.dart';
 import 'package:design_system/design_system.dart';
+import 'package:device_identity/device_identity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
+import 'device_provider.dart';
+import 'device_strings.dart';
 import 'features/cash_handover/presentation/cash_handover_screen.dart';
 import 'features/delivery/presentation/deliveries_screen.dart';
 import 'features/delivery/presentation/record_delivery_screen.dart';
@@ -29,10 +32,11 @@ import 'splash_screen.dart';
 /// logout, not just on the next navigation attempt.
 final routerProvider = Provider<GoRouter>((ref) {
   final authController = ref.watch(authControllerProvider);
+  final deviceControl = ref.watch(deviceControlProvider);
 
   return GoRouter(
     initialLocation: '/splash',
-    refreshListenable: authController,
+    refreshListenable: Listenable.merge([authController, deviceControl]),
     redirect: (context, state) {
       final status = authController.state.status;
       final loggingIn = state.matchedLocation == '/login';
@@ -43,6 +47,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (status == AuthStatus.unknown) {
         return splashing ? null : '/splash';
       }
+
+      // A phone that is unnamed, waiting for approval or blocked (ADR-071)
+      // is shown its own screen before anything else.
+      final deviceRoute = deviceControl.redirect(
+        location: state.matchedLocation,
+        authenticated: status == AuthStatus.authenticated,
+      );
+      if (deviceRoute != null) return deviceRoute;
+      if (DeviceRoutes.all.contains(state.matchedLocation)) return null;
 
       if (status != AuthStatus.authenticated && !loggingIn) return '/login';
       if (status == AuthStatus.authenticated && (loggingIn || splashing)) {
@@ -55,6 +68,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/splash',
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: DeviceRoutes.name,
+        builder: (context, state) => NameThisPhoneScreen(
+          strings: driverDeviceStrings,
+          suggestedName: deviceControl.identity.suggestedName,
+          onSubmit: deviceControl.saveName,
+        ),
+      ),
+      GoRoute(
+        path: DeviceRoutes.waiting,
+        builder: (context, state) => WaitingForApprovalScreen(
+          strings: driverDeviceStrings,
+          phoneName: deviceControl.identity.name,
+          controller: deviceControl.access,
+          onSignOut: () => authController.logout(),
+        ),
+      ),
+      GoRoute(
+        path: DeviceRoutes.blocked,
+        builder: (context, state) => PhoneBlockedScreen(
+          strings: driverDeviceStrings,
+          onTryAgain: deviceControl.tryAgain,
+        ),
       ),
       GoRoute(
         path: '/login',

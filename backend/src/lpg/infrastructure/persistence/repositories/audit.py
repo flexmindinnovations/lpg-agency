@@ -71,8 +71,10 @@ class SqlAlchemyAuditLogRepository:
         tenant_id: uuid.UUID,
         *,
         entity_name: str | None = None,
+        entity_id: str | None = None,
         actor_id: uuid.UUID | None = None,
         action: str | None = None,
+        action_prefix: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         cursor: str | None = None,
@@ -88,10 +90,14 @@ class SqlAlchemyAuditLogRepository:
         )
         if entity_name is not None:
             stmt = stmt.where(AuditLogModel.entity_name == entity_name)
+        if entity_id is not None:
+            stmt = stmt.where(AuditLogModel.entity_id == entity_id)
         if actor_id is not None:
             stmt = stmt.where(AuditLogModel.actor_id == actor_id)
         if action is not None:
             stmt = stmt.where(AuditLogModel.action == action)
+        if action_prefix is not None:
+            stmt = stmt.where(AuditLogModel.action.startswith(action_prefix, autoescape=True))
         if date_from is not None:
             stmt = stmt.where(AuditLogModel.performed_at >= date_from)
         if date_to is not None:
