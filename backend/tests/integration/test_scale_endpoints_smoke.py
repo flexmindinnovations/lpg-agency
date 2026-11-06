@@ -65,7 +65,7 @@ async def admin_engine_lpg_test(postgres_available: bool) -> AsyncIterator[Async
 
 async def _seed_manager_with_warehouse(
     engine: AsyncEngine, *, password_hash: str
-) -> tuple[str, uuid.UUID, uuid.UUID]:
+) -> tuple[str, uuid.UUID, uuid.UUID, uuid.UUID]:
     email = f"{uuid.uuid4().hex}@weighment-smoke.example"
     async with engine.begin() as conn:
         tenant_id = (
@@ -130,7 +130,12 @@ async def _seed_manager_with_warehouse(
                 {"tenant_id": str(tenant_id)},
             )
         ).scalar_one()
-    return email, uuid.UUID(str(warehouse_id)), uuid.UUID(str(cylinder_type_id))
+    return (
+        email,
+        uuid.UUID(str(warehouse_id)),
+        uuid.UUID(str(cylinder_type_id)),
+        uuid.UUID(str(tenant_id)),
+    )
 
 
 async def _login(client: AsyncClient, *, email: str, password: str) -> str:
@@ -147,7 +152,7 @@ async def test_register_list_recalibrate_scale_smoke(
 ) -> None:
     password = "correct horse battery staple 42"
     hasher = Argon2PasswordHasher(integration_settings)
-    email, warehouse_id, _cylinder_type_id = await _seed_manager_with_warehouse(
+    email, warehouse_id, _cylinder_type_id, tenant_id = await _seed_manager_with_warehouse(
         admin_engine_lpg_test, password_hash=hasher.hash(password)
     )
     token = await _login(client, email=email, password=password)
@@ -161,7 +166,7 @@ async def test_register_list_recalibrate_scale_smoke(
             "warehouse_id": str(warehouse_id),
             "asset_tag": "SCALE-001",
             "least_count_grams": 11,
-            "certificate_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_cert.pdf",
+            "certificate_ref": f"tenant/{tenant_id}/compliance-staging/{uuid.uuid4().hex}_cert.pdf",
             "certificate_expiry_date": "2030-01-01",
         },
         headers=headers,
@@ -174,7 +179,7 @@ async def test_register_list_recalibrate_scale_smoke(
             "warehouse_id": str(warehouse_id),
             "asset_tag": "SCALE-001",
             "least_count_grams": 10,
-            "certificate_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_cert.pdf",
+            "certificate_ref": f"tenant/{tenant_id}/compliance-staging/{uuid.uuid4().hex}_cert.pdf",
             "certificate_expiry_date": "2030-01-01",
             "make": "Avery",
             "model": "AGD-40",
@@ -193,7 +198,7 @@ async def test_register_list_recalibrate_scale_smoke(
             "warehouse_id": str(warehouse_id),
             "asset_tag": "SCALE-001",
             "least_count_grams": 10,
-            "certificate_ref": "tenant/x/compliance-staging/other.pdf",
+            "certificate_ref": f"tenant/{tenant_id}/compliance-staging/other.pdf",
             "certificate_expiry_date": "2031-01-01",
         },
         headers=headers,
@@ -208,7 +213,9 @@ async def test_register_list_recalibrate_scale_smoke(
     recalibrate = await client.put(
         f"/api/v1/scales/{scale_id}/certificate",
         json={
-            "certificate_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_renewed.pdf",
+            "certificate_ref": (
+                f"tenant/{tenant_id}/compliance-staging/{uuid.uuid4().hex}_renewed.pdf"
+            ),
             "certificate_expiry_date": "2032-06-01",
         },
         headers=headers,
@@ -233,7 +240,7 @@ async def test_record_goods_receipt_weighment_smoke(
     checked, against a scale that already exists."""
     password = "correct horse battery staple 42"
     hasher = Argon2PasswordHasher(integration_settings)
-    email, warehouse_id, cylinder_type_id = await _seed_manager_with_warehouse(
+    email, warehouse_id, cylinder_type_id, tenant_id = await _seed_manager_with_warehouse(
         admin_engine_lpg_test, password_hash=hasher.hash(password)
     )
     token = await _login(client, email=email, password=password)
@@ -245,7 +252,7 @@ async def test_record_goods_receipt_weighment_smoke(
             "warehouse_id": str(warehouse_id),
             "asset_tag": "SCALE-GRN-1",
             "least_count_grams": 10,
-            "certificate_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_cert.pdf",
+            "certificate_ref": f"tenant/{tenant_id}/compliance-staging/{uuid.uuid4().hex}_cert.pdf",
             "certificate_expiry_date": "2030-01-01",
         },
         headers=headers,
