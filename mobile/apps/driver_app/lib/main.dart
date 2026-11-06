@@ -153,22 +153,28 @@ void main() async {
   }
 
   runApp(
-    ProviderScope(
-      // One quiet retry of a transient failure (the skeleton stays on screen
-      // meanwhile), then the error/Retry state. Riverpod's default retries ten
-      // times and hides a real error for about half a minute (story 0.4).
-      retry: quietRetry,
-      overrides: [
-        localDatabaseProvider.overrideWithValue(localDatabase),
-        authControllerProvider.overrideWithValue(authController),
-        deviceControlProvider.overrideWithValue(deviceControl),
-        apiClientProvider.overrideWithValue(apiClient),
-        syncCoordinatorProvider.overrideWithValue(syncCoordinator),
-        mediaStoreProvider.overrideWithValue(mediaStore),
-        pushNotificationServiceProvider.overrideWithValue(pushService),
-        realtimeClientProvider.overrideWithValue(realtimeClient),
-      ],
-      child: const DriverApp(),
+    // A new state tree whenever a signed-in session ends, so the next person
+    // on this phone never sees the previous person's cached screens.
+    SessionScope(
+      authController: authController,
+      builder: (context, sessionKey) => ProviderScope(
+        key: sessionKey,
+        // One quiet retry of a transient failure (the skeleton stays on screen
+        // meanwhile), then the error/Retry state. Riverpod's default retries ten
+        // times and hides a real error for about half a minute (story 0.4).
+        retry: quietRetry,
+        overrides: [
+          localDatabaseProvider.overrideWithValue(localDatabase),
+          authControllerProvider.overrideWithValue(authController),
+          deviceControlProvider.overrideWithValue(deviceControl),
+          apiClientProvider.overrideWithValue(apiClient),
+          syncCoordinatorProvider.overrideWithValue(syncCoordinator),
+          mediaStoreProvider.overrideWithValue(mediaStore),
+          pushNotificationServiceProvider.overrideWithValue(pushService),
+          realtimeClientProvider.overrideWithValue(realtimeClient),
+        ],
+        child: const DriverApp(),
+      ),
     ),
   );
 }
