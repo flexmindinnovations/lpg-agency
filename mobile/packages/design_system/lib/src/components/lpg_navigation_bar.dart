@@ -109,7 +109,7 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
     final labelStyle = (context.lpgText.labelLarge ?? const TextStyle())
         .copyWith(fontWeight: FontWeight.w700);
 
-    return DecoratedBox(
+    final bar = DecoratedBox(
       decoration: BoxDecoration(
         // See-through, like a card: the page shows softly through the bar.
         color: colors.cardGlass,
@@ -147,6 +147,11 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
         ),
       ),
     );
+    // Grain on the bar like on a card; no blur, since the page does not scroll
+    // under the bar and there is nothing sharp behind it to blur.
+    return colors.isHighContrast
+        ? bar
+        : LpgGlassPane(radius: BorderRadius.zero, child: bar);
   }
 
   Widget _items(BuildContext context, double width, TextStyle labelStyle) {

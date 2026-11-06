@@ -54,7 +54,12 @@ void main() {
         ].map((b) => c.tint(page.speck, page.grainStrength, over: b));
 
         for (final back in behind) {
-          final glass = Color.alphaBlend(c.cardGlass, back);
+          // The card's own grain speck sits on top of its fill.
+          final glass = c.tint(
+            page.speck,
+            LpgGlassLook.grainStrength,
+            over: Color.alphaBlend(c.cardGlass, back),
+          );
           expect(
             _contrast(c.textPrimary, glass),
             greaterThanOrEqualTo(4.5),
@@ -73,8 +78,13 @@ void main() {
         'content, the extremes a blur can average to', () {
       for (final v in LpgThemeVariant.values) {
         final c = LpgTheme.colorsFor(v);
+        final page = LpgBackdropLook.of(c);
         for (final back in const [Color(0xFF000000), Color(0xFFFFFFFF)]) {
-          final glass = Color.alphaBlend(c.sheetGlass, back);
+          final glass = c.tint(
+            page.speck,
+            LpgGlassLook.sheetGrainStrength,
+            over: Color.alphaBlend(c.sheetGlass, back),
+          );
           expect(
             _contrast(c.textSecondary, glass),
             greaterThanOrEqualTo(4.5),
@@ -143,18 +153,30 @@ void main() {
         )
         .color!;
 
-    testWidgets('are see-through, with no blur filter per card', (
-      tester,
-    ) async {
+    testWidgets('are see-through and lightly blurred', (tester) async {
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
         await _pump(tester, v, const LpgCard(child: Text('Order 1042')));
 
         expect(fillOf(tester).a, lessThan(1), reason: '$v');
-        expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
+        expect(find.byType(BackdropFilter), findsOneWidget, reason: '$v');
+        expect(find.byType(LpgGlassPane), findsOneWidget, reason: '$v');
       }
     });
 
-    testWidgets('are opaque in high contrast', (tester) async {
+    testWidgets('a surface card is the same glass as a card', (tester) async {
+      await _pump(
+        tester,
+        LpgThemeVariant.light,
+        const LpgSurface(child: Text('Panel')),
+      );
+
+      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(LpgGlassPane), findsOneWidget);
+    });
+
+    testWidgets('are opaque in high contrast, with no blur or grain', (
+      tester,
+    ) async {
       await _pump(
         tester,
         LpgThemeVariant.highContrast,
@@ -162,6 +184,8 @@ void main() {
       );
 
       expect(fillOf(tester).a, 1.0);
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.byType(LpgGlassPane), findsNothing);
     });
 
     testWidgets('a tonal card stays an opaque tint', (tester) async {
