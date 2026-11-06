@@ -113,6 +113,24 @@ async def _seed_staff_user(
     return uuid.UUID(str(tenant_id))
 
 
+async def _seed_branch_for(engine: AsyncEngine, user_email: str) -> uuid.UUID:
+    """A real branch in the same tenant as `user_email`. Registering a driver
+    provisions a login pinned to the employee's branch (a foreign key), so a
+    made-up branch id no longer works."""
+    async with engine.begin() as conn:
+        branch_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.branch (id, tenant_id, name) "
+                    "SELECT gen_random_uuid(), tenant_id, 'Smoke Branch' "
+                    "FROM identity.identity_user WHERE email = :email RETURNING id"
+                ),
+                {"email": user_email},
+            )
+        ).scalar_one()
+    return uuid.UUID(str(branch_id))
+
+
 async def _login(client: AsyncClient, *, email: str, password: str) -> str:
     response = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
@@ -145,12 +163,12 @@ class TestEmployeeEndpointsThroughTheRealStack:
             "/api/v1/employees",
             headers=headers,
             json={
-                "branch_id": str(uuid.uuid4()),
+                "branch_id": str(await _seed_branch_for(admin_engine_lpg_test, email)),
                 "first_name": "Asha",
                 "last_name": "Verma",
                 "phone_number": "+919876543210",
                 "role": "driver",
-                "email": "asha@example.com",
+                "email": f"asha-{uuid.uuid4().hex[:10]}@example.com",
             },
         )
         assert register_response.status_code == 201, register_response.text
@@ -189,7 +207,7 @@ class TestEmployeeEndpointsThroughTheRealStack:
             "/api/v1/employees",
             headers=headers,
             json={
-                "branch_id": str(uuid.uuid4()),
+                "branch_id": str(await _seed_branch_for(admin_engine_lpg_test, email)),
                 "first_name": "Own",
                 "last_name": "Tenant",
                 "phone_number": "+919876500001",
@@ -212,7 +230,7 @@ class TestEmployeeEndpointsThroughTheRealStack:
             "/api/v1/employees",
             headers=other_headers,
             json={
-                "branch_id": str(uuid.uuid4()),
+                "branch_id": str(await _seed_branch_for(admin_engine_lpg_test, other_email)),
                 "first_name": "Other",
                 "last_name": "Tenant",
                 "phone_number": "+919876500002",
@@ -265,7 +283,7 @@ class TestEmployeeEndpointsThroughTheRealStack:
             "/api/v1/employees",
             headers=headers,
             json={
-                "branch_id": str(uuid.uuid4()),
+                "branch_id": str(await _seed_branch_for(admin_engine_lpg_test, email)),
                 "first_name": "New",
                 "last_name": "Driver",
                 "phone_number": phone_number,
