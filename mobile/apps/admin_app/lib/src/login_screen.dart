@@ -256,6 +256,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: LpgSpacing.lg),
                   LpgButton(
                     label: 'Sign In to Admin',
+                    expand: true,
                     onPressed: _submitting ? null : _verifyCode,
                     isLoading: _submitting,
                   ),
@@ -280,6 +281,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: LpgSpacing.lg),
                   LpgButton(
                     label: 'Send Sign-In Code',
+                    expand: true,
                     onPressed: _submitting ? null : _requestCode,
                     isLoading: _submitting,
                   ),
@@ -312,6 +314,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: LpgSpacing.xl),
                 LpgButton(
                   label: 'Sign In with Email',
+                  expand: true,
                   onPressed: _submitting ? null : _loginWithPassword,
                   isLoading: _submitting,
                 ),
