@@ -97,4 +97,53 @@ void main() {
       ]);
     },
   );
+
+  group('owner scoping (a phone shared by two people)', () {
+    test('one user never reads another user\'s cached data', () async {
+      var owner = 'driver-1';
+      final scoped = ResourceCache(db.database, owner: () => owner);
+      await scoped.write('route_active', 'current', {'id': 'route-of-1'});
+
+      owner = 'driver-2';
+      expect(await scoped.read('route_active', 'current'), isNull);
+      expect(await scoped.readAll('route_active'), isEmpty);
+
+      await scoped.write('route_active', 'current', {'id': 'route-of-2'});
+      expect(await scoped.read('route_active', 'current'), {
+        'id': 'route-of-2',
+      });
+
+      owner = 'driver-1';
+      expect(await scoped.read('route_active', 'current'), {
+        'id': 'route-of-1',
+      });
+    });
+
+    test('evicting a row only evicts the signed-in user\'s', () async {
+      var owner = 'driver-1';
+      final scoped = ResourceCache(db.database, owner: () => owner);
+      await scoped.write('route_active', 'current', {'id': 'a'});
+      owner = 'driver-2';
+      await scoped.write('route_active', 'current', {'id': 'b'});
+
+      await scoped.delete('route_active', 'current');
+
+      owner = 'driver-1';
+      expect(await scoped.read('route_active', 'current'), {'id': 'a'});
+    });
+
+    test('clear (an explicit log out) removes every user\'s rows', () async {
+      var owner = 'driver-1';
+      final scoped = ResourceCache(db.database, owner: () => owner);
+      await scoped.write('route_active', 'current', {'id': 'a'});
+      owner = 'driver-2';
+      await scoped.write('route_active', 'current', {'id': 'b'});
+
+      await scoped.clear();
+
+      expect(await scoped.read('route_active', 'current'), isNull);
+      owner = 'driver-1';
+      expect(await scoped.read('route_active', 'current'), isNull);
+    });
+  });
 }

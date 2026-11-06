@@ -83,6 +83,8 @@ void main() async {
   final syncCoordinator = SyncCoordinator(
     database: localDatabase.database,
     apiClient: apiClient,
+    // Queued work is sent only under the session of the person who queued it.
+    currentOwner: () => authController.state.principal?.userId,
   );
   syncCoordinator.start();
 

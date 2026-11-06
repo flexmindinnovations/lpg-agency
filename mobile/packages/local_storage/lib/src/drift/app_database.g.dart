@@ -316,6 +316,17 @@ class $SyncOperationsTable extends SyncOperations
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -327,6 +338,7 @@ class $SyncOperationsTable extends SyncOperations
     idempotencyKey,
     retryCount,
     lastAttemptAt,
+    ownerId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -408,6 +420,12 @@ class $SyncOperationsTable extends SyncOperations
         ),
       );
     }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
     return context;
   }
 
@@ -453,6 +471,10 @@ class $SyncOperationsTable extends SyncOperations
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_attempt_at'],
       ),
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      ),
     );
   }
 
@@ -478,6 +500,13 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
   /// When the last attempt ran — `null` until the first. Combined with
   /// `retryCount` to decide whether the backoff window has elapsed.
   final DateTime? lastAttemptAt;
+
+  /// The signed-in user who queued this operation. A phone can be used by
+  /// more than one person; an operation is only ever sent, counted or shown
+  /// under its owner's session, and stays queued (not lost) while someone else
+  /// is signed in. `null` only for operations queued before owners existed:
+  /// the first user to sign in after the upgrade adopts them.
+  final String? ownerId;
   const SyncOperation({
     required this.id,
     required this.type,
@@ -488,6 +517,7 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     required this.idempotencyKey,
     required this.retryCount,
     this.lastAttemptAt,
+    this.ownerId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -504,6 +534,9 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     map['retry_count'] = Variable<int>(retryCount);
     if (!nullToAbsent || lastAttemptAt != null) {
       map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<String>(ownerId);
     }
     return map;
   }
@@ -523,6 +556,9 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       lastAttemptAt: lastAttemptAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastAttemptAt),
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
     );
   }
 
@@ -541,6 +577,7 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
       retryCount: serializer.fromJson<int>(json['retryCount']),
       lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
     );
   }
   @override
@@ -556,6 +593,7 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       'idempotencyKey': serializer.toJson<String>(idempotencyKey),
       'retryCount': serializer.toJson<int>(retryCount),
       'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'ownerId': serializer.toJson<String?>(ownerId),
     };
   }
 
@@ -569,6 +607,7 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     String? idempotencyKey,
     int? retryCount,
     Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<String?> ownerId = const Value.absent(),
   }) => SyncOperation(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -581,6 +620,7 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     lastAttemptAt: lastAttemptAt.present
         ? lastAttemptAt.value
         : this.lastAttemptAt,
+    ownerId: ownerId.present ? ownerId.value : this.ownerId,
   );
   SyncOperation copyWithCompanion(SyncOperationsCompanion data) {
     return SyncOperation(
@@ -601,6 +641,7 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       lastAttemptAt: data.lastAttemptAt.present
           ? data.lastAttemptAt.value
           : this.lastAttemptAt,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
     );
   }
 
@@ -615,7 +656,8 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           ..write('errorMessage: $errorMessage, ')
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('retryCount: $retryCount, ')
-          ..write('lastAttemptAt: $lastAttemptAt')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('ownerId: $ownerId')
           ..write(')'))
         .toString();
   }
@@ -631,6 +673,7 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     idempotencyKey,
     retryCount,
     lastAttemptAt,
+    ownerId,
   );
   @override
   bool operator ==(Object other) =>
@@ -644,7 +687,8 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           other.errorMessage == this.errorMessage &&
           other.idempotencyKey == this.idempotencyKey &&
           other.retryCount == this.retryCount &&
-          other.lastAttemptAt == this.lastAttemptAt);
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.ownerId == this.ownerId);
 }
 
 class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
@@ -657,6 +701,7 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
   final Value<String> idempotencyKey;
   final Value<int> retryCount;
   final Value<DateTime?> lastAttemptAt;
+  final Value<String?> ownerId;
   final Value<int> rowid;
   const SyncOperationsCompanion({
     this.id = const Value.absent(),
@@ -668,6 +713,7 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     this.idempotencyKey = const Value.absent(),
     this.retryCount = const Value.absent(),
     this.lastAttemptAt = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SyncOperationsCompanion.insert({
@@ -680,6 +726,7 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     required String idempotencyKey,
     this.retryCount = const Value.absent(),
     this.lastAttemptAt = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        type = Value(type),
@@ -695,6 +742,7 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     Expression<String>? idempotencyKey,
     Expression<int>? retryCount,
     Expression<DateTime>? lastAttemptAt,
+    Expression<String>? ownerId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -707,6 +755,7 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
       if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
       if (retryCount != null) 'retry_count': retryCount,
       if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (ownerId != null) 'owner_id': ownerId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -721,6 +770,7 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     Value<String>? idempotencyKey,
     Value<int>? retryCount,
     Value<DateTime?>? lastAttemptAt,
+    Value<String?>? ownerId,
     Value<int>? rowid,
   }) {
     return SyncOperationsCompanion(
@@ -733,6 +783,7 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
       idempotencyKey: idempotencyKey ?? this.idempotencyKey,
       retryCount: retryCount ?? this.retryCount,
       lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      ownerId: ownerId ?? this.ownerId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -767,6 +818,9 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     if (lastAttemptAt.present) {
       map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
     }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -785,6 +839,7 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('retryCount: $retryCount, ')
           ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('ownerId: $ownerId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -842,12 +897,25 @@ class $CachedResourcesTable extends CachedResources
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     resourceType,
     resourceId,
     jsonPayload,
     updatedAt,
+    ownerId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -897,11 +965,17 @@ class $CachedResourcesTable extends CachedResources
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {resourceType, resourceId};
+  Set<GeneratedColumn> get $primaryKey => {resourceType, resourceId, ownerId};
   @override
   CachedResource map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -922,6 +996,10 @@ class $CachedResourcesTable extends CachedResources
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
     );
   }
 
@@ -936,11 +1014,16 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
   final String resourceId;
   final String jsonPayload;
   final DateTime updatedAt;
+
+  /// Whose data this is (the signed-in user's id; empty when nobody was
+  /// signed in). Another user on the same phone never reads it.
+  final String ownerId;
   const CachedResource({
     required this.resourceType,
     required this.resourceId,
     required this.jsonPayload,
     required this.updatedAt,
+    required this.ownerId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -949,6 +1032,7 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
     map['resource_id'] = Variable<String>(resourceId);
     map['json_payload'] = Variable<String>(jsonPayload);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['owner_id'] = Variable<String>(ownerId);
     return map;
   }
 
@@ -958,6 +1042,7 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
       resourceId: Value(resourceId),
       jsonPayload: Value(jsonPayload),
       updatedAt: Value(updatedAt),
+      ownerId: Value(ownerId),
     );
   }
 
@@ -971,6 +1056,7 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
       resourceId: serializer.fromJson<String>(json['resourceId']),
       jsonPayload: serializer.fromJson<String>(json['jsonPayload']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
     );
   }
   @override
@@ -981,6 +1067,7 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
       'resourceId': serializer.toJson<String>(resourceId),
       'jsonPayload': serializer.toJson<String>(jsonPayload),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'ownerId': serializer.toJson<String>(ownerId),
     };
   }
 
@@ -989,11 +1076,13 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
     String? resourceId,
     String? jsonPayload,
     DateTime? updatedAt,
+    String? ownerId,
   }) => CachedResource(
     resourceType: resourceType ?? this.resourceType,
     resourceId: resourceId ?? this.resourceId,
     jsonPayload: jsonPayload ?? this.jsonPayload,
     updatedAt: updatedAt ?? this.updatedAt,
+    ownerId: ownerId ?? this.ownerId,
   );
   CachedResource copyWithCompanion(CachedResourcesCompanion data) {
     return CachedResource(
@@ -1007,6 +1096,7 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
           ? data.jsonPayload.value
           : this.jsonPayload,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
     );
   }
 
@@ -1016,14 +1106,15 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
           ..write('resourceType: $resourceType, ')
           ..write('resourceId: $resourceId, ')
           ..write('jsonPayload: $jsonPayload, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('ownerId: $ownerId')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(resourceType, resourceId, jsonPayload, updatedAt);
+      Object.hash(resourceType, resourceId, jsonPayload, updatedAt, ownerId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1031,7 +1122,8 @@ class CachedResource extends DataClass implements Insertable<CachedResource> {
           other.resourceType == this.resourceType &&
           other.resourceId == this.resourceId &&
           other.jsonPayload == this.jsonPayload &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.ownerId == this.ownerId);
 }
 
 class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
@@ -1039,12 +1131,14 @@ class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
   final Value<String> resourceId;
   final Value<String> jsonPayload;
   final Value<DateTime> updatedAt;
+  final Value<String> ownerId;
   final Value<int> rowid;
   const CachedResourcesCompanion({
     this.resourceType = const Value.absent(),
     this.resourceId = const Value.absent(),
     this.jsonPayload = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedResourcesCompanion.insert({
@@ -1052,6 +1146,7 @@ class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
     required String resourceId,
     required String jsonPayload,
     this.updatedAt = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : resourceType = Value(resourceType),
        resourceId = Value(resourceId),
@@ -1061,6 +1156,7 @@ class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
     Expression<String>? resourceId,
     Expression<String>? jsonPayload,
     Expression<DateTime>? updatedAt,
+    Expression<String>? ownerId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1068,6 +1164,7 @@ class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
       if (resourceId != null) 'resource_id': resourceId,
       if (jsonPayload != null) 'json_payload': jsonPayload,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (ownerId != null) 'owner_id': ownerId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1077,6 +1174,7 @@ class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
     Value<String>? resourceId,
     Value<String>? jsonPayload,
     Value<DateTime>? updatedAt,
+    Value<String>? ownerId,
     Value<int>? rowid,
   }) {
     return CachedResourcesCompanion(
@@ -1084,6 +1182,7 @@ class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
       resourceId: resourceId ?? this.resourceId,
       jsonPayload: jsonPayload ?? this.jsonPayload,
       updatedAt: updatedAt ?? this.updatedAt,
+      ownerId: ownerId ?? this.ownerId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1103,6 +1202,9 @@ class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1116,6 +1218,7 @@ class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
           ..write('resourceId: $resourceId, ')
           ..write('jsonPayload: $jsonPayload, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('ownerId: $ownerId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1263,7 +1366,16 @@ class $$SchemaMetadataTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SchemaMetadataTable, SchemaMetadataData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SchemaMetadataTable,
+                    SchemaMetadataData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -1298,6 +1410,7 @@ typedef $$SyncOperationsTableCreateCompanionBuilder =
       required String idempotencyKey,
       Value<int> retryCount,
       Value<DateTime?> lastAttemptAt,
+      Value<String?> ownerId,
       Value<int> rowid,
     });
 typedef $$SyncOperationsTableUpdateCompanionBuilder =
@@ -1311,6 +1424,7 @@ typedef $$SyncOperationsTableUpdateCompanionBuilder =
       Value<String> idempotencyKey,
       Value<int> retryCount,
       Value<DateTime?> lastAttemptAt,
+      Value<String?> ownerId,
       Value<int> rowid,
     });
 
@@ -1365,6 +1479,11 @@ class $$SyncOperationsTableFilterComposer
 
   ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
     column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1422,6 +1541,11 @@ class $$SyncOperationsTableOrderingComposer
     column: $table.lastAttemptAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncOperationsTableAnnotationComposer
@@ -1467,6 +1591,9 @@ class $$SyncOperationsTableAnnotationComposer
     column: $table.lastAttemptAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 }
 
 class $$SyncOperationsTableTableManager
@@ -1511,6 +1638,7 @@ class $$SyncOperationsTableTableManager
                 Value<String> idempotencyKey = const Value.absent(),
                 Value<int> retryCount = const Value.absent(),
                 Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<String?> ownerId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncOperationsCompanion(
                 id: id,
@@ -1522,6 +1650,7 @@ class $$SyncOperationsTableTableManager
                 idempotencyKey: idempotencyKey,
                 retryCount: retryCount,
                 lastAttemptAt: lastAttemptAt,
+                ownerId: ownerId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1535,6 +1664,7 @@ class $$SyncOperationsTableTableManager
                 required String idempotencyKey,
                 Value<int> retryCount = const Value.absent(),
                 Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<String?> ownerId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncOperationsCompanion.insert(
                 id: id,
@@ -1546,10 +1676,20 @@ class $$SyncOperationsTableTableManager
                 idempotencyKey: idempotencyKey,
                 retryCount: retryCount,
                 lastAttemptAt: lastAttemptAt,
+                ownerId: ownerId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SyncOperationsTable, SyncOperation>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SyncOperationsTable,
+                    SyncOperation
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -1579,6 +1719,7 @@ typedef $$CachedResourcesTableCreateCompanionBuilder =
       required String resourceId,
       required String jsonPayload,
       Value<DateTime> updatedAt,
+      Value<String> ownerId,
       Value<int> rowid,
     });
 typedef $$CachedResourcesTableUpdateCompanionBuilder =
@@ -1587,6 +1728,7 @@ typedef $$CachedResourcesTableUpdateCompanionBuilder =
       Value<String> resourceId,
       Value<String> jsonPayload,
       Value<DateTime> updatedAt,
+      Value<String> ownerId,
       Value<int> rowid,
     });
 
@@ -1616,6 +1758,11 @@ class $$CachedResourcesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1648,6 +1795,11 @@ class $$CachedResourcesTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedResourcesTableAnnotationComposer
@@ -1676,6 +1828,9 @@ class $$CachedResourcesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 }
 
 class $$CachedResourcesTableTableManager
@@ -1719,12 +1874,14 @@ class $$CachedResourcesTableTableManager
                 Value<String> resourceId = const Value.absent(),
                 Value<String> jsonPayload = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedResourcesCompanion(
                 resourceType: resourceType,
                 resourceId: resourceId,
                 jsonPayload: jsonPayload,
                 updatedAt: updatedAt,
+                ownerId: ownerId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1733,16 +1890,27 @@ class $$CachedResourcesTableTableManager
                 required String resourceId,
                 required String jsonPayload,
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedResourcesCompanion.insert(
                 resourceType: resourceType,
                 resourceId: resourceId,
                 jsonPayload: jsonPayload,
                 updatedAt: updatedAt,
+                ownerId: ownerId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$CachedResourcesTable, CachedResource>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CachedResourcesTable,
+                    CachedResource
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

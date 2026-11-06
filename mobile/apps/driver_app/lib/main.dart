@@ -111,6 +111,8 @@ void main() async {
   syncCoordinator = SyncCoordinator(
     database: localDatabase.database,
     apiClient: apiClient,
+    // Queued work is sent only under the session of the person who queued it.
+    currentOwner: () => authController.state.principal?.userId,
     connectivity: PluginConnectivityMonitor(),
     mediaStore: mediaStore,
     // The agency has not let this phone in: the queue is kept as it is.

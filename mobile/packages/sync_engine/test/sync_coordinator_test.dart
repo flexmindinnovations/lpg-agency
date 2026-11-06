@@ -62,13 +62,19 @@ void main() {
   late ApiClient apiClient;
   late SyncCoordinator coordinator;
   late FakeAdapter fakeAdapter;
+  String? owner = 'driver-1';
 
   setUp(() {
+    owner = 'driver-1';
     db = AppDatabase(NativeDatabase.memory());
     fakeAdapter = FakeAdapter();
     apiClient = ApiClient(baseUrl: 'http://localhost');
     apiClient.dio.httpClientAdapter = fakeAdapter;
-    coordinator = SyncCoordinator(database: db, apiClient: apiClient);
+    coordinator = SyncCoordinator(
+      database: db,
+      apiClient: apiClient,
+      currentOwner: () => owner,
+    );
   });
 
   tearDown(() async {
@@ -191,6 +197,7 @@ void main() {
         coordinator = SyncCoordinator(
           database: db,
           apiClient: apiClient,
+          currentOwner: () => owner,
           onDeviceRefused: refusals.add,
         );
         fakeAdapter
@@ -214,7 +221,11 @@ void main() {
     test(
       'stops the pass at the first refusal and leaves the rest alone',
       () async {
-        coordinator = SyncCoordinator(database: db, apiClient: apiClient);
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+        );
         fakeAdapter
           ..responseStatus = 403
           ..responseData = '{"error_code": "DEVICE_BLOCKED"}';
@@ -309,6 +320,7 @@ void main() {
     coordinator = SyncCoordinator(
       database: db,
       apiClient: apiClient,
+      currentOwner: () => owner,
       maxRetries: 1,
     );
     fakeAdapter.responseStatus = 500;
@@ -360,6 +372,7 @@ void main() {
     coordinator = SyncCoordinator(
       database: db,
       apiClient: apiClient,
+      currentOwner: () => owner,
       connectivity: connectivity,
       pollInterval: const Duration(hours: 1),
     );
@@ -418,6 +431,7 @@ void main() {
       coordinator = SyncCoordinator(
         database: db,
         apiClient: apiClient,
+        currentOwner: () => owner,
         mediaStore: mediaStore,
       );
     });
@@ -491,6 +505,103 @@ void main() {
         );
       },
     );
+  });
+
+  group('whose queue it is', () {
+    Future<List<SyncOperation>> all() => db.select(db.syncOperations).get();
+
+    test('an operation is stamped with the user who queued it', () async {
+      fakeAdapter.responseStatus = 500;
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+
+      expect((await onlyOp()).ownerId, 'driver-1');
+    });
+
+    test('another user\'s unsent operation is never sent under a different '
+        'session, and is not lost', () async {
+      fakeAdapter.responseStatus = 500; // driver-1 is offline; it stays queued
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+      final sentBefore = fakeAdapter.requests.length;
+
+      owner = 'driver-2'; // a different driver signs in on the same phone
+      fakeAdapter.responseStatus = 200;
+      await coordinator.syncNow(ignoreBackoff: true);
+
+      expect(
+        fakeAdapter.requests.length,
+        sentBefore,
+        reason: 'driver-2\'s session must not send driver-1\'s delivery',
+      );
+      final op = await onlyOp();
+      expect(op.ownerId, 'driver-1');
+      expect(op.status, isNot('synced'));
+    });
+
+    test('the owner\'s operation resumes when they sign in again', () async {
+      fakeAdapter.responseStatus = 500;
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+
+      owner = 'driver-2';
+      await coordinator.syncNow(ignoreBackoff: true);
+      owner = 'driver-1';
+      fakeAdapter.responseStatus = 200;
+      await coordinator.syncNow(ignoreBackoff: true);
+
+      expect((await onlyOp()).status, 'synced');
+    });
+
+    test('nothing is sent while nobody is signed in', () async {
+      fakeAdapter.responseStatus = 500;
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+      final sentBefore = fakeAdapter.requests.length;
+
+      owner = null;
+      fakeAdapter.responseStatus = 200;
+      await coordinator.syncNow(ignoreBackoff: true);
+
+      expect(fakeAdapter.requests.length, sentBefore);
+    });
+
+    test('the count, the active list and the issues list show only the '
+        'signed-in user\'s operations', () async {
+      fakeAdapter.responseStatus = 500;
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+
+      owner = 'driver-2';
+      expect(await coordinator.watchPendingCount().first, 0);
+      expect(await coordinator.watchActive().first, isEmpty);
+      expect(await coordinator.watchIssues().first, isEmpty);
+
+      owner = 'driver-1';
+      expect(await coordinator.watchPendingCount().first, 1);
+      expect(await coordinator.watchActive().first, hasLength(1));
+    });
+
+    test('operations queued before owners existed go to the first user to '
+        'sign in', () async {
+      await db
+          .into(db.syncOperations)
+          .insert(
+            SyncOperationsCompanion.insert(
+              id: 'legacy',
+              type: 'order_depart',
+              payload: _departPayload('o9'),
+              idempotencyKey: 'legacy-key',
+            ),
+          );
+      fakeAdapter.responseStatus = 200;
+
+      await coordinator.syncNow(ignoreBackoff: true);
+
+      final op = (await all()).single;
+      expect(op.ownerId, 'driver-1');
+      expect(op.status, 'synced');
+    });
   });
 }
 

@@ -60,6 +60,7 @@ class OfflineHarness {
     coordinator = SyncCoordinator(
       database: db,
       apiClient: apiClient,
+      currentOwner: () => 'driver-1',
       mediaStore: media,
     );
   }

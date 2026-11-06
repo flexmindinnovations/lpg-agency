@@ -177,7 +177,7 @@ Recount on 2026-11-05 after the dashboards were converted: **68 `AsyncValue` sit
 - [ ] **Light-theme tone contrast** below 4.5:1 (see token-audit.md), decided in 10.1.
 
 ## Found while fixing the sign-out leak (needs an owner decision)
-- [ ] **Driver app: on-device data after a sign-out.** An expired session does not clear the read cache, and no sign-out removes the unsent offline queue (see STATUS.md). Decide between per-driver queues and cache, or blocking sign-in until the queue is sent, before the pilot (10.4).
+- [x] **Driver app: on-device data after a sign-out.** (fixed: owner-scoped queue and cache, see STATUS.md) An expired session does not clear the read cache, and no sign-out removes the unsent offline queue (see STATUS.md). Decide between per-driver queues and cache, or blocking sign-in until the queue is sent, before the pilot (10.4).
 
 ## Parking lot (not in scope)
 - Hindi, Marathi and other translations; per-language SMS templates with the SMS provider (backend)
