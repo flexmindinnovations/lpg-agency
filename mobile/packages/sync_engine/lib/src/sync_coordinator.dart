@@ -25,6 +25,13 @@ const _retryableStatuses = ['pending', 'error'];
 /// [SyncOperation] with a client-generated idempotency key, drained here
 /// against the real backend when connectivity allows.
 ///
+/// **Whose queue it is.** A phone can be used by more than one person, so each
+/// operation is stamped with the user who queued it ([currentOwner]) and is
+/// sent, counted and listed only while that user is signed in. Someone else's
+/// operations stay in the queue (nothing is lost on a forced sign-out) and
+/// resume when their owner signs in again; they are never sent under another
+/// person's session. With nobody signed in, nothing is sent.
+///
 /// `_dispatch` hits `_apiClient.dio` directly rather than the `api_client`
 /// wrapper classes: those return a `Result`, swallowing the `DioException`
 /// (and its status code) into a plain `Failure`, and [_processOperation]
@@ -34,12 +41,16 @@ class SyncCoordinator {
   SyncCoordinator({
     required AppDatabase database,
     required ApiClient apiClient,
+    required String? Function() currentOwner,
     ConnectivityMonitor? connectivity,
     MediaStore? mediaStore,
     Duration pollInterval = const Duration(seconds: 30),
     int maxRetries = 8,
-  }) : _db = database,
+    void Function(String errorCode)? onDeviceRefused,
+  }) : _onDeviceRefused = onDeviceRefused,
+       _db = database,
        _apiClient = apiClient,
+       _currentOwner = currentOwner,
        _connectivity = connectivity,
        _mediaStore = mediaStore,
        _pollInterval = pollInterval,
@@ -47,12 +58,23 @@ class SyncCoordinator {
 
   final AppDatabase _db;
   final ApiClient _apiClient;
+
+  /// The signed-in user's id, read on every call so it follows sign-ins.
+  final String? Function() _currentOwner;
   final ConnectivityMonitor? _connectivity;
   final MediaStore? _mediaStore;
   final Duration _pollInterval;
   final int _maxRetries;
 
+  /// Called when the server refuses this phone (`DEVICE_PENDING`,
+  /// `DEVICE_BLOCKED`, `DEVICE_REMOVED`, `DEVICE_REQUIRED`, ADR-071). The queue
+  /// is left exactly as it was and sending resumes on the next pass once the
+  /// phone is allowed again.
+  final void Function(String errorCode)? _onDeviceRefused;
+  bool _deviceRefused = false;
+
   bool _isSyncing = false;
+  DateTime? _lastTidyAt;
   Timer? _syncTimer;
   StreamSubscription<bool>? _connSub;
 
@@ -61,6 +83,8 @@ class SyncCoordinator {
   void start() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(_pollInterval, (_) => syncNow());
+    // Best-effort housekeeping; never blocks start-up.
+    unawaited(_tidyUp());
 
     _connSub?.cancel();
     _connSub = _connectivity?.onConnectivityChanged.listen((online) {
@@ -89,6 +113,7 @@ class SyncCoordinator {
             type: type,
             payload: payload,
             idempotencyKey: uuid,
+            ownerId: drift.Value(_currentOwner()),
           ),
         );
     syncNow();
@@ -99,13 +124,23 @@ class SyncCoordinator {
   /// whose backoff window hasn't elapsed are skipped this pass unless
   /// [ignoreBackoff] is set (a connectivity-regained drain).
   Future<void> syncNow({bool ignoreBackoff = false}) async {
+    // Nobody signed in: nothing to send, and an operation must never go out
+    // under a session that is not its owner's.
+    final owner = _currentOwner();
+    if (owner == null) return;
     if (_isSyncing) return;
     _isSyncing = true;
+    _deviceRefused = false;
 
     try {
+      await _adoptUnownedOperations(owner);
       final ops =
           await (_db.select(_db.syncOperations)
-                ..where((t) => t.status.isIn(_retryableStatuses))
+                ..where(
+                  (t) =>
+                      t.status.isIn(_retryableStatuses) &
+                      t.ownerId.equals(owner),
+                )
                 ..orderBy([(t) => drift.OrderingTerm.asc(t.createdAt)]))
               .get();
 
@@ -113,19 +148,130 @@ class SyncCoordinator {
       for (final op in ops) {
         if (!ignoreBackoff && _isBackingOff(op, now)) continue;
         await _processOperation(op);
+        // The agency has not let this phone in: every later operation would
+        // be refused the same way, so stop and leave the rest untouched.
+        if (_deviceRefused) break;
       }
     } finally {
       _isSyncing = false;
     }
+    if (_tidyDue) unawaited(_tidyUp());
   }
 
-  /// A `Stream` of the count of operations still working through the queue
-  /// (`pending` / `error` / `syncing`) — drives the shell's sync badge.
+  /// How often housekeeping may run while the app stays open.
+  static const _tidyEvery = Duration(hours: 6);
+
+  bool get _tidyDue =>
+      _lastTidyAt == null ||
+      DateTime.now().difference(_lastTidyAt!) >= _tidyEvery;
+
+  /// Housekeeping: forget old finished operations and files nothing refers to.
+  /// Best-effort: a failure here must never get in the way of sending.
+  Future<void> _tidyUp() async {
+    _lastTidyAt = DateTime.now();
+    try {
+      await pruneSyncedOperations();
+      await pruneFailedOperations();
+      await pruneConflictedOperations();
+      await purgeOrphanedMedia();
+    } catch (_) {
+      // Tried again next time.
+    }
+  }
+
+  /// Deletes operations that **failed for good** (retries used up, or a
+  /// permanent refusal) more than [olderThan] ago, together with their photo
+  /// and signature. Returns how many were removed.
+  ///
+  /// Unlike [pruneSyncedOperations] this throws away work that never reached
+  /// the server, so the window is long (30 days by default): it is only for a
+  /// failure that nobody retried or discarded in a month. A driver who looks at
+  /// the sync screen can still retry or discard any of them before then.
+  Future<int> pruneFailedOperations({
+    Duration olderThan = const Duration(days: 30),
+  }) => _pruneStale('failed', olderThan);
+
+  /// Deletes operations the server **rejected as stale** (a `409`: someone
+  /// else, usually the office, had already moved that order on) more than
+  /// [olderThan] ago, together with their photo and signature. Returns how many
+  /// were removed.
+  ///
+  /// The server is authoritative for a conflict, so what is thrown away is a
+  /// change it already decided against; the driver only ever had to
+  /// acknowledge it. The window is still 30 days by default, so a driver who
+  /// has not looked at the sync screen in a month is the only one who loses
+  /// the note. Waiting, retrying and failed rows are untouched.
+  Future<int> pruneConflictedOperations({
+    Duration olderThan = const Duration(days: 30),
+  }) => _pruneStale('conflict', olderThan);
+
+  /// Deletes operations in [status] whose last attempt (or creation, if none
+  /// was recorded) is older than [olderThan], with their media.
+  Future<int> _pruneStale(String status, Duration olderThan) async {
+    final cutoff = DateTime.now().subtract(olderThan);
+    final stale =
+        await (_db.select(_db.syncOperations)..where(
+              (t) =>
+                  t.status.equals(status) &
+                  (t.lastAttemptAt.isSmallerThanValue(cutoff) |
+                      (t.lastAttemptAt.isNull() &
+                          t.createdAt.isSmallerThanValue(cutoff))),
+            ))
+            .get();
+    for (final op in stale) {
+      await _deleteMediaOf(op); // nothing else will ever send them
+      await (_db.delete(
+        _db.syncOperations,
+      )..where((t) => t.id.equals(op.id))).go();
+    }
+    return stale.length;
+  }
+
+  /// Deletes operations that were sent successfully more than [olderThan] ago.
+  ///
+  /// A sent operation is never retried (its idempotency key lives on the
+  /// server) and nothing in the apps reads it, but its payload still holds
+  /// customer details, so it should not sit on the phone for ever. A week is
+  /// kept as a short window for finding out what a driver sent. Operations
+  /// that are waiting, retrying, failed or in conflict are **never** touched:
+  /// they are unsent work. Returns how many rows were removed.
+  Future<int> pruneSyncedOperations({
+    Duration olderThan = const Duration(days: 7),
+  }) {
+    final cutoff = DateTime.now().subtract(olderThan);
+    return (_db.delete(_db.syncOperations)..where(
+          (t) =>
+              t.status.equals('synced') &
+              // When it was sent; the creation time for the rare row with no
+              // attempt recorded.
+              (t.lastAttemptAt.isSmallerThanValue(cutoff) |
+                  (t.lastAttemptAt.isNull() &
+                      t.createdAt.isSmallerThanValue(cutoff))),
+        ))
+        .go();
+  }
+
+  /// Operations queued before owners existed belong to whoever signs in first
+  /// after the upgrade: on a phone with one driver that is their owner, and
+  /// leaving them unowned would strand their unsent deliveries.
+  Future<void> _adoptUnownedOperations(String owner) async {
+    await (_db.update(_db.syncOperations)..where((t) => t.ownerId.isNull()))
+        .write(SyncOperationsCompanion(ownerId: drift.Value(owner)));
+  }
+
+  /// A `Stream` of the count of the signed-in user's operations still working
+  /// through the queue (`pending` / `error` / `syncing`) — drives the shell's
+  /// sync badge. The owner is fixed when the stream is created; the apps
+  /// rebuild their providers when a session ends (`SessionScope`).
   Stream<int> watchPendingCount() {
+    final owner = _currentOwner();
     final count = _db.syncOperations.id.count();
     final query = _db.selectOnly(_db.syncOperations)
       ..addColumns([count])
-      ..where(_db.syncOperations.status.isIn(['pending', 'error', 'syncing']));
+      ..where(
+        _db.syncOperations.status.isIn(['pending', 'error', 'syncing']) &
+            _db.syncOperations.ownerId.equalsNullable(owner),
+      );
     return query.map((row) => row.read(count) ?? 0).watchSingle();
   }
 
@@ -133,8 +279,13 @@ class SyncCoordinator {
   /// `syncing`), oldest first — the app derives its optimistic-overlay set
   /// (which orders/routes have an unsynced mutation) from this.
   Stream<List<SyncOperation>> watchActive() {
+    final owner = _currentOwner();
     return (_db.select(_db.syncOperations)
-          ..where((t) => t.status.isIn(['pending', 'error', 'syncing']))
+          ..where(
+            (t) =>
+                t.status.isIn(['pending', 'error', 'syncing']) &
+                t.ownerId.equalsNullable(owner),
+          )
           ..orderBy([(t) => drift.OrderingTerm.asc(t.createdAt)]))
         .watch();
   }
@@ -143,8 +294,13 @@ class SyncCoordinator {
   /// `failed` (retries exhausted or a permanent 4xx) and `conflict` (the
   /// server rejected a stale transition). Newest first.
   Stream<List<SyncOperation>> watchIssues() {
+    final owner = _currentOwner();
     return (_db.select(_db.syncOperations)
-          ..where((t) => t.status.isIn(['failed', 'conflict']))
+          ..where(
+            (t) =>
+                t.status.isIn(['failed', 'conflict']) &
+                t.ownerId.equalsNullable(owner),
+          )
           ..orderBy([(t) => drift.OrderingTerm.desc(t.createdAt)]))
         .watch();
   }
@@ -167,7 +323,60 @@ class SyncCoordinator {
   /// local optimistic state is reconciled separately by invalidating the
   /// affected read providers.
   Future<void> discardOperation(String id) async {
+    final op = await (_db.select(
+      _db.syncOperations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    // Its photo and signature go with it: nothing else will ever send them.
+    if (op != null) await _deleteMediaOf(op);
     await (_db.delete(_db.syncOperations)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// The media keys a queued operation points at (`order_deliver` carries
+  /// `media: [{key, ...}]`); empty for every other operation.
+  static List<String> _mediaKeysOf(SyncOperation op) {
+    try {
+      final decoded = jsonDecode(op.payload);
+      if (decoded is! Map || decoded['media'] is! List) return const [];
+      return [
+        for (final m in decoded['media'] as List)
+          if (m is Map && m['key'] is String) m['key'] as String,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _deleteMediaOf(SyncOperation op) async {
+    final store = _mediaStore;
+    if (store == null) return;
+    for (final key in _mediaKeysOf(op)) {
+      await store.delete(key);
+    }
+  }
+
+  /// Deletes stored photos and signatures that no queued operation refers to
+  /// any more (an operation discarded before this existed, a crash between
+  /// writing a file and queueing its delivery). Files written within [grace]
+  /// are kept: a delivery writes its media a moment before it is queued.
+  /// Returns how many files were removed.
+  Future<int> purgeOrphanedMedia({
+    Duration grace = const Duration(hours: 1),
+  }) async {
+    final store = _mediaStore;
+    if (store == null) return 0;
+    final referenced = <String>{
+      for (final op in await _db.select(_db.syncOperations).get())
+        ..._mediaKeysOf(op),
+    };
+    final cutoff = DateTime.now().subtract(grace);
+    var removed = 0;
+    for (final file in await store.list()) {
+      if (referenced.contains(file.key)) continue;
+      if (file.modified.isAfter(cutoff)) continue;
+      await store.delete(file.key);
+      removed++;
+    }
+    return removed;
   }
 
   bool _isBackingOff(SyncOperation op, DateTime now) {
@@ -215,6 +424,23 @@ class SyncCoordinator {
   Future<void> _handleDioFailure(SyncOperation op, DioException e) async {
     final status = e.response?.statusCode;
     final code = _errorCode(e.response?.data);
+
+    if (code != null && code.startsWith('DEVICE_')) {
+      // Not a problem with this delivery — the phone itself is not allowed in
+      // right now. Put the operation back exactly as it was (not failed, not
+      // counted as an attempt) so it goes through once the agency approves or
+      // unblocks the phone. Nothing is discarded.
+      await _write(
+        op.id,
+        const SyncOperationsCompanion(
+          status: drift.Value('pending'),
+          errorMessage: drift.Value(null),
+        ),
+      );
+      _deviceRefused = true;
+      _onDeviceRefused?.call(code);
+      return;
+    }
 
     if (status == 409 && code == 'IDEMPOTENCY_KEY_CONFLICT') {
       // The same key was replayed with a different body — a client bug, not

@@ -2,9 +2,10 @@ import 'package:core/core.dart';
 
 /// A failed API call surfaced through a provider's `AsyncError`, carrying the
 /// user-facing [message] so screens never show a raw `Exception: ...`.
-class ApiException implements Exception {
+class ApiException implements FailureCarrier {
   const ApiException(this.failure);
 
+  @override
   final Failure failure;
 
   String get message => switch (failure.errorCode) {

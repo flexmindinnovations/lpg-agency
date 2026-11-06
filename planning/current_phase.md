@@ -12,6 +12,8 @@ LPG Agency Management Platform
 
 **2026-11-01 update:** the dashboard Settings area (Tenant Config, Feature Flags, License and Linked Devices consolidated under `/settings` with My Profile) was built and deployed 2026-10-16 but never recorded; it is now: [`planning/features/60-dashboard-settings-area/`](./features/60-dashboard-settings-area/STATUS.md), ADR-070, `MODULE_STATUS.md` row 34.
 
+**2026-11-05 update:** device registration and access control for the Driver and Admin apps (mobile revamp plan, Epic 11, ADR-071) is being built in stacked PRs: backend device registry first, then enforcement, dashboard, mobile and a security review. Per-agency `device_control` (`off` by default) means nothing changes for an existing agency until its admin switches it on. Progress: [`planning/features/61-mobile-ui-revamp/STATUS.md`](./features/61-mobile-ui-revamp/STATUS.md).
+
 **Phase 2 — Backend Foundation** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction. 34/34 tracked tasks complete and verified. See [`planning/features/02-backend-foundation/STATUS.md`](./features/02-backend-foundation/STATUS.md).
 
 **Phase 3 — Shared Infrastructure (real-time publisher, file storage)** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction, immediately after DW-19/DW-20 closure. 13/13 tracked tasks complete and verified. See [`planning/features/03-shared-infrastructure/STATUS.md`](./features/03-shared-infrastructure/STATUS.md). Scoped to exactly two items — the `RealtimePublisher` port implementation and file storage — since everything else the original roadmap called "Phase 3" was already delivered under Phase 2's execution numbering.
@@ -55,6 +57,8 @@ LPG Agency Management Platform
 **Simpler dispatch (trip sheet)** ✅ **DONE** — 2026-10-19. One "New trip" drawer on the Dispatch page: pick driver and van, tick the orders, the load sheet works out the cylinders against godown stock, and one Load & dispatch call loads the van and releases the orders to the driver. A single order can also go out from its own page with Send out, and the order page shows a progress line. Fixes orders assigned before loading that reserved nothing. ADR-056. See [`planning/features/45-simpler-dispatch/STATUS.md`](./features/45-simpler-dispatch/STATUS.md).
 
 **QA fixes** ✅ **DONE** — 2026-10-21. Fixes for the 2026-10-20 QA pass across inventory, users and licences, realtime notifications, dashboard UI conventions, GST and invoices (GST per cylinder type, exclusive by default), the customer and driver apps, and orders and complaints (cylinder cap, credit limit, order editing, reschedule, cancellation rejection). ADR-057 to ADR-063. See [`planning/features/47-qa-fixes/STATUS.md`](./features/47-qa-fixes/STATUS.md).
+
+**Mobile UI revamp (feature 61), release R1 in progress** — 2026-11-05. Stories 0.1, 0.2, 0.4, 1.1 to 1.3, 2.1 and 3.1 to 3.4 are implemented as separate PRs stacked on the plan branch (#122): quiet retry of a failed first load in all three apps, i18n tooling decision and infrastructure (typed JSON catalogues, English only at launch, a CI lint against new hardcoded strings), the theme engine and solid surface layers, and `LpgAsyncView` with a friendly error taxonomy. Verified with Flutter analyze and tests; nothing was run on a device. See [`planning/features/61-mobile-ui-revamp/STATUS.md`](./features/61-mobile-ui-revamp/STATUS.md).
 
 **Recommended next:** Mobile Application Development (Phase 19 execution).
 

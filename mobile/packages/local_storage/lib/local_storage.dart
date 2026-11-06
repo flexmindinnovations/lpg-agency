@@ -14,3 +14,4 @@ export 'src/local_database.dart';
 export 'src/drift/app_database.dart';
 export 'src/drift_local_database.dart';
 export 'src/resource_cache.dart';
+export 'src/secure_key.dart';

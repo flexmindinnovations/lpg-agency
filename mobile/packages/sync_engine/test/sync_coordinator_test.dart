@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_storage/local_storage.dart';
 import 'package:sync_engine/sync_engine.dart';
@@ -62,13 +63,19 @@ void main() {
   late ApiClient apiClient;
   late SyncCoordinator coordinator;
   late FakeAdapter fakeAdapter;
+  String? owner = 'driver-1';
 
   setUp(() {
+    owner = 'driver-1';
     db = AppDatabase(NativeDatabase.memory());
     fakeAdapter = FakeAdapter();
     apiClient = ApiClient(baseUrl: 'http://localhost');
     apiClient.dio.httpClientAdapter = fakeAdapter;
-    coordinator = SyncCoordinator(database: db, apiClient: apiClient);
+    coordinator = SyncCoordinator(
+      database: db,
+      apiClient: apiClient,
+      currentOwner: () => owner,
+    );
   });
 
   tearDown(() async {
@@ -184,6 +191,101 @@ void main() {
     },
   );
 
+  group('a phone the agency has not let in', () {
+    for (final code in ['DEVICE_PENDING', 'DEVICE_BLOCKED', 'DEVICE_REMOVED']) {
+      test('$code keeps the queue untouched and reports the refusal', () async {
+        final refusals = <String>[];
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+          onDeviceRefused: refusals.add,
+        );
+        fakeAdapter
+          ..responseStatus = 403
+          ..responseData = '{"error_code": "$code"}';
+
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('order-1'),
+        );
+        await settle();
+
+        final op = await onlyOp();
+        expect(op.status, 'pending'); // not failed, not discarded
+        expect(op.retryCount, 0);
+        expect(op.errorMessage, isNull);
+        expect(refusals, [code]);
+      });
+    }
+
+    test(
+      'stops the pass at the first refusal and leaves the rest alone',
+      () async {
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+        );
+        fakeAdapter
+          ..responseStatus = 403
+          ..responseData = '{"error_code": "DEVICE_BLOCKED"}';
+
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o-1'),
+        );
+        await settle();
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o-2'),
+        );
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o-3'),
+        );
+        await settle();
+
+        final ops = await db.select(db.syncOperations).get();
+        expect(ops.map((o) => o.status), everyElement('pending'));
+        expect(ops, hasLength(3));
+      },
+    );
+
+    test('sends everything once the phone is allowed again', () async {
+      fakeAdapter
+        ..responseStatus = 403
+        ..responseData = '{"error_code": "DEVICE_BLOCKED"}';
+      await coordinator.enqueueOperation('order_depart', _departPayload('o-1'));
+      await coordinator.enqueueOperation('order_depart', _departPayload('o-2'));
+      await settle();
+      expect(
+        (await db.select(db.syncOperations).get()).map((o) => o.status),
+        everyElement('pending'),
+      );
+
+      fakeAdapter
+        ..responseStatus = 200
+        ..responseData = '{}';
+      await coordinator.syncNow(ignoreBackoff: true);
+      await settle();
+
+      final ops = await db.select(db.syncOperations).get();
+      expect(ops.map((o) => o.status), everyElement('synced'));
+    });
+
+    test('a plain 403 is still a permanent failure', () async {
+      fakeAdapter
+        ..responseStatus = 403
+        ..responseData = '{"error_code": "PERMISSION_DENIED"}';
+
+      await coordinator.enqueueOperation('order_depart', _departPayload('o-1'));
+      await settle();
+
+      expect((await onlyOp()).status, 'failed');
+    });
+  });
+
   test('a permanent 4xx (422) is marked failed immediately', () async {
     fakeAdapter
       ..responseStatus = 422
@@ -219,6 +321,7 @@ void main() {
     coordinator = SyncCoordinator(
       database: db,
       apiClient: apiClient,
+      currentOwner: () => owner,
       maxRetries: 1,
     );
     fakeAdapter.responseStatus = 500;
@@ -270,6 +373,7 @@ void main() {
     coordinator = SyncCoordinator(
       database: db,
       apiClient: apiClient,
+      currentOwner: () => owner,
       connectivity: connectivity,
       pollInterval: const Duration(hours: 1),
     );
@@ -328,6 +432,7 @@ void main() {
       coordinator = SyncCoordinator(
         database: db,
         apiClient: apiClient,
+        currentOwner: () => owner,
         mediaStore: mediaStore,
       );
     });
@@ -357,6 +462,55 @@ void main() {
         'otp_code': '123456',
         'proof_of_delivery': {'gps_lat': 1, 'gps_lng': 2},
       },
+    });
+
+    test('discarding a delivery deletes its photo and signature', () async {
+      deliverAdapter.failUploadsAfter = 0; // offline: it stays queued
+      await coordinator.enqueueOperation('order_deliver', payload());
+      await settle();
+      expect(mediaStore.files, isNotEmpty);
+
+      await coordinator.discardOperation((await onlyOp()).id);
+
+      expect(mediaStore.files, isEmpty);
+      expect(await db.select(db.syncOperations).get(), isEmpty);
+    });
+
+    group('purgeOrphanedMedia', () {
+      test('removes old files no queued delivery refers to, keeps the '
+          'rest', () async {
+        deliverAdapter.failUploadsAfter = 0;
+        await coordinator.enqueueOperation('order_deliver', payload());
+        await settle();
+        // An old orphan, and a fresh file whose delivery is not queued yet.
+        mediaStore.files['pod/old/signature.png'] = [9];
+        mediaStore.modified['pod/old/signature.png'] = DateTime.now().subtract(
+          const Duration(days: 2),
+        );
+        mediaStore.files['pod/new/photo.jpg'] = [8];
+
+        final removed = await coordinator.purgeOrphanedMedia();
+
+        expect(removed, 1);
+        expect(
+          mediaStore.files.keys,
+          containsAll([
+            'pod/x/sig.png', // still queued
+            'pod/x/photo.jpg',
+            'pod/new/photo.jpg', // too new to judge
+          ]),
+        );
+        expect(mediaStore.files.keys, isNot(contains('pod/old/signature.png')));
+      });
+
+      test('without a media store there is nothing to do', () async {
+        final plain = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+        );
+        expect(await plain.purgeOrphanedMedia(), 0);
+      });
     });
 
     test(
@@ -402,13 +556,545 @@ void main() {
       },
     );
   });
+
+  group('pruning old sent operations', () {
+    final longAgo = DateTime.now().subtract(const Duration(days: 30));
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+
+    Future<void> insert(
+      String id,
+      String status, {
+      DateTime? createdAt,
+      DateTime? attemptedAt,
+    }) => db
+        .into(db.syncOperations)
+        .insert(
+          SyncOperationsCompanion.insert(
+            id: id,
+            type: 'order_depart',
+            payload: '{"customer": "Asha Patil"}',
+            idempotencyKey: 'key-$id',
+            status: drift.Value(status),
+            createdAt: drift.Value(createdAt ?? longAgo),
+            lastAttemptAt: drift.Value(attemptedAt),
+            ownerId: const drift.Value('driver-1'),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final op in await db.select(db.syncOperations).get()) op.id,
+    };
+
+    test(
+      'deletes operations sent more than a week ago, keeps recent ones',
+      () async {
+        await insert('old', 'synced', attemptedAt: longAgo);
+        await insert('recent', 'synced', attemptedAt: yesterday);
+
+        final removed = await coordinator.pruneSyncedOperations();
+
+        expect(removed, 1);
+        expect(await ids(), {'recent'});
+      },
+    );
+
+    test('never touches unsent work, however old', () async {
+      for (final status in [
+        'pending',
+        'error',
+        'syncing',
+        'failed',
+        'conflict',
+      ]) {
+        await insert(status, status, attemptedAt: longAgo);
+      }
+
+      final removed = await coordinator.pruneSyncedOperations();
+
+      expect(removed, 0);
+      expect(await ids(), {
+        'pending',
+        'error',
+        'syncing',
+        'failed',
+        'conflict',
+      });
+    });
+
+    test(
+      'a sent row with no attempt time is judged by when it was created',
+      () async {
+        await insert('old-no-attempt', 'synced', createdAt: longAgo);
+        await insert('new-no-attempt', 'synced', createdAt: yesterday);
+
+        await coordinator.pruneSyncedOperations();
+
+        expect(await ids(), {'new-no-attempt'});
+      },
+    );
+
+    test('the retention is adjustable', () async {
+      await insert(
+        'two-days',
+        'synced',
+        attemptedAt: DateTime.now().subtract(const Duration(days: 2)),
+      );
+
+      expect(
+        await coordinator.pruneSyncedOperations(
+          olderThan: const Duration(days: 3),
+        ),
+        0,
+      );
+      expect(
+        await coordinator.pruneSyncedOperations(
+          olderThan: const Duration(days: 1),
+        ),
+        1,
+      );
+    });
+
+    test(
+      'a normal sync pass tidies up, without touching what it just sent',
+      () async {
+        await insert('old', 'synced', attemptedAt: longAgo);
+        fakeAdapter.responseStatus = 200;
+
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o1'),
+        );
+        await settle();
+
+        final remaining = await db.select(db.syncOperations).get();
+        expect(remaining.map((o) => o.id), isNot(contains('old')));
+        expect(
+          remaining.single.status,
+          'synced',
+          reason: 'just sent, kept a week',
+        );
+      },
+    );
+
+    test('starting the coordinator tidies up too', () async {
+      await insert('old', 'synced', attemptedAt: longAgo);
+
+      coordinator.start();
+      await settle();
+
+      expect(await ids(), isEmpty);
+    });
+  });
+
+  group('pruning old failed operations', () {
+    final longAgo = DateTime.now().subtract(const Duration(days: 90));
+    final tenDaysAgo = DateTime.now().subtract(const Duration(days: 10));
+
+    Future<void> insert(
+      String id,
+      String status, {
+      DateTime? createdAt,
+      DateTime? attemptedAt,
+      String payload = '{}',
+    }) => db
+        .into(db.syncOperations)
+        .insert(
+          SyncOperationsCompanion.insert(
+            id: id,
+            type: 'order_deliver',
+            payload: payload,
+            idempotencyKey: 'key-$id',
+            status: drift.Value(status),
+            createdAt: drift.Value(createdAt ?? longAgo),
+            lastAttemptAt: drift.Value(attemptedAt),
+            ownerId: const drift.Value('driver-1'),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final op in await db.select(db.syncOperations).get()) op.id,
+    };
+
+    test(
+      'deletes failed operations untouched for a month, keeps newer',
+      () async {
+        await insert('old', 'failed', attemptedAt: longAgo);
+        await insert('recent', 'failed', attemptedAt: tenDaysAgo);
+
+        final removed = await coordinator.pruneFailedOperations();
+
+        expect(removed, 1);
+        expect(await ids(), {'recent'});
+      },
+    );
+
+    test('leaves conflicts and every waiting or retrying row alone', () async {
+      for (final status in [
+        'conflict',
+        'pending',
+        'error',
+        'syncing',
+        'synced',
+      ]) {
+        await insert(status, status, attemptedAt: longAgo);
+      }
+
+      final removed = await coordinator.pruneFailedOperations();
+
+      expect(removed, 0);
+      expect(await ids(), {
+        'conflict',
+        'pending',
+        'error',
+        'syncing',
+        'synced',
+      });
+    });
+
+    test(
+      'a failed row with no attempt time is judged by when it was created',
+      () async {
+        await insert('old-no-attempt', 'failed', createdAt: longAgo);
+        await insert('new-no-attempt', 'failed', createdAt: tenDaysAgo);
+
+        await coordinator.pruneFailedOperations();
+
+        expect(await ids(), {'new-no-attempt'});
+      },
+    );
+
+    test('the retention is adjustable', () async {
+      await insert('ten-days', 'failed', attemptedAt: tenDaysAgo);
+
+      expect(
+        await coordinator.pruneFailedOperations(
+          olderThan: const Duration(days: 20),
+        ),
+        0,
+      );
+      expect(
+        await coordinator.pruneFailedOperations(
+          olderThan: const Duration(days: 5),
+        ),
+        1,
+      );
+    });
+
+    test(
+      'its photo and signature are deleted with it, a newer one\'s are not',
+      () async {
+        final store = _FakeMediaStore()
+          ..files['pod/old/signature.png'] = [1]
+          ..files['pod/old/delivery.jpg'] = [2]
+          ..files['pod/new/signature.png'] = [3];
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+          mediaStore: store,
+        );
+        String payload(String id) => jsonEncode({
+          'media': [
+            {'key': 'pod/$id/signature.png'},
+            if (id == 'old') {'key': 'pod/old/delivery.jpg'},
+          ],
+        });
+        await insert(
+          'old',
+          'failed',
+          attemptedAt: longAgo,
+          payload: payload('old'),
+        );
+        await insert(
+          'new',
+          'failed',
+          attemptedAt: tenDaysAgo,
+          payload: payload('new'),
+        );
+
+        await coordinator.pruneFailedOperations();
+
+        expect(store.files.keys, ['pod/new/signature.png']);
+      },
+    );
+
+    test('starting the coordinator prunes them too', () async {
+      await insert('old', 'failed', attemptedAt: longAgo);
+
+      coordinator.start();
+      await settle();
+
+      expect(await ids(), isEmpty);
+    });
+  });
+
+  group('pruning old conflicted operations', () {
+    final longAgo = DateTime.now().subtract(const Duration(days: 90));
+    final tenDaysAgo = DateTime.now().subtract(const Duration(days: 10));
+
+    Future<void> insert(
+      String id,
+      String status, {
+      DateTime? createdAt,
+      DateTime? attemptedAt,
+      String payload = '{}',
+    }) => db
+        .into(db.syncOperations)
+        .insert(
+          SyncOperationsCompanion.insert(
+            id: id,
+            type: 'order_deliver',
+            payload: payload,
+            idempotencyKey: 'key-$id',
+            status: drift.Value(status),
+            createdAt: drift.Value(createdAt ?? longAgo),
+            lastAttemptAt: drift.Value(attemptedAt),
+            ownerId: const drift.Value('driver-1'),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final op in await db.select(db.syncOperations).get()) op.id,
+    };
+
+    test('deletes conflicts untouched for a month, keeps newer ones', () async {
+      await insert('old', 'conflict', attemptedAt: longAgo);
+      await insert('recent', 'conflict', attemptedAt: tenDaysAgo);
+
+      final removed = await coordinator.pruneConflictedOperations();
+
+      expect(removed, 1);
+      expect(await ids(), {'recent'});
+    });
+
+    test('leaves failed, waiting and retrying rows alone', () async {
+      for (final status in [
+        'failed',
+        'pending',
+        'error',
+        'syncing',
+        'synced',
+      ]) {
+        await insert(status, status, attemptedAt: longAgo);
+      }
+
+      final removed = await coordinator.pruneConflictedOperations();
+
+      expect(removed, 0);
+      expect(await ids(), {'failed', 'pending', 'error', 'syncing', 'synced'});
+    });
+
+    test(
+      'a conflict with no attempt time is judged by when it was created',
+      () async {
+        await insert('old-no-attempt', 'conflict', createdAt: longAgo);
+        await insert('new-no-attempt', 'conflict', createdAt: tenDaysAgo);
+
+        await coordinator.pruneConflictedOperations();
+
+        expect(await ids(), {'new-no-attempt'});
+      },
+    );
+
+    test('the retention is adjustable', () async {
+      await insert('ten-days', 'conflict', attemptedAt: tenDaysAgo);
+
+      expect(
+        await coordinator.pruneConflictedOperations(
+          olderThan: const Duration(days: 20),
+        ),
+        0,
+      );
+      expect(
+        await coordinator.pruneConflictedOperations(
+          olderThan: const Duration(days: 5),
+        ),
+        1,
+      );
+    });
+
+    test(
+      'its photo and signature are deleted with it, a newer one\'s are not',
+      () async {
+        final store = _FakeMediaStore()
+          ..files['pod/old/signature.png'] = [1]
+          ..files['pod/new/signature.png'] = [3];
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+          mediaStore: store,
+        );
+        String payload(String id) => jsonEncode({
+          'media': [
+            {'key': 'pod/$id/signature.png'},
+          ],
+        });
+        await insert(
+          'old',
+          'conflict',
+          attemptedAt: longAgo,
+          payload: payload('old'),
+        );
+        await insert(
+          'new',
+          'conflict',
+          attemptedAt: tenDaysAgo,
+          payload: payload('new'),
+        );
+
+        await coordinator.pruneConflictedOperations();
+
+        expect(store.files.keys, ['pod/new/signature.png']);
+      },
+    );
+
+    test(
+      'a real 409 ends up as a conflict that a later prune removes',
+      () async {
+        fakeAdapter.responseStatus = 409;
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o1'),
+        );
+        await settle();
+        expect((await onlyOp()).status, 'conflict');
+
+        // Fresh conflict: kept. Move the cutoff past it (a negative window
+        // stands in for time passing; times are stored to the whole second,
+        // so "older than now" would be flaky): removed.
+        expect(await coordinator.pruneConflictedOperations(), 0);
+        expect(
+          await coordinator.pruneConflictedOperations(
+            olderThan: const Duration(seconds: -5),
+          ),
+          1,
+        );
+      },
+    );
+
+    test('starting the coordinator prunes them too', () async {
+      await insert('old', 'conflict', attemptedAt: longAgo);
+
+      coordinator.start();
+      await settle();
+
+      expect(await ids(), isEmpty);
+    });
+  });
+
+  group('whose queue it is', () {
+    Future<List<SyncOperation>> all() => db.select(db.syncOperations).get();
+
+    test('an operation is stamped with the user who queued it', () async {
+      fakeAdapter.responseStatus = 500;
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+
+      expect((await onlyOp()).ownerId, 'driver-1');
+    });
+
+    test('another user\'s unsent operation is never sent under a different '
+        'session, and is not lost', () async {
+      fakeAdapter.responseStatus = 500; // driver-1 is offline; it stays queued
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+      final sentBefore = fakeAdapter.requests.length;
+
+      owner = 'driver-2'; // a different driver signs in on the same phone
+      fakeAdapter.responseStatus = 200;
+      await coordinator.syncNow(ignoreBackoff: true);
+
+      expect(
+        fakeAdapter.requests.length,
+        sentBefore,
+        reason: 'driver-2\'s session must not send driver-1\'s delivery',
+      );
+      final op = await onlyOp();
+      expect(op.ownerId, 'driver-1');
+      expect(op.status, isNot('synced'));
+    });
+
+    test('the owner\'s operation resumes when they sign in again', () async {
+      fakeAdapter.responseStatus = 500;
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+
+      owner = 'driver-2';
+      await coordinator.syncNow(ignoreBackoff: true);
+      owner = 'driver-1';
+      fakeAdapter.responseStatus = 200;
+      await coordinator.syncNow(ignoreBackoff: true);
+
+      expect((await onlyOp()).status, 'synced');
+    });
+
+    test('nothing is sent while nobody is signed in', () async {
+      fakeAdapter.responseStatus = 500;
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+      final sentBefore = fakeAdapter.requests.length;
+
+      owner = null;
+      fakeAdapter.responseStatus = 200;
+      await coordinator.syncNow(ignoreBackoff: true);
+
+      expect(fakeAdapter.requests.length, sentBefore);
+    });
+
+    test('the count, the active list and the issues list show only the '
+        'signed-in user\'s operations', () async {
+      fakeAdapter.responseStatus = 500;
+      await coordinator.enqueueOperation('order_depart', _departPayload('o1'));
+      await settle();
+
+      owner = 'driver-2';
+      expect(await coordinator.watchPendingCount().first, 0);
+      expect(await coordinator.watchActive().first, isEmpty);
+      expect(await coordinator.watchIssues().first, isEmpty);
+
+      owner = 'driver-1';
+      expect(await coordinator.watchPendingCount().first, 1);
+      expect(await coordinator.watchActive().first, hasLength(1));
+    });
+
+    test('operations queued before owners existed go to the first user to '
+        'sign in', () async {
+      await db
+          .into(db.syncOperations)
+          .insert(
+            SyncOperationsCompanion.insert(
+              id: 'legacy',
+              type: 'order_depart',
+              payload: _departPayload('o9'),
+              idempotencyKey: 'legacy-key',
+            ),
+          );
+      fakeAdapter.responseStatus = 200;
+
+      await coordinator.syncNow(ignoreBackoff: true);
+
+      final op = (await all()).single;
+      expect(op.ownerId, 'driver-1');
+      expect(op.status, 'synced');
+    });
+  });
 }
 
 class _FakeMediaStore implements MediaStore {
   final files = <String, List<int>>{};
+  final modified = <String, DateTime>{};
 
   @override
-  Future<void> write(String key, List<int> bytes) async => files[key] = bytes;
+  Future<void> write(String key, List<int> bytes) async {
+    files[key] = bytes;
+    modified[key] = DateTime.now();
+  }
+
+  @override
+  Future<List<StoredMedia>> list() async => [
+    for (final k in files.keys) StoredMedia(k, modified[k] ?? DateTime.now()),
+  ];
 
   @override
   Future<Uint8List> read(String key) async => Uint8List.fromList(files[key]!);

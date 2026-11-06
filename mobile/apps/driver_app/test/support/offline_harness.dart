@@ -14,13 +14,20 @@ import 'package:sync_engine/sync_engine.dart';
 /// A [MediaStore] that keeps bytes in a map — no filesystem in tests.
 class InMemoryMediaStore implements MediaStore {
   final _files = <String, Uint8List>{};
+  final _modified = <String, DateTime>{};
 
   Set<String> get keys => _files.keys.toSet();
 
   @override
   Future<void> write(String key, List<int> bytes) async {
     _files[key] = Uint8List.fromList(bytes);
+    _modified[key] = DateTime.now();
   }
+
+  @override
+  Future<List<StoredMedia>> list() async => [
+    for (final k in _files.keys) StoredMedia(k, _modified[k]!),
+  ];
 
   @override
   Future<Uint8List> read(String key) async {
@@ -60,6 +67,7 @@ class OfflineHarness {
     coordinator = SyncCoordinator(
       database: db,
       apiClient: apiClient,
+      currentOwner: () => 'driver-1',
       mediaStore: media,
     );
   }

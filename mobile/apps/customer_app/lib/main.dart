@@ -13,6 +13,7 @@ import 'package:realtime/realtime.dart';
 import 'package:sync_engine/sync_engine.dart';
 
 import 'src/auth_provider.dart';
+import 'src/i18n/customer_strings.dart';
 import 'src/features/orders/data/orders_provider.dart';
 import 'src/providers.dart';
 import 'src/push/push_notification_service.dart';
@@ -70,6 +71,8 @@ void main() async {
       );
     },
     onSessionExpired: () => authController.handleSessionExpired(),
+    // Requests made while the session is still being restored wait for it.
+    waitForSession: () => authController.whenSettled,
   );
   authRepository = ApiAuthRepository(
     authApi: AuthApi(apiClient.dio),
@@ -80,6 +83,8 @@ void main() async {
   final syncCoordinator = SyncCoordinator(
     database: localDatabase.database,
     apiClient: apiClient,
+    // Queued work is sent only under the session of the person who queued it.
+    currentOwner: () => authController.state.principal?.userId,
   );
   syncCoordinator.start();
 
@@ -109,16 +114,26 @@ void main() async {
   }
 
   runApp(
-    ProviderScope(
-      overrides: [
-        localDatabaseProvider.overrideWithValue(localDatabase),
-        syncCoordinatorProvider.overrideWithValue(syncCoordinator),
-        authControllerProvider.overrideWithValue(authController),
-        apiClientProvider.overrideWithValue(apiClient),
-        realtimeClientProvider.overrideWithValue(realtimeClient),
-        pushNotificationServiceProvider.overrideWithValue(pushService),
-      ],
-      child: const CustomerApp(),
+    // A new state tree whenever a signed-in session ends, so the next person
+    // on this phone never sees the previous person's cached screens.
+    SessionScope(
+      authController: authController,
+      builder: (context, sessionKey) => ProviderScope(
+        key: sessionKey,
+        // One quiet retry of a transient failure (the skeleton stays on screen
+        // meanwhile), then the error/Retry state. Riverpod's default retries ten
+        // times and hides a real error for about half a minute (story 0.4).
+        retry: quietRetry,
+        overrides: [
+          localDatabaseProvider.overrideWithValue(localDatabase),
+          syncCoordinatorProvider.overrideWithValue(syncCoordinator),
+          authControllerProvider.overrideWithValue(authController),
+          apiClientProvider.overrideWithValue(apiClient),
+          realtimeClientProvider.overrideWithValue(realtimeClient),
+          pushNotificationServiceProvider.overrideWithValue(pushService),
+        ],
+        child: const CustomerApp(),
+      ),
     ),
   );
 }
@@ -142,6 +157,10 @@ void _wirePushRegistrationToAuth(
     wasAuthenticated = isAuthenticated;
   });
 }
+
+/// The app's look: one engine, never a hand-built `ThemeData` (story 1.2).
+/// The accent stays the brand's flame orange, as before.
+const _theme = LpgThemeEngine();
 
 class CustomerApp extends ConsumerStatefulWidget {
   const CustomerApp({super.key});
@@ -224,12 +243,16 @@ class _CustomerAppState extends ConsumerState<CustomerApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'LPG Agency',
-      theme: LpgTheme.light,
-      darkTheme: LpgTheme.dark,
-      highContrastTheme: LpgTheme.highContrast,
-      highContrastDarkTheme: LpgTheme.highContrast,
+      onGenerateTitle: (context) => context.strings.app.title,
+      locale: ref.watch(lpgLocaleProvider),
+      supportedLocales: customerLaunchLocales,
+      localizationsDelegates: customerLocalizationsDelegates,
+      theme: _theme.light,
+      darkTheme: _theme.dark,
+      highContrastTheme: _theme.highContrast,
+      highContrastDarkTheme: _theme.highContrast,
       themeMode: ThemeMode.system,
+      builder: _theme.builder,
       routerConfig: ref.watch(routerProvider),
       debugShowCheckedModeBanner: false,
     );

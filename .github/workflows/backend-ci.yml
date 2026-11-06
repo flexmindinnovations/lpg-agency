@@ -24,26 +24,34 @@ jobs:
       # Integration tests run against a real PostgreSQL, never SQLite or a
       # mock — RLS policies and PostgreSQL-specific types must actually be
       # exercised (docs/implementation/testing-strategy.md).
+      #
+      # The services listen on the same host ports as the local docker compose
+      # stack (5433 / 56379 / 59000) and use its dev credentials, because
+      # that is where the integration tests look by default
+      # (`tests/conftest.py`, and the many suites that seed through the
+      # `lpg_admin` role). Without this every integration test skipped
+      # silently ("PostgreSQL is not reachable") and CI proved only the unit
+      # tests.
       postgres:
         image: postgres:17-alpine
         env:
           POSTGRES_USER: lpg_admin
-          POSTGRES_PASSWORD: ci_only_not_a_real_secret
+          POSTGRES_PASSWORD: dev_only_not_a_real_secret
           POSTGRES_DB: lpg_test
-        ports: ['5432:5432']
+        ports: ['5433:5432']
         options: >-
           --health-cmd "pg_isready -U lpg_admin -d lpg_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
       redis:
         image: redis:7-alpine
-        ports: ['6379:6379']
+        ports: ['56379:6379']
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s --health-timeout 3s --health-retries 10
 
     env:
-      LPG_DATABASE_URL: postgresql+asyncpg://lpg_admin:ci_only_not_a_real_secret@localhost:5432/lpg_test
-      LPG_REDIS_URL: redis://localhost:6379/1
+      LPG_DATABASE_URL: postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_test
+      LPG_REDIS_URL: redis://localhost:56379/1
 
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +62,35 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --frozen --python 3.13
+
+      # The integration tests need the schema, the non-superuser `lpg_app`
+      # role (RLS only holds for a role that cannot bypass it) and object
+      # storage. The role and extensions come from the same init script the
+      # local docker compose database runs, so CI and a developer's machine
+      # cannot drift apart.
+      - name: Prepare the database (roles, extensions, migrations)
+        env:
+          PGPASSWORD: dev_only_not_a_real_secret
+        run: |
+          psql -h localhost -p 5433 -U lpg_admin -d postgres -c "CREATE DATABASE lpg_dev"
+          psql -h localhost -p 5433 -U lpg_admin -d postgres -v ON_ERROR_STOP=1 \
+            -f ../infrastructure/docker/postgres/init/01-init.sql
+          uv run alembic upgrade head
+
+      # The compose file's `minio/minio:latest` is no longer pullable from
+      # Docker Hub, so CI serves the S3 API on the same port with moto's
+      # standalone server (pinned; fetched from PyPI, nothing to pull).
+      # The storage tests only need an S3-compatible endpoint.
+      - name: Start an S3-compatible object store (moto)
+        run: |
+          nohup uvx --from "moto[server]==5.2.5" moto_server -H 127.0.0.1 -p 59000 > moto.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:59000/moto-api/ >/dev/null && exit 0
+            sleep 2
+          done
+          echo "The object store did not start" >&2
+          cat moto.log
+          exit 1
 
       - name: Lint (ruff)
         run: uv run ruff check .
@@ -75,5 +112,7 @@ jobs:
       - name: OpenAPI contract drift
         run: uv run python scripts/export_openapi.py --check
 
+      # Integration tests are real now: if PostgreSQL, Redis or MinIO is
+      # unreachable they skip, so a skip count in this log is a red flag.
       - name: Tests
-        run: uv run pytest -q
+        run: uv run pytest -q -rs

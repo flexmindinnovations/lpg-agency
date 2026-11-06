@@ -54,7 +54,7 @@ final orderTrackingProvider = FutureProvider.autoDispose
           .getOrderTracking(orderId);
       final tracking = result.when(
         onSuccess: (data) => data,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
 
       LatLng? destination;

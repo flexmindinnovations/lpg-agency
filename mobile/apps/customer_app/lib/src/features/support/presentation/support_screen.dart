@@ -31,9 +31,7 @@ class SupportScreen extends ConsumerWidget {
           Text(
             'Tell us about a delivery, billing or service problem and '
             'track it here.',
-            style: text.bodyMedium?.copyWith(
-              color: colors.onHero.withValues(alpha: 0.85),
-            ),
+            style: text.bodyMedium?.copyWith(color: colors.heroMuted),
           ),
           const SizedBox(height: LpgSpacing.mdl),
           LpgButton(

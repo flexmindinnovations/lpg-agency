@@ -1,0 +1,18 @@
+{
+  "common": {
+    "retry": "Retry",
+    "cancel": "Cancel"
+  },
+  "async": {
+    "errorTitle": "Something went wrong",
+    "updating": "Updating…",
+    "lastUpdated": "Updated {time: String}"
+  },
+  "stock": {
+    "cylinders": {
+      "one": "{n} cylinder",
+      "other": "{n} cylinders"
+    },
+    "onlyInEnglish": "This line exists only in English."
+  }
+}

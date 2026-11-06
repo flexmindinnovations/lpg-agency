@@ -20,7 +20,11 @@ class LpgEmptyState extends StatelessWidget {
     this.actionLabel,
     this.actionIcon,
     this.onAction,
+    this.footnote,
   });
+
+  /// Small text under the explanation, such as a support code.
+  final String? footnote;
 
   /// The explanation line. Shown as the headline when [title] is null.
   final String message;
@@ -78,6 +82,14 @@ class LpgEmptyState extends StatelessWidget {
                           : colors.textSecondary,
                     ),
               ),
+              if (footnote != null) ...[
+                const SizedBox(height: LpgSpacing.sm),
+                Text(
+                  footnote!,
+                  textAlign: TextAlign.center,
+                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                ),
+              ],
               if (actionLabel != null && onAction != null) ...[
                 const SizedBox(height: LpgSpacing.lg),
                 LpgButton(
@@ -105,7 +117,12 @@ class LpgErrorState extends StatelessWidget {
     required this.message,
     this.onRetry,
     this.retryLabel = 'Retry',
+    this.supportCode,
   });
+
+  /// The server's code for this failure, shown small under the message so
+  /// support can find the cause. Never the main message.
+  final String? supportCode;
 
   final String title;
   final String message;
@@ -121,5 +138,6 @@ class LpgErrorState extends StatelessWidget {
     actionLabel: onRetry == null ? null : retryLabel,
     actionIcon: LpgIcons.sync,
     onAction: onRetry,
+    footnote: supportCode == null ? null : 'Code: $supportCode',
   );
 }

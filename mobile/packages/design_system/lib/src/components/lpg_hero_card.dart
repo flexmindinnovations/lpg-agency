@@ -55,7 +55,7 @@ class LpgHeroCard extends StatelessWidget {
                     child: Icon(
                       watermark,
                       size: LpgSizes.avatarLg * 2,
-                      color: colors.onHero.withValues(alpha: 0.08),
+                      color: colors.heroSubtle,
                     ),
                   ),
                 ),
