@@ -16,7 +16,7 @@ const _knownContrastGaps = {'status_and_banners / light'};
 /// picture around each text and cannot tell a speckled background from text,
 /// so it reports nonsense there. Their contrast is held instead by
 /// `backdrop_test.dart`, which checks the worst pixel of the page analytically.
-const _texturedGroups = {'page_backdrop'};
+const _texturedGroups = {'page_backdrop', 'glass_surfaces'};
 
 /// Every gallery group, in every theme, at normal and very large text:
 /// nothing overflows, every tap target is big enough and named, and text has

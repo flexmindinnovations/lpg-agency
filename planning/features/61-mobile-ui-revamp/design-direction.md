@@ -1,6 +1,6 @@
 # Design direction: modern, solid, enterprise (story 0.1)
 
-Applies to the Admin, Customer and Driver apps. Input to epics E1 (theme engine) and E4 (component library). Decisions already made by the owner: **no glass, no blur, no transparency**; one theme engine; high-contrast mode; WCAG 2.2 AA.
+Applies to the Admin, Customer and Driver apps. Input to epics E1 (theme engine) and E4 (component library). Decisions already made by the owner: **no glass, no blur, no transparency** (amended by the owner in story 5.11: glass is now allowed in the limited, contrast-sized form described at the end of this file); one theme engine; high-contrast mode; WCAG 2.2 AA.
 
 ## What exists today (read from the code, 2026-11-05)
 - One token source, `design-tokens/tokens.json`, is **shared with the Angular dashboard**: it generates both the web CSS and `design_system/lib/src/tokens.dart`. Anything added there reaches the web's generated output, so mobile-only additions must stay out of the web build (decided in story 1.1, without touching the Angular source).
@@ -63,3 +63,15 @@ A stat card may carry one flat illustration behind its figure, drawn in the card
 - **Paper page (5.8).** The one place a soft, blurred background is allowed: the page behind every screen, never a surface. Strength is whatever keeps secondary text at 4.5:1 on the worst pixel; `LpgBackdropLook` computes it.
 - **Files, not code.** Each picture is an SVG in `design_system/assets/illustrations/`, drawn in four placeholder greys that the widget recolours to the tile's tone (see that folder's README for the rules). Never put markup or path data in Dart.
 - **Decorative only.** Excluded from semantics and touches; the tile reads and behaves the same with or without it, and its content does not move.
+
+## Glass (5.11, amends the original "no glass" decision)
+
+The owner asked for see-through, blurred surfaces after the first no-glass rule was written. It is allowed only in this form:
+
+- **Where glass exists.** Cards and the bottom navigation bar are slightly see-through (no blur), so the paper page shows softly through them. Bottom sheets are frosted: the dimmed screen behind is blurred (sigma 22) through them. Everything else stays solid: buttons, input fields, chips, dialogs, snackbars, menus, tonal cards and anything inside the hero.
+- **Blur only where there is something to blur.** A card sits on a static, already soft page, so a backdrop filter there would cost a layer per list row and change almost nothing. Blur is used only on sheets, over scrolling content. The bar and the app bar have only the page under them (the screens do not scroll under them), so they are see-through without a blur.
+- **Opacity is computed, not picked.** `LpgGlassLook` finds the most transparent fill that keeps primary and secondary text at 4.5:1 on the worst thing behind it: the page's worst pixel for a card, black or white for a sheet (the extremes a blur can average to). Today: cards 0.62 in light and dark, sheets 0.79 in light and 0.92 in dark. The dark sheet is the least see-through because light text needs a darker ground.
+- **Shadows go outside.** A drop shadow painted under a see-through fill shows through as a grey patch, so see-through surfaces draw their shadow with the shape cut out (`LpgGlassShadow`).
+- **High contrast is never glass.** Opaque, 2 px border, no blur.
+- **One file.** Backdrop filters and see-through fills are made only in `glass.dart`; `surfaces_test` scans the source so they cannot spread.
+- **Honest limit.** In the light theme the page's colour is faint (washes at most 16 percent), so a 0.62 white card over it looks almost the same as a solid one; the effect is clearest in dark mode and on sheets.

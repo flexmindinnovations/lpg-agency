@@ -12,6 +12,7 @@ export 'src/async/lpg_error_copy.dart';
 export 'src/async/quiet_when.dart';
 export 'src/tokens.dart';
 export 'src/layout.dart';
+export 'src/glass.dart';
 export 'src/surface.dart';
 export 'src/theme.dart';
 export 'src/theme_engine.dart';
