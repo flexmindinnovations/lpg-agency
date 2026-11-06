@@ -2,7 +2,8 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
 /// One live number with a tinted icon, tappable when it has somewhere to go
-/// (a chevron shows then). Used by the dashboard's sections.
+/// (a chevron shows then). Used by the dashboard's sections. A thin wrapper
+/// over the shared [LpgMetricTile], kept so the Admin screens read the same.
 class MetricTile extends StatelessWidget {
   const MetricTile({
     super.key,
@@ -24,73 +25,19 @@ class MetricTile extends StatelessWidget {
   final LpgTone tone;
   final VoidCallback? onTap;
 
-  /// Outlines the tile in its tone: something here needs the owner.
+  /// Marks the tile in its tone: something here needs the owner.
   final bool attention;
 
   @override
-  Widget build(BuildContext context) {
-    final text = context.lpgText;
-    final colors = context.lpgColors;
-    final tappable = onTap != null;
-
-    return Semantics(
-      button: tappable,
-      label: '$label: $value${caption == null ? '' : ', $caption'}',
-      excludeSemantics: true,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(LpgRadius.xl),
-          border: attention
-              ? Border.all(color: tone.foreground(colors), width: 1.5)
-              : null,
-        ),
-        child: LpgCard(
-          onTap: onTap,
-          padding: const EdgeInsets.all(LpgSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  LpgIconBox(icon: icon, tone: tone, size: 36),
-                  const Spacer(),
-                  if (tappable)
-                    Icon(
-                      LpgIcons.chevronRight,
-                      size: LpgSizes.iconSm,
-                      color: colors.textSecondary,
-                    ),
-                ],
-              ),
-              const SizedBox(height: LpgSpacing.smd),
-              Text(
-                value,
-                style: text.headlineSmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: text.bodySmall?.copyWith(color: colors.textSecondary),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (caption != null)
-                Text(
-                  caption!,
-                  style: text.labelSmall?.copyWith(
-                    color: tone.foreground(colors),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => LpgMetricTile(
+    label: label,
+    value: value,
+    icon: icon,
+    caption: caption,
+    tone: tone,
+    onTap: onTap,
+    attention: attention,
+  );
 }
 
 /// Lays [tiles] out two to a row, equal width, as the dashboard sections do.

@@ -225,11 +225,16 @@ class _Body extends StatelessWidget {
               '${o.bookingsToday}',
               style: text.displaySmall?.copyWith(color: colors.onHero),
             ),
-            const SizedBox(height: LpgSpacing.sm),
-            Text(
-              '${o.deliveredToday} delivered  •  ${o.failedToday} failed  •  '
-              '${o.pendingCancellations} cancellations to approve',
-              style: text.bodySmall?.copyWith(color: colors.onHero),
+            const SizedBox(height: LpgSpacing.md),
+            LpgHeroStats(
+              stats: [
+                LpgHeroStat(value: '${o.deliveredToday}', label: 'Delivered'),
+                LpgHeroStat(value: '${o.failedToday}', label: 'Failed'),
+                LpgHeroStat(
+                  value: '${o.pendingCancellations}',
+                  label: 'To approve',
+                ),
+              ],
             ),
           ],
         ),
