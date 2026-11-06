@@ -444,6 +444,7 @@ class SqlAlchemyStaffUserRepository:
             row.locked_until = user.locked_until
             row.display_name = user.display_name
             row.contact_phone = user.contact_phone
+            row.avatar_ref = user.avatar_ref
 
     async def count_active_with_role(self, role: str) -> int:
         async for session in self._database.session(tenant_id=self._tenant_id):
@@ -476,4 +477,5 @@ class SqlAlchemyStaffUserRepository:
             version=row.version,
             display_name=row.display_name,
             contact_phone=row.contact_phone,
+            avatar_ref=row.avatar_ref,
         )

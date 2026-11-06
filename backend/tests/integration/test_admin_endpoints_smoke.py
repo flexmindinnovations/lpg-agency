@@ -343,6 +343,71 @@ class TestQaFixesThroughTheRealStack:
         )
         assert changed.status_code == 204, changed.text
 
+    async def test_my_profile_picture_round_trip(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        _tenant, _me, headers = await self._admin(
+            real_lifespan_client, admin_engine_lpg_test, integration_settings
+        )
+        picture = b"\x89PNG\r\n\x1a\n" + b"lpg-avatar" * 20
+
+        assert (await real_lifespan_client.get("/api/v1/auth/me/profile", headers=headers)).json()[
+            "avatar_url"
+        ] is None
+
+        # Anything that is not a picture is a 422 and leaves the profile alone.
+        for files in (
+            {"file": ("a.pdf", b"%PDF-1.4", "application/pdf")},
+            {"file": ("a.png", b"<html></html>", "image/png")},
+        ):
+            refused = await real_lifespan_client.post(
+                "/api/v1/auth/me/avatar", files=files, headers=headers
+            )
+            assert refused.status_code == 422, refused.text
+
+        set_ = await real_lifespan_client.post(
+            "/api/v1/auth/me/avatar",
+            files={"file": ("me.png", picture, "image/png")},
+            headers=headers,
+        )
+        assert set_.status_code == 200, set_.text
+        url = set_.json()["avatar_url"]
+        assert url
+
+        # The link serves the picture, and the profile read hands out a link too.
+        async with AsyncClient() as storage_client:
+            fetched = await storage_client.get(url)
+        assert fetched.status_code == 200
+        assert fetched.content == picture
+        profile = (
+            await real_lifespan_client.get("/api/v1/auth/me/profile", headers=headers)
+        ).json()
+        assert profile["avatar_url"]
+
+        # Saving the name and phone does not drop the picture.
+        edited = await real_lifespan_client.patch(
+            "/api/v1/auth/me/profile",
+            json={"display_name": "Ravi Kumar", "contact_phone": None},
+            headers=headers,
+        )
+        assert edited.json()["avatar_url"]
+
+        removed = await real_lifespan_client.delete("/api/v1/auth/me/avatar", headers=headers)
+        assert removed.status_code == 200, removed.text
+        assert removed.json()["avatar_url"] is None
+        async with AsyncClient() as storage_client:
+            gone = await storage_client.get(url)
+        assert gone.status_code in (403, 404)
+
+        # Without signing in, there is no profile picture to set.
+        anonymous = await real_lifespan_client.post(
+            "/api/v1/auth/me/avatar", files={"file": ("me.png", picture, "image/png")}
+        )
+        assert anonymous.status_code == 401
+
     async def test_an_invited_user_sets_a_password_from_the_link_and_signs_in(
         self,
         real_lifespan_client: AsyncClient,

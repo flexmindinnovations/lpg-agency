@@ -119,6 +119,9 @@ class MyProfileResponse(BaseModel):
     role: str
     display_name: str | None
     contact_phone: str | None
+    #: A short-lived link to the profile picture, or `None` when there is none.
+    #: It changes on every read, so clients must not store it.
+    avatar_url: str | None = None
 
 
 class UpdateMyProfileRequest(BaseModel):

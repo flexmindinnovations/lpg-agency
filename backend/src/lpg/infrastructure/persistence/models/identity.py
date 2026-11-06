@@ -88,6 +88,7 @@ class IdentityUserModel(Base):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     display_name: Mapped[str | None] = mapped_column(String(120))
     contact_phone: Mapped[str | None] = mapped_column(String(20))
+    avatar_ref: Mapped[str | None] = mapped_column(String(300))
     sso_subject: Mapped[str | None] = mapped_column(String(200))
     sso_provider: Mapped[str | None] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(
