@@ -3,6 +3,8 @@
 // (`_cache`), and Dart 3 forbids private named parameters.
 // ignore_for_file: prefer_initializing_formals
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_storage/local_storage.dart';
@@ -21,7 +23,14 @@ final resourceCacheProvider = Provider<ResourceCache?>((ref) {
   // Rows belong to the signed-in driver, so a second driver on the same phone
   // never reads the first one's cached route or orders.
   final auth = ref.watch(authControllerProvider);
-  return ResourceCache(db.database, owner: () => auth.state.principal?.userId);
+  final cache = ResourceCache(
+    db.database,
+    owner: () => auth.state.principal?.userId,
+  );
+  // Forget rows nobody has refreshed for two weeks (a driver who no longer uses
+  // this phone, an order nobody opened). Best-effort, off the critical path.
+  unawaited(cache.pruneStale().then((_) {}, onError: (Object _) {}));
+  return cache;
 });
 
 /// Cache-first single-resource reads for the driver's route/stop/order data,

@@ -76,6 +76,21 @@ final class ResourceCache {
     await _db.delete(_db.cachedResources).go();
   }
 
+  /// Deletes every cached row, **whoever owns it**, that has not been written
+  /// for [olderThan] (14 days by default). Returns how many were removed.
+  ///
+  /// The cache only holds copies of what the server has, refilled by the next
+  /// successful request, and a row is rewritten on every successful refresh,
+  /// so only data nobody has fetched for two weeks goes: a route from a driver
+  /// who no longer uses this phone, an order nobody opened. It is also stale
+  /// by then, so reading it offline would mislead more than help.
+  Future<int> pruneStale({Duration olderThan = const Duration(days: 14)}) {
+    final cutoff = DateTime.now().subtract(olderThan);
+    return (_db.delete(
+      _db.cachedResources,
+    )..where((t) => t.updatedAt.isSmallerThanValue(cutoff))).go();
+  }
+
   /// All cached rows of one type, e.g. every `'order'` row for a list
   /// screen's offline fallback. Ordered most-recently-updated first.
   Future<List<Map<String, dynamic>>> readAll(String resourceType) async {

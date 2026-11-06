@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_storage/local_storage.dart';
 import 'package:path/path.dart' as p;
@@ -144,6 +145,66 @@ void main() {
       expect(await scoped.read('route_active', 'current'), isNull);
       owner = 'driver-1';
       expect(await scoped.read('route_active', 'current'), isNull);
+    });
+  });
+
+  group('pruneStale', () {
+    final longAgo = DateTime.now().subtract(const Duration(days: 40));
+    final lastWeek = DateTime.now().subtract(const Duration(days: 7));
+
+    Future<void> insert(String owner, String id, DateTime updatedAt) => db
+        .database
+        .into(db.database.cachedResources)
+        .insert(
+          CachedResourcesCompanion.insert(
+            resourceType: 'route_active',
+            resourceId: id,
+            jsonPayload: '{"id": "$id"}',
+            ownerId: Value(owner),
+            updatedAt: Value(updatedAt),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final r
+          in await db.database.select(db.database.cachedResources).get())
+        r.resourceId,
+    };
+
+    test('deletes rows not written for two weeks, whoever owns them', () async {
+      await insert('driver-1', 'old-1', longAgo);
+      await insert('driver-2', 'old-2', longAgo);
+      await insert('driver-1', 'recent', lastWeek);
+
+      final removed = await cache.pruneStale();
+
+      expect(removed, 2);
+      expect(await ids(), {'recent'});
+    });
+
+    test(
+      'keeps a row that was just refreshed, even if it started old',
+      () async {
+        await insert('driver-1', 'r', longAgo);
+        await ResourceCache(
+          db.database,
+          owner: () => 'driver-1',
+        ).write('route_active', 'r', {'id': 'r', 'fresh': true});
+
+        expect(await cache.pruneStale(), 0);
+        expect(await ids(), {'r'});
+      },
+    );
+
+    test('the retention is adjustable', () async {
+      await insert('driver-1', 'a-week-old', lastWeek);
+
+      expect(await cache.pruneStale(), 0);
+      expect(await cache.pruneStale(olderThan: const Duration(days: 3)), 1);
+    });
+
+    test('an empty cache is fine', () async {
+      expect(await cache.pruneStale(), 0);
     });
   });
 }

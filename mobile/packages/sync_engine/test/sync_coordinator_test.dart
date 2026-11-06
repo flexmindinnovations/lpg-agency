@@ -865,10 +865,14 @@ void main() {
         await settle();
         expect((await onlyOp()).status, 'conflict');
 
-        // Fresh conflict: kept. Age it past the window: removed.
+        // Fresh conflict: kept. Move the cutoff past it (a negative window
+        // stands in for time passing; times are stored to the whole second,
+        // so "older than now" would be flaky): removed.
         expect(await coordinator.pruneConflictedOperations(), 0);
         expect(
-          await coordinator.pruneConflictedOperations(olderThan: Duration.zero),
+          await coordinator.pruneConflictedOperations(
+            olderThan: const Duration(seconds: -5),
+          ),
           1,
         );
       },
