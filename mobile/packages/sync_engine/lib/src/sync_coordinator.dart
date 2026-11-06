@@ -46,7 +46,9 @@ class SyncCoordinator {
     MediaStore? mediaStore,
     Duration pollInterval = const Duration(seconds: 30),
     int maxRetries = 8,
-  }) : _db = database,
+    void Function(String errorCode)? onDeviceRefused,
+  }) : _onDeviceRefused = onDeviceRefused,
+       _db = database,
        _apiClient = apiClient,
        _currentOwner = currentOwner,
        _connectivity = connectivity,
@@ -63,6 +65,13 @@ class SyncCoordinator {
   final MediaStore? _mediaStore;
   final Duration _pollInterval;
   final int _maxRetries;
+
+  /// Called when the server refuses this phone (`DEVICE_PENDING`,
+  /// `DEVICE_BLOCKED`, `DEVICE_REMOVED`, `DEVICE_REQUIRED`, ADR-071). The queue
+  /// is left exactly as it was and sending resumes on the next pass once the
+  /// phone is allowed again.
+  final void Function(String errorCode)? _onDeviceRefused;
+  bool _deviceRefused = false;
 
   bool _isSyncing = false;
   DateTime? _lastTidyAt;
@@ -121,6 +130,7 @@ class SyncCoordinator {
     if (owner == null) return;
     if (_isSyncing) return;
     _isSyncing = true;
+    _deviceRefused = false;
 
     try {
       await _adoptUnownedOperations(owner);
@@ -138,6 +148,9 @@ class SyncCoordinator {
       for (final op in ops) {
         if (!ignoreBackoff && _isBackingOff(op, now)) continue;
         await _processOperation(op);
+        // The agency has not let this phone in: every later operation would
+        // be refused the same way, so stop and leave the rest untouched.
+        if (_deviceRefused) break;
       }
     } finally {
       _isSyncing = false;
@@ -411,6 +424,23 @@ class SyncCoordinator {
   Future<void> _handleDioFailure(SyncOperation op, DioException e) async {
     final status = e.response?.statusCode;
     final code = _errorCode(e.response?.data);
+
+    if (code != null && code.startsWith('DEVICE_')) {
+      // Not a problem with this delivery — the phone itself is not allowed in
+      // right now. Put the operation back exactly as it was (not failed, not
+      // counted as an attempt) so it goes through once the agency approves or
+      // unblocks the phone. Nothing is discarded.
+      await _write(
+        op.id,
+        const SyncOperationsCompanion(
+          status: drift.Value('pending'),
+          errorMessage: drift.Value(null),
+        ),
+      );
+      _deviceRefused = true;
+      _onDeviceRefused?.call(code);
+      return;
+    }
 
     if (status == 409 && code == 'IDEMPOTENCY_KEY_CONFLICT') {
       // The same key was replayed with a different body — a client bug, not

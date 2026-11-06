@@ -22,6 +22,7 @@ class RefreshToken(Entity):
     """One issued refresh token. `rotate()`/`revoke()` are one-way transitions."""
 
     __slots__ = (
+        "_device_id",
         "_expires_at",
         "_issued_at",
         "_replaced_by_id",
@@ -42,8 +43,10 @@ class RefreshToken(Entity):
         rotated_at: datetime | None = None,
         revoked_at: datetime | None = None,
         replaced_by_id: uuid.UUID | None = None,
+        device_id: uuid.UUID | None = None,
     ) -> None:
         super().__init__(token_id)
+        self._device_id = device_id
         self._user_id = user_id
         self._token_hash = token_hash
         self._issued_at = issued_at
@@ -55,6 +58,12 @@ class RefreshToken(Entity):
     @property
     def user_id(self) -> uuid.UUID:
         return self._user_id
+
+    @property
+    def device_id(self) -> uuid.UUID | None:
+        """The registered phone this session was opened on (Driver and Admin
+        apps under device control), or `None` for every other session."""
+        return self._device_id
 
     @property
     def token_hash(self) -> str:

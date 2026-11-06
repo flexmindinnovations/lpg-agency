@@ -16,13 +16,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 import uuid
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from lpg.api.v1.dependencies.device import DEVICE_ID_HEADER, get_device_access_gate
 from lpg.api.v1.dependencies.realtime import build_subscription_ownership
-from lpg.application.common.errors import TokenInvalidError
+from lpg.application.common.errors import ApplicationError, TokenInvalidError
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
@@ -34,6 +36,10 @@ router = APIRouter(tags=["Realtime"])
 
 # Ping interval to detect dead connections
 _PING_INTERVAL_S = 30.0
+# How often a connected phone is re-checked against the agency's device
+# control (ADR-071), however busy the connection is. The status is cached, so
+# this is cheap. A client that never goes quiet must not escape the check.
+_DEVICE_RECHECK_S = 30.0
 # How long an unauthenticated socket may stay open waiting for its auth frame.
 _AUTH_TIMEOUT_S = 10.0
 
@@ -118,13 +124,37 @@ async def _resolve_subscription_intent(
     return None
 
 
-async def _authenticate(websocket: WebSocket, signer: JwtSigner) -> dict[str, Any] | None:
-    """Claims from the first frame (or the legacy query token), or None."""
+async def _device_allowed(claims: dict[str, Any], install_id: str | None) -> str | None:
+    """`None` when this connection's phone may use the app, else the error
+    code to close with (ADR-071). Driver and Admin app sessions are checked
+    against the phone they were opened on, here and again while connected."""
+    tenant_id = claims.get("tenant_id")
+    if not tenant_id:
+        return None
+    did = claims.get("did")
+    try:
+        await get_device_access_gate().check(
+            tenant_id=uuid.UUID(tenant_id),
+            role=str(claims.get("role", "")),
+            device_id=uuid.UUID(did) if did else None,
+            install_id=install_id,
+        )
+    except ApplicationError as exc:
+        return exc.error_code
+    return None
+
+
+async def _authenticate(
+    websocket: WebSocket, signer: JwtSigner
+) -> tuple[dict[str, Any], str | None] | None:
+    """Claims (and the phone's install ID, if it sent one) from the first frame
+    or the legacy query token, or None."""
+    header_install_id = websocket.headers.get(DEVICE_ID_HEADER)
     legacy_token = websocket.query_params.get("token")
     if legacy_token:
         _logger.info("ws_legacy_query_token_used")
         try:
-            return await _verify_token(legacy_token, signer)
+            return await _verify_token(legacy_token, signer), header_install_id
         except TokenInvalidError:
             return None
 
@@ -138,8 +168,10 @@ async def _authenticate(websocket: WebSocket, signer: JwtSigner) -> dict[str, An
     token = data.get("token")
     if not isinstance(token, str) or not token:
         return None
+    frame_install_id = data.get("device_id")
+    install_id = frame_install_id if isinstance(frame_install_id, str) else header_install_id
     try:
-        return await _verify_token(token, signer)
+        return await _verify_token(token, signer), install_id
     except TokenInvalidError:
         return None
 
@@ -161,25 +193,47 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     # only exists once the handshake has completed — closing before
     # `accept()` makes the browser report a generic 1006 instead of 1008.
     await websocket.accept()
-    claims = await _authenticate(websocket, signer)
-    if claims is None:
+    authenticated = await _authenticate(websocket, signer)
+    if authenticated is None:
         await websocket.close(code=_CLOSE_POLICY_VIOLATION)
+        return
+    claims, install_id = authenticated
+    denied = await _device_allowed(claims, install_id)
+    if denied is not None:
+        await websocket.close(code=_CLOSE_POLICY_VIOLATION, reason=denied)
         return
     await websocket.send_json({"type": "ready"})
 
     ownership = build_subscription_ownership(state.database)
     active_channels: list[str] = []
 
+    last_device_check = time.monotonic()
     try:
         while True:
             try:
                 message = await asyncio.wait_for(websocket.receive_text(), timeout=_PING_INTERVAL_S)
             except TimeoutError:
+                # Quiet connection: notice the phone was blocked since the
+                # last check.
+                denied = await _device_allowed(claims, install_id)
+                last_device_check = time.monotonic()
+                if denied is not None:
+                    await websocket.close(code=_CLOSE_POLICY_VIOLATION, reason=denied)
+                    return
                 try:
                     await websocket.send_json({"type": "ping"})
                     continue
                 except Exception:  # noqa: BLE001 - send failure means the socket is gone, break
                     break
+
+            # A busy connection is re-checked on a timer too, so a client that
+            # keeps talking cannot outlive a block.
+            if time.monotonic() - last_device_check >= _DEVICE_RECHECK_S:
+                denied = await _device_allowed(claims, install_id)
+                last_device_check = time.monotonic()
+                if denied is not None:
+                    await websocket.close(code=_CLOSE_POLICY_VIOLATION, reason=denied)
+                    return
 
             try:
                 data = json.loads(message)
@@ -203,6 +257,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     "tenant_id"
                 ) != claims.get("tenant_id"):
                     await websocket.close(code=_CLOSE_POLICY_VIOLATION)
+                    return
+                denied = await _device_allowed(new_claims, install_id)
+                if denied is not None:
+                    await websocket.close(code=_CLOSE_POLICY_VIOLATION, reason=denied)
                     return
                 claims = new_claims
                 continue

@@ -45,6 +45,8 @@ dependencies:
     path: ../../packages/api_client
   auth:
     path: ../../packages/auth
+  device_identity:
+    path: ../../packages/device_identity
   sync_engine:
     path: ../../packages/sync_engine
   maps:

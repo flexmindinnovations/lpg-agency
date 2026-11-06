@@ -71,20 +71,46 @@ class SetLicenseFeatureOverrideRequest(BaseModel):
 
 
 class LinkedDeviceResponse(BaseModel):
+    """One phone running the Driver or Admin app. The install ID and the
+    hardware ID are never returned (they are stored hashed); `device_ref` and
+    `phone_ref` are short fingerprints an admin can compare by eye."""
+
     id: str
     app_type: str
-    device_identifier: str
     display_name: str
+    status: str = Field(description="pending, approved, blocked or removed.")
+    manufacturer: str | None
+    model: str | None
+    os_version: str | None
+    app_version: str | None
+    platform: str | None
+    device_ref: str
+    phone_ref: str | None
+    asset_note: str | None = Field(description="IMEI or serial the admin typed; a note only.")
+    last_user_id: str | None
+    last_user_name: str | None
     registered_at: datetime
     last_seen_at: datetime
-    revoked_at: datetime | None
-    is_active: bool
+    status_changed_at: datetime
+    removed_at: datetime | None
 
 
-class RegisterDeviceRequest(BaseModel):
-    """No caller in this repository yet — the contract for a future
-    mobile-facing endpoint."""
+class UpdateLinkedDeviceRequest(BaseModel):
+    """Only the fields that are sent change. An empty `asset_note` clears it."""
 
-    app_type: str = Field(min_length=1)
-    device_identifier: str = Field(min_length=1)
-    display_name: str = Field(min_length=1)
+    display_name: str | None = Field(default=None, min_length=1, max_length=60)
+    asset_note: str | None = Field(default=None, max_length=64)
+
+
+class PendingDeviceCountResponse(BaseModel):
+    count: int
+
+
+class DeviceHistoryEntryResponse(BaseModel):
+    id: str
+    action: str = Field(description="registered, approved, blocked, unblocked, removed or updated.")
+    performed_at: datetime
+    actor_name: str | None
+    from_status: str | None
+    to_status: str | None
+    display_name: str | None

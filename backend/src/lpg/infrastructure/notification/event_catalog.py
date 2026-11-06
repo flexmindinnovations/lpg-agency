@@ -53,6 +53,14 @@ _META: dict[str, _Meta] = {
     ),
     "complaint_raised_staff": _Meta("Complaints", "A customer raised a complaint."),
     "complaint_assigned": _Meta("Complaints", "A complaint was assigned to a staff member."),
+    "device_blocked_user": _Meta(
+        "Phones and access",
+        "The agency blocked or removed the phone someone was signed in on.",
+        critical=True,
+    ),
+    "device_pending_staff": _Meta(
+        "Phones and access", "A phone signed in to the Driver or Admin app and needs approval."
+    ),
     "delivery_failed_staff": _Meta(
         "Deliveries", "A delivery could not be completed.", critical=True
     ),
@@ -87,7 +95,9 @@ def build_event_catalog() -> list[EventDefinition]:
     definitions: list[EventDefinition] = []
     for notification_type, spec in SPECS.items():
         meta = _META[notification_type]
-        audience = "staff" if spec.audience.value in ("staff", "assignee") else spec.audience.value
+        audience = (
+            "staff" if spec.audience.value in ("staff", "assignee", "user") else spec.audience.value
+        )
         definitions.append(
             EventDefinition(
                 notification_type=notification_type,

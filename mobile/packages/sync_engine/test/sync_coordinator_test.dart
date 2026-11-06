@@ -191,6 +191,101 @@ void main() {
     },
   );
 
+  group('a phone the agency has not let in', () {
+    for (final code in ['DEVICE_PENDING', 'DEVICE_BLOCKED', 'DEVICE_REMOVED']) {
+      test('$code keeps the queue untouched and reports the refusal', () async {
+        final refusals = <String>[];
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+          onDeviceRefused: refusals.add,
+        );
+        fakeAdapter
+          ..responseStatus = 403
+          ..responseData = '{"error_code": "$code"}';
+
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('order-1'),
+        );
+        await settle();
+
+        final op = await onlyOp();
+        expect(op.status, 'pending'); // not failed, not discarded
+        expect(op.retryCount, 0);
+        expect(op.errorMessage, isNull);
+        expect(refusals, [code]);
+      });
+    }
+
+    test(
+      'stops the pass at the first refusal and leaves the rest alone',
+      () async {
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+        );
+        fakeAdapter
+          ..responseStatus = 403
+          ..responseData = '{"error_code": "DEVICE_BLOCKED"}';
+
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o-1'),
+        );
+        await settle();
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o-2'),
+        );
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o-3'),
+        );
+        await settle();
+
+        final ops = await db.select(db.syncOperations).get();
+        expect(ops.map((o) => o.status), everyElement('pending'));
+        expect(ops, hasLength(3));
+      },
+    );
+
+    test('sends everything once the phone is allowed again', () async {
+      fakeAdapter
+        ..responseStatus = 403
+        ..responseData = '{"error_code": "DEVICE_BLOCKED"}';
+      await coordinator.enqueueOperation('order_depart', _departPayload('o-1'));
+      await coordinator.enqueueOperation('order_depart', _departPayload('o-2'));
+      await settle();
+      expect(
+        (await db.select(db.syncOperations).get()).map((o) => o.status),
+        everyElement('pending'),
+      );
+
+      fakeAdapter
+        ..responseStatus = 200
+        ..responseData = '{}';
+      await coordinator.syncNow(ignoreBackoff: true);
+      await settle();
+
+      final ops = await db.select(db.syncOperations).get();
+      expect(ops.map((o) => o.status), everyElement('synced'));
+    });
+
+    test('a plain 403 is still a permanent failure', () async {
+      fakeAdapter
+        ..responseStatus = 403
+        ..responseData = '{"error_code": "PERMISSION_DENIED"}';
+
+      await coordinator.enqueueOperation('order_depart', _departPayload('o-1'));
+      await settle();
+
+      expect((await onlyOp()).status, 'failed');
+    });
+  });
+
   test('a permanent 4xx (422) is marked failed immediately', () async {
     fakeAdapter
       ..responseStatus = 422

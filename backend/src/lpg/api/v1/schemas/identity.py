@@ -11,9 +11,29 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from lpg.domain.common.phone import normalize_phone_number
 
 
+class DeviceInfoRequest(BaseModel):
+    """What a Driver or Admin app reports about its phone when it signs in or
+    refreshes (ADR-071). Every field is optional: an older build or a platform
+    that hides a value just leaves it out. The install ID itself travels in the
+    `X-Device-Id` header, never in a body."""
+
+    name: str | None = Field(default=None, max_length=60, description="The name the user typed.")
+    manufacturer: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=100)
+    os_version: str | None = Field(default=None, max_length=50)
+    app_version: str | None = Field(default=None, max_length=50)
+    platform: str | None = Field(default=None, max_length=20, description="android or ios.")
+    hardware_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Android ID / iOS vendor ID. Stored only as a one-way hash.",
+    )
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1)
+    device: DeviceInfoRequest | None = None
 
 
 class OtpRequestRequest(BaseModel):
@@ -30,6 +50,7 @@ class OtpVerifyRequest(BaseModel):
     tenant_id: str
     phone_number: str
     code: str
+    device: DeviceInfoRequest | None = None
 
     _normalize_phone = field_validator("phone_number")(normalize_phone_number)
 
@@ -42,6 +63,7 @@ class RefreshRequest(BaseModel):
     """
 
     refresh_token: str | None = None
+    device: DeviceInfoRequest | None = None
 
 
 class LogoutRequest(BaseModel):
