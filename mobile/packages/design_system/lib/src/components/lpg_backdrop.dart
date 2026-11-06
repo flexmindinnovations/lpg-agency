@@ -113,9 +113,9 @@ class LpgBackdropWash {
 /// washes of the tone colours, and grain. The strength of each is the
 /// **largest that still keeps secondary text at [minTextContrast] or better**
 /// on the worst pixel: a wash at its darkest or lightest, with a grain speck
-/// on top. Where a theme leaves no room (the light theme's secondary text is
-/// only 4.8:1 on white) the effect is faint, and it grows by itself if that
-/// text colour is ever darkened.
+/// on top. A theme with less room gets a fainter page (the light theme did,
+/// until its secondary text was darkened to 7.6:1 on white) and it grows by
+/// itself if a text colour is darkened.
 @immutable
 class LpgBackdropLook {
   const LpgBackdropLook({

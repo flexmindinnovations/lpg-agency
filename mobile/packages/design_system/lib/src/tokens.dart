@@ -160,7 +160,7 @@ abstract final class LpgTokens {
 /// light theme colour values.
 abstract final class LpgTokensLight {
   static const colorTextPrimary = Color(0xFF111827);
-  static const colorTextSecondary = Color(0xFF6B7280);
+  static const colorTextSecondary = Color(0xFF4B5563);
   static const colorTextDisabled = Color(0xFF9CA3AF);
   static const colorTextInverse = Color(0xFFF9FAFB);
   static const colorSurfaceBase = Color(0xFFFFFFFF);

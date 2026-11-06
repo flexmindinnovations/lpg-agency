@@ -116,7 +116,8 @@ void main() {
           LpgTone.warning,
           LpgTone.danger,
           LpgTone.info,
-          LpgTone.neutral,
+          // Neutral cleared when the light secondary text was darkened to
+          // gray-600 (7.6:1 on white).
         },
       };
       for (final v in _variants) {
