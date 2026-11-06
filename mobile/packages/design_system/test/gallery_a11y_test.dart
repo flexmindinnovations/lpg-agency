@@ -12,6 +12,18 @@ import 'support/gallery_harness.dart';
 /// the test below then checks that group again.
 const _knownContrastGaps = {'status_and_banners / light'};
 
+/// Groups drawn on the textured page or on glass (grain and blur). Flutter's
+/// contrast guideline samples the picture around each text and cannot tell a
+/// speckled background from text, so it reports nonsense there. Their contrast
+/// is held instead by `backdrop_test.dart` and `glass_test.dart`, which check
+/// the worst pixel analytically.
+const _texturedGroups = {
+  'page_backdrop',
+  'glass_surfaces',
+  'cards_and_tiles',
+  'lists',
+};
+
 /// Every gallery group, in every theme, at normal and very large text:
 /// nothing overflows, every tap target is big enough and named, and text has
 /// enough contrast.
@@ -31,7 +43,8 @@ void main() {
           // the framework; check the guidelines on top of that.
           await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
           await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-          if (!_knownContrastGaps.contains('${entry.name} / ${variant.name}')) {
+          if (!_knownContrastGaps.contains('${entry.name} / ${variant.name}') &&
+              !_texturedGroups.contains(entry.name)) {
             await expectLater(tester, meetsGuideline(textContrastGuideline));
           }
           semantics.dispose();

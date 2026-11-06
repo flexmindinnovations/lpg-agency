@@ -17,7 +17,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  _AuthMethod _authMethod = _AuthMethod.phoneOtp;
+  // Email and password is the usual way in for staff, so it is what the screen
+  // opens on; the phone code is one tap away.
+  _AuthMethod _authMethod = _AuthMethod.emailPassword;
 
   // Phone OTP controllers
   final _tenantIdController = TextEditingController();
@@ -256,6 +258,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: LpgSpacing.lg),
                   LpgButton(
                     label: 'Sign In to Admin',
+                    expand: true,
                     onPressed: _submitting ? null : _verifyCode,
                     isLoading: _submitting,
                   ),
@@ -280,6 +283,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: LpgSpacing.lg),
                   LpgButton(
                     label: 'Send Sign-In Code',
+                    expand: true,
                     onPressed: _submitting ? null : _requestCode,
                     isLoading: _submitting,
                   ),
@@ -312,6 +316,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: LpgSpacing.xl),
                 LpgButton(
                   label: 'Sign In with Email',
+                  expand: true,
                   onPressed: _submitting ? null : _loginWithPassword,
                   isLoading: _submitting,
                 ),

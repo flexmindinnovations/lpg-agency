@@ -40,6 +40,9 @@ abstract final class LpgIcons {
   // Domain
   static const IconData cylinder = LucideIcons.cylinder;
   static const IconData flame = LucideIcons.flame;
+  static const IconData sun = LucideIcons.sun;
+  static const IconData moon = LucideIcons.moon;
+  static const IconData smartphone = LucideIcons.smartphone;
   static const IconData refill = LucideIcons.fuel;
   static const IconData truck = LucideIcons.truck;
   static const IconData truckFilled = LucideIcons600.truck;

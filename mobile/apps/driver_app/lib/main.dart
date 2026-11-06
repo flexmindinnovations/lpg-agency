@@ -181,6 +181,15 @@ void main() async {
     // Best effort: nothing to show the user for this failure.
   }
 
+  // How the app looks (follow the phone, light or dark) is a per-device
+  // choice kept outside the per-session tree below, so signing out does not
+  // change it.
+  const preferences = SecureValueStore();
+  final themeMode = await LpgThemeModeController.load(
+    read: () => preferences.read('ui.theme_mode'),
+    write: (value) => preferences.write('ui.theme_mode', value),
+  );
+
   runApp(
     // A new state tree whenever a signed-in session ends, so the next person
     // on this phone never sees the previous person's cached screens.
@@ -193,6 +202,7 @@ void main() async {
         // times and hides a real error for about half a minute (story 0.4).
         retry: quietRetry,
         overrides: [
+          lpgThemeModeControllerProvider.overrideWithValue(themeMode),
           localDatabaseProvider.overrideWithValue(localDatabase),
           authControllerProvider.overrideWithValue(authController),
           deviceControlProvider.overrideWithValue(deviceControl),
@@ -299,7 +309,7 @@ class _DriverAppState extends ConsumerState<DriverApp> {
       darkTheme: _theme.dark,
       highContrastTheme: _theme.highContrast,
       highContrastDarkTheme: _theme.highContrast,
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(lpgThemeModeProvider),
       builder: _theme.builder,
       routerConfig: ref.watch(routerProvider),
       debugShowCheckedModeBanner: false,

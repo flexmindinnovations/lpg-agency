@@ -79,7 +79,7 @@ class OrdersScreen extends ConsumerWidget {
                                 LpgFormat.shortDate(order.requestedDate),
                                 style: context.lpgText.bodySmall,
                               ),
-                        showChevron: !order.isTrackable,
+                        showChevron: true,
                         onTap: () => context.push('/orders/${order.id}'),
                       ),
                   ],

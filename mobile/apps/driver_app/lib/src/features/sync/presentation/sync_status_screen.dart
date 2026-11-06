@@ -172,7 +172,7 @@ class _IssueCard extends StatelessWidget {
               onPressed: onDiscard,
             )
           else
-            LpgActionRow(
+            LpgActionRow.equal(
               children: [
                 LpgButton(
                   label: 'Discard',

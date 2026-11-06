@@ -14,5 +14,12 @@
       "other": "{n} cylinders"
     },
     "onlyInEnglish": "This line exists only in English."
+  },
+  "appearance": {
+    "title": "Appearance",
+    "hint": "Match your phone, or always use light or dark.",
+    "system": "Match phone",
+    "light": "Light",
+    "dark": "Dark"
   }
 }

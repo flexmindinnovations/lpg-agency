@@ -266,7 +266,10 @@ have always been hand-edited directly. Edit them here.
 
   /* Light is the default theme; no attribute required. */
   --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
+  /* #4b5563 (gray-600), 7.6:1 on white. Was #6b7280 (4.8:1), which left no
+     room for text on a tinted or textured page; darkened 2026-11-06 to match
+     the mobile apps (design-tokens/tokens.json). */
+  --color-text-secondary: #4b5563;
   --color-text-disabled: #9ca3af;
   --color-text-inverse: #f9fafb;
   --color-surface-base: #ffffff;

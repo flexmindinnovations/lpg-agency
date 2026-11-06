@@ -160,6 +160,9 @@ class _HistoryRow extends StatelessWidget {
               color: cancelled ? colors.statusDanger : colors.statusSuccess,
             ),
       showChevron: onTap != null,
+      // A cancelled route opens nothing; keep its status icon in line with the
+      // rows above and below it.
+      reserveChevronSpace: true,
       onTap: onTap,
     );
   }

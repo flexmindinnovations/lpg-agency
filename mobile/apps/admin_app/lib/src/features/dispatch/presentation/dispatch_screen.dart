@@ -249,7 +249,6 @@ class _TripTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.lpgColors;
     final total = trip.stops.length;
     final done = trip.stops.where((s) => s.status != 'pending').length;
     final severity = tripStatusSeverity(trip.status);
@@ -289,13 +288,9 @@ class _TripTile extends StatelessWidget {
               LpgSpacing.md,
               LpgSpacing.smd,
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(LpgRadius.full),
-              child: LinearProgressIndicator(
-                value: done / total,
-                minHeight: 6,
-                backgroundColor: colors.borderDefault,
-              ),
+            child: LpgProgressBar(
+              value: done / total,
+              semanticsLabel: 'Trip progress',
             ),
           ),
         if (trip.status == 'planned' || trip.status == 'loaded')

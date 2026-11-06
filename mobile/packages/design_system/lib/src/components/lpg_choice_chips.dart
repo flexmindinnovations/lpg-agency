@@ -6,7 +6,9 @@ import '../theme.dart';
 
 /// A single-select row of chips — payment method, cylinder size, a list
 /// filter. Better than a dropdown when there are only a handful of options,
-/// because every option is visible and one tap away.
+/// because every option is visible and one tap away. The border comes from the
+/// theme's chip style, the same as the filter chips on a list screen, and does
+/// not change when a chip is selected (the fill and the check mark do).
 ///
 /// [options] maps each value to its label. With [allowDeselect], tapping the
 /// selected chip clears the selection (passes `null`).
@@ -56,12 +58,6 @@ class LpgChoiceChips<T> extends StatelessWidget {
               color: entry.key == selected
                   ? colors.onActionPrimaryContainer
                   : colors.textPrimary,
-            ),
-            side: BorderSide(
-              color: entry.key == selected
-                  ? colors.actionPrimary
-                  : colors.borderDefault,
-              width: colors.isHighContrast ? 2 : 1,
             ),
             onSelected: (isSelected) {
               LpgHaptics.selection();
