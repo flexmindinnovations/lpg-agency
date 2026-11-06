@@ -71,7 +71,52 @@ Future<void> _pastRetryDelay(WidgetTester tester) async {
   await tester.pump(_after);
 }
 
+OrderResponse _order(String id, String status) => OrderResponse(
+  id: id,
+  tenantId: 't',
+  branchId: 'b',
+  customerId: 'c',
+  addressId: 'a',
+  deliveryAddress: const DeliveryAddressPayload(addressLine: 'x'),
+  status: status,
+  bookingSource: 'mobile_app',
+  requestedDate: DateTime(2026, 11, 1),
+  metadata: const {},
+  lines: const [],
+);
+
 void main() {
+  testWidgets('the balance hero counts orders on the way and placed', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      ledger: [_ledger],
+      orders: [
+        [
+          _order('o1', 'out_for_delivery'),
+          _order('o2', 'delivered'),
+          _order('o3', 'delivered'),
+        ],
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LpgHeroStats), findsOneWidget);
+    expect(find.text('On the way'), findsOneWidget);
+    expect(find.text('Orders placed'), findsOneWidget);
+    expect(find.text('3'), findsWidgets);
+  });
+
+  testWidgets('no order counts in the hero before the first order', (
+    tester,
+  ) async {
+    await _pump(tester, ledger: [_ledger]);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LpgHeroStats), findsNothing);
+  });
+
   testWidgets('first request fails, retry succeeds: no error is ever shown', (
     tester,
   ) async {

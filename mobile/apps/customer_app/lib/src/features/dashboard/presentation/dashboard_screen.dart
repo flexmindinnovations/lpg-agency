@@ -153,6 +153,7 @@ class _BalanceHero extends ConsumerWidget {
     final colors = context.lpgColors;
     final text = context.lpgText;
     final ledgerAsync = ref.watch(ledgerProvider);
+    final orders = ref.watch(ordersProvider).value;
 
     Widget caption(String value) =>
         Text(value, style: text.bodyMedium?.copyWith(color: colors.heroMuted));
@@ -208,6 +209,23 @@ class _BalanceHero extends ConsumerWidget {
                               '${balances.length == 1 ? 'type' : 'types'}'
                         : 'No outstanding cylinders',
                   ),
+                  // Counts straight from the orders list, shown once it has
+                  // loaded and the customer has ordered before.
+                  if (orders != null && orders.isNotEmpty) ...[
+                    const SizedBox(height: LpgSpacing.md),
+                    LpgHeroStats(
+                      stats: [
+                        LpgHeroStat(
+                          value: '${orders.where((o) => o.isTrackable).length}',
+                          label: 'On the way',
+                        ),
+                        LpgHeroStat(
+                          value: '${orders.length}',
+                          label: 'Orders placed',
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               );
             },

@@ -56,7 +56,6 @@ class TodayScreen extends ConsumerWidget {
                 ref.watch(pendingCashHandoversProvider).value ?? const [];
             final pendingLoad = ref.watch(pendingLoadProvider).value;
             final sections = <Widget>[
-              const _CashInHandCard(),
               if (pendingLoad != null) _PendingLoadCard(route: pendingLoad),
               for (final view in pendingCash) _PendingCashCard(view: view),
               if (route == null)
@@ -70,9 +69,9 @@ class TodayScreen extends ConsumerWidget {
                 )
               else ...[
                 _RouteHero(route: route),
-                _RouteStats(route: route),
                 const LpgSectionHeader(title: 'Up next'),
                 _NextStopCard(route: route),
+                const _CashInHandCard(),
                 const LpgSectionHeader(title: 'Live location'),
                 LocationSharingCard(route: route),
               ],
@@ -120,6 +119,8 @@ class _RouteHero extends ConsumerWidget {
     final text = context.lpgText;
     final total = route.stops.length;
     final delivered = route.stops.where((s) => s.status == 'delivered').length;
+    final failed = route.stops.where((s) => s.status == 'failed').length;
+    final remaining = total - delivered - failed;
     final progress = total == 0 ? 0.0 : delivered / total;
 
     return LpgHeroCard(
@@ -170,53 +171,13 @@ class _RouteHero extends ConsumerWidget {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Delivered / remaining / failed at a glance, under the hero.
-class _RouteStats extends StatelessWidget {
-  const _RouteStats({required this.route});
-
-  final RouteSummary route;
-
-  @override
-  Widget build(BuildContext context) {
-    final delivered = route.stops.where((s) => s.status == 'delivered').length;
-    final failed = route.stops.where((s) => s.status == 'failed').length;
-    final remaining = route.stops.length - delivered - failed;
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: LpgStatTile(
-              label: 'Delivered',
-              value: '$delivered',
-              icon: LpgIcons.success,
-              tone: LpgTone.success,
-            ),
-          ),
-          const SizedBox(width: LpgSpacing.smd),
-          Expanded(
-            child: LpgStatTile(
-              label: 'Remaining',
-              value: '$remaining',
-              icon: LpgIcons.location,
-              tone: LpgTone.primary,
-            ),
-          ),
-          const SizedBox(width: LpgSpacing.smd),
-          Expanded(
-            child: LpgStatTile(
-              label: 'Failed',
-              value: '$failed',
-              icon: LpgIcons.cancel,
-              tone: failed > 0 ? LpgTone.danger : LpgTone.neutral,
-            ),
+          const SizedBox(height: LpgSpacing.md),
+          LpgHeroStats(
+            stats: [
+              LpgHeroStat(value: '$delivered', label: 'Delivered'),
+              LpgHeroStat(value: '$remaining', label: 'Remaining'),
+              LpgHeroStat(value: '$failed', label: 'Failed'),
+            ],
           ),
         ],
       ),
@@ -253,16 +214,35 @@ class _NextStopCard extends StatelessWidget {
       );
     }
 
+    void open() =>
+        context.goNamed('stop', pathParameters: {'orderId': next.orderId});
+
     return LpgCard(
       padding: EdgeInsets.zero,
-      onTap: () =>
-          context.goNamed('stop', pathParameters: {'orderId': next.orderId}),
-      child: LpgListTile(
-        leadingIcon: LpgIcons.navigate,
-        title: 'Next stop · Stop ${next.sequenceNumber}',
-        subtitle:
-            'Order ${LpgFormat.orderNumber(next.orderNumber, next.orderId)}',
-        showChevron: true,
+      child: Column(
+        children: [
+          LpgListTile(
+            leadingIcon: LpgIcons.navigate,
+            title: 'Next stop · Stop ${next.sequenceNumber}',
+            subtitle:
+                'Order ${LpgFormat.orderNumber(next.orderNumber, next.orderId)}',
+            onTap: open,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              LpgSpacing.md,
+              0,
+              LpgSpacing.md,
+              LpgSpacing.md,
+            ),
+            child: LpgButton(
+              label: 'Open this stop',
+              icon: LpgIcons.navigate,
+              expand: true,
+              onPressed: open,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -341,19 +321,14 @@ class _CashInHandCard extends ConsumerWidget {
     if (held == null || (held.cashAmount <= 0 && held.upiAmount <= 0)) {
       return const SizedBox.shrink();
     }
-    return LpgCard(
-      variant: LpgCardVariant.tonal,
+    return LpgMetricTile(
+      label: 'Cash in hand',
+      value: LpgFormat.currency(held.cashAmount),
+      icon: LpgIcons.cash,
       tone: LpgTone.info,
-      padding: EdgeInsets.zero,
-      child: LpgListTile(
-        leadingIcon: LpgIcons.cash,
-        leadingTone: LpgTone.info,
-        title: 'Cash in hand ${LpgFormat.currency(held.cashAmount)}',
-        subtitle: held.upiAmount > 0
-            ? '${LpgFormat.currency(held.upiAmount)} was paid by UPI, so you '
-                  'do not hand that over'
-            : 'Collected since your last handover',
-      ),
+      caption: held.upiAmount > 0
+          ? '${LpgFormat.currency(held.upiAmount)} paid by UPI, not yours to hand over'
+          : 'Collected since your last handover',
     );
   }
 }

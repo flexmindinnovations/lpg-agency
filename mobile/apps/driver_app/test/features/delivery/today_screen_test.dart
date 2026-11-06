@@ -99,6 +99,33 @@ void main() {
       expect(find.text('No route assigned yet.'), findsOneWidget);
     });
 
+    testWidgets('shows delivered, remaining and failed in the hero', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_screen(route: _route()));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(LpgHeroCard),
+          matching: find.byType(LpgHeroStats),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Delivered'), findsOneWidget);
+      expect(find.text('Remaining'), findsOneWidget);
+      expect(find.text('Failed'), findsOneWidget);
+    });
+
+    testWidgets('puts a large "Open this stop" button on the next stop', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_screen(route: _route()));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(LpgButton, 'Open this stop'), findsOneWidget);
+    });
+
     testWidgets('summarises progress and the next stop', (tester) async {
       await tester.pumpWidget(_screen(route: _route()));
       await tester.pumpAndSettle();

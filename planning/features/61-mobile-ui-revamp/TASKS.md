@@ -34,7 +34,8 @@ Epic 11 (device control) was built first and is merged into this branch; release
 - [ ] 4.2 Buttons, fields and validation visuals, selection controls, sheets, dialogs, toasts (3)
 - [ ] 4.3 Cards, lists, stat tiles, hero, status, timeline, small charts for the dashboard (3)
   - [x] 4.3a `LpgMetricTile` (figure, label, caption, attention bar) and `LpgHeroStats` (figure strip for hero cards); first used on the Admin dashboard
-  - [ ] 4.3b lists, status chips, timeline, small charts; roll the tile and strip out to Customer Home and Driver Today
+  - [x] 4.3b `LpgHeroStats` and `LpgMetricTile` rolled out to Customer Home (hero counts) and Driver Today (hero strip, large "Open this stop" button, cash in hand tile); parts of 7.2 and 8.1
+  - [ ] 4.3c lists, status chips, timeline, small charts
 - [ ] 4.4 Motion kit: page transitions, count-up, press feedback, haptics, all with reduce-motion versions (1)
 - [ ] 4.5 Component gallery app, golden tests, accessibility checks (2)
 
