@@ -62,52 +62,58 @@ class LpgListTile extends StatelessWidget {
           horizontal: LpgSpacing.md,
           vertical: dense ? LpgSpacing.sm : LpgSpacing.smd,
         ),
-        child: Row(
-          children: [
-            if (leadingWidget != null) ...[
-              leadingWidget,
-              const SizedBox(width: LpgSpacing.smd),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: text.titleSmall,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: LpgSpacing.xs / 2),
+        child: LayoutBuilder(
+          builder: (context, box) => Row(
+            children: [
+              if (leadingWidget != null) ...[
+                leadingWidget,
+                const SizedBox(width: LpgSpacing.smd),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      subtitle!,
-                      style: text.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                      ),
+                      title,
+                      style: text.titleSmall,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: LpgSpacing.xs / 2),
+                      Text(
+                        subtitle!,
+                        style: text.bodySmall?.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            if (trailing != null) ...[
-              const SizedBox(width: LpgSpacing.smd),
-              // Flexible, so a wide status chip shares the row with the title
-              // at large text sizes instead of pushing past the edge.
-              Flexible(child: trailing!),
+              if (trailing != null) ...[
+                const SizedBox(width: LpgSpacing.smd),
+                // At its natural width, so the chevron always sits at the right
+                // edge; capped at half the row so a wide status chip shares it
+                // with the title at large text sizes instead of pushing past.
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: box.maxWidth * 0.5),
+                  child: trailing!,
+                ),
+              ],
+              if (showChevron) ...[
+                const SizedBox(width: LpgSpacing.xs),
+                Icon(
+                  LpgIcons.chevronRight,
+                  size: LpgSizes.iconSm,
+                  color: colors.textSecondary,
+                ),
+              ],
             ],
-            if (showChevron) ...[
-              const SizedBox(width: LpgSpacing.xs),
-              Icon(
-                LpgIcons.chevronRight,
-                size: LpgSizes.iconSm,
-                color: colors.textSecondary,
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
