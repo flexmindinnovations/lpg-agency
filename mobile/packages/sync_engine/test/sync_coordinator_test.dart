@@ -733,6 +733,157 @@ void main() {
     });
   });
 
+  group('pruning old conflicted operations', () {
+    final longAgo = DateTime.now().subtract(const Duration(days: 90));
+    final tenDaysAgo = DateTime.now().subtract(const Duration(days: 10));
+
+    Future<void> insert(
+      String id,
+      String status, {
+      DateTime? createdAt,
+      DateTime? attemptedAt,
+      String payload = '{}',
+    }) => db
+        .into(db.syncOperations)
+        .insert(
+          SyncOperationsCompanion.insert(
+            id: id,
+            type: 'order_deliver',
+            payload: payload,
+            idempotencyKey: 'key-$id',
+            status: drift.Value(status),
+            createdAt: drift.Value(createdAt ?? longAgo),
+            lastAttemptAt: drift.Value(attemptedAt),
+            ownerId: const drift.Value('driver-1'),
+          ),
+        );
+
+    Future<Set<String>> ids() async => {
+      for (final op in await db.select(db.syncOperations).get()) op.id,
+    };
+
+    test('deletes conflicts untouched for a month, keeps newer ones', () async {
+      await insert('old', 'conflict', attemptedAt: longAgo);
+      await insert('recent', 'conflict', attemptedAt: tenDaysAgo);
+
+      final removed = await coordinator.pruneConflictedOperations();
+
+      expect(removed, 1);
+      expect(await ids(), {'recent'});
+    });
+
+    test('leaves failed, waiting and retrying rows alone', () async {
+      for (final status in [
+        'failed',
+        'pending',
+        'error',
+        'syncing',
+        'synced',
+      ]) {
+        await insert(status, status, attemptedAt: longAgo);
+      }
+
+      final removed = await coordinator.pruneConflictedOperations();
+
+      expect(removed, 0);
+      expect(await ids(), {'failed', 'pending', 'error', 'syncing', 'synced'});
+    });
+
+    test(
+      'a conflict with no attempt time is judged by when it was created',
+      () async {
+        await insert('old-no-attempt', 'conflict', createdAt: longAgo);
+        await insert('new-no-attempt', 'conflict', createdAt: tenDaysAgo);
+
+        await coordinator.pruneConflictedOperations();
+
+        expect(await ids(), {'new-no-attempt'});
+      },
+    );
+
+    test('the retention is adjustable', () async {
+      await insert('ten-days', 'conflict', attemptedAt: tenDaysAgo);
+
+      expect(
+        await coordinator.pruneConflictedOperations(
+          olderThan: const Duration(days: 20),
+        ),
+        0,
+      );
+      expect(
+        await coordinator.pruneConflictedOperations(
+          olderThan: const Duration(days: 5),
+        ),
+        1,
+      );
+    });
+
+    test(
+      'its photo and signature are deleted with it, a newer one\'s are not',
+      () async {
+        final store = _FakeMediaStore()
+          ..files['pod/old/signature.png'] = [1]
+          ..files['pod/new/signature.png'] = [3];
+        coordinator = SyncCoordinator(
+          database: db,
+          apiClient: apiClient,
+          currentOwner: () => owner,
+          mediaStore: store,
+        );
+        String payload(String id) => jsonEncode({
+          'media': [
+            {'key': 'pod/$id/signature.png'},
+          ],
+        });
+        await insert(
+          'old',
+          'conflict',
+          attemptedAt: longAgo,
+          payload: payload('old'),
+        );
+        await insert(
+          'new',
+          'conflict',
+          attemptedAt: tenDaysAgo,
+          payload: payload('new'),
+        );
+
+        await coordinator.pruneConflictedOperations();
+
+        expect(store.files.keys, ['pod/new/signature.png']);
+      },
+    );
+
+    test(
+      'a real 409 ends up as a conflict that a later prune removes',
+      () async {
+        fakeAdapter.responseStatus = 409;
+        await coordinator.enqueueOperation(
+          'order_depart',
+          _departPayload('o1'),
+        );
+        await settle();
+        expect((await onlyOp()).status, 'conflict');
+
+        // Fresh conflict: kept. Age it past the window: removed.
+        expect(await coordinator.pruneConflictedOperations(), 0);
+        expect(
+          await coordinator.pruneConflictedOperations(olderThan: Duration.zero),
+          1,
+        );
+      },
+    );
+
+    test('starting the coordinator prunes them too', () async {
+      await insert('old', 'conflict', attemptedAt: longAgo);
+
+      coordinator.start();
+      await settle();
+
+      expect(await ids(), isEmpty);
+    });
+  });
+
   group('whose queue it is', () {
     Future<List<SyncOperation>> all() => db.select(db.syncOperations).get();
 

@@ -159,6 +159,7 @@ class SyncCoordinator {
     try {
       await pruneSyncedOperations();
       await pruneFailedOperations();
+      await pruneConflictedOperations();
       await purgeOrphanedMedia();
     } catch (_) {
       // Tried again next time.
@@ -172,17 +173,33 @@ class SyncCoordinator {
   /// Unlike [pruneSyncedOperations] this throws away work that never reached
   /// the server, so the window is long (30 days by default): it is only for a
   /// failure that nobody retried or discarded in a month. A driver who looks at
-  /// the sync screen can still retry or discard any of them before then. Rows
-  /// in `conflict` (a stale change the server already moved on from) and every
-  /// waiting or retrying row are left alone.
+  /// the sync screen can still retry or discard any of them before then.
   Future<int> pruneFailedOperations({
     Duration olderThan = const Duration(days: 30),
-  }) async {
+  }) => _pruneStale('failed', olderThan);
+
+  /// Deletes operations the server **rejected as stale** (a `409`: someone
+  /// else, usually the office, had already moved that order on) more than
+  /// [olderThan] ago, together with their photo and signature. Returns how many
+  /// were removed.
+  ///
+  /// The server is authoritative for a conflict, so what is thrown away is a
+  /// change it already decided against; the driver only ever had to
+  /// acknowledge it. The window is still 30 days by default, so a driver who
+  /// has not looked at the sync screen in a month is the only one who loses
+  /// the note. Waiting, retrying and failed rows are untouched.
+  Future<int> pruneConflictedOperations({
+    Duration olderThan = const Duration(days: 30),
+  }) => _pruneStale('conflict', olderThan);
+
+  /// Deletes operations in [status] whose last attempt (or creation, if none
+  /// was recorded) is older than [olderThan], with their media.
+  Future<int> _pruneStale(String status, Duration olderThan) async {
     final cutoff = DateTime.now().subtract(olderThan);
     final stale =
         await (_db.select(_db.syncOperations)..where(
               (t) =>
-                  t.status.equals('failed') &
+                  t.status.equals(status) &
                   (t.lastAttemptAt.isSmallerThanValue(cutoff) |
                       (t.lastAttemptAt.isNull() &
                           t.createdAt.isSmallerThanValue(cutoff))),
