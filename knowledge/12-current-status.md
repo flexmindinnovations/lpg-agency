@@ -79,6 +79,8 @@ This document is updated after every major milestone.
 
 **Next:** Mobile Application Development.
 
+*2026-11-05:* the mobile UI revamp (feature 61) has started: release R1 stories are open as PRs (retry of failed first loads, i18n infrastructure, theme engine, async-state components). See `planning/current_phase.md`.
+
 Phase 18 (Production Hardening) delivered high-concurrency configurations for the FastAPI backend, a comprehensive Locust load testing suite, WCAG 2.2 accessibility tests for the Angular dashboard (zero violations found), and bundle size optimization (lazy-loading `AppShell`) that reduced the initial Javascript payload below the 700kB budget.
 
 Phase 17 delivered the Complaint Management domain (`Complaint` aggregate, raising, assigning, resolving), REST endpoints (`complaints.manage` RBAC), and `@lpg/complaint/feature-complaints` Angular UI library with grid and detail drawers.

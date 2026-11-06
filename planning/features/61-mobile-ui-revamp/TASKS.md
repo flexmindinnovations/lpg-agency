@@ -3,18 +3,18 @@
 Epic 11 (device control) was built first and is merged into this branch; release R1 (epics E0 to E3) is under way in stacked PRs (see [STATUS.md](./STATUS.md)). Ticked stories are implemented and verified; Epic 11 status per story is in the checkboxes below. Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
 
 ## E0 Discovery and decisions (3 days)
-- [ ] 0.1 Design direction: modern solid enterprise look (tonal elevation, radii, type scale, motion language); reference screens for each app (1)
-- [ ] 0.2 i18n tooling spike: typed JSON generator versus `gen-l10n`; runtime locale switch, fallback, plurals, a second test locale; pick one with a working example (1)
+- [x] 0.1 Design direction: modern solid enterprise look (tonal elevation, radii, type scale, motion language); reference screens for each app (1)
+- [x] 0.2 i18n tooling spike: typed JSON generator versus `gen-l10n`; runtime locale switch, fallback, plurals, a second test locale; pick one with a working example (1)
 - [ ] 0.3 Performance baseline on a low-end Android device or emulator; set the frame and startup budget (0.5)
 - [x] 0.4 **Hotfix first:** reproduce the Admin dashboard "error then data", find why the first request fails, fix it, and check Customer and Driver for the same pattern (0.5)
 
 ## E1 Theme engine and surfaces (4.5 days)
-- [ ] 1.1 Token audit: one source for colour, type, spacing, radius, elevation and motion; remove duplicates and literals (1.5)
-- [ ] 1.2 `LpgThemeEngine`: per-app accent, light, dark and high contrast, density by size class, text-scale clamps, reduce motion (2)
-- [ ] 1.3 Surface and elevation system (solid tonal layers, soft shadows, hairlines) applied to navigation, app bar, cards and sheets (1)
+- [x] 1.1 Token audit: one source for colour, type, spacing, radius, elevation and motion; remove duplicates and literals (1.5)
+- [x] 1.2 `LpgThemeEngine`: per-app accent, light, dark and high contrast, density by size class, text-scale clamps, reduce motion (2)
+- [x] 1.3 Surface and elevation system (solid tonal layers, soft shadows, hairlines) applied to navigation, app bar, cards and sheets (1)
 
 ## E2 i18n, strings and copy (11 days)
-- [ ] 2.1 i18n infrastructure: JSON catalogue layout per app and `shared`, typed keys, placeholders and plurals, English fallback for missing keys, CI lint against hardcoded user-visible strings (2.5)
+- [x] 2.1 i18n infrastructure: JSON catalogue layout per app and `shared`, typed keys, placeholders and plurals, English fallback for missing keys, CI lint against hardcoded user-visible strings (2.5)
 - [ ] 2.2 Runtime language switch (picker, saved per device), `flutter_localizations` for built-in widget text (1)
 - [ ] 2.3 Indian formats per locale (₹ lakh grouping, dates, numbers) and bundled font subsets for Indian scripts (1)
 - [ ] 2.4 Move and rewrite `design_system` and `core` strings (1)
@@ -168,13 +168,16 @@ Recount on 2026-11-05 after the dashboards were converted: **68 `AsyncValue` sit
 - [ ] `features/profile/presentation/profile_screen.dart` (2)
 - [ ] `features/van_load/presentation/van_load_screen.dart`
 ## Found while building R1 (not implemented; needs an owner decision or its own story)
-- [ ] **Provider state survives sign-out.** Providers live in one `ProviderScope` for the whole run, so after one person signs out and another signs in on the same phone, cached screens (for example the Admin dashboard) can show the previous person's data until the next refresh. A tenant-data-leak class issue on shared devices. Candidate fix: key the `ProviderScope` on a session counter so every provider is rebuilt on sign-out, with a test per app. Raise with the owner; consider doing it before the pilot (10.4).
+- [x] **Provider state survives sign-out.** *Fixed by the session scope (a new state tree whenever a signed-in session ends); see the next section for what remains.* Providers live in one `ProviderScope` for the whole run, so after one person signs out and another signs in on the same phone, cached screens (for example the Admin dashboard) can show the previous person's data until the next refresh. A tenant-data-leak class issue on shared devices. Candidate fix: key the `ProviderScope` on a session counter so every provider is rebuilt on sign-out, with a test per app. Raise with the owner; consider doing it before the pilot (10.4).
 - [ ] **Per-app error wording** (domain review of the shared copy): Customer says "contact your gas agency" (not "agency admin"); Admin says "Contact support" where the shared text says "your agency"; Driver needs "Your delivery work is saved and will be sent when you are online" on offline notices, and a refused delivery or cash record must say it was **not** saved (a submit flow, not a load screen); a removed stop should say "Your office may have changed this". Needs per-app copy keys, so do it with the i18n catalogue (2.5 to 2.7).
 - [ ] **A "Go back" action** on "not found" and a "Sign in" action on "sign in again" errors (domain review). Needs a navigation callback on `LpgAsyncView`.
 - [ ] **Connectivity** is only known in the Driver app. Customer and Admin cannot pass `offline:` to `LpgAsyncView` until a shared connectivity provider exists.
 - [ ] The Driver's `CacheFirstReader` rethrows a raw `DioException`; it is classified as "unknown" and shows "We could not load this". Wrap it in `FailureException(mapDioError(e))` so offline and busy show their own wording.
 - [ ] **Flaky Driver tests** (pre-existing): `delivery_mutations_test` "departStop..." and `location_sharing_test` "reports a fix..." fail intermittently in full runs.
 - [ ] **Light-theme tone contrast** below 4.5:1 (see token-audit.md), decided in 10.1.
+
+## Found while fixing the sign-out leak (needs an owner decision)
+- [ ] **Driver app: on-device data after a sign-out.** An expired session does not clear the read cache, and no sign-out removes the unsent offline queue (see STATUS.md). Decide between per-driver queues and cache, or blocking sign-in until the queue is sent, before the pilot (10.4).
 
 ## Parking lot (not in scope)
 - Hindi, Marathi and other translations; per-language SMS templates with the SMS provider (backend)

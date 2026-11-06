@@ -10,3 +10,4 @@ library;
 export 'src/token_storage.dart';
 export 'src/auth_repository.dart';
 export 'src/auth_state.dart';
+export 'src/session_scope.dart';

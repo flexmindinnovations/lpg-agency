@@ -31,6 +31,35 @@ Flutter 3.47.9 (Dart 3.13.7, stable) was installed in the cloud environment, so 
 
 **Decision recorded (plan's recommended option):** the quiet retry waits 2 seconds, once. Not yet chosen by the owner; change `quietRetryDelay` if it feels long.
 
+### Story 0.1: design direction (done)
+[design-direction.md](./design-direction.md): the modern solid enterprise look as rules (tonal elevation, soft shadows, 1 px hairlines, 16 to 20 px radii, type scale, purposeful motion, high contrast, WCAG 2.2 AA), grounded in what the code already has, with one reference screen per app. It is a documentation story: nothing was built or run. Constraint recorded for story 1.1: `tokens.json` is shared with the Angular dashboard. Decision recorded (plan's recommended option): per-app accent proposed as Admin blue, Customer and Driver flame orange; the owner may change it.
+
+### Story 0.2: i18n tooling spike (done, verified by tests)
+Decision and comparison: [i18n-decision.md](./i18n-decision.md). Recommended **slang** (typed JSON, `locale_handling: false`, one `LocalizationsDelegate` per catalogue) over `gen-l10n`; the choice was close and is cheap to reverse. Working example in `design_system` with a second test locale (`hi`) proves: JSON per locale, typed keys (a wrong key is an analyzer error), typed placeholders, plurals, English fallback, runtime switch through `MaterialApp.locale` (also switching Flutter's built-in widget text via `flutter_localizations`), and Indian number and date formats through `intl`. Package versions were read from pub.dev (slang 4.19.2, slang_flutter 4.19.0).
+- **Gap found:** a key that exists only in a translation is silently dropped by the generator; story 2.1 adds a CI check.
+- **Open product decision (not blocking):** digits for Marathi (native by default in `intl`) versus Latin everywhere for money; recommended Latin. See the decision note.
+- **The Hindi strings are test data**, not reviewed translations; they must be replaced before Hindi is offered.
+- Pre-existing and unchanged: the next free ADR number is 071 on `main`; none was allocated.
+
+### Stories 1.1 to 1.3: token audit, theme engine, surfaces (done, verified by tests)
+Details: [token-audit.md](./token-audit.md).
+- **1.1 Token audit.** One map of where each token kind lives; no colour literals and no blur existed. Twelve translucent fills made solid (`LpgColors.tint`, `heroMuted/heroSubtle/heroTrack`). A test scans the design system and the three apps and fails on blur or alpha-blended fills outside a short allow-list. Found and fixed muted hero text under AA (3.97:1 to above 4.5:1).
+- **1.2 `LpgThemeEngine`.** One engine per app (`accent`, text-scale limit, `reduceMotion`), with light, dark and high-contrast themes from the single token source, `LpgDensity` by size class (`LpgSizeClass`), a text-scale clamp, and reduce motion (platform or forced; page transitions go instant). The three apps use it and build no `ThemeData`.
+- **1.3 Surfaces.** Four solid layers (canvas, card, sheet, inverse), `LpgSurface`, hairlines and shadows from one place; dialogs, sheets and menus use the sheet layer, snackbars the inverse layer. `tokens.json` was not touched, so the web build is unaffected.
+- **Behaviour changes (deliberate, all small):** Admin now passes the high-contrast theme in dark mode too; dark-mode snackbars are light (inverse layer) instead of card-coloured; text scale is capped at 2.0x; page transitions are instant under reduce motion; solid tints replace translucent ones.
+- **Decision recorded:** the per-app accent stays flame orange everywhere (today's colours) so migration changes nothing; the per-app accents proposed in the design note are a one-line change per app once the owner chooses.
+- **Found, not fixed (needs a decision, see token-audit.md):** in the light theme, status tone colours as text on their tinted container are under 4.5:1 (accent, success, warning, danger, info, neutral). They come from shared web tokens. A test pins the list so it can only shrink; story 10.1 decides.
+- **WIP branch:** `wip/mobile-ui-refresh` was not merged or consulted for code; nothing in this change comes from it.
+
+### Story 2.1: i18n infrastructure (done, verified by tests and by running the CI checks locally)
+How-to: [i18n-howto.md](./i18n-howto.md).
+- **Catalogues**: one typed JSON catalogue per app plus the shared design-system one (`AdminStrings`, `CustomerStrings`, `DriverStrings`, `LpgStrings`), English fallback, placeholders and plurals, each with a `LocalizationsDelegate`; generated files committed (a `.gitignore` exception, since the repo ignores `*.g.dart`). Each app seeds only its app title; **no existing string was moved** (stories 2.4 to 2.7).
+- **Runtime locale switch plumbing**: `LpgCatalogueDelegate` and `lpgLocaleProvider`, watched by each app's `MaterialApp.router`; Flutter's own widget text is switched with it. **English only at launch**: each app's `supportedLocales` is `[Locale('en')]`, so the unreviewed Hindi test data cannot appear.
+- **CI**: new job `i18n` in `mobile-ci.yml` runs `tools/check_catalogues.sh` (generated code up to date; no stray keys in a translation, which the generator would otherwise drop silently) and the `tools/i18n_lint` package (its own tests, then the hardcoded-string lint against a baseline of 832 strings in 107 files; a file may never go up). Negative case verified by hand: adding a string made the lint exit 1 with the file and line.
+- **Not verified**: the new CI job itself has not run on GitHub (only its commands, locally, on Flutter 3.47.9).
+- **Merge-order note**: the async-state PR adds friendly error copy in `design_system` (`lpg_error_copy.dart`, `lpg_async_view.dart`) as English literals. If it merges after this PR, the lint will flag those files; run `dart run bin/check.dart --root ../.. --update --allow-increase` once at that merge (they move into the catalogue in story 2.4).
+- **Decision recorded:** languages are compiled in (no deferred loading); the lint counts per file, not per line, so editing around an old string does not trip it.
+
 ### Stories 3.1 to 3.4: async states (done, verified by tests; stacked on story 0.4's branch)
 - **3.1 `LpgAsyncView` and `SliverLpgAsyncView`** (`design_system`): skeleton until the first answer (and its quiet retry), friendly error with Retry, empty state, data kept through refreshes and failed refreshes with a one-line notice, optional offline notice, scrollable-body support, and banner and scrollable error builders. Built on `whenQuiet` from story 0.4.
 - **3.2 Error taxonomy** (`core`): `ErrorKind` (offline, busy, signed out, forbidden, agency blocked, not found, rejected, server, unknown) classified from the backend's real `error_code` values and the client's transport codes; a support code is shown small only where the message cannot say more. Friendly English copy per kind in `LpgErrorCopy`; the server's own sentence is never shown. `FailureCarrier` and `FailureException` moved to `core` (still exported by `api_client`). Copy reviewed by the `lpg-domain-expert` agent; its changes were applied and its per-app variants are recorded in TASKS.md.
@@ -39,6 +68,13 @@ Flutter 3.47.9 (Dart 3.13.7, stable) was installed in the cloud environment, so 
 - **Dashboards converted:** Admin (two sections), Customer (balance hero, recent orders), Driver Today. Remaining AsyncValue sites: **68 in 50 files**, listed in TASKS.md (the plan's 129 also counted `Result.when`).
 - **Decision recorded:** the Customer balance hero keeps its own-colour spinner while loading (grey placeholders clash with the gradient); the notice for a failed refresh is off on the Driver Today screen (the shell already shows the offline banner, and the pull-to-refresh list must stay the direct child).
 - **Found, not fixed (in TASKS.md):** provider state survives sign-out (possible previous-user data on a shared phone); per-app wording variants; the Driver's cache reader surfaces raw `DioException`s.
+
+### Fix: provider state survived sign-out (shared-phone data leak) (done, verified by tests)
+Found while building R1 (see PR notes): providers lived in one `ProviderScope` for the whole run, so after a sign-out the next person to sign in on the same phone could see the previous person's cached screens (for example the Admin dashboard numbers) until each refreshed.
+- **Fix:** `SessionScope` (in `auth`) gives each app a new state tree, via a new key on its `ProviderScope`, whenever a *signed-in* session ends (log out or an expired session). It does not fire when the app starts and finds no session, or on sign-in. All three apps use it in `main.dart`.
+- **Tests:** `auth` (key changes only on signed-in to signed-out; discarded state is rebuilt; start-up with no session does not rebuild; repeated sign-outs) and an Admin test with the real dashboard provider: person A's numbers are gone for person B, plus a control test showing A's numbers *do* survive without the scope, which reproduces the bug.
+- **Cost:** the screen state is rebuilt on sign-out, which is the point (the app goes to the sign-in screen anyway).
+- **Still open (not fixed here):** in the Driver app, a *forced* sign-out (expired session) does not clear the on-device read cache, and neither sign-out path removes the unsent offline queue. A different driver signing in on the same phone could see the previous driver's cached route when offline, and the previous driver's unsent deliveries would be sent under the new session. Clearing the queue on a forced sign-out would lose unsent deliveries, so this needs a decision (keep per-driver queues, or block sign-in until the queue is sent). Added to TASKS.md.
 
 ## Not done
 Everything else in TASKS.md (epics E2 from 2.2, E4 to E10 and E12).

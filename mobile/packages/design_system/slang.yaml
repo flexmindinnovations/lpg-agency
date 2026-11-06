@@ -1,0 +1,21 @@
+# JSON catalogue generator for the design system's own strings (shared by all
+# three apps). Generate with `dart run slang`; the output is committed, like
+# `tokens.dart`. See planning/features/61-mobile-ui-revamp/i18n-decision.md.
+base_locale: en
+fallback_strategy: base_locale
+input_directory: lib/src/i18n
+input_file_pattern: .i18n.json
+output_directory: lib/src/i18n
+output_file_name: strings.g.dart
+class_name: LpgStrings
+enum_name: LpgLocale
+# No global locale singleton: the one source of truth for the language is the
+# app's `MaterialApp.locale`, delivered through `LpgStringsDelegate` the same
+# way Flutter's own widget strings are.
+locale_handling: false
+translation_class_visibility: public
+timestamp: false
+string_interpolation: braces
+# Compile every language in. A few hundred strings per language is small, and a deferred
+# library would make the first frame wait for a language to load.
+lazy: false

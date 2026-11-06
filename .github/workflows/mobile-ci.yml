@@ -56,3 +56,39 @@ jobs:
       - name: Test
         run: flutter test
         working-directory: ${{ matrix.package }}
+
+  # Story 2.1: string catalogues and the hardcoded-string lint. Separate from
+  # the package matrix because it looks across packages and apps.
+  i18n:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generated catalogues match their JSON, and no translation has stray keys
+        run: mobile/tools/check_catalogues.sh
+
+      - name: Install lint dependencies
+        run: dart pub get
+        working-directory: mobile/tools/i18n_lint
+
+      - name: Format check (lint tool)
+        run: dart format --set-exit-if-changed .
+        working-directory: mobile/tools/i18n_lint
+
+      - name: Analyze (lint tool)
+        run: dart analyze
+        working-directory: mobile/tools/i18n_lint
+
+      - name: Test (lint tool)
+        run: dart test
+        working-directory: mobile/tools/i18n_lint
+
+      - name: No new hardcoded user-visible strings
+        run: dart run bin/check.dart --root ../..
+        working-directory: mobile/tools/i18n_lint
