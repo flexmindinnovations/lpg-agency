@@ -67,6 +67,8 @@ Epic 11 (device control) was built first and is merged into this branch; release
 - [x] 5.7 Bottom navigation: icons only, the active tab grows into a pill with its label; one continuous motion between tabs (pill widths ease from one tab to the next, label wipes in, icon pops as it fills), instant under reduce-motion. The tablet rail is unchanged
 - [x] 5.8 Paper page background: a sheet of paper under every screen with soft blurred colour washes and a fine grain, sized so secondary text keeps 4.5:1 (faint in the light theme, clearly visible in dark). Cards and all other surfaces stay solid. Open: login screens still paint their own plain page
 - [x] 5.9 Darker light-theme secondary text (gray-600, 7.6:1 on white; was gray-500, 4.8:1), shared token: mobile and web. Lets the paper page show properly in light
+- [x] 5.10 In-app light/dark theme: an Appearance card on each app's profile screen (Match phone / Light / Dark), applied instantly and remembered across restarts. Open: not yet checked on a device in the Customer and Driver apps; Hindi wording unreviewed
+- [ ] 5.11 Frosted-glass surfaces (translucent fills with blur and grain on chrome and overlays). Requested; reverses the earlier solid-surfaces-only decision, so it needs a design pass first (see design-direction.md)
 
 ## E6 Tablet and adaptive layout (6 days)
 - [ ] 6.1 Size classes and a responsive layout system: content width, grid, spacing (1)
