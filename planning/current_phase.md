@@ -12,6 +12,8 @@ LPG Agency Management Platform
 
 **2026-11-01 update:** the dashboard Settings area (Tenant Config, Feature Flags, License and Linked Devices consolidated under `/settings` with My Profile) was built and deployed 2026-10-16 but never recorded; it is now: [`planning/features/60-dashboard-settings-area/`](./features/60-dashboard-settings-area/STATUS.md), ADR-070, `MODULE_STATUS.md` row 34.
 
+**2026-11-05 update:** device registration and access control for the Driver and Admin apps (mobile revamp plan, Epic 11, ADR-071) is being built in stacked PRs: backend device registry first, then enforcement, dashboard, mobile and a security review. Per-agency `device_control` (`off` by default) means nothing changes for an existing agency until its admin switches it on. Progress: [`planning/features/61-mobile-ui-revamp/STATUS.md`](./features/61-mobile-ui-revamp/STATUS.md).
+
 **Phase 2 — Backend Foundation** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction. 34/34 tracked tasks complete and verified. See [`planning/features/02-backend-foundation/STATUS.md`](./features/02-backend-foundation/STATUS.md).
 
 **Phase 3 — Shared Infrastructure (real-time publisher, file storage)** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction, immediately after DW-19/DW-20 closure. 13/13 tracked tasks complete and verified. See [`planning/features/03-shared-infrastructure/STATUS.md`](./features/03-shared-infrastructure/STATUS.md). Scoped to exactly two items — the `RealtimePublisher` port implementation and file storage — since everything else the original roadmap called "Phase 3" was already delivered under Phase 2's execution numbering.

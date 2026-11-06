@@ -75,6 +75,11 @@ _REDACTED_SUFFIX = "_encrypted"
 _REDACTED_KEYS = frozenset({"password_hash", "token_hash", "webhook_token"})
 _REDACTED = "[redacted]"
 
+#: Columns whose changes alone are not worth an audit row, per table. A phone's
+#: `last_seen_at` moves on every sign-in and token refresh; recording each one
+#: would bury the approvals and blocks the trail exists to show.
+_NOISE_COLUMNS: dict[str, frozenset[str]] = {"linked_device": frozenset({"last_seen_at"})}
+
 
 def _audit_value(key: str, value: object) -> object:
     if (key.endswith(_REDACTED_SUFFIX) or key in _REDACTED_KEYS) and value is not None:
@@ -172,7 +177,8 @@ class AuditRecorder:
             if not session.is_modified(obj, include_collections=False):
                 continue
             before = _snapshot_before(obj)
-            if not before:
+            noise = _NOISE_COLUMNS.get(type(obj).__tablename__, frozenset())
+            if not before.keys() - noise:
                 continue
             self._record(session, obj, action="update", before=before, after=_snapshot(obj))
 

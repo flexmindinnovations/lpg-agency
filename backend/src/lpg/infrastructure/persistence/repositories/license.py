@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select, text
 
 from lpg.domain.license.license import License, LicenseFeatureOverride
-from lpg.domain.license.linked_device import LinkedDevice
+from lpg.domain.license.linked_device import DeviceDetails, DeviceStatus, LinkedDevice
 from lpg.infrastructure.persistence.models.platform import (
     LicenseFeatureOverrideModel,
     LicenseModel,
@@ -241,38 +241,56 @@ class SqlAlchemyLinkedDeviceRepository:
         return device
 
     async def list_for_tenant(
-        self, tenant_id: uuid.UUID, app_type: str | None = None
+        self,
+        tenant_id: uuid.UUID,
+        app_type: str | None = None,
+        status: DeviceStatus | None = None,
     ) -> Sequence[LinkedDevice]:
         stmt = select(LinkedDeviceModel).where(LinkedDeviceModel.tenant_id == tenant_id)
         if app_type is not None:
             stmt = stmt.where(LinkedDeviceModel.app_type == app_type)
-        result = await self._uow.session.execute(stmt.order_by(LinkedDeviceModel.registered_at))
+        if status is None:
+            stmt = stmt.where(LinkedDeviceModel.status != DeviceStatus.REMOVED.value)
+        else:
+            stmt = stmt.where(LinkedDeviceModel.status == status.value)
+        result = await self._uow.session.execute(
+            stmt.order_by(LinkedDeviceModel.registered_at.desc(), LinkedDeviceModel.id)
+        )
         return [self._to_domain(row) for row in result.scalars()]
 
-    async def count_active_for_app_type(self, tenant_id: uuid.UUID, app_type: str) -> int:
+    async def count_with_status(
+        self, tenant_id: uuid.UUID, status: DeviceStatus, app_type: str | None = None
+    ) -> int:
+        stmt = select(func.count()).where(
+            LinkedDeviceModel.tenant_id == tenant_id,
+            LinkedDeviceModel.status == status.value,
+        )
+        if app_type is not None:
+            stmt = stmt.where(LinkedDeviceModel.app_type == app_type)
+        result = await self._uow.session.execute(stmt)
+        return result.scalar_one()
+
+    async def count_waiting_for_user(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> int:
         result = await self._uow.session.execute(
             select(func.count()).where(
                 LinkedDeviceModel.tenant_id == tenant_id,
-                LinkedDeviceModel.app_type == app_type,
-                LinkedDeviceModel.revoked_at.is_(None),
+                LinkedDeviceModel.last_user_id == user_id,
+                LinkedDeviceModel.status == DeviceStatus.PENDING.value,
             )
         )
         return result.scalar_one()
 
     async def add(self, device: LinkedDevice) -> None:
-        self._uow.session.add(
-            LinkedDeviceModel(
-                id=device.id,
-                tenant_id=device.tenant_id,
-                license_id=device.license_id,
-                app_type=device.app_type,
-                device_identifier=device.device_identifier,
-                display_name=device.display_name,
-                registered_at=device.registered_at,
-                last_seen_at=device.last_seen_at,
-                revoked_at=device.revoked_at,
-            )
+        row = LinkedDeviceModel(
+            id=device.id,
+            tenant_id=device.tenant_id,
+            license_id=device.license_id,
+            app_type=device.app_type,
+            device_identifier=device.device_identifier,
+            registered_at=device.registered_at,
         )
+        _copy_to_row(device, row)
+        self._uow.session.add(row)
         self._uow.register_aggregate(device)
 
     async def save(self, device: LinkedDevice) -> None:
@@ -281,9 +299,7 @@ class SqlAlchemyLinkedDeviceRepository:
             msg = f"Cannot save device {device.id} — no matching row was loaded."
             raise LookupError(msg)
 
-        row.display_name = device.display_name
-        row.last_seen_at = device.last_seen_at
-        row.revoked_at = device.revoked_at
+        _copy_to_row(device, row)
 
     @staticmethod
     def _to_domain(row: LinkedDeviceModel) -> LinkedDevice:
@@ -295,7 +311,41 @@ class SqlAlchemyLinkedDeviceRepository:
             row.device_identifier,
             row.display_name,
             row.registered_at,
+            status=DeviceStatus(row.status),
+            details=DeviceDetails(
+                manufacturer=row.manufacturer,
+                model=row.model,
+                os_version=row.os_version,
+                app_version=row.app_version,
+                platform=row.platform,
+            ),
+            hardware_ref=row.hardware_ref,
+            asset_note=row.asset_note,
+            last_user_id=row.last_user_id,
+            last_user_name=row.last_user_name,
             last_seen_at=row.last_seen_at,
             revoked_at=row.revoked_at,
+            status_changed_at=row.status_changed_at,
+            status_changed_by=row.status_changed_by,
             version=row.version,
         )
+
+
+def _copy_to_row(device: LinkedDevice, row: LinkedDeviceModel) -> None:
+    """The columns that change over a device's life (identity columns are set
+    once, at insert)."""
+    row.display_name = device.display_name
+    row.status = device.status.value
+    row.manufacturer = device.details.manufacturer
+    row.model = device.details.model
+    row.os_version = device.details.os_version
+    row.app_version = device.details.app_version
+    row.platform = device.details.platform
+    row.hardware_ref = device.hardware_ref
+    row.asset_note = device.asset_note
+    row.last_user_id = device.last_user_id
+    row.last_user_name = device.last_user_name
+    row.last_seen_at = device.last_seen_at
+    row.revoked_at = device.revoked_at
+    row.status_changed_at = device.status_changed_at
+    row.status_changed_by = device.status_changed_by

@@ -130,6 +130,11 @@ class NotificationResolver:
             code = str(payload["reason_code"])
             facts["reason"] = FAILED_DELIVERY_REASON_LABELS.get(code, _humanize(code))
 
+        device_id = _uuid(payload, "device_id")
+        if device_id is not None:
+            # A device alert is about the phone itself; the click opens it.
+            reference_id = device_id
+
         route_id = _uuid(payload, "route_id")
         if route is None and route_id is not None:
             route = await self._route_repo().get_by_id(route_id)
@@ -180,6 +185,9 @@ class NotificationResolver:
             recipients, push = await self._driver_recipients(
                 notification_type, payload, route, push
             )
+        elif spec.audience is Audience.USER:
+            target = _uuid(payload, "target_user_id")
+            recipients = [target] if target is not None else []
         elif spec.audience is Audience.ASSIGNEE:
             assignee = _uuid(payload, "assigned_to")
             if assignee is not None and await self._recipient_repo().is_active_staff(

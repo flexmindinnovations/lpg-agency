@@ -22,6 +22,7 @@ export * from './lib/admin-price-list.service';
 export * from './lib/admin-feature-flag.service';
 export * from './lib/license.service';
 export * from './lib/license-status.store';
+export * from './lib/pending-devices.store';
 export * from './lib/license.guard';
 export * from './lib/admin-staff-user.service';
 export * from './lib/my-profile.service';
