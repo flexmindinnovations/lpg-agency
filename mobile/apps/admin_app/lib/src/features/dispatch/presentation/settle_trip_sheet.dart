@@ -182,8 +182,11 @@ class _SettleTripSheetState extends ConsumerState<SettleTripSheet> {
       );
     }
 
-    return SingleChildScrollView(
-      child: Column(
+    final approving = _pending.isNotEmpty;
+    final counting = !approving && _lines.isNotEmpty;
+
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -191,7 +194,8 @@ class _SettleTripSheetState extends ConsumerState<SettleTripSheet> {
             LpgBanner(tone: LpgTone.info, message: _note!),
             const SizedBox(height: LpgSpacing.md),
           ],
-          if (_error != null) ...[
+          // With an action below, the error sits above that action instead.
+          if (_error != null && !approving && !counting) ...[
             LpgBanner(tone: LpgTone.danger, message: _error!),
             const SizedBox(height: LpgSpacing.md),
           ],
@@ -210,22 +214,6 @@ class _SettleTripSheetState extends ConsumerState<SettleTripSheet> {
                     '${r.actualQuantity} counted'
                     '${r.variance == 0 ? '' : ' (${r.variance > 0 ? '+' : ''}${r.variance})'}',
               ),
-            const SizedBox(height: LpgSpacing.lg),
-            LpgButton(
-              label: 'Approve count and settle',
-              icon: LpgIcons.check,
-              expand: true,
-              isLoading: _busy,
-              onPressed: _busy
-                  ? null
-                  : () {
-                      setState(() {
-                        _busy = true;
-                        _error = null;
-                      });
-                      _approveAllAndSettle(_pending);
-                    },
-            ),
           ] else if (_lines.isEmpty && _error == null) ...[
             Text(
               'Nothing is recorded on this van, so there is nothing to count.',
@@ -251,17 +239,32 @@ class _SettleTripSheetState extends ConsumerState<SettleTripSheet> {
               ),
               const SizedBox(height: LpgSpacing.md),
             ],
-            LpgButton(
-              label: 'Record count and settle',
-              icon: LpgIcons.check,
-              expand: true,
-              isLoading: _busy,
-              onPressed: _busy ? null : _submitCount,
-            ),
           ],
-          const SizedBox(height: LpgSpacing.md),
         ],
       ),
+      footer: approving
+          ? LpgSheetActions(
+              primaryLabel: 'Approve count and settle',
+              primaryIcon: LpgIcons.check,
+              isLoading: _busy,
+              onPrimary: () {
+                setState(() {
+                  _busy = true;
+                  _error = null;
+                });
+                _approveAllAndSettle(_pending);
+              },
+              error: _error,
+            )
+          : counting
+          ? LpgSheetActions(
+              primaryLabel: 'Record count and settle',
+              primaryIcon: LpgIcons.check,
+              isLoading: _busy,
+              onPrimary: _submitCount,
+              error: _error,
+            )
+          : null,
     );
   }
 }

@@ -87,8 +87,8 @@ class _KycReviewSheetState extends ConsumerState<KycReviewSheet> {
     final waiting = doc.verificationStatus == 'pending';
     final fileUrl = doc.fileUrl;
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -159,49 +159,21 @@ class _KycReviewSheetState extends ConsumerState<KycReviewSheet> {
                 style: text.bodySmall?.copyWith(color: colors.textSecondary),
               ),
             ],
-            if (_error != null) ...[
-              const SizedBox(height: LpgSpacing.sm),
-              LpgBanner(tone: LpgTone.danger, message: _error!),
-            ],
-            const SizedBox(height: LpgSpacing.lg),
-            if (_rejecting) ...[
-              LpgButton(
-                label: 'Reject document',
-                icon: LpgIcons.close,
-                isLoading: _busy,
-                expand: true,
-                onPressed: _busy ? null : () => _decide(false),
-              ),
-              const SizedBox(height: LpgSpacing.sm),
-              LpgButton(
-                label: 'Back',
-                variant: LpgButtonVariant.secondary,
-                expand: true,
-                onPressed: _busy
-                    ? null
-                    : () => setState(() => _rejecting = false),
-              ),
-            ] else ...[
-              LpgButton(
-                label: 'Verify document',
-                icon: LpgIcons.verified,
-                isLoading: _busy,
-                expand: true,
-                onPressed: _busy ? null : () => _decide(true),
-              ),
-              const SizedBox(height: LpgSpacing.sm),
-              LpgButton(
-                label: 'Reject',
-                variant: LpgButtonVariant.secondary,
-                expand: true,
-                onPressed: _busy
-                    ? null
-                    : () => setState(() => _rejecting = true),
-              ),
-            ],
           ],
         ],
       ),
+      footer: waiting
+          ? LpgSheetActions(
+              primaryLabel: _rejecting ? 'Reject document' : 'Verify document',
+              primaryIcon: _rejecting ? LpgIcons.close : LpgIcons.verified,
+              isLoading: _busy,
+              onPrimary: () => _decide(!_rejecting),
+              secondaryLabel: _rejecting ? 'Back' : 'Reject',
+              secondaryVariant: LpgButtonVariant.secondary,
+              onSecondary: () => setState(() => _rejecting = !_rejecting),
+              error: _error,
+            )
+          : null,
     );
   }
 }

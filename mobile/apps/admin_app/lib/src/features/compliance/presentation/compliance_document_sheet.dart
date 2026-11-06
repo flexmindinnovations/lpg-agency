@@ -99,8 +99,8 @@ class _ComplianceDocumentSheetState
     final days = doc.daysLeft();
     final tone = days == null ? LpgTone.neutral : urgencyFor(days).tone;
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -156,13 +156,6 @@ class _ComplianceDocumentSheetState
                 message: doc.rejectionReason!,
               ),
             ],
-            const SizedBox(height: LpgSpacing.lg),
-            LpgButton(
-              label: 'Renew',
-              icon: LpgIcons.refill,
-              expand: true,
-              onPressed: () => setState(() => _renewing = true),
-            ),
           ] else ...[
             const SizedBox(height: LpgSpacing.md),
             DocumentPhotoField(
@@ -191,28 +184,25 @@ class _ComplianceDocumentSheetState
               firstDate: DateTime.now(),
               onChanged: (d) => setState(() => _expires = d),
             ),
-            if (_error != null) ...[
-              const SizedBox(height: LpgSpacing.sm),
-              LpgBanner(tone: LpgTone.danger, message: _error!),
-            ],
-            const SizedBox(height: LpgSpacing.lg),
-            LpgButton(
-              label: 'Save renewal',
-              icon: LpgIcons.check,
-              isLoading: _busy,
-              expand: true,
-              onPressed: _busy ? null : _renew,
-            ),
-            const SizedBox(height: LpgSpacing.sm),
-            LpgButton(
-              label: 'Back',
-              variant: LpgButtonVariant.secondary,
-              expand: true,
-              onPressed: _busy ? null : () => setState(() => _renewing = false),
-            ),
           ],
         ],
       ),
+      footer: _renewing
+          ? LpgSheetActions(
+              primaryLabel: 'Save renewal',
+              primaryIcon: LpgIcons.check,
+              isLoading: _busy,
+              onPrimary: _renew,
+              secondaryLabel: 'Back',
+              secondaryVariant: LpgButtonVariant.secondary,
+              onSecondary: () => setState(() => _renewing = false),
+              error: _error,
+            )
+          : LpgSheetActions(
+              primaryLabel: 'Renew',
+              primaryIcon: LpgIcons.refill,
+              onPrimary: () => setState(() => _renewing = true),
+            ),
     );
   }
 }

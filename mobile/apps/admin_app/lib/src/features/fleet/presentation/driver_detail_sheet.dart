@@ -155,8 +155,12 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
     final state = expiryState(driver.licenseExpiryDate);
     final targets = driverStatusTargets[driver.status] ?? const <String>[];
 
-    return SingleChildScrollView(
-      child: Column(
+    // Editing the licence or moving branch pins its own Save / Cancel; the
+    // error then sits above that button instead of in the scrolling body.
+    final pinned = _editing || _moving;
+
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -171,7 +175,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
             ],
           ),
           const SizedBox(height: LpgSpacing.md),
-          if (_error != null) ...[
+          if (_error != null && !pinned) ...[
             LpgBanner(tone: LpgTone.danger, message: _error!),
             const SizedBox(height: LpgSpacing.md),
           ],
@@ -221,18 +225,6 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
               value: _expiry,
               onChanged: (d) => setState(() => _expiry = d),
             ),
-            const SizedBox(height: LpgSpacing.md),
-            LpgButton(
-              label: 'Save licence',
-              expand: true,
-              isLoading: _busy && _pending == 'licence',
-              onPressed: _busy ? null : () => _saveLicence(driver),
-            ),
-            LpgButton(
-              label: 'Cancel',
-              variant: LpgButtonVariant.text,
-              onPressed: _busy ? null : () => setState(() => _editing = false),
-            ),
           ],
           if (_moving) ...[
             const SizedBox(height: LpgSpacing.md),
@@ -248,18 +240,6 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
               onChanged: _busy
                   ? null
                   : (id) => setState(() => _newBranchId = id),
-            ),
-            const SizedBox(height: LpgSpacing.md),
-            LpgButton(
-              label: 'Move driver',
-              expand: true,
-              isLoading: _busy && _pending == 'branch',
-              onPressed: _busy ? null : () => _moveBranch(driver),
-            ),
-            LpgButton(
-              label: 'Cancel',
-              variant: LpgButtonVariant.text,
-              onPressed: _busy ? null : () => setState(() => _moving = false),
             ),
           ],
           if (!driver.hasLogin) ...[
@@ -283,7 +263,7 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
             ),
           ],
           const SizedBox(height: LpgSpacing.lg),
-          if (!_editing && driver.status != 'inactive')
+          if (!_editing && !_moving && driver.status != 'inactive')
             LpgButton(
               label: 'Update licence',
               icon: LpgIcons.edit,
@@ -335,6 +315,25 @@ class _DriverSheetState extends ConsumerState<_DriverSheet> {
           const SizedBox(height: LpgSpacing.md),
         ],
       ),
+      footer: _editing
+          ? LpgSheetActions(
+              primaryLabel: 'Save licence',
+              isLoading: _busy && _pending == 'licence',
+              onPrimary: () => _saveLicence(driver),
+              secondaryLabel: 'Cancel',
+              onSecondary: () => setState(() => _editing = false),
+              error: _error,
+            )
+          : _moving
+          ? LpgSheetActions(
+              primaryLabel: 'Move driver',
+              isLoading: _busy && _pending == 'branch',
+              onPrimary: () => _moveBranch(driver),
+              secondaryLabel: 'Cancel',
+              onSecondary: () => setState(() => _moving = false),
+              error: _error,
+            )
+          : null,
     );
   }
 }
