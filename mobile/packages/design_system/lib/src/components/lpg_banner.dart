@@ -50,7 +50,7 @@ class LpgBanner extends StatelessWidget {
           color: tone.container(colors),
           borderRadius: BorderRadius.circular(LpgRadius.lg),
           border: Border.all(
-            color: colors.isHighContrast ? fg : fg.withValues(alpha: 0.25),
+            color: colors.isHighContrast ? fg : colors.tint(fg, 0.25),
             width: colors.isHighContrast ? 2 : 1,
           ),
         ),

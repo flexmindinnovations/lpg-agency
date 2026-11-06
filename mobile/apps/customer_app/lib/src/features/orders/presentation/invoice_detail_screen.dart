@@ -66,9 +66,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
                   const SizedBox(height: LpgSpacing.lg),
                   Text(
                     'Total',
-                    style: text.labelLarge?.copyWith(
-                      color: colors.onHero.withValues(alpha: 0.8),
-                    ),
+                    style: text.labelLarge?.copyWith(color: colors.heroMuted),
                   ),
                   Text(
                     LpgFormat.currency(invoice.totalAmount),
@@ -81,9 +79,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
                       if (invoice.orderNumber != null)
                         'Order ${invoice.orderNumber}',
                     ].join('  ·  '),
-                    style: text.bodySmall?.copyWith(
-                      color: colors.onHero.withValues(alpha: 0.8),
-                    ),
+                    style: text.bodySmall?.copyWith(color: colors.heroMuted),
                   ),
                 ],
               ),
