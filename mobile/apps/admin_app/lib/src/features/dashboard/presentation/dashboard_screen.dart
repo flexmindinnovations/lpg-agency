@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../compliance/data/compliance_provider.dart';
-import '../../../api_result.dart';
 import '../../../shared/admin_app_bar.dart';
 import '../../../shared/metric_tile.dart';
 import '../../approvals/data/approvals_provider.dart';
@@ -95,13 +94,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           children: [
             const _LiveStamp(),
             const SizedBox(height: LpgSpacing.sm),
-            opsAsync.when(
-              loading: () => const LpgSkeleton(height: 140),
-              error: (err, _) => LpgErrorState(
-                message: errorMessage(err),
-                onRetry: () => ref.invalidate(operationsSnapshotProvider),
+            LpgAsyncView<OperationsSnapshotResponse>(
+              value: opsAsync,
+              onRetry: () => ref.invalidate(operationsSnapshotProvider),
+              // The hero and the metric grid, where the real ones will be.
+              skeleton: const LpgSkeletonGroup(
+                children: [
+                  LpgSkeletonHero(),
+                  LpgSkeletonTileGrid(columns: 2, rows: 3),
+                ],
               ),
-              data: (ops) => _Body(
+              data: (context, ops) => _Body(
                 ops: ops,
                 fleet: fleet,
                 trips: trips,
@@ -110,13 +113,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ),
             ),
             const SizedBox(height: LpgSpacing.lg),
-            summaryAsync.when(
-              loading: () => const LpgSkeletonList(itemCount: 2),
-              error: (err, _) => LpgErrorState(
-                message: errorMessage(err),
-                onRetry: () => ref.invalidate(dashboardSummaryProvider),
+            LpgAsyncView<DashboardSummaryResponse>(
+              value: summaryAsync,
+              onRetry: () => ref.invalidate(dashboardSummaryProvider),
+              // One notice on the screen is enough: the numbers above carry it.
+              showStaleNotice: false,
+              skeleton: const LpgSkeletonGroup(
+                children: [
+                  LpgSkeletonCard(lines: 3),
+                  LpgSkeletonCard(lines: 4),
+                ],
               ),
-              data: (summary) => _Summary(summary: summary),
+              data: (context, summary) => _Summary(summary: summary),
             ),
           ],
         ),

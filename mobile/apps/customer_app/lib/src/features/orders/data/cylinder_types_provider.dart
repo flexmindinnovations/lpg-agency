@@ -13,7 +13,7 @@ final cylinderTypesProvider = FutureProvider<List<CylinderTypeResponse>>((
   final result = await api.list();
   return result.when(
     onSuccess: (data) => data.where((t) => t.isActive).toList(),
-    onFailure: (failure) => throw Exception(failure.message),
+    onFailure: (failure) => throw FailureException(failure),
   );
 });
 
@@ -28,7 +28,7 @@ final orderableCylinderTypesProvider =
       final result = await api.listOrderable();
       return result.when(
         onSuccess: (data) => data,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
     });
 
@@ -41,6 +41,6 @@ final cylinderTypeNamesProvider = FutureProvider<Map<String, String>>((
   final result = await ref.watch(cylinderTypeApiProvider).list();
   return result.when(
     onSuccess: (types) => {for (final t in types) t.id: t.name},
-    onFailure: (failure) => throw Exception(failure.message),
+    onFailure: (failure) => throw FailureException(failure),
   );
 });

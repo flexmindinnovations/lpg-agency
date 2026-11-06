@@ -1,20 +1,20 @@
 # Tasks: Mobile UI/UX Revamp, i18n, Device Control and Alert Sounds
 
-Epic 11 (device control) is in progress; nothing else here is started (plan version 5). Epic 11 status per story is in the checkboxes below and in STATUS.md. Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
+Epic 11 (device control) was built first and is merged into this branch; release R1 (epics E0 to E3) is under way in stacked PRs (see [STATUS.md](./STATUS.md)). Ticked stories are implemented and verified; Epic 11 status per story is in the checkboxes below. Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
 
 ## E0 Discovery and decisions (3 days)
-- [ ] 0.1 Design direction: modern solid enterprise look (tonal elevation, radii, type scale, motion language); reference screens for each app (1)
-- [ ] 0.2 i18n tooling spike: typed JSON generator versus `gen-l10n`; runtime locale switch, fallback, plurals, a second test locale; pick one with a working example (1)
+- [x] 0.1 Design direction: modern solid enterprise look (tonal elevation, radii, type scale, motion language); reference screens for each app (1)
+- [x] 0.2 i18n tooling spike: typed JSON generator versus `gen-l10n`; runtime locale switch, fallback, plurals, a second test locale; pick one with a working example (1)
 - [ ] 0.3 Performance baseline on a low-end Android device or emulator; set the frame and startup budget (0.5)
-- [ ] 0.4 **Hotfix first:** reproduce the Admin dashboard "error then data", find why the first request fails, fix it, and check Customer and Driver for the same pattern (0.5)
+- [x] 0.4 **Hotfix first:** reproduce the Admin dashboard "error then data", find why the first request fails, fix it, and check Customer and Driver for the same pattern (0.5)
 
 ## E1 Theme engine and surfaces (4.5 days)
-- [ ] 1.1 Token audit: one source for colour, type, spacing, radius, elevation and motion; remove duplicates and literals (1.5)
-- [ ] 1.2 `LpgThemeEngine`: per-app accent, light, dark and high contrast, density by size class, text-scale clamps, reduce motion (2)
-- [ ] 1.3 Surface and elevation system (solid tonal layers, soft shadows, hairlines) applied to navigation, app bar, cards and sheets (1)
+- [x] 1.1 Token audit: one source for colour, type, spacing, radius, elevation and motion; remove duplicates and literals (1.5)
+- [x] 1.2 `LpgThemeEngine`: per-app accent, light, dark and high contrast, density by size class, text-scale clamps, reduce motion (2)
+- [x] 1.3 Surface and elevation system (solid tonal layers, soft shadows, hairlines) applied to navigation, app bar, cards and sheets (1)
 
 ## E2 i18n, strings and copy (11 days)
-- [ ] 2.1 i18n infrastructure: JSON catalogue layout per app and `shared`, typed keys, placeholders and plurals, English fallback for missing keys, CI lint against hardcoded user-visible strings (2.5)
+- [x] 2.1 i18n infrastructure: JSON catalogue layout per app and `shared`, typed keys, placeholders and plurals, English fallback for missing keys, CI lint against hardcoded user-visible strings (2.5)
 - [ ] 2.2 Runtime language switch (picker, saved per device), `flutter_localizations` for built-in widget text (1)
 - [ ] 2.3 Indian formats per locale (₹ lakh grouping, dates, numbers) and bundled font subsets for Indian scripts (1)
 - [ ] 2.4 Move and rewrite `design_system` and `core` strings (1)
@@ -24,10 +24,10 @@ Epic 11 (device control) is in progress; nothing else here is started (plan vers
 - [ ] 2.8 Server error codes mapped to catalogue strings (never the server's English text); pseudo-locale test for overflow; tests that look up text updated; every key used and every used key exists (0.5)
 
 ## E3 Async states (5 days)
-- [ ] 3.1 `LpgAsyncView` and sliver form: skeleton, content, empty, error with retry, keep old data on refresh, offline banner (2)
-- [ ] 3.2 Error taxonomy mapped to friendly strings and optional small support code (1)
-- [ ] 3.3 Skeleton variants that match real layouts; shimmer cost checked (1)
-- [ ] 3.4 Startup and auth gating so first requests wait for a ready session; quiet single retry before showing an error; tests for the sequence (1)
+- [x] 3.1 `LpgAsyncView` and sliver form: skeleton, content, empty, error with retry, keep old data on refresh, offline banner (2)
+- [x] 3.2 Error taxonomy mapped to friendly strings and optional small support code (1)
+- [x] 3.3 Skeleton variants that match real layouts; shimmer cost checked: one controller per group and a repaint boundary, asserted by tests; frame cost **not measured on a device** (needs 0.3) (1)
+- [x] 3.4 Startup and auth gating so first requests wait for a ready session; quiet single retry before showing an error; tests for the sequence (1)
 
 ## E4 Component library v2 and gallery (10 days)
 - [ ] 4.1 Audit the 35 components: keep, merge, redo (1)
@@ -106,6 +106,75 @@ Runs as its own stream (release R-D). Applies to the Driver and Admin apps; the 
 - [ ] 12.9 Notification settings screen: sound on or off per tier, test sound, link to system channel settings (1.5)
 - [ ] 12.10 Delivery tracking: apps report delivered and opened; urgent driver alerts not acknowledged in time can trigger an SMS through the existing SMS channel (2)
 - [ ] 12.11 Real-device tests: Samsung, Xiaomi or Redmi, Vivo, Oppo or Realme, a stock Android phone and an iPhone; loudness against the old default, battery saver, Do Not Disturb, background kill; hearing-impaired options (vibration, screen flash) (2)
+
+
+## Rollout list: hand-written async sites still to convert to `LpgAsyncView` (story 3.1 onward)
+
+Recount on 2026-11-05 after the dashboards were converted: **68 `AsyncValue` sites in 50 files** (an AsyncValue `when`/`maybeWhen` with a `loading:` branch). The plan's "129" counted every `.when(` call, which also matches `Result.when(onSuccess, onFailure)` in providers; those are not async views and need no conversion. Convert per feature during the rollout epics (E7, E8, E9), each with its tests; the first-load rule already holds for all of them through the app-wide quiet retry.
+
+**admin_app** (42 sites in 29 files)
+- [ ] `features/approvals/presentation/approvals_screen.dart`
+- [ ] `features/cash_book/presentation/cash_book_screen.dart` (2)
+- [ ] `features/complaints/presentation/assign_complaint_sheet.dart`
+- [ ] `features/complaints/presentation/complaint_detail_screen.dart`
+- [ ] `features/complaints/presentation/complaints_screen.dart`
+- [ ] `features/compliance/presentation/compliance_screen.dart`
+- [ ] `features/customers/presentation/add_customer_screen.dart`
+- [ ] `features/customers/presentation/customer_detail_screen.dart` (5)
+- [ ] `features/customers/presentation/customers_screen.dart`
+- [ ] `features/dispatch/presentation/dispatch_screen.dart` (2)
+- [ ] `features/dispatch/presentation/trip_detail_screen.dart`
+- [ ] `features/fleet/presentation/driver_form_screen.dart`
+- [ ] `features/fleet/presentation/fleet_screen.dart` (2)
+- [ ] `features/fleet/presentation/vehicle_form_screen.dart`
+- [ ] `features/invoices/presentation/invoice_detail_screen.dart`
+- [ ] `features/invoices/presentation/invoices_screen.dart`
+- [ ] `features/invoices/presentation/upi_qr_sheet.dart`
+- [ ] `features/notifications/presentation/notifications_screen.dart`
+- [ ] `features/orders/presentation/create_order_screen.dart`
+- [ ] `features/orders/presentation/order_detail_screen.dart`
+- [ ] `features/orders/presentation/order_list_screen.dart` (2)
+- [ ] `features/orders/presentation/order_settlement.dart`
+- [ ] `features/pricing/presentation/pricing_screen.dart`
+- [ ] `features/profile/presentation/profile_screen.dart`
+- [ ] `features/search/presentation/search_screen.dart`
+- [ ] `features/stock/presentation/count_stock_sheet.dart`
+- [ ] `features/stock/presentation/receive_stock_sheet.dart`
+- [ ] `features/stock/presentation/stock_move_sheets.dart` (2)
+- [ ] `features/stock/presentation/stock_screen.dart` (5)
+
+**customer_app** (15 sites in 13 files)
+- [ ] `features/dashboard/presentation/notifications_screen.dart`
+- [ ] `features/kyc/presentation/kyc_screen.dart`
+- [ ] `features/orders/presentation/invoice_detail_screen.dart`
+- [ ] `features/orders/presentation/invoice_list_screen.dart`
+- [ ] `features/orders/presentation/order_detail_screen.dart`
+- [ ] `features/orders/presentation/order_placement_screen.dart` (2)
+- [ ] `features/orders/presentation/order_tracking_screen.dart` (2)
+- [ ] `features/orders/presentation/orders_screen.dart`
+- [ ] `features/orders/presentation/widgets/delivery_code_card.dart`
+- [ ] `features/profile/presentation/profile_screen.dart`
+- [ ] `features/support/presentation/complaint_detail_screen.dart`
+- [ ] `features/support/presentation/raise_complaint_screen.dart`
+- [ ] `features/support/presentation/support_screen.dart`
+
+**driver_app** (11 sites in 8 files)
+- [ ] `features/cash_handover/presentation/cash_handover_screen.dart`
+- [ ] `features/delivery/presentation/deliveries_screen.dart` (2)
+- [ ] `features/delivery/presentation/record_delivery_screen.dart` (2)
+- [ ] `features/delivery/presentation/stop_detail_screen.dart`
+- [ ] `features/delivery/presentation/widgets/stop_map_card.dart`
+- [ ] `features/notifications/presentation/notifications_screen.dart`
+- [ ] `features/profile/presentation/profile_screen.dart` (2)
+- [ ] `features/van_load/presentation/van_load_screen.dart`
+## Found while building R1 (not implemented; needs an owner decision or its own story)
+- [x] **Provider state survives sign-out.** *Fixed by the session scope (a new state tree whenever a signed-in session ends); see the next section for what remains.* Providers live in one `ProviderScope` for the whole run, so after one person signs out and another signs in on the same phone, cached screens (for example the Admin dashboard) can show the previous person's data until the next refresh. A tenant-data-leak class issue on shared devices. Candidate fix: key the `ProviderScope` on a session counter so every provider is rebuilt on sign-out, with a test per app. Raise with the owner; consider doing it before the pilot (10.4).
+- [ ] **Per-app error wording** (domain review of the shared copy): Customer says "contact your gas agency" (not "agency admin"); Admin says "Contact support" where the shared text says "your agency"; Driver needs "Your delivery work is saved and will be sent when you are online" on offline notices, and a refused delivery or cash record must say it was **not** saved (a submit flow, not a load screen); a removed stop should say "Your office may have changed this". Needs per-app copy keys, so do it with the i18n catalogue (2.5 to 2.7).
+- [ ] **A "Go back" action** on "not found" and a "Sign in" action on "sign in again" errors (domain review). Needs a navigation callback on `LpgAsyncView`.
+- [ ] **Connectivity** is only known in the Driver app. Customer and Admin cannot pass `offline:` to `LpgAsyncView` until a shared connectivity provider exists.
+- [ ] The Driver's `CacheFirstReader` rethrows a raw `DioException`; it is classified as "unknown" and shows "We could not load this". Wrap it in `FailureException(mapDioError(e))` so offline and busy show their own wording.
+- [ ] **Flaky Driver tests** (pre-existing): `delivery_mutations_test` "departStop..." and `location_sharing_test` "reports a fix..." fail intermittently in full runs.
+- [ ] **Light-theme tone contrast** below 4.5:1 (see token-audit.md), decided in 10.1.
 
 ## Found while fixing the sign-out leak (needs an owner decision)
 - [x] **Driver app: on-device data after a sign-out.** (fixed: owner-scoped queue and cache, see STATUS.md) An expired session does not clear the read cache, and no sign-out removes the unsent offline queue (see STATUS.md). Decide between per-driver queues and cache, or blocking sign-in until the queue is sent, before the pilot (10.4).

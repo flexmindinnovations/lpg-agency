@@ -140,6 +140,10 @@ pubspec_overrides.yaml
 *.g.dart
 *.freezed.dart
 *.drift.dart
+# ...except the committed slang string catalogues (`dart run slang`, like
+# tokens.dart they are checked in so no build step is needed).
+!mobile/packages/**/lib/src/i18n/strings*.g.dart
+!mobile/apps/**/lib/src/i18n/strings*.g.dart
 *.gr.dart
 *.mocks.dart
 

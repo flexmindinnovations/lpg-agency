@@ -15,7 +15,7 @@ final invoicesProvider = FutureProvider<List<InvoiceResponse>>((ref) async {
     final result = await api.getMyInvoices();
     return result.when(
       onSuccess: (data) => data.items,
-      onFailure: (failure) => throw Exception(failure.message),
+      onFailure: (failure) => throw FailureException(failure),
     );
   }
 
@@ -32,6 +32,6 @@ final invoiceDetailProvider = FutureProvider.autoDispose
       final result = await api.getInvoice(id);
       return result.when(
         onSuccess: (data) => data,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
     });

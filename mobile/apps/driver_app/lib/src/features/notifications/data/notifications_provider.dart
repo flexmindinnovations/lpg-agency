@@ -16,7 +16,7 @@ final driverNotificationsProvider =
           .getMyNotifications();
       return result.when(
         onSuccess: (page) => page.items,
-        onFailure: (failure) => throw Exception(failure.message),
+        onFailure: (failure) => throw FailureException(failure),
       );
     });
 
