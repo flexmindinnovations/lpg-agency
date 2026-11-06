@@ -351,30 +351,25 @@ class _RecentOrders extends StatelessWidget {
           ...orders,
         ]..sort((a, b) => (b.orderNumber ?? '').compareTo(a.orderNumber ?? ''));
         final shown = recent.take(3).toList();
-        return LpgCard(
-          padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
-          child: Column(
-            children: [
-              for (var i = 0; i < shown.length; i++) ...[
-                if (i > 0) const Divider(indent: LpgSpacing.md),
-                LpgFadeSlideIn(
-                  index: 7 + i,
-                  child: LpgListTile(
-                    leadingIcon: shown[i].statusIcon,
-                    leadingTone: shown[i].statusSeverity.tone,
-                    title: shown[i].reference,
-                    subtitle: LpgFormat.sentence(shown[i].status),
-                    trailing: Text(
-                      LpgFormat.shortDate(shown[i].requestedDate),
-                      style: context.lpgText.bodySmall,
-                    ),
-                    showChevron: true,
-                    onTap: () => context.push('/orders/${shown[i].id}'),
-                  ),
+        return LpgGroupedList(
+          staggerFrom: 7,
+          children: [
+            for (final order in shown)
+              LpgListTile(
+                leadingIcon: order.statusIcon,
+                leadingTone: order.statusSeverity.tone,
+                // The number alone, so a long status chip does not push the
+                // title onto a second line.
+                title: order.orderNumber ?? order.reference,
+                subtitle: LpgFormat.shortDate(order.requestedDate),
+                trailing: LpgStatusBadge(
+                  label: order.statusLabel,
+                  severity: order.statusSeverity,
                 ),
-              ],
-            ],
-          ),
+                showChevron: true,
+                onTap: () => context.push('/orders/${order.id}'),
+              ),
+          ],
         );
       },
     );
