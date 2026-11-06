@@ -18,7 +18,7 @@ final notificationsProvider = FutureProvider<List<NotificationResponse>>((
     final result = await api.getMyNotifications();
     return result.when(
       onSuccess: (data) => data.items,
-      onFailure: (failure) => throw Exception(failure.message),
+      onFailure: (failure) => throw FailureException(failure),
     );
   }
 

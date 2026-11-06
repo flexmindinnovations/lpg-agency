@@ -1,12 +1,12 @@
 # Tasks: Mobile UI/UX Revamp, i18n, Device Control and Alert Sounds
 
-Epic 11 (device control) is in progress; nothing else here is started (plan version 5). Epic 11 status per story is in the checkboxes below and in STATUS.md. Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
+Epic 11 (device control) was built first and is merged into this branch; release R1 (epics E0 to E3) is under way in stacked PRs (see [STATUS.md](./STATUS.md)). Ticked stories are implemented and verified; Epic 11 status per story is in the checkboxes below. Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
 
 ## E0 Discovery and decisions (3 days)
 - [ ] 0.1 Design direction: modern solid enterprise look (tonal elevation, radii, type scale, motion language); reference screens for each app (1)
 - [ ] 0.2 i18n tooling spike: typed JSON generator versus `gen-l10n`; runtime locale switch, fallback, plurals, a second test locale; pick one with a working example (1)
 - [ ] 0.3 Performance baseline on a low-end Android device or emulator; set the frame and startup budget (0.5)
-- [ ] 0.4 **Hotfix first:** reproduce the Admin dashboard "error then data", find why the first request fails, fix it, and check Customer and Driver for the same pattern (0.5)
+- [x] 0.4 **Hotfix first:** reproduce the Admin dashboard "error then data", find why the first request fails, fix it, and check Customer and Driver for the same pattern (0.5)
 
 ## E1 Theme engine and surfaces (4.5 days)
 - [ ] 1.1 Token audit: one source for colour, type, spacing, radius, elevation and motion; remove duplicates and literals (1.5)

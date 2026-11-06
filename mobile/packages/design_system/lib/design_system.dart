@@ -7,6 +7,7 @@
 /// for how screens are expected to use it and how to rebrand.
 library;
 
+export 'src/async/quiet_when.dart';
 export 'src/tokens.dart';
 export 'src/layout.dart';
 export 'src/theme.dart';

@@ -95,7 +95,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           children: [
             const _LiveStamp(),
             const SizedBox(height: LpgSpacing.sm),
-            opsAsync.when(
+            // `whenQuiet`: skeleton until the first answer (and its quiet retry),
+            // then the numbers stay on screen through refreshes and failed
+            // refreshes.
+            opsAsync.whenQuiet(
               loading: () => const LpgSkeleton(height: 140),
               error: (err, _) => LpgErrorState(
                 message: errorMessage(err),
@@ -110,7 +113,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ),
             ),
             const SizedBox(height: LpgSpacing.lg),
-            summaryAsync.when(
+            summaryAsync.whenQuiet(
               loading: () => const LpgSkeletonList(itemCount: 2),
               error: (err, _) => LpgErrorState(
                 message: errorMessage(err),
