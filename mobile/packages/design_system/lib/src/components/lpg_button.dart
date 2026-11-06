@@ -16,6 +16,10 @@ import '../theme.dart';
 ///   danger colour so it never reads as the safe default.
 enum LpgButtonVariant { primary, secondary, text, tonal, destructive }
 
+/// How tall an [LpgButton] is. [large] is for the one action a hurried,
+/// one-handed screen is built around (the Driver's "Open this stop").
+enum LpgButtonSize { regular, large }
+
 /// The app's button. Colour carries the hierarchy, and press feedback is a
 /// real spring-physics scale-down ([LpgMotion.spatialSpring]) rather than a
 /// shadow change. `text` and high contrast fall back to the native Material
@@ -30,6 +34,7 @@ class LpgButton extends StatefulWidget {
     this.trailingIcon,
     this.isLoading = false,
     this.expand = false,
+    this.size = LpgButtonSize.regular,
   });
 
   final String label;
@@ -43,6 +48,7 @@ class LpgButton extends StatefulWidget {
 
   /// Stretches to the parent's full width.
   final bool expand;
+  final LpgButtonSize size;
 
   @override
   State<LpgButton> createState() => _LpgButtonState();
@@ -51,8 +57,10 @@ class LpgButton extends StatefulWidget {
 class _LpgButtonState extends State<LpgButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  bool _focused = false;
 
   static const _pressedScale = 0.96;
+  static const _focusGap = 3.0;
 
   @override
   void initState() {
@@ -128,9 +136,14 @@ class _LpgButtonState extends State<LpgButton>
         onTapDown: unpressable ? null : (_) => _animateTo(_pressedScale),
         onTapUp: unpressable ? null : (_) => _animateTo(1.0),
         onTapCancel: unpressable ? null : () => _animateTo(1.0),
+        onFocusChange: (focused) => setState(() => _focused = focused),
         customBorder: shape,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: LpgSizes.buttonHeight),
+          constraints: BoxConstraints(
+            minHeight: widget.size == LpgButtonSize.large
+                ? LpgSizes.buttonHeightLarge
+                : LpgSizes.buttonHeight,
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: LpgSpacing.lg),
             child: Center(
@@ -153,6 +166,30 @@ class _LpgButtonState extends State<LpgButton>
     final sized = widget.expand
         ? SizedBox(width: double.infinity, child: button)
         : button;
+    // Keyboard focus draws a 2 px ring in the focus colour, set a little off
+    // the button, so it is visible against any surface in every theme.
+    final ringed = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        sized,
+        if (_focused)
+          Positioned.fill(
+            top: -_focusGap,
+            left: -_focusGap,
+            right: -_focusGap,
+            bottom: -_focusGap,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                key: const ValueKey('focus-ring'),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(LpgRadius.lg + _focusGap),
+                  border: Border.all(color: colors.borderFocus, width: 2),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
 
     return Semantics(
       button: true,
@@ -161,7 +198,7 @@ class _LpgButtonState extends State<LpgButton>
         animation: _controller,
         builder: (context, child) =>
             Transform.scale(scale: _controller.value, child: child),
-        child: sized,
+        child: ringed,
       ),
     );
   }

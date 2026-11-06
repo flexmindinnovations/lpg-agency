@@ -31,7 +31,11 @@ Epic 11 (device control) was built first and is merged into this branch; release
 
 ## E4 Component library v2 and gallery (10 days)
 - [ ] 4.1 Audit the 35 components: keep, merge, redo (1)
-- [ ] 4.2 Buttons, fields and validation visuals, selection controls, sheets, dialogs, toasts (3)
+- [~] 4.2 Buttons, fields and validation visuals, selection controls, sheets, dialogs, toasts (3)
+  - [x] Audit against the design direction: fields (error border, error icon, red label, 2 px focus border), selection controls, dialogs (20 px+ radius), sheets and toasts (solid inverse surface) already conform; no change
+  - [x] Buttons: `LpgButtonSize.large` (64 dp) for the Driver's main delivery actions; a 2 px focus ring set off the button for keyboard users
+  - [x] Sheets: visible Close button and an optional subtitle in `LpgFeedback.showSheet` (all 26 sheets get the Close button)
+  - [ ] Sticky action footer for form sheets (49 hand-built button rows across sheets), and a Driver accent / larger-control pass on fields
 - [ ] 4.3 Cards, lists, stat tiles, hero, status, timeline, small charts for the dashboard (3)
   - [x] 4.3a `LpgMetricTile` (figure, label, caption, attention bar) and `LpgHeroStats` (figure strip for hero cards); first used on the Admin dashboard
   - [x] 4.3b `LpgHeroStats` and `LpgMetricTile` rolled out to Customer Home (hero counts) and Driver Today (hero strip, large "Open this stop" button, cash in hand tile); parts of 7.2 and 8.1

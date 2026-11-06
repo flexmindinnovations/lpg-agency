@@ -66,6 +66,10 @@ abstract final class LpgSizes {
       (LpgTokens.spacing2xl + LpgTokens.spacingMd) * 1.0;
   static const double buttonHeight =
       (LpgTokens.spacing2xl + LpgTokens.spacingSm) * 1.0;
+
+  /// The big primary action for a hurried, one-handed screen (the Driver's).
+  static const double buttonHeightLarge =
+      (LpgTokens.spacing2xl + LpgTokens.spacingMd) * 1.0;
 }
 
 /// Window-size breakpoints, from Material 3's window size classes. Phones

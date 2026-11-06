@@ -237,6 +237,7 @@ class _NextStopCard extends StatelessWidget {
             ),
             child: LpgButton(
               label: 'Open this stop',
+              size: LpgButtonSize.large,
               icon: LpgIcons.navigate,
               expand: true,
               onPressed: open,
