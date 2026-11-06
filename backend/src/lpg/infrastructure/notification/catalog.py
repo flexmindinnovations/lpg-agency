@@ -320,6 +320,21 @@ SPECS: dict[str, NotificationSpec] = {
         permission="complaints.manage",
         reference_type="complaint",
     ),
+    # Device control (ADR-071): a phone signed in and is waiting for approval.
+    # Normal tier (default sound) — alert sounds are sequenced last (Epic 12).
+    "device_pending_staff": NotificationSpec(
+        title="Phone waiting for approval",
+        body=lambda f: (
+            f"{f.get('device_name') or 'A phone'}"
+            + (f" ({f['app_label']})" if f.get("app_label") else "")
+            + (f", signed in by {f['user_name']}," if f.get("user_name") else "")
+            + " is waiting for you to approve or block it."
+        ),
+        audience=Audience.STAFF,
+        push=True,
+        permission="license:manage_tenant",
+        reference_type="device",
+    ),
     "complaint_assigned": NotificationSpec(
         title="Complaint assigned to you",
         body=lambda f: (

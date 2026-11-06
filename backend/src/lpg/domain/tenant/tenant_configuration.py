@@ -201,6 +201,11 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # one JSON object, validated by `application.accounting.
         # payment_profile`. Printed on invoices and used to build UPI QR codes.
         "payment_profile",
+        # How strictly the agency controls which phones may use its Driver and
+        # Admin apps (ADR-071): "off" (default — nothing enforced or
+        # recorded), "observe" (phones register, nobody is blocked) or
+        # "enforce". Validated on write by `application.license.device_control`.
+        "device_control",
     }
 )
 

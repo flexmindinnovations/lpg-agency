@@ -1,6 +1,6 @@
 # Tasks: Mobile UI/UX Revamp, i18n, Device Control and Alert Sounds
 
-Nothing here is started (plan version 3). Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
+Epic 11 (device control) is in progress; nothing else here is started (plan version 5). Epic 11 status per story is in the checkboxes below and in STATUS.md. Sizes are working days. Order follows the dependencies; E5 and E6 can run beside E3 and E4.
 
 ## E0 Discovery and decisions (3 days)
 - [ ] 0.1 Design direction: modern solid enterprise look (tonal elevation, radii, type scale, motion language); reference screens for each app (1)
@@ -76,10 +76,10 @@ Nothing here is started (plan version 3). Sizes are working days. Order follows 
 
 ## E11 Device registration and access control (19.5 days)
 Runs as its own stream (release R-D). Applies to the Driver and Admin apps; the Customer app is excluded pending decision 2.
-- [ ] 11.1 Design and ADR: data model, states (pending, approved, blocked, removed), enforcement points, grandfathering, privacy; confirm on the agency's real phones what can be read (IMEI, Android ID, model) (1)
-- [ ] 11.2 Backend: `admin_app` app type, device table with RLS and migration, repository, register/approve/block/unblock/rename/remove use cases, seat limit from `device_caps`, audit events, domain events (3)
+- [ ] 11.1 Design and ADR: data model, states (pending, approved, blocked, removed), enforcement points, grandfathering, privacy; confirm on the agency's real phones what can be read (IMEI, Android ID, model) (1) — **ADR-071 written; the real-phone check is still open** (it needs the agency's phones, which a cloud session cannot do). Grandfathering is replaced by the `device_control` mode (STATUS.md).
+- [x] 11.2 Backend: `admin_app` app type, device table with RLS and migration, repository, register/approve/block/unblock/rename/remove use cases, seat limit from `device_caps`, audit events, domain events (3) — done in PR A1 (extends the existing `platform.linked_device` table, which already had RLS; migration `c4e8a1f7d305`). `RegisterDeviceUseCase` has no caller until 11.3.
 - [ ] 11.3 Backend enforcement: bind sessions to the install ID at sign-in and refresh, check status on every request and on the realtime connection, error codes `DEVICE_PENDING` and `DEVICE_BLOCKED`, short-lived status cache, revoke refresh tokens on block, push and realtime sign-out (3)
-- [ ] 11.4 Backend API: register from the app, list, pending, approve, block, unblock, rename, remove, admin alert on a new pending device, grandfathering of existing sessions with a grace period (2)
+- [ ] 11.4 Backend API: register from the app, list, pending, approve, block, unblock, rename, remove, admin alert on a new pending device, grandfathering of existing sessions with a grace period (2) — A1 done: list (with app/status filters), pending count, approve, block, unblock, remove, rename + IMEI note, history, admin alert (`device_pending_staff`), `device_control` mode setting. Still open: register from the app (comes with 11.3's sign-in binding) and `GET /devices/me`.
 - [ ] 11.5 Dashboard: Linked Devices page (list, pending, actions, details, IMEI or serial note, filters, history), pending badge in the sidebar, permissions (3)
 - [ ] 11.6 Mobile `device_identity` package: install ID in secure storage, device details collection, `X-Device-Id` header in `api_client`, pending and blocked states in session handling (2)
 - [ ] 11.7 Driver app: waiting-for-approval and blocked screens, offline queue kept and resumed on unblock, immediate sign-out on block (2)

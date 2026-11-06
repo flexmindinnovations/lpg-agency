@@ -34,6 +34,7 @@ from lpg.api.v1.routers import (
     dashboard,
     delivery,
     dev_tools,
+    devices,
     documents,
     employee,
     health,
@@ -332,6 +333,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # API v1
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(admin.router, prefix=settings.api_v1_prefix)
+    app.include_router(devices.router, prefix=settings.api_v1_prefix)
     app.include_router(ai.router, prefix=settings.api_v1_prefix)
     app.include_router(platform.router, prefix=settings.api_v1_prefix)
     # `onboarding_draft.router`'s literal `/customers/onboarding-drafts` path

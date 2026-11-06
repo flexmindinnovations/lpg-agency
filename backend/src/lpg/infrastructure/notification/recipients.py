@@ -130,6 +130,11 @@ class NotificationResolver:
             code = str(payload["reason_code"])
             facts["reason"] = FAILED_DELIVERY_REASON_LABELS.get(code, _humanize(code))
 
+        device_id = _uuid(payload, "device_id")
+        if device_id is not None:
+            # A device alert is about the phone itself; the click opens it.
+            reference_id = device_id
+
         route_id = _uuid(payload, "route_id")
         if route is None and route_id is not None:
             route = await self._route_repo().get_by_id(route_id)
