@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/customer_strings.dart';
 import '../../orders/data/orders_provider.dart';
 import '../../orders/presentation/order_presentation.dart';
 import '../../profile/data/profile_provider.dart';
@@ -217,11 +218,11 @@ class _BalanceHero extends ConsumerWidget {
                       stats: [
                         LpgHeroStat(
                           value: '${orders.where((o) => o.isTrackable).length}',
-                          label: 'On the way',
+                          label: context.strings.dashboard.hero.onTheWay,
                         ),
                         LpgHeroStat(
                           value: '${orders.length}',
-                          label: 'Orders placed',
+                          label: context.strings.dashboard.hero.ordersPlaced,
                         ),
                       ],
                     ),
@@ -247,9 +248,9 @@ class _ActiveOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LpgActionCard(
       icon: LpgIcons.truck,
-      title: 'On its way',
+      title: context.strings.dashboard.liveOrder.title,
       message: '${order.reference} is out for delivery',
-      actionLabel: 'Track',
+      actionLabel: context.strings.dashboard.liveOrder.action,
       onTap: () => context.push('/orders/${order.id}/track'),
     );
   }

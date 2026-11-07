@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/driver_strings.dart';
 import '../../cash_handover/data/cash_handover_provider.dart';
 import '../../profile/data/profile_provider.dart';
 import '../../van_load/data/van_load_provider.dart';
@@ -174,9 +175,18 @@ class _RouteHero extends ConsumerWidget {
           const SizedBox(height: LpgSpacing.md),
           LpgHeroStats(
             stats: [
-              LpgHeroStat(value: '$delivered', label: 'Delivered'),
-              LpgHeroStat(value: '$remaining', label: 'Remaining'),
-              LpgHeroStat(value: '$failed', label: 'Failed'),
+              LpgHeroStat(
+                value: '$delivered',
+                label: context.strings.today.stats.delivered,
+              ),
+              LpgHeroStat(
+                value: '$remaining',
+                label: context.strings.today.stats.remaining,
+              ),
+              LpgHeroStat(
+                value: '$failed',
+                label: context.strings.today.stats.failed,
+              ),
             ],
           ),
         ],

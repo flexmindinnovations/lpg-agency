@@ -14,7 +14,12 @@ const _scanned = [
   'packages/design_system/lib',
 ];
 
-bool _skip(String path) => path.endsWith('.g.dart') || path.contains('/i18n/');
+/// The component gallery is a developer-only specimen page (sample copy that
+/// no user sees), so its text is not held to the catalogue rule.
+bool _skip(String path) =>
+    path.endsWith('.g.dart') ||
+    path.contains('/i18n/') ||
+    path.contains('/gallery/');
 
 Future<void> main(List<String> args) async {
   final update = args.contains('--update');

@@ -6,6 +6,7 @@ import 'package:admin_app/src/features/profile/data/profile_provider.dart';
 import 'package:admin_app/src/features/profile/presentation/edit_profile_sheet.dart';
 import 'package:admin_app/src/features/profile/presentation/profile_avatar_button.dart';
 import 'package:admin_app/src/features/profile/presentation/profile_screen.dart';
+import 'package:admin_app/src/i18n/admin_strings.dart';
 import 'package:admin_app/src/providers.dart';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
@@ -142,7 +143,11 @@ Widget _host(
       adminProfileProvider.overrideWith((ref) async => profile),
       if (picker != null) profilePhotoPickerProvider.overrideWithValue(picker),
     ],
-    child: MaterialApp(theme: LpgTheme.light, home: home),
+    child: MaterialApp(
+      theme: LpgTheme.light,
+      localizationsDelegates: adminLocalizationsDelegates,
+      home: home,
+    ),
   );
 }
 

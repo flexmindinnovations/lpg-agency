@@ -5,6 +5,7 @@ import 'package:driver_app/src/features/delivery/data/active_route_provider.dart
 import 'package:driver_app/src/features/profile/data/profile_provider.dart';
 import 'package:driver_app/src/features/delivery/data/location_sharing.dart';
 import 'package:driver_app/src/features/delivery/presentation/today_screen.dart';
+import 'package:driver_app/src/i18n/driver_strings.dart';
 import 'package:driver_app/src/features/van_load/data/van_load_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,7 +88,11 @@ Widget _screen({
       (ref) => Stream.value(const LocationSharingState()),
     ),
   ],
-  child: MaterialApp(theme: LpgTheme.light, home: const TodayScreen()),
+  child: MaterialApp(
+    theme: LpgTheme.light,
+    localizationsDelegates: driverLocalizationsDelegates,
+    home: const TodayScreen(),
+  ),
 );
 
 void main() {

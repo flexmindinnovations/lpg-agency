@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../i18n/admin_strings.dart';
 import '../../../providers.dart';
 import '../data/profile_photo.dart';
 import '../data/profile_provider.dart';
@@ -38,24 +39,24 @@ class _ProfileAvatarButtonState extends ConsumerState<ProfileAvatarButton> {
   Future<void> _choose() async {
     final choice = await LpgFeedback.showSheet<_PhotoChoice>(
       context,
-      title: 'Profile picture',
+      title: context.strings.profile.pictureTitle,
       builder: (sheetContext) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           LpgListTile(
             leadingIcon: LpgIcons.camera,
-            title: 'Take photo',
+            title: context.strings.profile.takePhoto,
             onTap: () => Navigator.of(sheetContext).pop(_PhotoChoice.camera),
           ),
           LpgListTile(
             leadingIcon: LpgIcons.gallery,
-            title: 'Choose from gallery',
+            title: context.strings.profile.chooseFromGallery,
             onTap: () => Navigator.of(sheetContext).pop(_PhotoChoice.gallery),
           ),
           if (_hasPicture)
             LpgListTile(
               leadingIcon: LpgIcons.delete,
-              title: 'Remove photo',
+              title: context.strings.profile.removePhoto,
               onTap: () => Navigator.of(sheetContext).pop(_PhotoChoice.remove),
             ),
         ],
@@ -140,7 +141,7 @@ class _ProfileAvatarButtonState extends ConsumerState<ProfileAvatarButton> {
     const badge = 24.0;
     return Semantics(
       button: true,
-      label: 'Change profile picture',
+      label: context.strings.profile.changePicture,
       excludeSemantics: true,
       child: SizedBox(
         width: size,
