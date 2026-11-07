@@ -86,6 +86,40 @@ body {
   margin: 0;
 }
 
+/* ========================================================================
+   FROSTED PAPER (ported from the mobile apps' LpgBackdrop)
+
+   One fixed, click-through layer over the whole window carrying the mobile
+   design system's paper grain tile (two scales so the pattern never reads as
+   a repeat, like the mobile sharp grain + haze). Because it sits above the
+   page, every card, button, input, table, drawer, dialog and menu gets the
+   same paper texture with no per-component work and no backdrop-filter.
+   Strength and the light/dark flip come from the --paper-grain-* tokens;
+   high contrast and print turn it off.
+   ======================================================================== */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  background-image: var(--paper-grain-image), var(--paper-grain-image);
+  background-size:
+    128px 128px,
+    384px 384px;
+  background-position:
+    0 0,
+    37px 91px;
+  opacity: var(--paper-grain-opacity);
+  filter: invert(var(--paper-grain-invert));
+}
+
+@media print {
+  body::after {
+    display: none;
+  }
+}
+
 /* The app shell owns scrolling (sidebar and page content scroll separately);
    with it mounted the window must never scroll or the header/sidebar move
    with it. Pages without the shell (sign-in, licence) still scroll normally. */

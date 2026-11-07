@@ -239,6 +239,17 @@ have always been hand-edited directly. Edit them here.
      (nothing to break up — no large gradients there); dark turns it on. */
   --surface-noise-opacity: 0;
 
+  /* ---- Frosted paper (ported from the mobile apps' LpgBackdrop) ----
+     The same 256px grain tile the mobile design_system uses, laid once over
+     the whole window by `body::after` in styles.css (one fixed layer, no
+     per-element blur). Cards, buttons, inputs, tables, drawers and dialogs
+     all pick it up because it sits over them. Opacity is the mobile
+     "largest grain that keeps secondary text >= 4.55:1" idea: light 0.14,
+     dark 0.09 with the specks inverted to light. 0 in high contrast. */
+  --paper-grain-image: url('/textures/paper-grain.png');
+  --paper-grain-opacity: 0.14;
+  --paper-grain-invert: 0;
+
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
      tokens already cover most of the doc's steps closely enough to leave
@@ -393,6 +404,8 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-shadow: var(--elevation-3);
   --surface-atmosphere: var(--color-surface-base);
   --surface-noise-opacity: 0;
+  --paper-grain-opacity: 0.09;
+  --paper-grain-invert: 1;
   /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
      text on it is only 3.2:1. #2864cc gives white text 5.7:1. */
   --component-button-primary-background: #2864cc;
@@ -457,6 +470,7 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-shadow: none;
   --surface-atmosphere: none;
   --surface-noise-image: none;
+  --paper-grain-opacity: 0;
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
@@ -527,6 +541,8 @@ have always been hand-edited directly. Edit them here.
     --surface-acrylic-shadow: var(--elevation-3);
     --surface-atmosphere: var(--color-surface-base);
     --surface-noise-opacity: 0;
+    --paper-grain-opacity: 0.09;
+    --paper-grain-invert: 1;
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
