@@ -6,8 +6,8 @@ import '../../../i18n/customer_strings.dart';
 import 'invoice_presentation.dart';
 
 /// The invoice drawn like a sheet of paper: white, hairline-bordered, narrow
-/// and centred, with a ruled item table and a totals block. It stays white in
-/// dark theme on purpose, as a real printout would.
+/// and centred, with a ruled item table and a totals block. Every colour comes
+/// from the active theme, so it follows light, dark and high-contrast.
 class InvoicePaper extends StatelessWidget {
   const InvoicePaper({
     super.key,
@@ -18,19 +18,17 @@ class InvoicePaper extends StatelessWidget {
   final InvoiceResponse invoice;
   final Map<String, String> cylinderNames;
 
-  static const _ink = Color(0xFF1B1F2A);
-  static const _muted = Color(0xFF5B6270);
-  static const _rule = Color(0xFFD9DCE3);
-
   @override
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     final strings = context.strings;
     final base = Theme.of(context).textTheme;
-    final small = base.bodySmall?.copyWith(color: _muted);
-    final body = base.bodyMedium?.copyWith(color: _ink);
+    final ink = colors.textPrimary;
+    final rule = colors.rowDivider;
+    final small = base.bodySmall?.copyWith(color: colors.textSecondary);
+    final body = base.bodyMedium?.copyWith(color: ink);
     final bold = base.bodyMedium?.copyWith(
-      color: _ink,
+      color: ink,
       fontWeight: FontWeight.w700,
     );
     final balanceDue = invoice.balanceDue;
@@ -52,9 +50,9 @@ class InvoicePaper extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(LpgSpacing.lg),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: _rule),
+            color: colors.sheet,
+            borderRadius: BorderRadius.circular(LpgRadius.md),
+            border: Border.all(color: colors.outline),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,7 +67,7 @@ class InvoicePaper extends StatelessWidget {
                         Text(
                           'INVOICE',
                           style: base.headlineSmall?.copyWith(
-                            color: _ink,
+                            color: ink,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1,
                           ),
@@ -129,7 +127,7 @@ class InvoicePaper extends StatelessWidget {
                   ],
                 ),
               const SizedBox(height: LpgSpacing.md),
-              const Divider(color: _rule, height: 1),
+              Divider(color: rule, height: 1),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
@@ -139,7 +137,7 @@ class InvoicePaper extends StatelessWidget {
                   ],
                 ),
               ),
-              const Divider(color: _rule, height: 1),
+              Divider(color: rule, height: 1),
               for (final line in invoice.lines)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -170,7 +168,7 @@ class InvoicePaper extends StatelessWidget {
                     ],
                   ),
                 ),
-              const Divider(color: _rule, height: 1),
+              Divider(color: rule, height: 1),
               const SizedBox(height: LpgSpacing.sm),
               kv('Subtotal', LpgFormat.currency(invoice.subtotal)),
               kv('GST', LpgFormat.currency(invoice.taxAmount)),
