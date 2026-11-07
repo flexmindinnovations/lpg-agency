@@ -76,7 +76,18 @@ Future<void> pumpGalleryEntry(
       ),
     ),
   );
+  await settleAssets(tester);
   // Not pumpAndSettle: a loading spinner never settles.
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 600));
+}
+
+/// Lets SVG illustrations finish loading. They are read and parsed off the
+/// fake clock, so a plain `pump` never completes them; give the real clock a
+/// moment, then pump so they are painted.
+Future<void> settleAssets(WidgetTester tester) async {
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 300)),
+  );
+  await tester.pump();
 }

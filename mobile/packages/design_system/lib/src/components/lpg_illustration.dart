@@ -1,25 +1,91 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../motion.dart';
 import '../theme.dart';
 import '../tone.dart';
 
-/// The picture behind a stat card: what the number is about, drawn in the
-/// card's own tone so the figure on top stays the loudest thing.
+/// The pictures that can sit behind a stat card. Each is an SVG file in
+/// `assets/illustrations/`, shared by every app; this enum is the only place
+/// that names them.
 enum LpgIllustration {
   /// Notes stacked with a coin: money expected.
-  banknotes,
+  banknotes('banknotes'),
 
   /// A note with a tick: money received.
-  cashReceived,
+  cashReceived('cash_received'),
 
   /// A note with a bite out of it and a down arrow: money missing.
-  shortfall,
+  shortfall('shortfall'),
 
   /// A stack of coins with an up arrow: more than expected.
-  excess,
+  excess('excess'),
+
+  /// A clipboard with a clock: orders waiting for someone.
+  pendingOrder('pending_order'),
+
+  /// Two LPG cylinders: stock, or a load ready to go.
+  cylinders('cylinders'),
+
+  /// A dashed route to a map pin: on the road.
+  route('route'),
+
+  /// A parcel with a cross: a delivery that did not happen.
+  failed('failed'),
+
+  /// A person in a cap at a steering wheel: a driver.
+  driver('driver'),
+
+  /// A delivery van: a vehicle.
+  van('van'),
+
+  /// A wallet with a note sticking out: cash someone is holding.
+  wallet('wallet'),
+
+  /// An invoice with a rupee mark: money owed.
+  invoice('invoice'),
+
+  /// An invoice with a clock: money owed and late.
+  overdue('overdue'),
+
+  /// An invoice with a tick: settled.
+  paid('paid'),
+
+  /// Two speech bubbles, one with an exclamation mark: complaints.
+  complaint('complaint'),
+
+  /// A godown with a roller door: stock held.
+  warehouse('warehouse');
+
+  const LpgIllustration(this.fileName);
+
+  /// The SVG's name in `assets/illustrations/`, without the extension.
+  final String fileName;
+
+  /// The asset path inside this package.
+  String get assetPath => 'assets/illustrations/$fileName.svg';
+}
+
+/// The four colours an illustration SVG may use. The file is drawn in these
+/// placeholder greys and [LpgIllustrationArt] swaps each for a tint of the
+/// tile's tone when it is drawn, so the artwork carries no theme colour of its
+/// own and a new tone or theme needs no new files.
+abstract final class LpgIllustrationPalette {
+  /// The largest, faintest shapes.
+  static const soft = Color(0xFFD9D9D9);
+
+  /// The main body of a picture.
+  static const mid = Color(0xFFB3B3B3);
+
+  /// Small accents: badges, valves, wheels.
+  static const strong = Color(0xFF808080);
+
+  /// Marks cut out of a shape, drawn in the card's own colour.
+  static const ground = Color(0xFFFFFFFF);
+
+  static const all = [soft, mid, strong, ground];
 }
 
 /// How strongly each layer of a picture tints the card, from the faintest
@@ -29,6 +95,47 @@ abstract final class LpgIllustrationTint {
   static const soft = 0.10;
   static const mid = 0.17;
   static const strong = 0.26;
+}
+
+/// Swaps the SVG's four placeholder colours for the tile's tints. Compared by
+/// value so the loader (and so the parsed picture) is cached across rebuilds.
+class _ToneColors extends ColorMapper {
+  const _ToneColors({
+    required this.soft,
+    required this.mid,
+    required this.strong,
+    required this.ground,
+  });
+
+  final Color soft;
+  final Color mid;
+  final Color strong;
+  final Color ground;
+
+  @override
+  Color substitute(
+    String? id,
+    String elementName,
+    String attributeName,
+    Color color,
+  ) {
+    if (color == LpgIllustrationPalette.soft) return soft;
+    if (color == LpgIllustrationPalette.mid) return mid;
+    if (color == LpgIllustrationPalette.strong) return strong;
+    if (color == LpgIllustrationPalette.ground) return ground;
+    return color;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is _ToneColors &&
+      other.soft == soft &&
+      other.mid == mid &&
+      other.strong == strong &&
+      other.ground == ground;
+
+  @override
+  int get hashCode => Object.hash(soft, mid, strong, ground);
 }
 
 /// A flat, solid-colour illustration that settles into place once and then
@@ -70,6 +177,10 @@ class _LpgIllustrationArtState extends State<LpgIllustrationArt>
     vsync: this,
     duration: _breath,
   );
+  late final Animation<double> _arrival = CurvedAnimation(
+    parent: _entry,
+    curve: Curves.easeOutBack,
+  );
   bool _started = false;
 
   @override
@@ -99,245 +210,48 @@ class _LpgIllustrationArtState extends State<LpgIllustrationArt>
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     if (colors.isHighContrast) return const SizedBox.shrink();
-    final palette = _Palette(
-      soft: colors.tint(
-        widget.tone.foreground(colors),
-        LpgIllustrationTint.soft,
+    final base = widget.tone.foreground(colors);
+    // Drawn once into its own layer; the motion below only moves that layer.
+    final picture = RepaintBoundary(
+      child: SvgPicture.asset(
+        widget.illustration.assetPath,
+        package: 'design_system',
+        width: widget.size,
+        height: widget.size,
+        colorMapper: _ToneColors(
+          soft: colors.tint(base, LpgIllustrationTint.soft),
+          mid: colors.tint(base, LpgIllustrationTint.mid),
+          strong: colors.tint(base, LpgIllustrationTint.strong),
+          ground: colors.card,
+        ),
       ),
-      mid: colors.tint(widget.tone.foreground(colors), LpgIllustrationTint.mid),
-      strong: colors.tint(
-        widget.tone.foreground(colors),
-        LpgIllustrationTint.strong,
-      ),
-      ground: colors.card,
     );
     return ExcludeSemantics(
       child: IgnorePointer(
-        child: RepaintBoundary(
-          child: CustomPaint(
-            size: Size.square(widget.size),
-            painter: _ArtPainter(
-              illustration: widget.illustration,
-              palette: palette,
-              entry: _entry,
-              breathing: _breathing,
-            ),
+        child: SizedBox.square(
+          dimension: widget.size,
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_arrival, _breathing]),
+            child: picture,
+            builder: (context, child) {
+              final e = _arrival.value;
+              // One slow in-and-out, ending exactly where it began.
+              final b = math.sin(_breathing.value * 2 * math.pi);
+              return Transform.translate(
+                offset: Offset(
+                  widget.size * 0.18 * (1 - e),
+                  widget.size * 0.14 * (1 - e) + b * 2,
+                ),
+                child: Transform.scale(
+                  scale: (0.86 + 0.14 * e) * (1 + 0.012 * b),
+                  alignment: Alignment.bottomRight,
+                  child: child,
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
-}
-
-class _Palette {
-  const _Palette({
-    required this.soft,
-    required this.mid,
-    required this.strong,
-    required this.ground,
-  });
-
-  final Color soft;
-  final Color mid;
-  final Color strong;
-
-  /// The card colour, for marks cut out of a shape (a tick, a bite).
-  final Color ground;
-
-  @override
-  bool operator ==(Object other) =>
-      other is _Palette &&
-      other.soft == soft &&
-      other.mid == mid &&
-      other.strong == strong &&
-      other.ground == ground;
-
-  @override
-  int get hashCode => Object.hash(soft, mid, strong, ground);
-}
-
-class _ArtPainter extends CustomPainter {
-  _ArtPainter({
-    required this.illustration,
-    required this.palette,
-    required this.entry,
-    required this.breathing,
-  }) : super(repaint: Listenable.merge([entry, breathing]));
-
-  final LpgIllustration illustration;
-  final _Palette palette;
-  final Animation<double> entry;
-  final Animation<double> breathing;
-
-  /// Pictures are drawn in a 100 x 100 box and scaled to fit.
-  static const _box = 100.0;
-
-  /// One part's own progress inside the whole entrance.
-  static double _part(double t, double from, double to, [Curve? curve]) =>
-      Interval(from, to, curve: curve ?? Curves.easeOutCubic).transform(t);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final e = entry.value;
-    // One slow in-and-out, ending exactly where it began.
-    final b = math.sin(breathing.value * 2 * math.pi);
-    canvas.save();
-    canvas.scale(size.width / _box);
-    switch (illustration) {
-      case LpgIllustration.banknotes:
-        _banknotes(canvas, e, b);
-      case LpgIllustration.cashReceived:
-        _cashReceived(canvas, e, b);
-      case LpgIllustration.shortfall:
-        _shortfall(canvas, e, b);
-      case LpgIllustration.excess:
-        _excess(canvas, e, b);
-    }
-    canvas.restore();
-  }
-
-  Paint _fill(Color c) => Paint()..color = c;
-
-  Paint _line(Color c, double width) => Paint()
-    ..color = c
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = width
-    ..strokeCap = StrokeCap.round
-    ..strokeJoin = StrokeJoin.round;
-
-  /// A banknote centred on the origin.
-  void _note(Canvas canvas, Size s, Color body, Color detail) {
-    final rect = Rect.fromCenter(
-      center: Offset.zero,
-      width: s.width,
-      height: s.height,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(6)),
-      _fill(body),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect.deflate(4.5), const Radius.circular(3.5)),
-      _line(detail, 1.4),
-    );
-    canvas.drawCircle(Offset.zero, s.height * 0.22, _line(detail, 1.8));
-    canvas.drawCircle(Offset(-s.width * 0.31, 0), 2.2, _fill(detail));
-    canvas.drawCircle(Offset(s.width * 0.31, 0), 2.2, _fill(detail));
-  }
-
-  void _banknotes(Canvas canvas, double e, double b) {
-    final back = _part(e, 0.0, 0.7);
-    final front = _part(e, 0.2, 0.95);
-    final coin = _part(e, 0.5, 1.0, Curves.easeOutBack);
-
-    canvas.save();
-    canvas.translate(54, 46 - 16 * (1 - back) - b * 1.6);
-    canvas.rotate(8 * math.pi / 180);
-    _note(canvas, const Size(70, 42), palette.soft, palette.mid);
-    canvas.restore();
-
-    canvas.save();
-    canvas.translate(60 + 30 * (1 - front), 68 + b * 1.6);
-    canvas.rotate(-6 * math.pi / 180);
-    _note(canvas, const Size(70, 42), palette.mid, palette.strong);
-    canvas.restore();
-
-    canvas.save();
-    canvas.translate(26, 84 - b * 1.2);
-    canvas.scale(coin.clamp(0.0, 1.2));
-    canvas.drawCircle(Offset.zero, 11, _fill(palette.strong));
-    canvas.drawCircle(Offset.zero, 6.5, _line(palette.ground, 1.8));
-    canvas.restore();
-  }
-
-  void _cashReceived(Canvas canvas, double e, double b) {
-    final note = _part(e, 0.0, 0.7);
-    final badge = _part(e, 0.4, 0.9, Curves.easeOutBack);
-    final tick = _part(e, 0.65, 1.0);
-
-    canvas.save();
-    canvas.translate(52 + 28 * (1 - note), 52 - b * 1.6);
-    canvas.rotate(-8 * math.pi / 180);
-    _note(canvas, const Size(72, 44), palette.mid, palette.strong);
-    canvas.restore();
-
-    canvas.save();
-    canvas.translate(74, 74 + b * 1.4);
-    canvas.scale(badge.clamp(0.0, 1.2));
-    canvas.drawCircle(Offset.zero, 17, _fill(palette.strong));
-    canvas.drawCircle(Offset.zero, 17, _line(palette.ground, 3));
-    final path = Path()
-      ..moveTo(-7, 0.5)
-      ..lineTo(-2, 5.5)
-      ..lineTo(8, -5);
-    final metric = path.computeMetrics().first;
-    canvas.drawPath(
-      metric.extractPath(0, metric.length * tick),
-      _line(palette.ground, 3.4),
-    );
-    canvas.restore();
-  }
-
-  void _shortfall(Canvas canvas, double e, double b) {
-    final note = _part(e, 0.0, 0.7);
-    final arrow = _part(e, 0.35, 1.0, Curves.bounceOut);
-
-    canvas.save();
-    canvas.translate(54, 50 + 18 * (1 - note) - b * 1.4);
-    canvas.rotate(6 * math.pi / 180);
-    _note(canvas, const Size(72, 44), palette.mid, palette.strong);
-    // The missing piece: a bite cut out of the corner in the card's colour.
-    canvas.drawCircle(const Offset(34, -20), 13, _fill(palette.ground));
-    canvas.restore();
-
-    canvas.save();
-    canvas.translate(30, 76 - 18 * (1 - arrow) + b * 1.4);
-    canvas.drawCircle(Offset.zero, 17, _fill(palette.strong));
-    canvas.drawCircle(Offset.zero, 17, _line(palette.ground, 3));
-    final line = _line(palette.ground, 3.4);
-    canvas.drawLine(const Offset(0, -7), const Offset(0, 7), line);
-    canvas.drawLine(const Offset(0, 7), const Offset(-5.5, 1.5), line);
-    canvas.drawLine(const Offset(0, 7), const Offset(5.5, 1.5), line);
-    canvas.restore();
-  }
-
-  /// A coin lying flat, centred on the origin.
-  void _coin(Canvas canvas, Color body, Color edge) {
-    final rect = Rect.fromCenter(center: Offset.zero, width: 50, height: 14);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(7)),
-      _fill(body),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect.deflate(3), const Radius.circular(4)),
-      _line(edge, 1.3),
-    );
-  }
-
-  void _excess(Canvas canvas, double e, double b) {
-    final colours = [palette.soft, palette.mid, palette.strong];
-    for (var i = 0; i < 3; i++) {
-      final drop = _part(e, i * 0.2, i * 0.2 + 0.55, Curves.bounceOut);
-      canvas.save();
-      canvas.translate(52, 82 - i * 15.0 - 26 * (1 - drop));
-      _coin(canvas, colours[i], i == 2 ? palette.ground : palette.strong);
-      canvas.restore();
-    }
-
-    final arrow = _part(e, 0.5, 1.0, Curves.easeOutBack);
-    canvas.save();
-    canvas.translate(78, 30 - b * 2.2);
-    canvas.scale(arrow.clamp(0.0, 1.2));
-    canvas.drawCircle(Offset.zero, 16, _fill(palette.strong));
-    canvas.drawCircle(Offset.zero, 16, _line(palette.ground, 3));
-    final line = _line(palette.ground, 3.4);
-    canvas.drawLine(const Offset(0, 7), const Offset(0, -7), line);
-    canvas.drawLine(const Offset(0, -7), const Offset(-5.5, -1.5), line);
-    canvas.drawLine(const Offset(0, -7), const Offset(5.5, -1.5), line);
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_ArtPainter old) =>
-      old.illustration != illustration || old.palette != palette;
 }

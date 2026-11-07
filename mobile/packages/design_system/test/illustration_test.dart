@@ -1,6 +1,9 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/gallery_harness.dart';
 
 double _contrast(Color a, Color b) {
   final la = a.computeLuminance();
@@ -118,11 +121,12 @@ void main() {
       await tester.pumpWidget(
         host(tile(art: LpgIllustration.banknotes), reduceMotion: true),
       );
+      await settleAssets(tester);
       expect(tester.hasRunningAnimations, isFalse);
       expect(
         find.descendant(
           of: find.byType(LpgIllustrationArt),
-          matching: find.byType(CustomPaint),
+          matching: find.byType(SvgPicture),
         ),
         findsOneWidget,
       );
@@ -139,7 +143,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(LpgIllustrationArt),
-          matching: find.byType(CustomPaint),
+          matching: find.byType(SvgPicture),
         ),
         findsNothing,
       );

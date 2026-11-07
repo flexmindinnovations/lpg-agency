@@ -238,6 +238,7 @@ class _Money extends ConsumerWidget {
           ? 'Nothing due'
           : '${open.length} ${open.length == 1 ? 'invoice' : 'invoices'} unpaid',
       icon: LpgIcons.invoice,
+      illustration: owed > 0 ? LpgIllustration.invoice : LpgIllustration.paid,
       tone: owed > 0 ? LpgTone.warning : LpgTone.success,
       attention: owed > 0,
       onTap: () => context.pushNamed(

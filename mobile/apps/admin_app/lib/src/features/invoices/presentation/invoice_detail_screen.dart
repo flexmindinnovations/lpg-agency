@@ -219,6 +219,11 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen>
                       '${LpgFormat.currency(invoice.totalAmount)}'
                 : 'Fully paid',
             icon: due > 0 && !cancelled ? LpgIcons.clock : LpgIcons.success,
+            illustration: cancelled
+                ? null
+                : due > 0
+                ? LpgIllustration.invoice
+                : LpgIllustration.paid,
             tone: cancelled
                 ? LpgTone.danger
                 : due > 0
