@@ -262,12 +262,14 @@ class _DayBody extends StatelessWidget {
               caption:
                   '${book.handoverCount} ${book.handoverCount == 1 ? 'handover' : 'handovers'}',
               icon: LpgIcons.handover,
+              illustration: LpgIllustration.banknotes,
             ),
             MetricTile(
               label: 'Handed over',
               value: LpgFormat.currency(book.handedOverTotal),
               icon: LpgIcons.cash,
               tone: LpgTone.success,
+              illustration: LpgIllustration.cashReceived,
             ),
             MetricTile(
               label: 'Short',
@@ -275,12 +277,14 @@ class _DayBody extends StatelessWidget {
               icon: LpgIcons.warning,
               tone: LpgTone.danger,
               attention: book.shortfallTotal > 0,
+              illustration: LpgIllustration.shortfall,
             ),
             MetricTile(
               label: 'Excess',
               value: LpgFormat.currency(book.excessTotal),
               icon: LpgIcons.trendUp,
               tone: LpgTone.info,
+              illustration: LpgIllustration.excess,
             ),
           ],
         ),

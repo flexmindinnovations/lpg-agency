@@ -14,6 +14,7 @@ class MetricTile extends StatelessWidget {
     this.tone = LpgTone.primary,
     this.onTap,
     this.attention = false,
+    this.illustration,
   });
 
   final String label;
@@ -28,6 +29,9 @@ class MetricTile extends StatelessWidget {
   /// Marks the tile in its tone: something here needs the owner.
   final bool attention;
 
+  /// A picture of what the number is about, behind the figure.
+  final LpgIllustration? illustration;
+
   @override
   Widget build(BuildContext context) => LpgMetricTile(
     label: label,
@@ -37,6 +41,7 @@ class MetricTile extends StatelessWidget {
     tone: tone,
     onTap: onTap,
     attention: attention,
+    illustration: illustration,
   );
 }
 

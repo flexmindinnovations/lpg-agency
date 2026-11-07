@@ -157,6 +157,63 @@ final List<GalleryEntry> galleryEntries = [
       ],
     );
   }),
+  GalleryEntry('illustrated_tiles', (context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Expanded(
+              child: LpgMetricTile(
+                label: 'Expected',
+                value: '₹1,24,500',
+                caption: '3 handovers',
+                icon: LpgIcons.handover,
+                illustration: LpgIllustration.banknotes,
+              ),
+            ),
+            const SizedBox(width: LpgSpacing.smd),
+            const Expanded(
+              child: LpgMetricTile(
+                label: 'Handed over',
+                value: '₹1,19,000',
+                icon: LpgIcons.cash,
+                tone: LpgTone.success,
+                illustration: LpgIllustration.cashReceived,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: LpgSpacing.smd),
+        const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: LpgMetricTile(
+                label: 'Short',
+                value: '₹5,500',
+                icon: LpgIcons.warning,
+                tone: LpgTone.danger,
+                attention: true,
+                illustration: LpgIllustration.shortfall,
+              ),
+            ),
+            SizedBox(width: LpgSpacing.smd),
+            Expanded(
+              child: LpgMetricTile(
+                label: 'Excess',
+                value: '₹0',
+                icon: LpgIcons.trendUp,
+                tone: LpgTone.info,
+                illustration: LpgIllustration.excess,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }),
   GalleryEntry('cards_and_tiles', (context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

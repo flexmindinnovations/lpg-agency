@@ -21,6 +21,7 @@ export 'lpg_key_value_row.dart';
 export 'lpg_list_tile.dart';
 export 'lpg_loading_indicator.dart';
 export 'lpg_master_detail.dart';
+export 'lpg_illustration.dart';
 export 'lpg_metric_tile.dart';
 export 'lpg_navigation_bar.dart';
 export 'lpg_quantity_stepper.dart';
