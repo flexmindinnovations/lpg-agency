@@ -49,7 +49,7 @@ class LpgHeroStats extends StatelessWidget {
       cells.add(
         Expanded(
           child: Semantics(
-            label: '${stats[i].label}: ${stats[i].value}',
+            label: [stats[i].label, stats[i].value].join(': '),
             excludeSemantics: true,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
