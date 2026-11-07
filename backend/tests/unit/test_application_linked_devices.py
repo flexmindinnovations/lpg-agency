@@ -672,7 +672,7 @@ async def test_a_phone_naming_itself_is_refused_a_taken_name_with_a_suggestion()
     devices, audit, uow, register, _ = _setup()
     await register.execute(_register_command(identifier="a", display_name="Van 2"))
     mine = await register.execute(_register_command(identifier="b", display_name=None))
-    namer = NameOwnDeviceUseCase(devices, audit, uow)  # type: ignore[arg-type]
+    namer = NameOwnDeviceUseCase(devices, audit, uow)
 
     with pytest.raises(DuplicateDeviceNameError) as refused:
         await namer.execute(NameOwnDeviceCommand(_TENANT, mine.device.id, "VAN 2"))
@@ -691,7 +691,7 @@ async def test_a_removed_phones_name_is_free_again() -> None:
         ChangeDeviceStatusCommand(_TENANT, gone.device.id, _ADMIN, DeviceAction.REMOVE)
     )
     mine = await register.execute(_register_command(identifier="b", display_name=None))
-    namer = NameOwnDeviceUseCase(devices, audit, uow)  # type: ignore[arg-type]
+    namer = NameOwnDeviceUseCase(devices, audit, uow)
 
     named = await namer.execute(NameOwnDeviceCommand(_TENANT, mine.device.id, "Van 2"))
 
@@ -702,7 +702,7 @@ async def test_an_admin_cannot_rename_a_phone_to_a_name_in_use() -> None:
     devices, audit, uow, register, _ = _setup()
     await register.execute(_register_command(identifier="a", display_name="Van 2"))
     other = await register.execute(_register_command(identifier="b", display_name="Van 3"))
-    update = UpdateDeviceDetailsUseCase(devices, audit, uow)  # type: ignore[arg-type]
+    update = UpdateDeviceDetailsUseCase(devices, audit, uow)
 
     with pytest.raises(DuplicateDeviceNameError):
         await update.execute(

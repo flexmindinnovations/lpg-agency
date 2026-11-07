@@ -68,7 +68,7 @@ class FakeRegistrar:
             uuid.uuid4(),
             command.app_type,
             command.device_identifier,
-            command.display_name,
+            command.display_name or "device_test",
             datetime.now(UTC),
             status=self.status,
             details=command.details,
