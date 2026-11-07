@@ -1,5 +1,24 @@
 {
   "app": {
     "title": "LPG Agency Admin"
+  },
+  "dashboard": {
+    "hero": {
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "toApprove": "To approve"
+    }
+  },
+  "profile": {
+    "editTitle": "Edit profile",
+    "updated": "Profile updated.",
+    "contactPhone": "Contact phone",
+    "name": "Name",
+    "phoneHelp": "For colleagues to reach you. Optional.",
+    "pictureTitle": "Profile picture",
+    "takePhoto": "Take photo",
+    "chooseFromGallery": "Choose from gallery",
+    "removePhoto": "Remove photo",
+    "changePicture": "Change profile picture"
   }
 }

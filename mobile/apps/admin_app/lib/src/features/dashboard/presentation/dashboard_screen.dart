@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../compliance/data/compliance_provider.dart';
+import '../../../i18n/admin_strings.dart';
 import '../../../shared/admin_app_bar.dart';
 import '../../../shared/metric_tile.dart';
 import '../../approvals/data/approvals_provider.dart';
@@ -228,11 +229,17 @@ class _Body extends StatelessWidget {
             const SizedBox(height: LpgSpacing.md),
             LpgHeroStats(
               stats: [
-                LpgHeroStat(value: '${o.deliveredToday}', label: 'Delivered'),
-                LpgHeroStat(value: '${o.failedToday}', label: 'Failed'),
+                LpgHeroStat(
+                  value: '${o.deliveredToday}',
+                  label: context.strings.dashboard.hero.delivered,
+                ),
+                LpgHeroStat(
+                  value: '${o.failedToday}',
+                  label: context.strings.dashboard.hero.failed,
+                ),
                 LpgHeroStat(
                   value: '${o.pendingCancellations}',
-                  label: 'To approve',
+                  label: context.strings.dashboard.hero.toApprove,
                 ),
               ],
             ),
