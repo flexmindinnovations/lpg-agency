@@ -449,10 +449,25 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         overflow: hidden;
         font-size: var(--typography-body-small-font-size);
         font-weight: 400;
+        background-image: linear-gradient(
+          90deg,
+          var(--color-highlight-background) 50%,
+          transparent 50%
+        );
+        background-size: 200% 100%;
+        background-position: 100% 0;
         transition:
           background-color var(--motion-duration-small) var(--motion-easing-standard),
+          background-position var(--motion-duration-medium) var(--motion-easing-emphasized),
+          box-shadow var(--motion-duration-small) var(--motion-easing-standard),
           color var(--motion-duration-small) var(--motion-easing-standard);
         position: relative;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shell__nav-link {
+          transition: none;
+        }
       }
 
       .shell__nav-link i {
@@ -473,7 +488,7 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       }
 
       .shell__nav-link:hover {
-        background: var(--color-surface-overlay);
+        background-color: var(--color-surface-overlay);
         color: var(--color-text-primary);
       }
 
@@ -486,9 +501,19 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
          no heavy 700 weight. Text/icon stay on --color-highlight-color so
          this reads correctly in light + high-contrast too. */
       .shell__nav-link.is-active {
-        background: var(--color-highlight-background);
+        /* Background shift: the fill is a 200%-wide two-stop gradient whose
+           position slides, so the highlight sweeps in from the leading edge
+           when an item becomes active (and back out when it stops). */
+        background-image: linear-gradient(
+          90deg,
+          var(--color-highlight-background) 50%,
+          transparent 50%
+        );
+        background-size: 200% 100%;
+        background-position: 0 0;
         color: var(--color-highlight-color);
         font-weight: 600;
+        box-shadow: inset 3px 0 0 var(--color-highlight-color);
       }
 
       .shell__nav-link.is-active i {
