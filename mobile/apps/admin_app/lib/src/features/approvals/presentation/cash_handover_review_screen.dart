@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/admin_strings.dart';
 import '../../../providers.dart';
 import '../data/approvals_provider.dart';
 
@@ -243,7 +244,9 @@ class _CashHandoverReviewScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       LpgSectionHeader.compact(
-                        title: 'Cash collected (${widget.collections.length})',
+                        title: context.strings.cashHandover.collected(
+                          count: widget.collections.length,
+                        ),
                       ),
                       const SizedBox(height: LpgSpacing.sm),
                       for (final c in widget.collections)

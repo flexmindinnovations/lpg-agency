@@ -9,6 +9,9 @@
       "toApprove": "To approve"
     }
   },
+  "cashHandover": {
+    "collected": "Cash collected ({count: int})"
+  },
   "profile": {
     "editTitle": "Edit profile",
     "updated": "Profile updated.",
