@@ -1,5 +1,12 @@
 {
   "app": {
     "title": "LPG Agency"
+  },
+  "today": {
+    "stats": {
+      "delivered": "Delivered",
+      "remaining": "Remaining",
+      "failed": "Failed"
+    }
   }
 }

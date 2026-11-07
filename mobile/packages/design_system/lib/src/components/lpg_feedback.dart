@@ -107,7 +107,9 @@ abstract final class LpgFeedback {
                   // A visible way out, for people who do not discover the
                   // drag handle or a tap on the scrim.
                   IconButton(
-                    tooltip: 'Close',
+                    tooltip: MaterialLocalizations.of(
+                      sheetContext,
+                    ).closeButtonTooltip,
                     onPressed: () => Navigator.of(sheetContext).maybePop(),
                     icon: const Icon(LpgIcons.close),
                   ),
