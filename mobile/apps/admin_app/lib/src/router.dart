@@ -43,9 +43,7 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Phone-width, centred column for full-screen pages on tablets.
 Widget _capped(BuildContext context, Widget child) =>
-    LpgBreakpoints.isWide(context)
-    ? LpgContentWidth(child: child)
-    : child;
+    LpgBreakpoints.isWide(context) ? LpgContentWidth(child: child) : child;
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authController = ref.watch(authControllerProvider);

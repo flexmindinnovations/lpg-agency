@@ -11,5 +11,10 @@
       "title": "On its way",
       "action": "Track"
     }
+  },
+  "payments": {
+    "onlineSection": {
+      "bankTransferTitle": "Or pay by bank transfer"
+    }
   }
 }
