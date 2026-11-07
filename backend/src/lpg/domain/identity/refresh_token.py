@@ -9,7 +9,7 @@ over, just state transitions the application layer (Area B's
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from lpg.domain.common.base import Entity, InvariantViolation
@@ -97,6 +97,20 @@ class RefreshToken(Entity):
         return (
             self._rotated_at is None and self._revoked_at is None and not self.is_expired(now=now)
         )
+
+    def is_within_rotation_grace(self, grace: timedelta, *, now: datetime | None = None) -> bool:
+        """True when this token was rotated only a moment ago and is otherwise
+        still good: its holder most likely never received the response that
+        carried the new token (the app was closed, the connection dropped), so
+        presenting it again is a retry, not theft. A revoked or expired token
+        is never within grace, and a `grace` of zero turns the allowance off.
+        """
+        if self._rotated_at is None or self._revoked_at is not None:
+            return False
+        moment = now or datetime.now(UTC)
+        if self.is_expired(now=moment):
+            return False
+        return moment - self._rotated_at <= grace
 
     def rotate(self, replaced_by_id: uuid.UUID) -> None:
         """Mark this token consumed, recording which new token replaced it.

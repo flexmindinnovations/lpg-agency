@@ -328,6 +328,7 @@ async def refresh(
         tenant_status_checker,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
         device_binder=device_binder,
+        reuse_grace=timedelta(seconds=settings.refresh_token_reuse_grace_seconds),
     )
     token_pair = await use_case.execute(
         RefreshTokenCommand(

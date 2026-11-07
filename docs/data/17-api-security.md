@@ -29,6 +29,7 @@ Applies to every endpoint in `11-api-contracts.md`, for the FastAPI/PostgreSQL/R
 ## 2. Refresh Tokens
 - Long-lived (30 days), stored hashed in PostgreSQL (`identity.refresh_token` table — durable, since session continuity matters even across a Redis flush/restart), **rotated on every use**.
 - Reuse of an already-rotated refresh token is treated as a theft signal → full session revocation for that user.
+- **Grace window for a lost response.** A token rotated no more than `refresh_token_reuse_grace_seconds` ago (default 120 s, at most 900, 0 turns it off) that is presented again is treated as a retry, not theft: the holder most likely never received the new token (app closed or connection dropped as the server rotated it). It gets a fresh pair and the token stays rotated; a revoked or expired token never gets grace. After the window, reuse is theft as above. Trade-off: a token stolen before its rotation can be replayed for at most that window without raising the alarm; the window is kept short for that reason.
 - Delivered via `HttpOnly`, `Secure`, `SameSite=Strict` cookie (Dashboard) or platform secure storage (Flutter `flutter_secure_storage`) — never browser `localStorage`.
 
 ## 3. Token Lifecycle
