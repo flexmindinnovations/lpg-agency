@@ -28,6 +28,8 @@ class LpgGlassLook {
     required this.cardAlpha,
     required this.sheetAlpha,
     this.barAlpha = 1,
+    this.surfaceGrain = 0,
+    this.sheetGrain = 0,
   });
 
   /// Opacity of a card's fill, 0 to 1.
@@ -40,6 +42,14 @@ class LpgGlassLook {
   /// scrolled), 0 to 1. A bar holds only short, bold labels and icons, so it is
   /// sized to AA's 4.5:1 rather than the 6:1 of a card and is more see-through.
   final double barAlpha;
+
+  /// How much grain is laid over a card's, field's, chip's or secondary
+  /// button's fill, under its content, 0 to 1: the most that still keeps text
+  /// at [cardContrast] on the worst pixel (see [LpgGrainLayer]).
+  final double surfaceGrain;
+
+  /// The same for a frosted sheet's fill.
+  final double sheetGrain;
 
   /// What each would like to be if contrast allowed it.
   static const cardTarget = 0.6;
@@ -56,7 +66,10 @@ class LpgGlassLook {
   /// over. A sheet floats over arbitrary content, so it has less room and a
   /// finer grain.
   static const grainStrength = 0.2;
-  static const sheetGrainStrength = 0.08;
+
+  /// What grain a solid control (a filled button) carries. Its fill is known
+  /// and dark or strongly tinted, so a light touch keeps its label crisp.
+  static const solidGrain = 0.1;
 
   /// Text on a sheet keeps this contrast on the worst pixel behind it, so it
   /// reads crisply, not just legally. Well above the 4.5:1 the page itself is
@@ -68,6 +81,9 @@ class LpgGlassLook {
   /// The fill is [cardTarget] opaque (the paper's grain shows through softly)
   /// or more if the page behind it needs it.
   static const cardContrast = LpgBackdropLook.minTextContrast;
+
+  /// What text on a sheet keeps once the grain is over its fill.
+  static const sheetContrast = LpgBackdropLook.minTextContrast;
 
   /// What a bar's text and icons keep (WCAG AA for normal text).
   static const barContrast = LpgBackdropLook.minTextContrast;
@@ -89,23 +105,40 @@ class LpgGlassLook {
     ];
     const extremes = [Color(0xFF000000), Color(0xFFFFFFFF)];
 
+    final cardAlpha = _smallest(
+      cardTarget,
+      colors.card,
+      pageSamples,
+      colors,
+      page.speck,
+      0,
+      minContrast: cardContrast,
+    );
+    final sheetAlpha = _smallest(
+      sheetTarget,
+      colors.sheet,
+      extremes,
+      colors,
+      page.speck,
+      0,
+    );
+
     return LpgGlassLook(
-      cardAlpha: _smallest(
-        cardTarget,
-        colors.card,
+      cardAlpha: cardAlpha,
+      sheetAlpha: sheetAlpha,
+      surfaceGrain: _grainOver(
+        colors.card.withValues(alpha: cardAlpha),
         pageSamples,
         colors,
         page.speck,
-        0,
-        minContrast: cardContrast,
+        cardContrast,
       ),
-      sheetAlpha: _smallest(
-        sheetTarget,
-        colors.sheet,
+      sheetGrain: _grainOver(
+        colors.sheet.withValues(alpha: sheetAlpha),
         extremes,
         colors,
         page.speck,
-        sheetGrainStrength,
+        sheetContrast,
       ),
       barAlpha: _smallest(
         barTarget,
@@ -118,6 +151,25 @@ class LpgGlassLook {
       ),
     );
   }
+
+  /// The most grain, up to [grainStrength], that can be laid over [fill]
+  /// (itself laid over each of [behind]) while text keeps [minContrast] on the
+  /// worst pixel: a [speck] at that strength on top of the blended fill.
+  static double _grainOver(
+    Color fill,
+    List<Color> behind,
+    LpgColors colors,
+    Color speck,
+    double minContrast,
+  ) => LpgBackdropLook.largest(grainStrength, (s) {
+    for (final back in behind) {
+      final glass = colors.tint(speck, s, over: Color.alphaBlend(fill, back));
+      for (final text in [colors.textPrimary, colors.textSecondary]) {
+        if (LpgBackdropLook.contrast(text, glass) < minContrast) return false;
+      }
+    }
+    return true;
+  });
 
   /// The smallest opacity from [target] up to 1 at which text stays readable
   /// on [fill] laid over every one of [behind], with a grain [speck] under it.
@@ -166,10 +218,13 @@ class LpgGlassLook {
       other is LpgGlassLook &&
       other.cardAlpha == cardAlpha &&
       other.sheetAlpha == sheetAlpha &&
-      other.barAlpha == barAlpha;
+      other.barAlpha == barAlpha &&
+      other.surfaceGrain == surfaceGrain &&
+      other.sheetGrain == sheetGrain;
 
   @override
-  int get hashCode => Object.hash(cardAlpha, sheetAlpha, barAlpha);
+  int get hashCode =>
+      Object.hash(cardAlpha, sheetAlpha, barAlpha, surfaceGrain, sheetGrain);
 }
 
 extension LpgGlassColors on LpgColors {
@@ -260,18 +315,88 @@ class _LpgGlassPaneState extends State<LpgGlassPane> {
 }
 
 class _GrainPainter extends CustomPainter {
-  _GrainPainter(this.tile, this.strength);
+  _GrainPainter(this.tile, this.strength, [this.shape]);
 
   final ui.Image tile;
   final double strength;
+  final ShapeBorder? shape;
 
   @override
-  void paint(Canvas canvas, Size size) =>
-      LpgGrain.paint(canvas, Offset.zero & size, tile, strength);
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final clip = shape;
+    if (clip != null) canvas.clipPath(clip.getOuterPath(rect));
+    LpgGrain.paint(canvas, rect, tile, strength);
+  }
 
   @override
   bool shouldRepaint(_GrainPainter old) =>
-      old.tile != tile || old.strength != strength;
+      old.tile != tile || old.strength != strength || old.shape != shape;
+}
+
+/// The paper grain laid over a fill and under [child]'s content: a button, a
+/// chip, a card or a sheet carries the same texture the page does.
+///
+/// Put it **inside** the fill (a `Material`'s or `DecoratedBox`'s child) so the
+/// grain is over the colour and the label, icon or text is over the grain: the
+/// grain never touches the content. It is one extra textured rectangle per
+/// surface (no blur, no offscreen layer), which is what keeps scrolling smooth.
+/// [strength] is worked out per surface in [LpgGlassLook] so text stays at
+/// 4.5:1 or better. Pass [shape] when the fill is not clipped by an ancestor.
+/// Nothing in high contrast.
+class LpgGrainLayer extends StatefulWidget {
+  const LpgGrainLayer({
+    super.key,
+    required this.strength,
+    required this.child,
+    this.shape,
+  });
+
+  final double strength;
+  final ShapeBorder? shape;
+  final Widget child;
+
+  @override
+  State<LpgGrainLayer> createState() => _LpgGrainLayerState();
+}
+
+class _LpgGrainLayerState extends State<LpgGrainLayer> {
+  @override
+  void initState() {
+    super.initState();
+    LpgGrain.ensureLoaded();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.strength <= 0 || context.lpgColors.isHighContrast) {
+      return widget.child;
+    }
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        Positioned.fill(
+          child: ExcludeSemantics(
+            child: IgnorePointer(
+              child: ValueListenableBuilder<ui.Image?>(
+                valueListenable: LpgGrain.image,
+                builder: (context, tile, _) => tile == null
+                    ? const SizedBox.shrink()
+                    : CustomPaint(
+                        painter: _GrainPainter(
+                          tile,
+                          widget.strength,
+                          widget.shape,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ),
+        widget.child,
+      ],
+    );
+  }
 }
 
 /// A frosted-glass container: a see-through fill, a hairline, the content
@@ -308,27 +433,28 @@ class LpgGlass extends StatelessWidget {
         : Padding(padding: padding!, child: child);
 
     if (colors.isHighContrast) {
-      return LpgSurface(
-        level: level,
-        radius: shape,
-        child: content,
-      );
+      return LpgSurface(level: level, radius: shape, child: content);
     }
 
     final isCard = level == LpgSurfaceLevel.card;
+    final look = LpgGlassLook.of(colors);
     final fill = DecoratedBox(
       decoration: BoxDecoration(
         color: blur && !isCard ? colors.sheetGlass : colors.cardGlass,
         borderRadius: shape,
         border: Border.fromBorderSide(colors.hairlineFor(level)),
       ),
-      child: content,
+      // The grain is over the fill and under the content.
+      child: LpgGrainLayer(
+        strength: blur && !isCard ? look.sheetGrain : look.surfaceGrain,
+        child: content,
+      ),
     );
     final panel = isCard
         ? ClipRRect(borderRadius: shape, child: fill)
         : LpgGlassPane(
             radius: shape,
-            grain: LpgGlassLook.sheetGrainStrength,
+            grain: 0,
             blurSigma: blur ? LpgGlassLook.blurSigma : null,
             child: fill,
           );

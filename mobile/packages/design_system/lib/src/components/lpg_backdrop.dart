@@ -109,7 +109,7 @@ class LpgBackdropLook {
 
   /// The largest strength up to [target] for which [ok] holds, by bisection
   /// (strength 0 is always allowed: it is the base itself).
-  static double _largest(double target, bool Function(double) ok) {
+  static double largest(double target, bool Function(double) ok) {
     if (ok(target)) return target;
     var lo = 0.0;
     var hi = target;
@@ -132,10 +132,10 @@ class LpgBackdropLook {
     final speck = base.computeLuminance() > 0.5
         ? const Color(0xFF000000)
         : const Color(0xFFFFFFFF);
-    final grain = _largest(
+    final grain = largest(
       _grainTarget,
-      (s) => contrast(text, colors.tint(speck, s, over: base)) >=
-          minTextContrast,
+      (s) =>
+          contrast(text, colors.tint(speck, s, over: base)) >= minTextContrast,
     );
 
     return LpgBackdropLook(base: base, speck: speck, grainStrength: grain);

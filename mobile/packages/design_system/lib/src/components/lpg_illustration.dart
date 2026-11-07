@@ -142,8 +142,9 @@ class _ToneColors extends ColorMapper {
 /// breathes a few times before resting, so a screen of them is lively when it
 /// opens and still afterwards.
 ///
-/// Decorative: excluded from semantics and touches. Nothing here uses
-/// transparency, so contrast does not depend on what is behind it. Under the
+/// Decorative: excluded from semantics and touches. It is drawn at
+/// [opacity] so it sits quietly behind the tile's text; it is only ever
+/// fainter than the solid art, so it cannot cost the text any contrast. Under the
 /// platform's reduce-motion setting it is drawn finished and never moves; in
 /// high contrast it is not drawn at all, because fills stay plain there.
 class LpgIllustrationArt extends StatefulWidget {
@@ -159,6 +160,9 @@ class LpgIllustrationArt extends StatefulWidget {
   final double size;
 
   static const double defaultSize = 116;
+
+  /// How strongly the art shows over the card, 0 to 1.
+  static const double opacity = 0.4;
 
   @override
   State<LpgIllustrationArt> createState() => _LpgIllustrationArtState();
@@ -213,16 +217,19 @@ class _LpgIllustrationArtState extends State<LpgIllustrationArt>
     final base = widget.tone.foreground(colors);
     // Drawn once into its own layer; the motion below only moves that layer.
     final picture = RepaintBoundary(
-      child: SvgPicture.asset(
-        widget.illustration.assetPath,
-        package: 'design_system',
-        width: widget.size,
-        height: widget.size,
-        colorMapper: _ToneColors(
-          soft: colors.tint(base, LpgIllustrationTint.soft),
-          mid: colors.tint(base, LpgIllustrationTint.mid),
-          strong: colors.tint(base, LpgIllustrationTint.strong),
-          ground: colors.card,
+      child: Opacity(
+        opacity: LpgIllustrationArt.opacity,
+        child: SvgPicture.asset(
+          widget.illustration.assetPath,
+          package: 'design_system',
+          width: widget.size,
+          height: widget.size,
+          colorMapper: _ToneColors(
+            soft: colors.tint(base, LpgIllustrationTint.soft),
+            mid: colors.tint(base, LpgIllustrationTint.mid),
+            strong: colors.tint(base, LpgIllustrationTint.strong),
+            ground: colors.card,
+          ),
         ),
       ),
     );

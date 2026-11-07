@@ -223,7 +223,9 @@ class _LpgTextFieldState extends State<LpgTextField> {
                           size: LpgSizes.iconMd,
                         )
                       : null),
-              fillColor: widget.enabled ? colors.cardGlass : colors.surfaceOverlay,
+              fillColor: widget.enabled
+                  ? colors.cardGlass
+                  : colors.surfaceOverlay,
             ),
           ),
         ),

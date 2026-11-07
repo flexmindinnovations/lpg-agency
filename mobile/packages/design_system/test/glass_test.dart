@@ -45,67 +45,60 @@ void main() {
       }
     });
 
-    test('text on a card is as readable as on the page, worst pixel included', () {
-      for (final v in LpgThemeVariant.values) {
-        final c = LpgTheme.colorsFor(v);
-        final page = LpgBackdropLook.of(c);
-        final behind = [
-          c.canvas,
-          page.base,
-        ].map((b) => c.tint(page.speck, page.grainStrength, over: b));
-
-        for (final back in behind) {
-          // A card has no grain of its own: the page's shows through.
-          final glass = Color.alphaBlend(
-            c.cardGlass,
-            back,
-          );
-          expect(
-            _contrast(c.textPrimary, glass),
-            greaterThanOrEqualTo(LpgGlassLook.cardContrast - 0.01),
-            reason: '$v primary',
-          );
-          expect(
-            _contrast(c.textSecondary, glass),
-            greaterThanOrEqualTo(LpgGlassLook.cardContrast - 0.01),
-            reason: '$v secondary',
-          );
-        }
-      }
-    });
-
     test(
-      'a bar keeps AA text contrast',
+      'text on a card is as readable as on the page, worst pixel included',
       () {
-        for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
+        for (final v in LpgThemeVariant.values) {
           final c = LpgTheme.colorsFor(v);
           final page = LpgBackdropLook.of(c);
-          expect(
-            LpgGlassLook.of(c).barAlpha,
-            inInclusiveRange(LpgGlassLook.barTarget, 1.0),
-          );
+          final behind = [
+            c.canvas,
+            page.base,
+          ].map((b) => c.tint(page.speck, page.grainStrength, over: b));
 
-          for (final w in [c.canvas, page.base]) {
-            final back = c.tint(
-              page.speck,
-              LpgGlassLook.grainStrength,
-              over: w,
-            );
-            final bar = Color.alphaBlend(c.barGlass, back);
+          for (final back in behind) {
+            // A card has no grain of its own: the page's shows through.
+            final glass = Color.alphaBlend(c.cardGlass, back);
             expect(
-              _contrast(c.textPrimary, bar),
-              greaterThanOrEqualTo(4.5),
-              reason: '$v',
+              _contrast(c.textPrimary, glass),
+              greaterThanOrEqualTo(LpgGlassLook.cardContrast - 0.01),
+              reason: '$v primary',
             );
             expect(
-              _contrast(c.textSecondary, bar),
-              greaterThanOrEqualTo(4.5),
-              reason: '$v',
+              _contrast(c.textSecondary, glass),
+              greaterThanOrEqualTo(LpgGlassLook.cardContrast - 0.01),
+              reason: '$v secondary',
             );
           }
         }
       },
     );
+
+    test('a bar keeps AA text contrast', () {
+      for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
+        final c = LpgTheme.colorsFor(v);
+        final page = LpgBackdropLook.of(c);
+        expect(
+          LpgGlassLook.of(c).barAlpha,
+          inInclusiveRange(LpgGlassLook.barTarget, 1.0),
+        );
+
+        for (final w in [c.canvas, page.base]) {
+          final back = c.tint(page.speck, LpgGlassLook.grainStrength, over: w);
+          final bar = Color.alphaBlend(c.barGlass, back);
+          expect(
+            _contrast(c.textPrimary, bar),
+            greaterThanOrEqualTo(4.5),
+            reason: '$v',
+          );
+          expect(
+            _contrast(c.textSecondary, bar),
+            greaterThanOrEqualTo(4.5),
+            reason: '$v',
+          );
+        }
+      }
+    });
 
     test(
       'card outlines and row dividers are a clear step darker than the card',
@@ -118,20 +111,53 @@ void main() {
       },
     );
 
-    test('text on a frosted sheet stays at 6:1 over black or white '
-        'content, the extremes a blur can average to', () {
+    test('cards, fields, chips and buttons carry grain over the fill, and text '
+        'on the worst pixel still clears the page contrast', () {
+      for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
+        final c = LpgTheme.colorsFor(v);
+        final look = LpgGlassLook.of(c);
+        final page = LpgBackdropLook.of(c);
+        // Visible, not a token amount.
+        expect(look.surfaceGrain, greaterThan(0.05), reason: '$v surface');
+        expect(look.sheetGrain, greaterThan(0.05), reason: '$v sheet');
+        for (final base in [c.canvas, page.base]) {
+          final back = c.tint(page.speck, page.grainStrength, over: base);
+          final glass = c.tint(
+            page.speck,
+            look.surfaceGrain,
+            over: Color.alphaBlend(c.cardGlass, back),
+          );
+          for (final text in [c.textPrimary, c.textSecondary]) {
+            expect(
+              _contrast(text, glass),
+              greaterThanOrEqualTo(LpgGlassLook.cardContrast - 0.01),
+              reason: '$v over $base',
+            );
+          }
+        }
+      }
+    });
+
+    test('high contrast has no grain on surfaces', () {
+      final look = LpgGlassLook.of(
+        LpgTheme.colorsFor(LpgThemeVariant.highContrast),
+      );
+      expect(look.surfaceGrain, 0);
+      expect(look.sheetGrain, 0);
+    });
+
+    test('text on a frosted sheet, grain over its fill included, stays at AA '
+        'over black or white content, the extremes a blur can average to', () {
       for (final v in LpgThemeVariant.values) {
         final c = LpgTheme.colorsFor(v);
         final page = LpgBackdropLook.of(c);
-        // A fully opaque sheet cannot be made any more readable: it is then
-        // just the theme's own sheet colour, held to AA by the theme itself.
-        final floor = LpgGlassLook.of(c).sheetAlpha >= 1
-            ? LpgBackdropLook.minTextContrast
-            : LpgGlassLook.readableContrast - 0.01;
+        final floor = LpgGlassLook.sheetContrast - 0.01;
         for (final back in const [Color(0xFF000000), Color(0xFFFFFFFF)]) {
-          final glass = Color.alphaBlend(
-            c.sheetGlass,
-            c.tint(page.speck, LpgGlassLook.sheetGrainStrength, over: back),
+          // The grain is over the fill and under the text.
+          final glass = c.tint(
+            page.speck,
+            LpgGlassLook.of(c).sheetGrain,
+            over: Color.alphaBlend(c.sheetGlass, back),
           );
           expect(
             _contrast(c.textSecondary, glass),
