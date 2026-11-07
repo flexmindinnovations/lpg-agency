@@ -929,6 +929,30 @@ void main() {
       );
     });
 
+    testWidgets('colours the caption only when the tile needs attention', (
+      tester,
+    ) async {
+      Future<Color?> captionColor({required bool attention}) async {
+        await tester.pumpWidget(
+          _wrap(
+            LpgMetricTile(
+              label: 'Overdue',
+              value: '4',
+              caption: 'Needs review',
+              icon: Icons.schedule,
+              tone: LpgTone.danger,
+              attention: attention,
+            ),
+          ),
+        );
+        return tester.widget<Text>(find.text('Needs review')).style?.color;
+      }
+
+      final calm = await captionColor(attention: false);
+      final urgent = await captionColor(attention: true);
+      expect(calm, isNot(urgent));
+    });
+
     testWidgets('draws the attention bar only when asked', (tester) async {
       Future<int> bars({required bool attention}) async {
         await tester.pumpWidget(

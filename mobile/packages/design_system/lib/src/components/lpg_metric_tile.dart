@@ -12,8 +12,9 @@ import 'lpg_icon_box.dart';
 /// caption in the tile's tone ("4 to review").
 ///
 /// When [attention] is set, a solid bar in the tone runs down the left edge
-/// (and the caption keeps its tone), so a tile that needs the owner stands
-/// out without relying on colour alone: the caption says why.
+/// and the caption takes the tone, so a tile that needs the owner stands out
+/// without relying on colour alone: the caption says why. Otherwise the
+/// caption stays in the secondary text colour, so it never reads as a link.
 class LpgMetricTile extends StatelessWidget {
   const LpgMetricTile({
     super.key,
@@ -112,7 +113,7 @@ class LpgMetricTile extends StatelessWidget {
                       child: Text(
                         caption!,
                         style: text.labelMedium?.copyWith(
-                          color: railColor,
+                          color: attention ? railColor : colors.textSecondary,
                           fontWeight: FontWeight.w700,
                         ),
                         maxLines: 1,

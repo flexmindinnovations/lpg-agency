@@ -113,6 +113,24 @@ void main() {
     expect(find.text('3'), findsWidgets);
   });
 
+  testWidgets(
+    'recent orders read as one grouped list with a status chip each',
+    (tester) async {
+      await _pump(
+        tester,
+        ledger: [_ledger],
+        orders: [
+          [_order('o1', 'out_for_delivery'), _order('o2', 'delivered')],
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LpgGroupedList), findsOneWidget);
+      expect(find.byType(LpgStatusBadge), findsNWidgets(2));
+      expect(find.text('Out for delivery'), findsOneWidget);
+    },
+  );
+
   testWidgets('no order counts in the hero before the first order', (
     tester,
   ) async {
