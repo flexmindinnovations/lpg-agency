@@ -117,8 +117,8 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
     final colors = context.lpgColors;
     ref.watch(paymentMethodsProvider); // rebuild when it arrives
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -163,19 +163,14 @@ class _RecordPaymentSheetState extends ConsumerState<RecordPaymentSheet> {
               enabled: !_busy,
             ),
           ],
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          LpgButton(
-            label: 'Save payment',
-            icon: LpgIcons.check,
-            isLoading: _busy,
-            expand: true,
-            onPressed: _busy ? null : _submit,
-          ),
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Save payment',
+        primaryIcon: LpgIcons.check,
+        isLoading: _busy,
+        onPrimary: _busy ? null : _submit,
+        error: _error,
       ),
     );
   }

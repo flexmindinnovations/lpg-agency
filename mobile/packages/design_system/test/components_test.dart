@@ -1046,6 +1046,75 @@ void main() {
     });
   });
 
+  group('LpgSheetLayout and LpgSheetActions', () {
+    testWidgets('the footer stays on screen while a long body scrolls', (
+      tester,
+    ) async {
+      var saved = 0;
+      tester.view.physicalSize = const Size(800, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _wrap(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => LpgFeedback.showSheet<void>(
+                context,
+                title: 'Long form',
+                builder: (_) => LpgSheetLayout(
+                  body: Column(
+                    children: [
+                      for (var i = 0; i < 40; i++)
+                        SizedBox(height: 48, child: Text('row $i')),
+                    ],
+                  ),
+                  footer: LpgSheetActions(
+                    primaryLabel: 'Save',
+                    onPrimary: () => saved++,
+                    error: 'Enter the amount.',
+                  ),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      // Far down the list is off screen, the footer is not.
+      expect(tester.getTopLeft(find.text('row 39')).dy, greaterThan(900));
+      expect(
+        tester.getTopLeft(find.text('Enter the amount.')).dy,
+        lessThan(900),
+      );
+      await tester.tap(find.text('Save'));
+      expect(saved, 1);
+    });
+
+    testWidgets('a loading primary action cannot be pressed again', (
+      tester,
+    ) async {
+      var pressed = 0;
+      await tester.pumpWidget(
+        _wrap(
+          LpgSheetActions(
+            primaryLabel: 'Save',
+            onPrimary: () => pressed++,
+            isLoading: true,
+            secondaryLabel: 'Cancel',
+            onSecondary: () => pressed++,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(LpgButton).first, warnIfMissed: false);
+      await tester.tap(find.text('Cancel'), warnIfMissed: false);
+      expect(pressed, 0);
+    });
+  });
+
   group('LpgHaptics', () {
     testWidgets('a stepper tap ticks once and still reports the change', (
       tester,

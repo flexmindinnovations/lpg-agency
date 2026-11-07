@@ -61,8 +61,8 @@ class _ResolveComplaintSheetState extends ConsumerState<ResolveComplaintSheet> {
     final text = context.lpgText;
     final colors = context.lpgColors;
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -91,19 +91,14 @@ class _ResolveComplaintSheetState extends ConsumerState<ResolveComplaintSheet> {
             enabled: !_busy,
             textCapitalization: TextCapitalization.sentences,
           ),
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          LpgButton(
-            label: 'Resolve complaint',
-            icon: LpgIcons.check,
-            isLoading: _busy,
-            expand: true,
-            onPressed: _busy ? null : _submit,
-          ),
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Resolve complaint',
+        primaryIcon: LpgIcons.check,
+        isLoading: _busy,
+        onPrimary: _busy ? null : _submit,
+        error: _error,
       ),
     );
   }

@@ -106,8 +106,8 @@ class _SetPriceSheetState extends ConsumerState<SetPriceSheet> {
     final names = {for (final t in catalog) t.id: t.name};
     final branchNames = {for (final b in branches) b.id: b.name};
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -186,19 +186,14 @@ class _SetPriceSheetState extends ConsumerState<SetPriceSheet> {
               ],
             ),
           ],
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          LpgButton(
-            label: 'Save price',
-            icon: LpgIcons.check,
-            isLoading: _busy,
-            expand: true,
-            onPressed: _busy ? null : _submit,
-          ),
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Save price',
+        primaryIcon: LpgIcons.check,
+        isLoading: _busy,
+        onPrimary: _busy ? null : _submit,
+        error: _error,
       ),
     );
   }
