@@ -140,8 +140,11 @@ void main() {
       }),
     );
 
-    final report = (await api.setName('Van 2'))
-        .when(onSuccess: (r) => r, onFailure: (f) => fail('unexpected $f'));
+    final result = await api.setName('Van 2');
+    final report = result.when(
+      onSuccess: (r) => r,
+      onFailure: (f) => fail('unexpected $f'),
+    );
 
     expect(adapterBodies.single.method, 'PUT');
     expect(adapterBodies.single.path, '/api/v1/devices/me/name');
@@ -161,8 +164,11 @@ void main() {
       ),
     );
 
-    final failure = (await api.setName('Van 2'))
-        .when(onSuccess: (r) => fail('unexpected $r'), onFailure: (f) => f);
+    final result = await api.setName('Van 2');
+    final failure = result.when(
+      onSuccess: (r) => fail('unexpected $r'),
+      onFailure: (f) => f,
+    );
 
     expect(failure.errorCode, 'DUPLICATE_DEVICE_NAME');
     expect(failure.message, contains('Van 2 2'));
