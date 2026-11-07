@@ -1,5 +1,12 @@
 {
   "app": {
     "title": "LPG Agency Admin"
+  },
+  "dashboard": {
+    "hero": {
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "toApprove": "To approve"
+    }
   }
 }
