@@ -273,13 +273,13 @@ void main() {
       expect(offenders, isEmpty);
     });
 
-    test('the only soft edge is the page backdrop', () {
-      // Soft colour washes on the page itself: a mask blur on a drawn shape,
-      // never a filter over other content (that is glass.dart's job).
+    test('nothing is blurred with a mask filter', () {
+      // The page used to carry blurred colour washes; they were the most
+      // expensive thing on every route. The page is paper and grain only, and
+      // the one backdrop blur left is a frosted sheet's (glass.dart).
       final offenders = [
         for (final f in sources())
-          if (f.uri.pathSegments.last != 'lpg_backdrop.dart' &&
-              RegExp(r'MaskFilter\.blur').hasMatch(f.readAsStringSync()))
+          if (RegExp(r'MaskFilter\.blur').hasMatch(f.readAsStringSync()))
             f.path,
       ];
 

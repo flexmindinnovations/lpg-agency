@@ -4,15 +4,16 @@ import 'package:flutter/material.dart';
 
 import '../grain.dart';
 import '../theme.dart';
-import '../tone.dart';
 
-/// The page behind every screen: a sheet of paper with a few soft, blurred
-/// colour washes and a fine grain.
+/// The page behind every screen: a sheet of paper with a fine grain, the same
+/// grain the navigation bar carries.
 ///
-/// It paints only the page. Cards and sheets are frosted glass laid over it
-/// (see `LpgGlass`), so the washes show softly through them, and the washes and grain
-/// are sized so secondary text on the page still clears 4.5:1 (see
-/// [LpgBackdropLook]). In high contrast the page is plain.
+/// It paints only the page, once, into its own layer. Cards are a see-through
+/// fill over it, so the grain shows softly through them; the grain is sized so
+/// secondary text on the page still clears 4.5:1 (see [LpgBackdropLook]). There
+/// is nothing blurred on the page: blurred washes and a backdrop blur on every
+/// card were what made scrolling drop frames. In high contrast the page is
+/// plain.
 ///
 /// The theme puts one under every route (see `lpgBackdropTransitions`), so
 /// screens do not use this directly.
@@ -64,53 +65,24 @@ class _LpgBackdropState extends State<LpgBackdrop> {
   }
 }
 
-/// One blurred wash of colour.
-@immutable
-class LpgBackdropWash {
-  const LpgBackdropWash({
-    required this.color,
-    required this.centre,
-    required this.radius,
-    this.sigma = 64,
-  });
-
-  /// An opaque colour: the page tinted towards a tone.
-  final Color color;
-
-  /// Where it sits, as a fraction of the page's width and height.
-  final Offset centre;
-
-  /// Its radius, as a fraction of the page's width.
-  final double radius;
-
-  /// How far its edge is blurred, in logical pixels. The big washes are
-  /// blurred until no edge shows; the small orbs less, so a glass card laid
-  /// over one has something to show through it.
-  final double sigma;
-}
-
 /// What the page looks like in one theme, worked out from that theme's own
 /// colours so it never has to be tuned per theme.
 ///
-/// The page is the theme's base surface (white in the light theme), a few
-/// washes of the tone colours, and grain. The strength of each is the
-/// **largest that still keeps secondary text at [minTextContrast] or better**
-/// on the worst pixel: a wash at its darkest or lightest, with a grain speck
-/// on top. A theme with less room gets a fainter page (the light theme did,
-/// until its secondary text was darkened to 7.6:1 on white) and it grows by
+/// The page is the theme's base surface (white in the light theme) and grain.
+/// The grain is the **largest that still keeps secondary text at
+/// [minTextContrast] or better** on the worst pixel: the base with a grain
+/// speck on top. A theme with less room gets a finer grain and it grows by
 /// itself if a text colour is darkened.
 @immutable
 class LpgBackdropLook {
   const LpgBackdropLook({
     required this.base,
-    required this.washes,
     required this.speck,
     required this.grainStrength,
   });
 
   /// The paper itself.
   final Color base;
-  final List<LpgBackdropWash> washes;
 
   /// The colour of the grain speck that hurts contrast most (black on a light
   /// page, white on a dark one).
@@ -123,13 +95,9 @@ class LpgBackdropLook {
   /// AA asks for 4.5; the extra is for rounding.
   static const minTextContrast = 4.55;
 
-  /// The washes stop this far above [minTextContrast], leaving the rest of
-  /// the room for the grain so the page is never smooth-but-tinted only.
-  static const _grainReserve = 0.45;
-
-  /// What each wash and the grain would like to be if contrast allowed it.
-  static const _washTarget = 0.34;
-  static const _grainTarget = 0.07;
+  /// What the grain would like to be if contrast allowed it: as strong as
+  /// the grain on the navigation bar.
+  static const _grainTarget = 0.2;
 
   static double contrast(Color a, Color b) {
     final la = a.computeLuminance();
@@ -160,59 +128,17 @@ class LpgBackdropLook {
     final base = colors.surfaceBase;
     final text = colors.textSecondary;
 
-    LpgBackdropWash wash(
-      LpgTone tone,
-      Offset centre,
-      double radius, [
-      double sigma = 64,
-    ]) {
-      final hue = tone.foreground(colors);
-      final strength = _largest(
-        _washTarget,
-        (s) =>
-            contrast(text, colors.tint(hue, s, over: base)) >=
-            minTextContrast + _grainReserve,
-      );
-      return LpgBackdropWash(
-        color: colors.tint(hue, strength, over: base),
-        centre: centre,
-        radius: radius,
-        sigma: sigma,
-      );
-    }
-
-    final washes = [
-      wash(LpgTone.primary, const Offset(0.95, 0.06), 0.62),
-      wash(LpgTone.accent, const Offset(0.02, 0.46), 0.56),
-      wash(LpgTone.info, const Offset(0.9, 0.98), 0.66),
-      // Two smaller, crisper orbs in the middle of the page, where cards sit:
-      // glass over a flat page looks like a plain card, over these it shows.
-      wash(LpgTone.accent, const Offset(0.78, 0.40), 0.26, 30),
-      wash(LpgTone.info, const Offset(0.16, 0.74), 0.30, 34),
-    ];
-
-    // The grain lands on the page or on a wash; take the one text reads worst
-    // on, then the speck that hurts most there.
+    // The speck that hurts most: black on a light page, white on a dark one.
     final speck = base.computeLuminance() > 0.5
         ? const Color(0xFF000000)
         : const Color(0xFFFFFFFF);
-    final worstBase = washes
-        .map((w) => w.color)
-        .followedBy([base])
-        .reduce((a, b) => contrast(text, a) < contrast(text, b) ? a : b);
     final grain = _largest(
       _grainTarget,
-      (s) =>
-          contrast(text, colors.tint(speck, s, over: worstBase)) >=
+      (s) => contrast(text, colors.tint(speck, s, over: base)) >=
           minTextContrast,
     );
 
-    return LpgBackdropLook(
-      base: base,
-      washes: washes,
-      speck: speck,
-      grainStrength: grain,
-    );
+    return LpgBackdropLook(base: base, speck: speck, grainStrength: grain);
   }
 
   @override
@@ -220,19 +146,10 @@ class LpgBackdropLook {
       other is LpgBackdropLook &&
       other.base == base &&
       other.speck == speck &&
-      other.grainStrength == grainStrength &&
-      _sameWashes(other.washes);
-
-  bool _sameWashes(List<LpgBackdropWash> other) {
-    if (other.length != washes.length) return false;
-    for (var i = 0; i < washes.length; i++) {
-      if (other[i].color != washes[i].color) return false;
-    }
-    return true;
-  }
+      other.grainStrength == grainStrength;
 
   @override
-  int get hashCode => Object.hash(base, speck, grainStrength, washes.length);
+  int get hashCode => Object.hash(base, speck, grainStrength);
 }
 
 class _BackdropPainter extends CustomPainter {
@@ -245,19 +162,6 @@ class _BackdropPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     canvas.drawRect(rect, Paint()..color = look.base);
-
-    canvas.save();
-    canvas.clipRect(rect);
-    for (final wash in look.washes) {
-      canvas.drawCircle(
-        Offset(wash.centre.dx * size.width, wash.centre.dy * size.height),
-        wash.radius * size.width,
-        Paint()
-          ..color = wash.color
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, wash.sigma),
-      );
-    }
-    canvas.restore();
 
     final tile = grain;
     if (tile == null) return;

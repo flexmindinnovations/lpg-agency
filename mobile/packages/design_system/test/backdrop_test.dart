@@ -11,27 +11,16 @@ void main() {
         final look = LpgBackdropLook.of(colors);
         final text = colors.textSecondary;
 
-        // The page, each wash at its full strength, and the worst grain speck
-        // on top of the worst of those.
-        final surfaces = [look.base, for (final w in look.washes) w.color];
-        for (final s in surfaces) {
-          expect(
-            LpgBackdropLook.contrast(text, s),
-            greaterThanOrEqualTo(4.5),
-            reason: 'text on $s',
-          );
-        }
-        final worst = surfaces.reduce(
-          (a, b) =>
-              LpgBackdropLook.contrast(text, a) <
-                  LpgBackdropLook.contrast(text, b)
-              ? a
-              : b,
+        // The page itself, and the worst grain speck on top of it.
+        expect(
+          LpgBackdropLook.contrast(text, look.base),
+          greaterThanOrEqualTo(4.5),
+          reason: 'text on the page',
         );
         final speckled = colors.tint(
           look.speck,
           look.grainStrength,
-          over: worst,
+          over: look.base,
         );
         expect(
           LpgBackdropLook.contrast(text, speckled),
@@ -45,11 +34,11 @@ void main() {
       });
     }
 
-    test('the dark theme has room to show the effect', () {
-      final look = LpgBackdropLook.of(LpgTheme.colorsFor(LpgThemeVariant.dark));
-      expect(look.grainStrength, greaterThan(0.03));
-      for (final w in look.washes) {
-        expect(w.color, isNot(look.base));
+    test('every theme has room to show the grain', () {
+      for (final variant in LpgThemeVariant.values) {
+        if (variant == LpgThemeVariant.highContrast) continue;
+        final look = LpgBackdropLook.of(LpgTheme.colorsFor(variant));
+        expect(look.grainStrength, greaterThan(0.03), reason: '$variant');
       }
     });
   });

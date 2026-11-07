@@ -9,7 +9,7 @@ import 'surface.dart';
 import 'theme.dart';
 
 /// How see-through glass surfaces are, worked out from the theme's own colours
-/// the same way the page's washes are (see [LpgBackdropLook]): the **most
+/// the same way the page's grain is (see [LpgBackdropLook]): the **most
 /// transparent** fill that still keeps primary and secondary text at 4.5:1 or
 /// better on the worst thing that can be behind it.
 ///
@@ -49,16 +49,12 @@ class LpgGlassLook {
   /// How much the backdrop behind a frosted sheet is blurred, in logical px.
   static const blurSigma = 22.0;
 
-  /// How much a card blurs what is behind it. Less than a sheet: behind a card
-  /// there is only the soft page, and a light blur is enough to melt the
-  /// small orbs into it.
-  static const cardBlurSigma = 14.0;
-
-  /// How much of the grain is laid under a card's fill, 0 to 1 (it shows
-  /// through the see-through fill at roughly half this). The grain is under the
-  /// fill and so never touches text; the opacity search below still counts a
-  /// speck at this strength in what the fill is laid over. A sheet floats over
-  /// arbitrary content, so it has less room and a finer grain.
+  /// How much of the grain is laid under a bar's or sheet's fill, 0 to 1. A
+  /// card has none of its own: the page's grain shows through its fill. The
+  /// grain is under the fill and so never touches text; the opacity search
+  /// below still counts a speck at this strength in what the fill is laid
+  /// over. A sheet floats over arbitrary content, so it has less room and a
+  /// finer grain.
   static const grainStrength = 0.2;
   static const sheetGrainStrength = 0.08;
 
@@ -82,11 +78,7 @@ class LpgGlassLook {
 
     final page = LpgBackdropLook.of(colors);
     final pageSamples = <Color>[
-      for (final c in [
-        colors.canvas,
-        page.base,
-        ...page.washes.map((w) => w.color),
-      ])
+      for (final c in [colors.canvas, page.base])
         colors.tint(page.speck, page.grainStrength, over: c),
     ];
     const extremes = [Color(0xFF000000), Color(0xFFFFFFFF)];
@@ -98,7 +90,7 @@ class LpgGlassLook {
         pageSamples,
         colors,
         page.speck,
-        grainStrength,
+        0,
       ),
       sheetAlpha: _smallest(
         sheetTarget,
@@ -255,12 +247,14 @@ class _OutsideShadowPainter extends CustomPainter {
   }
 }
 
-/// Frosted glass, the layers every glass surface is made of: whatever is
-/// behind it blurred by [blurSigma] (none when `null`), then [child] (the
-/// fill, hairline and content), then a fine grain over the top.
+/// Frosted glass, the layers a sheet or bar is made of: whatever is behind it
+/// blurred by [blurSigma] (none when `null`), then a fine grain, then [child]
+/// (the fill, hairline and content).
 ///
 /// Clips to [radius]. This is the one place a backdrop filter or grain is
-/// laid over a surface, so a card, a sheet and a custom panel all look alike.
+/// laid under a surface's content. Cards do not use it: a backdrop blur per
+/// card, repeated every frame while a list scrolls, is what made scrolling
+/// drop frames.
 class LpgGlassPane extends StatefulWidget {
   const LpgGlassPane({
     super.key,
@@ -342,11 +336,12 @@ class _GrainPainter extends CustomPainter {
 /// A frosted-glass container: a see-through fill, a hairline, the content
 /// behind it blurred (when [blur] is on) and a fine grain over the top.
 ///
-/// A card-level glass blurs lightly ([LpgGlassLook.cardBlurSigma]) with the
-/// card fill; a sheet-level glass blurs strongly ([LpgGlassLook.blurSigma])
-/// with the stronger sheet fill, sized for any content behind. Without [blur]
-/// the fill is the card glass, which is safe only over the page. In high
-/// contrast both are fully opaque and nothing is blurred.
+/// A card-level glass is only the see-through fill and hairline, laid over the
+/// page, whose grain shows through; nothing is blurred. A sheet-level glass
+/// blurs strongly ([LpgGlassLook.blurSigma]) with the stronger sheet fill,
+/// sized for any content behind. Without [blur] the fill is the card glass,
+/// which is safe only over the page. In high contrast both are fully opaque
+/// and nothing is blurred.
 class LpgGlass extends StatelessWidget {
   const LpgGlass({
     super.key,
@@ -383,25 +378,22 @@ class LpgGlass extends StatelessWidget {
     }
 
     final isCard = level == LpgSurfaceLevel.card;
-    final panel = LpgGlassPane(
-      radius: shape,
-      grain: isCard
-          ? LpgGlassLook.grainStrength
-          : LpgGlassLook.sheetGrainStrength,
-      blurSigma: !blur
-          ? null
-          : isCard
-          ? LpgGlassLook.cardBlurSigma
-          : LpgGlassLook.blurSigma,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: blur && !isCard ? colors.sheetGlass : colors.cardGlass,
-          borderRadius: shape,
-          border: Border.fromBorderSide(colors.hairlineFor(level)),
-        ),
-        child: content,
+    final fill = DecoratedBox(
+      decoration: BoxDecoration(
+        color: blur && !isCard ? colors.sheetGlass : colors.cardGlass,
+        borderRadius: shape,
+        border: Border.fromBorderSide(colors.hairlineFor(level)),
       ),
+      child: content,
     );
+    final panel = isCard
+        ? ClipRRect(borderRadius: shape, child: fill)
+        : LpgGlassPane(
+            radius: shape,
+            grain: LpgGlassLook.sheetGrainStrength,
+            blurSigma: blur ? LpgGlassLook.blurSigma : null,
+            child: fill,
+          );
     return LpgGlassShadow(
       shadows: shadow ? colors.shadowFor(level) : const [],
       radius: shape,

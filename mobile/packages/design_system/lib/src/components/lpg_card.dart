@@ -89,15 +89,7 @@ class LpgCard extends StatelessWidget {
           ? colors.cardShadow
           : const [],
       radius: LpgRadius.cardRadius,
-      // Frosted like every card: blurred behind, grain on top. A tonal card is
-      // an opaque tint, so it has nothing to show through and stays plain.
-      child: variant == LpgCardVariant.tonal || hc
-          ? surface
-          : LpgGlassPane(
-              radius: LpgRadius.cardRadius,
-              blurSigma: LpgGlassLook.cardBlurSigma,
-              child: surface,
-            ),
+      child: surface,
     );
 
     if (onTap != null) {

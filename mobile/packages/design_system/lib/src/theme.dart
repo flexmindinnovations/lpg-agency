@@ -147,7 +147,7 @@ class LpgColors extends ThemeExtension<LpgColors> {
 
   /// The outline of a card, chip or field. The plain [borderDefault] is a pale
   /// hairline made for a white page and disappears on a see-through card over
-  /// the page's colour washes, so this is the text colour at about a quarter of its
+  /// the page's grain, so this is the text colour at about a quarter of its
   /// strength: always a step darker than what is behind it. High contrast
   /// keeps its strong border.
   Color get outline =>
@@ -698,7 +698,7 @@ abstract final class LpgTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
-      // Transparent: the page (paper, washes, grain) is drawn under every
+      // Transparent: the page (paper and grain) is drawn under every
       // route by `LpgBackdropTransitions`, and a scaffold lets it show.
       scaffoldBackgroundColor: Colors.transparent,
       canvasColor: colors.canvas,
@@ -730,14 +730,9 @@ abstract final class LpgTheme {
               },
             ),
       appBarTheme: AppBarTheme(
-        // See-through while the page is at rest so the paper runs up behind
-        // the title, and still see-through (a lighter glass, like the
-        // navigation bar) once content scrolls under it.
-        backgroundColor: WidgetStateColor.resolveWith(
-          (states) => states.contains(WidgetState.scrolledUnder)
-              ? colors.barGlass
-              : Colors.transparent,
-        ),
+        // Always see-through, scrolled or not: the paper runs up behind the
+        // title and the header never changes colour as a page scrolls.
+        backgroundColor: Colors.transparent,
         foregroundColor: colors.textPrimary,
         // Said outright: with a see-through bar Flutter would judge the icons
         // from a transparent colour and always pick white ones.

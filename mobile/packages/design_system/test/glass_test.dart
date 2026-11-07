@@ -50,14 +50,13 @@ void main() {
         final behind = [
           c.canvas,
           page.base,
-          ...page.washes.map((w) => w.color),
         ].map((b) => c.tint(page.speck, page.grainStrength, over: b));
 
         for (final back in behind) {
-          // The card's own grain speck sits under its fill.
+          // A card has no grain of its own: the page's shows through.
           final glass = Color.alphaBlend(
             c.cardGlass,
-            c.tint(page.speck, LpgGlassLook.grainStrength, over: back),
+            back,
           );
           expect(
             _contrast(c.textPrimary, glass),
@@ -84,11 +83,7 @@ void main() {
             lessThan(LpgGlassLook.of(c).cardAlpha),
           );
 
-          for (final w in [
-            c.canvas,
-            page.base,
-            ...page.washes.map((w) => w.color),
-          ]) {
+          for (final w in [c.canvas, page.base]) {
             final back = c.tint(
               page.speck,
               LpgGlassLook.grainStrength,
@@ -204,13 +199,15 @@ void main() {
         )
         .color!;
 
-    testWidgets('are see-through and lightly blurred', (tester) async {
+    testWidgets('are see-through and not blurred', (tester) async {
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
         await _pump(tester, v, const LpgCard(child: Text('Order 1042')));
 
         expect(fillOf(tester).a, lessThan(1), reason: '$v');
-        expect(find.byType(BackdropFilter), findsOneWidget, reason: '$v');
-        expect(find.byType(LpgGlassPane), findsOneWidget, reason: '$v');
+        // A backdrop blur per card, redrawn every frame of a scroll, is what
+        // made lists drop frames.
+        expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
+        expect(find.byType(LpgGlassPane), findsNothing, reason: '$v');
       }
     });
 
@@ -221,8 +218,8 @@ void main() {
         const LpgSurface(child: Text('Panel')),
       );
 
-      expect(find.byType(BackdropFilter), findsOneWidget);
-      expect(find.byType(LpgGlassPane), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.byType(LpgGlassPane), findsNothing);
     });
 
     testWidgets('are opaque in high contrast, with no blur or grain', (
