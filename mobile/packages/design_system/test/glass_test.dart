@@ -243,30 +243,6 @@ void main() {
 
       expect(fillOf(tester).a, 1.0);
     });
-
-    testWidgets('draw their shadow outside the card, not behind it', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        LpgThemeVariant.light,
-        const LpgCard(child: Text('Order 1042')),
-      );
-
-      expect(find.byType(LpgGlassShadow), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(LpgCard),
-          matching: find.byWidgetPredicate(
-            (w) =>
-                w is DecoratedBox &&
-                w.decoration is BoxDecoration &&
-                (w.decoration as BoxDecoration).boxShadow != null,
-          ),
-        ),
-        findsNothing,
-      );
-    });
   });
 
   group('bottom sheet', () {

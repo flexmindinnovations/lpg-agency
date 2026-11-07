@@ -57,8 +57,6 @@ class LpgColors extends ThemeExtension<LpgColors> {
     required this.sheet,
     required this.inverse,
     required this.onInverse,
-    required this.cardShadow,
-    required this.floatingShadow,
     required this.isHighContrast,
   });
 
@@ -126,13 +124,6 @@ class LpgColors extends ThemeExtension<LpgColors> {
   /// Text and icons on [inverse].
   final Color onInverse;
 
-  /// Resting elevation for cards (mirrors the `elevation.1` token).
-  final List<BoxShadow> cardShadow;
-
-  /// Floating elevation for sheets, the navigation bar and pressed-up
-  /// surfaces (mirrors the `elevation.3` token).
-  final List<BoxShadow> floatingShadow;
-
   /// Explicit variant flag — components branch on this instead of
   /// back-computing "is this high contrast?" from some other field's
   /// value, which was the previous (fragile) approach here.
@@ -188,8 +179,6 @@ class LpgColors extends ThemeExtension<LpgColors> {
     Color? sheet,
     Color? inverse,
     Color? onInverse,
-    List<BoxShadow>? cardShadow,
-    List<BoxShadow>? floatingShadow,
     bool? isHighContrast,
   }) {
     return LpgColors(
@@ -223,8 +212,6 @@ class LpgColors extends ThemeExtension<LpgColors> {
       sheet: sheet ?? this.sheet,
       inverse: inverse ?? this.inverse,
       onInverse: onInverse ?? this.onInverse,
-      cardShadow: cardShadow ?? this.cardShadow,
-      floatingShadow: floatingShadow ?? this.floatingShadow,
       isHighContrast: isHighContrast ?? this.isHighContrast,
     );
   }
@@ -271,12 +258,6 @@ class LpgColors extends ThemeExtension<LpgColors> {
       sheet: c(sheet, other.sheet),
       inverse: c(inverse, other.inverse),
       onInverse: c(onInverse, other.onInverse),
-      cardShadow: BoxShadow.lerpList(cardShadow, other.cardShadow, t)!,
-      floatingShadow: BoxShadow.lerpList(
-        floatingShadow,
-        other.floatingShadow,
-        t,
-      )!,
       // Not a continuous value — jump partway through the transition
       // rather than pretending a boolean can be interpolated.
       isHighContrast: t < 0.5 ? isHighContrast : other.isHighContrast,
@@ -296,56 +277,9 @@ abstract final class LpgTheme {
   /// prefix is how Flutter addresses a font declared by a dependency.
   static const fontFamily = 'packages/design_system/Inter';
 
-  // Shadows mirror the `elevation.*` tokens in design-tokens/tokens.json.
-  // Those are CSS box-shadow strings the generator can't express as Dart, so
-  // the same offsets/blur/alpha are restated here, once.
-  static const _black = LpgTokens.primitiveColorBlack;
-
   /// [foreground] at [strength] over [base], as one opaque colour.
   static Color _solid(Color foreground, double strength, Color base) =>
       Color.alphaBlend(foreground.withValues(alpha: strength), base);
-
-  static final _lightCardShadow = [
-    BoxShadow(
-      color: _black.withValues(alpha: 0.06),
-      offset: const Offset(0, 1),
-      blurRadius: 2,
-    ),
-    BoxShadow(
-      color: _black.withValues(alpha: 0.08),
-      offset: const Offset(0, 1),
-      blurRadius: 3,
-    ),
-  ];
-
-  static final _lightFloatingShadow = [
-    BoxShadow(
-      color: _black.withValues(alpha: 0.12),
-      offset: const Offset(0, 12),
-      blurRadius: 24,
-    ),
-    BoxShadow(
-      color: _black.withValues(alpha: 0.08),
-      offset: const Offset(0, 4),
-      blurRadius: 8,
-    ),
-  ];
-
-  static final _darkCardShadow = [
-    BoxShadow(
-      color: _black.withValues(alpha: 0.40),
-      offset: const Offset(0, 1),
-      blurRadius: 2,
-    ),
-  ];
-
-  static final _darkFloatingShadow = [
-    BoxShadow(
-      color: _black.withValues(alpha: 0.60),
-      offset: const Offset(0, 12),
-      blurRadius: 24,
-    ),
-  ];
 
   static final _light = LpgColors(
     textPrimary: LpgTokensLight.colorTextPrimary,
@@ -393,8 +327,6 @@ abstract final class LpgTheme {
     sheet: LpgTokensLight.colorSurfaceBase,
     inverse: LpgTokens.primitiveColorGray900,
     onInverse: LpgTokens.primitiveColorWhite,
-    cardShadow: _lightCardShadow,
-    floatingShadow: _lightFloatingShadow,
     isHighContrast: false,
   );
 
@@ -442,8 +374,6 @@ abstract final class LpgTheme {
     sheet: LpgTokens.primitiveColorGray800,
     inverse: LpgTokens.primitiveColorGray50,
     onInverse: LpgTokens.primitiveColorGray900,
-    cardShadow: _darkCardShadow,
-    floatingShadow: _darkFloatingShadow,
     isHighContrast: false,
   );
 
@@ -488,8 +418,6 @@ abstract final class LpgTheme {
     sheet: LpgTokensHighContrast.colorSurfaceBase,
     inverse: LpgTokens.primitiveColorBlack,
     onInverse: LpgTokens.primitiveColorWhite,
-    cardShadow: [],
-    floatingShadow: [],
     isHighContrast: true,
   );
 
@@ -847,8 +775,8 @@ abstract final class LpgTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: colors.actionPrimary,
         foregroundColor: LpgTokensLight.colorActionPrimaryText,
-        elevation: hc ? 0 : 2,
-        highlightElevation: hc ? 0 : 4,
+        elevation: 0,
+        highlightElevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(LpgRadius.xl),
         ),
@@ -938,10 +866,10 @@ abstract final class LpgTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: colors.sheet,
         surfaceTintColor: Colors.transparent,
-        elevation: hc ? 0 : 6,
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(LpgRadius.xxl),
-          side: hc ? cardBorder : BorderSide.none,
+          side: cardBorder,
         ),
         titleTextStyle: textTheme.titleLarge,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
@@ -954,13 +882,13 @@ abstract final class LpgTheme {
         surfaceTintColor: Colors.transparent,
         showDragHandle: true,
         dragHandleColor: colors.borderStrong,
-        elevation: hc ? 0 : 8,
-        modalElevation: hc ? 0 : 8,
+        elevation: 0,
+        modalElevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(LpgRadius.xxl),
           ),
-          side: hc ? cardBorder : BorderSide.none,
+          side: cardBorder,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
@@ -974,7 +902,7 @@ abstract final class LpgTheme {
             : brightness == Brightness.dark
             ? LpgTokens.primitiveColorGasBlue700
             : LpgTokens.primitiveColorGasBlue300,
-        elevation: hc ? 0 : 4,
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(LpgRadius.lg),
         ),
@@ -1043,9 +971,11 @@ abstract final class LpgTheme {
         menuStyle: MenuStyle(
           backgroundColor: WidgetStatePropertyAll(colors.sheet),
           surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          elevation: const WidgetStatePropertyAll(0),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(LpgRadius.lg),
+              side: cardBorder,
             ),
           ),
         ),
@@ -1053,9 +983,10 @@ abstract final class LpgTheme {
       popupMenuTheme: PopupMenuThemeData(
         color: colors.sheet,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(LpgRadius.lg),
-          side: hc ? cardBorder : BorderSide.none,
+          side: cardBorder,
         ),
       ),
       datePickerTheme: DatePickerThemeData(
@@ -1063,8 +994,10 @@ abstract final class LpgTheme {
         surfaceTintColor: Colors.transparent,
         headerBackgroundColor: colors.actionPrimary,
         headerForegroundColor: LpgTokensLight.colorActionPrimaryText,
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(LpgRadius.xxl),
+          side: cardBorder,
         ),
       ),
       extensions: [colors],

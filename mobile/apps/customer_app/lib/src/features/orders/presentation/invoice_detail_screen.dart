@@ -145,7 +145,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
               ),
             ),
             if (invoice.payments.isNotEmpty) ...[
-              const LpgSectionHeader(title: 'Payment History'),
+              const LpgSectionHeader(title: 'Payment history'),
               LpgCard(
                 padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
                 child: Column(

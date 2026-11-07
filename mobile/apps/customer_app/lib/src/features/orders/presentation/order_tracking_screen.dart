@@ -81,7 +81,6 @@ class OrderTrackingScreen extends ConsumerWidget {
                             ),
                           )
                         : null,
-                    boxShadow: colors.floatingShadow,
                   ),
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(
@@ -360,7 +359,6 @@ class _MapOverlay extends StatelessWidget {
                 borderRadius: BorderRadius.circular(LpgRadius.lg),
                 side: BorderSide(color: colors.borderDefault),
               ),
-        shadows: colors.cardShadow,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(

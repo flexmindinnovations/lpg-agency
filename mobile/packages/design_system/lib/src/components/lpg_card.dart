@@ -8,14 +8,10 @@ import '../tone.dart';
 
 /// How an [LpgCard] separates itself from the canvas.
 enum LpgCardVariant {
-  /// Card fill, hairline border and a soft resting shadow. The default.
-  elevated,
-
-  /// Card fill and border, no shadow — for cards nested inside other cards
-  /// or dense lists where shadows would stack up.
+  /// Card fill and hairline border; no shadow. The default.
   outlined,
 
-  /// A tinted fill in the card's [LpgCard.tone], no border or shadow — for
+  /// A tinted fill in the card's [LpgCard.tone], no border — for
   /// callouts and selected states.
   tonal,
 }
@@ -24,15 +20,14 @@ enum LpgCardVariant {
 ///
 /// A real `Material`/`InkWell` underneath, so a tappable card gets a genuine
 /// ripple, wrapped in [LpgPressable] for the same spring "give" buttons
-/// have. High contrast swaps shadow for a 2px border, since shadow-based
-/// elevation is often imperceptible to low-vision users.
+/// have. High contrast uses a 2px border.
 class LpgCard extends StatelessWidget {
   const LpgCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(LpgSpacing.mdl),
     this.onTap,
-    this.variant = LpgCardVariant.elevated,
+    this.variant = LpgCardVariant.outlined,
     this.tone = LpgTone.primary,
     this.semanticLabel,
   });
@@ -84,13 +79,7 @@ class LpgCard extends StatelessWidget {
           : InkWell(onTap: onTap, customBorder: shape, child: content),
     );
 
-    Widget card = LpgGlassShadow(
-      shadows: variant == LpgCardVariant.elevated && !hc
-          ? colors.cardShadow
-          : const [],
-      radius: LpgRadius.cardRadius,
-      child: surface,
-    );
+    Widget card = surface;
 
     if (onTap != null) {
       card = LpgPressable(enabled: true, child: card);

@@ -37,7 +37,6 @@ void main() {
         greaterThan(c.canvas.computeLuminance()),
       );
       expect(c.sheet, c.card);
-      expect(c.shadowFor(LpgSurfaceLevel.sheet), isNotEmpty);
     });
 
     test('every fill is fully opaque, in every variant', () {
@@ -55,11 +54,10 @@ void main() {
       }
     });
 
-    test('high contrast separates by a 2 px border, not by shadow', () {
+    test('high contrast separates by a 2 px border', () {
       final c = LpgTheme.colorsFor(LpgThemeVariant.highContrast);
 
       for (final level in [LpgSurfaceLevel.card, LpgSurfaceLevel.sheet]) {
-        expect(c.shadowFor(level), isEmpty);
         expect(c.hairlineFor(level).width, 2);
       }
     });
@@ -168,22 +166,16 @@ void main() {
       final colors = LpgTheme.colorsFor(LpgThemeVariant.light);
       final d = decoration(tester);
 
-      // A card is see-through, so its shadow is drawn outside its shape by
-      // LpgGlassShadow rather than under the whole box.
       expect(d.color, colors.cardGlass);
       expect(
         d.border,
         Border.fromBorderSide(colors.hairlineFor(LpgSurfaceLevel.card)),
       );
       expect(d.boxShadow, isNull);
-      expect(
-        tester.widget<LpgGlassShadow>(find.byType(LpgGlassShadow)).shadows,
-        colors.cardShadow,
-      );
       expect(d.borderRadius, LpgRadius.cardRadius);
     });
 
-    testWidgets('a sheet is rounder and floats higher than a card', (
+    testWidgets('a sheet is rounder than a card', (
       tester,
     ) async {
       await pump(tester, LpgThemeVariant.dark, LpgSurfaceLevel.sheet);
@@ -192,14 +184,14 @@ void main() {
 
       expect(d.color, colors.sheet);
       expect(d.borderRadius, BorderRadius.circular(LpgRadius.xxl));
-      expect(d.boxShadow, colors.floatingShadow);
+      expect(d.boxShadow, isNull);
     });
 
     testWidgets('follows the high-contrast variant', (tester) async {
       await pump(tester, LpgThemeVariant.highContrast, LpgSurfaceLevel.card);
       final d = decoration(tester);
 
-      expect(d.boxShadow, isEmpty);
+      expect(d.boxShadow, isNull);
       expect((d.border! as Border).top.width, 2);
     });
   });
@@ -280,6 +272,24 @@ void main() {
       final offenders = [
         for (final f in sources())
           if (RegExp(r'MaskFilter\.blur').hasMatch(f.readAsStringSync()))
+            f.path,
+      ];
+
+      expect(offenders, isEmpty);
+    });
+
+    test('nothing draws a shadow or an elevation', () {
+      // Depth is a hairline border, never a shadow (5.18). Flutter's
+      // Material elevation draws one too, so a non-zero elevation is out.
+      // The one exception is the timeline's live pulse: a sharp, un-blurred
+      // ring that grows and fades, drawn with a spread-only BoxShadow. It is
+      // a ring, not a shadow.
+      final offenders = [
+        for (final f in sources())
+          if (f.uri.pathSegments.last != 'lpg_timeline.dart' &&
+              RegExp(
+                r'BoxShadow\(|boxShadow:|shadows:|[eE]levation:\s*[1-9]',
+              ).hasMatch(f.readAsStringSync()))
             f.path,
       ];
 

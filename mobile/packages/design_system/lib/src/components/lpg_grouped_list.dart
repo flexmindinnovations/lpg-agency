@@ -21,7 +21,7 @@ class LpgGroupedList extends StatelessWidget {
     super.key,
     required this.children,
     this.staggerFrom = 0,
-    this.variant = LpgCardVariant.elevated,
+    this.variant = LpgCardVariant.outlined,
   });
 
   final List<Widget> children;

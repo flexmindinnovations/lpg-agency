@@ -41,7 +41,7 @@ class LocationSharingCard extends ConsumerWidget {
         sharingState?.status == LocationSharingStatus.error;
 
     return LpgCard(
-      variant: isSharing ? LpgCardVariant.tonal : LpgCardVariant.elevated,
+      variant: isSharing ? LpgCardVariant.tonal : LpgCardVariant.outlined,
       tone: LpgTone.info,
       child: Row(
         children: [

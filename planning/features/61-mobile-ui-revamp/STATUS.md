@@ -276,3 +276,19 @@ Asked: UI elements should have the paper noise too, or be transparent so the pap
 - `LpgGlassLook.cardTarget` is now 0 and a card is held to `cardContrast` (the page's own 4.55:1) instead of 6:1, so the fill comes out at about 0.01 alpha in light and dark: effectively transparent, with the hairline outline and outside shadow still marking the edge. Everything that used the card glass follows: cards, `LpgTextField`, `LpgDropdownField`, choice chips, segmented controls. The search field, the dropdown field, the secondary button and the skeleton cards used the solid card colour and now use the glass fill. High contrast stays opaque.
 - Stays solid on purpose: tonal cards and icon boxes (they carry a status colour), filled and tonal buttons, dialogs, menus, snackbars (they float over arbitrary content). Sheets keep their frosted fill.
 - Text on a card or field is now as readable as text on the page (secondary 4.55:1 on the worst grain speck), no longer 6:1. The owner earlier asked for crisp text; if text on the grain looks weak, the page grain target (`_grainTarget`) is the one knob.
+
+## 5.17 One section heading (2026-11-07)
+Asked: section titles were capitals in one place and sentence case in another, and bold; make them sentence case and normal weight everywhere.
+
+- There were three heading styles: `LpgSectionHeader` (bold, titleMedium), the Admin `SectionHeading` (titleMedium) and `LpgSectionLabel` (bold capitals, used only on the More screen). Now there is one: `LpgSectionHeader`, title shown exactly as written (it never changes case), `FontWeight.w400`, main text colour. `SectionHeading` builds a `LpgSectionHeader`, and `LpgSectionLabel` is deleted. The trailing action of an Admin heading now has the chevron the design-system heading has.
+- The string rule is: write headings in sentence case. Changed the four Title Case ones found (Customer "Payment history", "Your recent tickets"; Admin "System overview", page title "Admin profile").
+- Not covered: a heading written as plain `Text` with its own style somewhere else is not found by a search for the widget; a new one would be a review finding. No lint enforces the case of the strings.
+- The 5.14 paragraph above about "bold capitals" is now superseded by this.
+
+## 5.18 No shadows, borders only (2026-11-07)
+Asked: remove box shadows from all apps and keep only borders.
+
+- Removed, not hidden: the shadow tokens and everything that carried them (`cardShadow`, `floatingShadow`, `shadowFor`, `LpgGlassShadow`, the `shadow` flag on `LpgSurface` and `LpgGlass`), the shadow on the hero card, brand mark, splash logo, map marker and the Customer tracking sheet, and every Material elevation (FAB, dialog, bottom sheet, menus, snackbar, date picker are 0). `LpgCardVariant.elevated` is removed because it no longer differed from `outlined`; `outlined` is the default and the apps' `.elevated` uses were changed.
+- Dialogs, bottom sheets, popup menus, dropdown menus and the date picker now carry the card's hairline border in every theme (before, only high contrast had one) so they stay separated from the page once the shadow is gone. Cards, fields and chips already had one.
+- `surfaces_test` fails on any `BoxShadow(`, `boxShadow:`, `shadows:` or non-zero `elevation:` in the library sources. One allowed exception: the timeline's live pulse is a spread-only `BoxShadow` with no blur, a sharp ring that grows and fades.
+- Not verified: dialogs, menus and the date picker were not opened on a device; a dark-theme and high-contrast look of the new borders on them is from the code only.

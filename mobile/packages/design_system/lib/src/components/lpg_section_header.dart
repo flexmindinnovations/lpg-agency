@@ -6,6 +6,10 @@ import '../theme.dart';
 
 /// The title above a group of content ("Recent orders", "Today's stops"),
 /// with an optional trailing text action ("See all").
+///
+/// The one section heading of every app: sentence case (never capitals, never
+/// Title Case) in the normal weight, in the main text colour. Write the title
+/// that way; the widget does not change its case.
 class LpgSectionHeader extends StatelessWidget {
   const LpgSectionHeader({
     super.key,
@@ -45,7 +49,7 @@ class LpgSectionHeader extends StatelessWidget {
                   child: Text(
                     title,
                     style: text.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),

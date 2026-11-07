@@ -96,19 +96,11 @@ class SectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = context.lpgText;
-    return Padding(
+    return LpgSectionHeader(
+      title: title,
+      actionLabel: onAction == null ? null : (actionLabel ?? 'See all'),
+      onAction: onAction,
       padding: EdgeInsets.only(top: topGap, bottom: LpgSpacing.sm),
-      child: Row(
-        children: [
-          Expanded(child: Text(title, style: text.titleMedium)),
-          if (onAction != null)
-            TextButton(
-              onPressed: onAction,
-              child: Text(actionLabel ?? 'See all'),
-            ),
-        ],
-      ),
     );
   }
 }

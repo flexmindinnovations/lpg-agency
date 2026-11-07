@@ -116,13 +116,6 @@ Marker driverMarker({required LatLng point, required Color color}) {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.35),
-            blurRadius: 12,
-            spreadRadius: 4,
-          ),
-        ],
       ),
       child: const Icon(Icons.local_shipping, color: Colors.white, size: 22),
     ),

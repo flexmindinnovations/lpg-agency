@@ -51,8 +51,6 @@ void main() {
       expect(engine.highContrast.brightness, Brightness.light);
       final hc = engine.highContrast.extension<LpgColors>()!;
       expect(hc.isHighContrast, isTrue);
-      expect(hc.cardShadow, isEmpty);
-      expect(hc.floatingShadow, isEmpty);
     });
 
     test('the default engine matches the plain LpgTheme (no behaviour change '

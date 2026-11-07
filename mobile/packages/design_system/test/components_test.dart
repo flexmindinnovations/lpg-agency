@@ -1588,17 +1588,18 @@ void main() {
   });
 
   group('section headings', () {
-    testWidgets('a label is bold capitals in the main text colour', (
+    testWidgets('a header is sentence case, normal weight, main colour', (
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(const LpgSectionLabel('Godown and papers')),
+        _wrap(const LpgSectionHeader(title: 'Godown and papers')),
       );
 
-      final text = tester.widget<Text>(find.text('GODOWN AND PAPERS'));
+      // Shown exactly as written: no capitals added.
+      final text = tester.widget<Text>(find.text('Godown and papers'));
       final colors = LpgTheme.colorsFor(LpgThemeVariant.light);
       expect(text.style?.color, colors.textPrimary);
-      expect(text.style?.fontWeight, FontWeight.w800);
+      expect(text.style?.fontWeight, FontWeight.w400);
     });
 
     testWidgets('a header is still announced as a heading, once', (

@@ -188,72 +188,6 @@ extension LpgGlassColors on LpgColors {
       sheet.withValues(alpha: LpgGlassLook.of(this).sheetAlpha);
 }
 
-/// A surface's resting shadow, drawn **outside** the shape only.
-///
-/// A `BoxDecoration` shadow is painted under the whole box, so behind a
-/// see-through fill it would show through as a grey patch inside the card.
-/// This paints the same shadow with the shape cut out of it.
-class LpgGlassShadow extends StatelessWidget {
-  const LpgGlassShadow({
-    super.key,
-    required this.shadows,
-    required this.radius,
-    required this.child,
-  });
-
-  final List<BoxShadow> shadows;
-  final BorderRadius radius;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (shadows.isEmpty) return child;
-    return CustomPaint(
-      painter: _OutsideShadowPainter(shadows, radius),
-      child: child,
-    );
-  }
-}
-
-class _OutsideShadowPainter extends CustomPainter {
-  _OutsideShadowPainter(this.shadows, this.radius);
-
-  final List<BoxShadow> shadows;
-  final BorderRadius radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final box = radius.toRRect(Offset.zero & size);
-    final everything = Path()..addRect((Offset.zero & size).inflate(160));
-    final outside = Path.combine(
-      PathOperation.difference,
-      everything,
-      Path()..addRRect(box),
-    );
-    canvas.save();
-    canvas.clipPath(outside);
-    for (final shadow in shadows) {
-      canvas.drawRRect(
-        box.shift(shadow.offset).inflate(shadow.spreadRadius),
-        shadow.toPaint(),
-      );
-    }
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_OutsideShadowPainter old) =>
-      old.radius != radius || !_same(old.shadows, shadows);
-
-  static bool _same(List<BoxShadow> a, List<BoxShadow> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-}
-
 /// Frosted glass, the layers a sheet or bar is made of: whatever is behind it
 /// blurred by [blurSigma] (none when `null`), then a fine grain, then [child]
 /// (the fill, hairline and content).
@@ -357,7 +291,6 @@ class LpgGlass extends StatelessWidget {
     this.blur = true,
     this.padding,
     this.radius,
-    this.shadow = true,
   });
 
   final Widget child;
@@ -365,7 +298,6 @@ class LpgGlass extends StatelessWidget {
   final bool blur;
   final EdgeInsetsGeometry? padding;
   final BorderRadius? radius;
-  final bool shadow;
 
   @override
   Widget build(BuildContext context) {
@@ -379,7 +311,6 @@ class LpgGlass extends StatelessWidget {
       return LpgSurface(
         level: level,
         radius: shape,
-        shadow: shadow,
         child: content,
       );
     }
@@ -401,11 +332,7 @@ class LpgGlass extends StatelessWidget {
             blurSigma: blur ? LpgGlassLook.blurSigma : null,
             child: fill,
           );
-    return LpgGlassShadow(
-      shadows: shadow ? colors.shadowFor(level) : const [],
-      radius: shape,
-      child: panel,
-    );
+    return panel;
   }
 }
 
