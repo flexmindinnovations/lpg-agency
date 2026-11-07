@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api_result.dart';
 import '../../../auth_provider.dart';
+import '../../../i18n/admin_strings.dart';
 import '../../../providers.dart';
 import '../data/profile_provider.dart';
 import 'edit_profile_sheet.dart';
@@ -15,11 +16,15 @@ class ProfileScreen extends ConsumerWidget {
   Future<void> _edit(BuildContext context, AdminProfile profile) async {
     final saved = await LpgFeedback.showSheet<bool>(
       context,
-      title: 'Edit profile',
+      title: context.strings.profile.editTitle,
       builder: (_) => EditProfileSheet(profile: profile),
     );
     if (saved != true || !context.mounted) return;
-    LpgFeedback.showToast(context, 'Profile updated.', tone: LpgTone.success);
+    LpgFeedback.showToast(
+      context,
+      context.strings.profile.updated,
+      tone: LpgTone.success,
+    );
   }
 
   @override
@@ -83,7 +88,7 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: LpgSpacing.md),
                   LpgButton(
-                    label: 'Edit profile',
+                    label: context.strings.profile.editTitle,
                     icon: LpgIcons.edit,
                     variant: LpgButtonVariant.secondary,
                     expand: true,
@@ -94,7 +99,7 @@ class ProfileScreen extends ConsumerWidget {
                   const SizedBox(height: LpgSpacing.sm),
                   if (profile.contactPhone != null)
                     LpgListTile(
-                      title: 'Contact phone',
+                      title: context.strings.profile.contactPhone,
                       subtitle: profile.contactPhone,
                       leadingIcon: LpgIcons.phone,
                     ),

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:admin_app/src/features/profile/data/profile_provider.dart';
 import 'package:admin_app/src/features/profile/presentation/edit_profile_sheet.dart';
 import 'package:admin_app/src/features/profile/presentation/profile_screen.dart';
+import 'package:admin_app/src/i18n/admin_strings.dart';
 import 'package:admin_app/src/providers.dart';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
@@ -94,7 +95,11 @@ Widget _host(Widget home, {_ProfileAdapter? adapter}) {
       authApiProvider.overrideWithValue(AuthApi(dio)),
       adminProfileProvider.overrideWith((ref) async => _profile),
     ],
-    child: MaterialApp(theme: LpgTheme.light, home: home),
+    child: MaterialApp(
+      theme: LpgTheme.light,
+      localizationsDelegates: adminLocalizationsDelegates,
+      home: home,
+    ),
   );
 }
 
