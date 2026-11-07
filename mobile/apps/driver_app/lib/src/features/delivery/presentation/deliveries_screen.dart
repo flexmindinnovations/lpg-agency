@@ -29,7 +29,7 @@ class DeliveriesScreen extends ConsumerWidget {
         child: ListView(
           padding: LpgSpacing.page,
           children: [
-            LpgSectionHeader(
+            LpgSectionHeader.first(
               title: 'Current route',
               subtitle: routeAsync.value == null
                   ? null

@@ -23,6 +23,17 @@ class LpgSectionHeader extends StatelessWidget {
     ),
   });
 
+  /// The heading at the very top of a page. The page's own padding already
+  /// separates it from the app bar, so it has none of its own above (the
+  /// default would add [LpgSpacing.lg] on top of that).
+  const LpgSectionHeader.first({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.actionLabel,
+    this.onAction,
+  }) : padding = const EdgeInsets.only(bottom: LpgSpacing.smd);
+
   /// A heading the layout already spaces (inside a sheet or a form column):
   /// the same style, no outer padding, no subtitle, no action.
   const LpgSectionHeader.compact({super.key, required this.title})

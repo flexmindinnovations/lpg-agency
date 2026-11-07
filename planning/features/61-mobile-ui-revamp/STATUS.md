@@ -363,3 +363,11 @@ Asked: the sheet showed only the blurred screen; the paper grain was missing. It
 - The sheet's title and close button are one centred row (they were top-aligned, so the X sat lower than the title); the subtitle sits under both.
 - On a snapshot being "standard": the Flutter engine's own guidance for a static backdrop is to snapshot a filter once rather than redraw it each frame (flutter/flutter#32804). The picture lives in memory only while the sheet is open (about 0.7 MB at 0.2 scale), is not written to disk and adds nothing to the app size.
 - Checked on the S25 Ultra (light): fine speckle visible over the glass and the blurred hero card; text sharp. Tests: `glass_test` (two paper layers in a sheet, one an overlay; contrast with the grain counted), goldens regenerated.
+
+## 5.32 Cards looked solid; extra space under the header (2026-11-07)
+Asked: do cards, chips, buttons and other elements still show the paper? They look solid. Also extra space below the header.
+
+- Cause: the grain is held to a small contrast budget (light 0.138, dark 0.053) so secondary text stays at 4.55:1, and a card fill 60% opaque hid 60% of it. Fix: `cardTarget` 0.6 to 0.3. Text contrast is unchanged (the check found the smallest opacity that is still readable; the target was the only limit). Measured on the emulator in light: page grain std 2.85, card interior 2.0.
+- Not changed, by design: filled primary buttons are solid brand colour (they carry the call to action); dark mode has a much smaller grain budget (0.053), so its grain stays subtle whatever the opacity. The dial for both is `LpgGlassLook.cardTarget` (lower is more see-through; contrast still clamps it).
+- Header spacing: a screen's first section heading had the page's 16 dp top padding plus the heading's own 24 dp. `LpgSectionHeader.first` drops the heading's top padding; used on More, Payment methods and Deliveries. The Dashboard has no section heading first (a live stamp under 16 dp of page padding), so it is unchanged.
+- Checked on the emulator (light): More's first heading is directly under the bar. Not checked on the phone (it had locked). Tests: design_system 405, admin 143, customer 83, driver 129 all pass; goldens regenerated.

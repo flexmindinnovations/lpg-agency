@@ -79,3 +79,4 @@ The owner asked for see-through, blurred surfaces after the first no-glass rule 
 - **Soft wash (5.27).** The page also carries two soft glows of the theme's colours and a softened copy of the grain under the sharp grain. Both are made once and cached with the page; nothing blurs per frame.
 - **Frosted sheets (5.29).** `LpgGlassSource` (around the navigator) lets `LpgFeedback.showSheet` take one small picture of the app and blur it once; the sheet draws it behind `sheetGlass` (tint found by `LpgGlassLook.sheetAlpha`). Smooth because nothing is blurred while the sheet moves.
 - **One picker look (5.29).** `LpgDropdownField` is the card row used by every other picker, with a `LpgSectionHeader.compact` label.
+- **Card opacity (5.32).** Cards, fields and chips target 30% opaque (`LpgGlassLook.cardTarget`), so most of the page's grain shows through; contrast still decides the floor. Filled primary buttons stay solid.

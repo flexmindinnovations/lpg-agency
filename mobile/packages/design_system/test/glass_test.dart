@@ -37,7 +37,7 @@ void main() {
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
         final look = LpgGlassLook.of(LpgTheme.colorsFor(v));
 
-        // A card, field or chip is 60% opaque: the page's paper shows
+        // A card, field or chip is 30% opaque: the page's paper shows
         // through softly, and text stays readable on it.
         expect(
           look.cardAlpha,

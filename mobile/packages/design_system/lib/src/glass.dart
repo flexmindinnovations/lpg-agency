@@ -44,7 +44,7 @@ class LpgGlassLook {
   /// What each would like to be if contrast allowed it. Lower means more of the
   /// page shows through; this is the knob for how much background a card lets
   /// by.
-  static const cardTarget = 0.6;
+  static const cardTarget = 0.3;
   static const barTarget = 0.4;
   static const sheetTarget = 0.6;
 

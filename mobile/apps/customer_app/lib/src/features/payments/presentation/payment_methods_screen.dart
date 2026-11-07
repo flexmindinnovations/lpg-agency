@@ -35,7 +35,7 @@ class PaymentMethodsScreen extends StatelessWidget {
       body: ListView(
         padding: LpgSpacing.page,
         children: [
-          const LpgSectionHeader(title: 'Ways to pay'),
+          const LpgSectionHeader.first(title: 'Ways to pay'),
           LpgFadeSlideIn(
             child: LpgCard(
               padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
