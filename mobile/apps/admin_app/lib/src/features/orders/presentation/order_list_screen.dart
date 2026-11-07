@@ -124,28 +124,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             onChanged: _onSearchChanged,
           ),
         ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(
-            horizontal: LpgSpacing.md,
-            vertical: LpgSpacing.sm,
-          ),
-          child: Row(
-            children: orderFilters.map((filter) {
-              final selected = _selectedFilter == filter;
-              return Padding(
-                padding: const EdgeInsets.only(right: LpgSpacing.xs),
-                child: FilterChip(
-                  label: Text(filter.label),
-                  selected: selected,
-                  onSelected: (_) => setState(() {
-                    _selectedFilter = filter;
-                    _pages = 1;
-                  }),
-                ),
-              );
-            }).toList(),
-          ),
+        LpgChoiceChips<OrderFilter>.filterRow(
+          options: {for (final filter in orderFilters) filter: filter.label},
+          selected: _selectedFilter,
+          onSelected: (filter) => setState(() {
+            _selectedFilter = filter!;
+            _pages = 1;
+          }),
         ),
         Expanded(
           child: first.when(
@@ -222,10 +207,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: LpgFab.extended(
         onPressed: () => context.goNamed('order_new'),
-        icon: const Icon(LpgIcons.add),
-        label: const Text('New order'),
+        icon: LpgIcons.add,
+        label: 'New order',
       ),
       body: twoPane
           ? Row(

@@ -21,5 +21,10 @@
     "system": "Match phone",
     "light": "Light",
     "dark": "Dark"
+  },
+  "splash": {
+    "offlineTitle": "Can't reach the server",
+    "offlineHint": "Your sign-in is safe. Check your internet connection. We keep trying.",
+    "trying": "Trying…"
   }
 }

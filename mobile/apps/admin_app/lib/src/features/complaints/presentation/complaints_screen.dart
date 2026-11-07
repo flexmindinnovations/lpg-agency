@@ -82,36 +82,23 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
                 ),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: InputChip(
-                    avatar: const Icon(LpgIcons.user, size: LpgSizes.iconSm),
-                    label: Text(customerName ?? 'This customer'),
-                    onDeleted: () => context.go('/complaints'),
-                    deleteButtonTooltipMessage: 'Show every customer',
+                  child: LpgFilterTag(
+                    icon: LpgIcons.user,
+                    label: customerName ?? 'This customer',
+                    onRemove: () => context.go('/complaints'),
+                    removeTooltip: 'Show every customer',
                   ),
                 ),
               ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: LpgSpacing.md,
-                vertical: LpgSpacing.sm,
-              ),
-              child: Row(
-                children: [
-                  for (final (label, value) in _statusFilters)
-                    Padding(
-                      padding: const EdgeInsets.only(right: LpgSpacing.xs),
-                      child: FilterChip(
-                        label: Text(label),
-                        selected: _status == value,
-                        onSelected: (_) => setState(() {
-                          _status = value;
-                          _pages = 1;
-                        }),
-                      ),
-                    ),
-                ],
-              ),
+            LpgChoiceChips<String?>.filterRow(
+              options: {
+                for (final (label, value) in _statusFilters) value: label,
+              },
+              selected: _status,
+              onSelected: (value) => setState(() {
+                _status = value;
+                _pages = 1;
+              }),
             ),
             Expanded(
               child: first.when(

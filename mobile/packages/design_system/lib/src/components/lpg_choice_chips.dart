@@ -12,6 +12,10 @@ import '../theme.dart';
 ///
 /// [options] maps each value to its label. With [allowDeselect], tapping the
 /// selected chip clears the selection (passes `null`).
+///
+/// [LpgChoiceChips.filterRow] is the same chips in one row that scrolls
+/// sideways, under a list's search box ("All", "Open", "Resolved"). A `null`
+/// key is a valid value there: "All" is `null: 'All'`.
 class LpgChoiceChips<T> extends StatelessWidget {
   const LpgChoiceChips({
     super.key,
@@ -20,7 +24,16 @@ class LpgChoiceChips<T> extends StatelessWidget {
     required this.onSelected,
     this.icons,
     this.allowDeselect = false,
-  });
+  }) : scrollable = false;
+
+  const LpgChoiceChips.filterRow({
+    super.key,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+  }) : icons = null,
+       allowDeselect = false,
+       scrollable = true;
 
   final Map<T, String> options;
   final T? selected;
@@ -30,45 +43,67 @@ class LpgChoiceChips<T> extends StatelessWidget {
   final Map<T, IconData>? icons;
   final bool allowDeselect;
 
+  /// One row that scrolls sideways, with the page's side padding, instead of
+  /// wrapping onto more lines.
+  final bool scrollable;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
-    return Wrap(
-      spacing: LpgSpacing.sm,
-      runSpacing: LpgSpacing.sm,
-      children: [
-        for (final entry in options.entries)
-          ChoiceChip(
-            label: Text(entry.value),
-            selected: entry.key == selected,
-            showCheckmark: icons?[entry.key] == null,
-            // Every chip keeps a 48px touch target, whichever row it
-            // wraps onto (CA-14).
-            materialTapTargetSize: MaterialTapTargetSize.padded,
-            avatar: icons?[entry.key] == null
-                ? null
-                : Icon(
-                    icons![entry.key],
-                    size: LpgSizes.iconSm + 2,
-                    color: entry.key == selected
-                        ? colors.onActionPrimaryContainer
-                        : colors.textSecondary,
-                  ),
-            labelStyle: context.lpgText.labelLarge?.copyWith(
-              color: entry.key == selected
-                  ? colors.onActionPrimaryContainer
-                  : colors.textPrimary,
-            ),
-            onSelected: (isSelected) {
-              LpgHaptics.selection();
-              if (isSelected) {
-                onSelected(entry.key);
-              } else if (allowDeselect) {
-                onSelected(null);
-              }
-            },
+    final chips = [
+      for (final entry in options.entries)
+        ChoiceChip(
+          label: Text(entry.value),
+          selected: entry.key == selected,
+          showCheckmark: icons?[entry.key] == null,
+          // Every chip keeps a 48px touch target, whichever row it
+          // wraps onto (CA-14).
+          materialTapTargetSize: MaterialTapTargetSize.padded,
+          avatar: icons?[entry.key] == null
+              ? null
+              : Icon(
+                  icons![entry.key],
+                  size: LpgSizes.iconSm + 2,
+                  color: entry.key == selected
+                      ? colors.onActionPrimaryContainer
+                      : colors.textSecondary,
+                ),
+          labelStyle: context.lpgText.labelLarge?.copyWith(
+            color: entry.key == selected
+                ? colors.onActionPrimaryContainer
+                : colors.textPrimary,
           ),
-      ],
+          onSelected: (isSelected) {
+            LpgHaptics.selection();
+            if (isSelected) {
+              onSelected(entry.key);
+            } else if (allowDeselect) {
+              onSelected(null);
+            }
+          },
+        ),
+    ];
+    if (!scrollable) {
+      return Wrap(
+        spacing: LpgSpacing.sm,
+        runSpacing: LpgSpacing.sm,
+        children: chips,
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(
+        horizontal: LpgSpacing.md,
+        vertical: LpgSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < chips.length; i++) ...[
+            if (i > 0) const SizedBox(width: LpgSpacing.sm),
+            chips[i],
+          ],
+        ],
+      ),
     );
   }
 }

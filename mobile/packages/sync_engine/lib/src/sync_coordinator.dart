@@ -74,6 +74,9 @@ class SyncCoordinator {
   bool _deviceRefused = false;
 
   bool _isSyncing = false;
+
+  /// Sync passes and housekeeping runs that have started and not finished.
+  final _inFlight = <Future<void>>{};
   DateTime? _lastTidyAt;
   Timer? _syncTimer;
   StreamSubscription<bool>? _connSub;
@@ -84,7 +87,7 @@ class SyncCoordinator {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(_pollInterval, (_) => syncNow());
     // Best-effort housekeeping; never blocks start-up.
-    unawaited(_tidyUp());
+    _track(_tidyUp());
 
     _connSub?.cancel();
     _connSub = _connectivity?.onConnectivityChanged.listen((online) {
@@ -100,6 +103,23 @@ class SyncCoordinator {
     _syncTimer = null;
     _connSub?.cancel();
     _connSub = null;
+  }
+
+  /// Completes when every sync pass and housekeeping run that has started has
+  /// finished. [enqueueOperation] starts a pass without waiting for it, so
+  /// anything that must not race it (closing the database on shutdown, a test
+  /// checking the queue) awaits this first.
+  Future<void> whenIdle() async {
+    while (_inFlight.isNotEmpty) {
+      await Future.wait([
+        for (final f in _inFlight.toList()) f.catchError((Object _) {}),
+      ]);
+    }
+  }
+
+  void _track(Future<void> work) {
+    _inFlight.add(work);
+    work.whenComplete(() => _inFlight.remove(work)).ignore();
   }
 
   /// Enqueues a new sync operation and immediately attempts to sync.
@@ -123,7 +143,13 @@ class SyncCoordinator {
   /// first (which preserves per-aggregate ordering). Ops in an `error` state
   /// whose backoff window hasn't elapsed are skipped this pass unless
   /// [ignoreBackoff] is set (a connectivity-regained drain).
-  Future<void> syncNow({bool ignoreBackoff = false}) async {
+  Future<void> syncNow({bool ignoreBackoff = false}) {
+    final pass = _syncNow(ignoreBackoff: ignoreBackoff);
+    _track(pass);
+    return pass;
+  }
+
+  Future<void> _syncNow({required bool ignoreBackoff}) async {
     // Nobody signed in: nothing to send, and an operation must never go out
     // under a session that is not its owner's.
     final owner = _currentOwner();
@@ -155,7 +181,7 @@ class SyncCoordinator {
     } finally {
       _isSyncing = false;
     }
-    if (_tidyDue) unawaited(_tidyUp());
+    if (_tidyDue) _track(_tidyUp());
   }
 
   /// How often housekeeping may run while the app stays open.

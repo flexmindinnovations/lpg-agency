@@ -275,11 +275,11 @@ class _TrackingMapState extends ConsumerState<_TrackingMap> {
         Positioned(
           right: LpgSpacing.smd,
           bottom: LpgSpacing.lg,
-          child: FloatingActionButton.small(
+          child: LpgFab.small(
             heroTag: 'tracking-recenter',
             tooltip: 'Recenter map',
             onPressed: () => _recenter(destination, driver?.point),
-            child: const Icon(LpgIcons.recenter),
+            icon: LpgIcons.recenter,
           ),
         ),
         if (widget.tracking.isRouteActive)

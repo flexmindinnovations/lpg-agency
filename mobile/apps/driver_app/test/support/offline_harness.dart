@@ -91,6 +91,7 @@ class OfflineHarness {
 
   Future<void> dispose() async {
     coordinator.stop();
+    await coordinator.whenIdle();
     await db.close();
   }
 }

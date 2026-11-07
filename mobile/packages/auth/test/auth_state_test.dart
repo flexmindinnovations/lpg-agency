@@ -195,6 +195,52 @@ void main() {
       expect(controller.state.isAuthenticated, isTrue);
     });
 
+    test('says it is waiting, and Retry tries again at once', () async {
+      final repository = _FakeAuthRepository(restoreSessionResult: offline);
+      // A retry delay so long that only the Retry button can get there.
+      final controller = AuthController(
+        repository,
+        restoreRetryBase: const Duration(minutes: 5),
+        restoreRetryMax: const Duration(minutes: 5),
+      );
+      addTearDown(controller.dispose);
+      var notified = 0;
+      controller.addListener(() => notified++);
+
+      expect(controller.restoreWaiting, isFalse); // not failed yet
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(controller.restoreWaiting, isTrue);
+      expect(controller.restoreRetrying, isFalse);
+      expect(notified, greaterThan(0));
+
+      repository.restoreSessionResult = const Success(_principal);
+      await controller.retryRestoreNow();
+
+      expect(controller.state.isAuthenticated, isTrue);
+      expect(controller.restoreWaiting, isFalse); // decided: no message
+    });
+
+    test(
+      'Retry while still offline keeps waiting and does not stack',
+      () async {
+        final repository = _FakeAuthRepository(restoreSessionResult: offline);
+        final controller = AuthController(
+          repository,
+          restoreRetryBase: const Duration(minutes: 5),
+          restoreRetryMax: const Duration(minutes: 5),
+        );
+        addTearDown(controller.dispose);
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+
+        await controller.retryRestoreNow();
+        await controller.retryRestoreNow();
+
+        expect(controller.state.status, AuthStatus.unknown);
+        expect(controller.restoreWaiting, isTrue);
+        expect(controller.restoreRetrying, isFalse);
+      },
+    );
+
     test('a refusal after a retry still signs the person out', () async {
       final repository = _FakeAuthRepository(restoreSessionResult: offline);
       final controller = AuthController(

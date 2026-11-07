@@ -44,93 +44,59 @@ class _FailedDeliverySheetState extends State<FailedDeliverySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.lpgColors;
     final text = context.lpgText;
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          LpgSpacing.lg,
-          0,
-          LpgSpacing.lg,
-          LpgSpacing.lg + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: LpgSheetLayout(
-          body: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const LpgIconBox(
-                    icon: LpgIcons.warning,
-                    tone: LpgTone.danger,
+    // The title, handle, padding and keyboard clearance come from
+    // `LpgFeedback.showSheet`, which opens this.
+    return LpgSheetLayout(
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RadioGroup<String>(
+            groupValue: _reason,
+            onChanged: (v) => setState(() => _reason = v),
+            child: Column(
+              children: [
+                for (final (code, label) in _reasons)
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    value: code,
+                    title: Text(label, style: text.bodyLarge),
                   ),
-                  const SizedBox(width: LpgSpacing.smd),
-                  Expanded(
-                    child: Text(
-                      'Why did the delivery fail?',
-                      style: text.titleMedium?.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: LpgSpacing.smd),
-              RadioGroup<String>(
-                groupValue: _reason,
-                onChanged: (v) => setState(() => _reason = v),
-                child: Column(
-                  children: [
-                    for (final (code, label) in _reasons)
-                      RadioListTile<String>(
-                        contentPadding: EdgeInsets.zero,
-                        value: code,
-                        title: Text(label, style: text.bodyLarge),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: LpgSpacing.sm),
-              const LpgFieldLabel('What next?'),
-              const SizedBox(height: LpgSpacing.xs),
-              Wrap(
-                spacing: LpgSpacing.sm,
-                runSpacing: LpgSpacing.sm,
-                children: [
-                  for (final (value, label) in _actions)
-                    ChoiceChip(
-                      label: Text(label),
-                      selected: _action == value,
-                      onSelected: (_) => setState(() => _action = value),
-                    ),
-                ],
-              ),
-              const SizedBox(height: LpgSpacing.md),
-              LpgTextField(
-                label: 'Note (optional)',
-                hintText: 'e.g. Gate locked, customer asked for Saturday',
-                controller: _note,
-                maxLines: 3,
-                maxLength: failedDeliveryNoteMaxLength,
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
+              ],
+            ),
           ),
-          footer: LpgSheetActions(
-            primaryLabel: 'Confirm failed delivery',
-            primaryVariant: LpgButtonVariant.destructive,
-            primaryIcon: LpgIcons.cancel,
-            onPrimary: _reason == null
-                ? null
-                : () => Navigator.of(context).pop((
-                    reason: _reason!,
-                    action: _action,
-                    note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-                  )),
+          const SizedBox(height: LpgSpacing.sm),
+          const LpgFieldLabel('What next?'),
+          const SizedBox(height: LpgSpacing.xs),
+          LpgChoiceChips<String?>(
+            options: {for (final (value, label) in _actions) value: label},
+            selected: _action,
+            onSelected: (value) => setState(() => _action = value),
           ),
-        ),
+          const SizedBox(height: LpgSpacing.md),
+          LpgTextField(
+            label: 'Note (optional)',
+            hintText: 'e.g. Gate locked, customer asked for Saturday',
+            controller: _note,
+            maxLines: 3,
+            maxLength: failedDeliveryNoteMaxLength,
+            textCapitalization: TextCapitalization.sentences,
+          ),
+        ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Confirm failed delivery',
+        primaryVariant: LpgButtonVariant.destructive,
+        primaryIcon: LpgIcons.cancel,
+        onPrimary: _reason == null
+            ? null
+            : () => Navigator.of(context).pop((
+                reason: _reason!,
+                action: _action,
+                note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+              )),
       ),
     );
   }

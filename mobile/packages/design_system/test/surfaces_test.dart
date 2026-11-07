@@ -250,6 +250,29 @@ void main() {
       }
     }
 
+    test('the apps use the shared chips, tags, FAB and segmented control', () {
+      // Screens build these through `LpgChoiceChips`, `LpgFilterTag`,
+      // `LpgFab` and `LpgSegmentedControl`, so they look and behave the same
+      // in every app and a change is made once (5.26).
+      final raw = RegExp(
+        r'\b(FilterChip|ChoiceChip|InputChip|ActionChip|SegmentedButton|'
+        r'FloatingActionButton)\b',
+      );
+      final offenders = [
+        for (final app in ['admin_app', 'customer_app', 'driver_app'])
+          if (Directory('../../apps/$app/lib').existsSync())
+            for (final f in Directory(
+              '../../apps/$app/lib',
+            ).listSync(recursive: true))
+              if (f is File &&
+                  f.path.endsWith('.dart') &&
+                  raw.hasMatch(f.readAsStringSync()))
+                f.path,
+      ];
+
+      expect(offenders, isEmpty);
+    });
+
     test('nothing blurs what is behind it', () {
       // A backdrop blur redrawn every frame of a scroll or a sheet's slide
       // is what made them drop frames (5.28).

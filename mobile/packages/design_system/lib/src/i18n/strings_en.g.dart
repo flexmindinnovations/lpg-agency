@@ -39,6 +39,7 @@ class LpgStrings with BaseTranslations<LpgLocale, LpgStrings> {
 	late final LpgStrings$async$en async = LpgStrings$async$en.internal(_root);
 	late final LpgStrings$stock$en stock = LpgStrings$stock$en.internal(_root);
 	late final LpgStrings$appearance$en appearance = LpgStrings$appearance$en.internal(_root);
+	late final LpgStrings$splash$en splash = LpgStrings$splash$en.internal(_root);
 }
 
 // Path: common
@@ -116,6 +117,24 @@ class LpgStrings$appearance$en {
 	String get dark => 'Dark';
 }
 
+// Path: splash
+class LpgStrings$splash$en {
+	LpgStrings$splash$en.internal(this._root);
+
+	final LpgStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Can't reach the server'
+	String get offlineTitle => 'Can\'t reach the server';
+
+	/// en: 'Your sign-in is safe. Check your internet connection. We keep trying.'
+	String get offlineHint => 'Your sign-in is safe. Check your internet connection. We keep trying.';
+
+	/// en: 'Trying…'
+	String get trying => 'Trying…';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -136,6 +155,9 @@ extension on LpgStrings {
 			'appearance.system' => 'Match phone',
 			'appearance.light' => 'Light',
 			'appearance.dark' => 'Dark',
+			'splash.offlineTitle' => 'Can\'t reach the server',
+			'splash.offlineHint' => 'Your sign-in is safe. Check your internet connection. We keep trying.',
+			'splash.trying' => 'Trying…',
 			_ => null,
 		};
 	}

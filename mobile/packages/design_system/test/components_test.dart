@@ -1575,6 +1575,170 @@ void main() {
     });
   });
 
+  group('shared chips, tag, FAB and segmented control', () {
+    testWidgets('a filter row scrolls sideways and "All" can be a null key', (
+      tester,
+    ) async {
+      String? picked = 'unset';
+      await tester.pumpWidget(
+        _wrap(
+          LpgChoiceChips<String?>.filterRow(
+            options: const {
+              null: 'All',
+              'Open': 'Open',
+              'Resolved': 'Resolved',
+            },
+            selected: null,
+            onSelected: (v) => picked = v,
+          ),
+        ),
+      );
+
+      // "All" (the null key) is the selected chip.
+      final all = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'All'),
+      );
+      expect(all.selected, isTrue);
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
+
+      await tester.tap(find.text('Resolved'));
+      expect(picked, 'Resolved');
+      // Tapping the chip that is already selected changes nothing.
+      picked = 'unset';
+      await tester.tap(find.text('All'));
+      expect(picked, 'unset');
+    });
+
+    testWidgets('a filter tag shows its label and removes itself', (
+      tester,
+    ) async {
+      var removed = 0;
+      await tester.pumpWidget(
+        _wrap(
+          LpgFilterTag(
+            icon: LpgIcons.user,
+            label: 'Ramesh Traders',
+            removeTooltip: 'Show every customer',
+            onRemove: () => removed++,
+          ),
+        ),
+      );
+
+      expect(find.text('Ramesh Traders'), findsOneWidget);
+      await tester.tap(find.byTooltip('Show every customer'));
+      expect(removed, 1);
+    });
+
+    testWidgets('the FAB is extended with a label, or small with a tooltip', (
+      tester,
+    ) async {
+      var pressed = 0;
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [
+              LpgFab.extended(
+                heroTag: 'a',
+                icon: LpgIcons.add,
+                label: 'New order',
+                onPressed: () => pressed++,
+              ),
+              LpgFab.small(
+                heroTag: 'b',
+                icon: LpgIcons.recenter,
+                tooltip: 'Recenter map',
+                onPressed: () => pressed += 10,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('New order'));
+      await tester.tap(find.byTooltip('Recenter map'));
+      expect(pressed, 11);
+    });
+
+    testWidgets('the segmented control reports a change once, not a re-tap', (
+      tester,
+    ) async {
+      final changes = <String>[];
+      await tester.pumpWidget(
+        _wrap(
+          LpgSegmentedControl<String>(
+            options: const {'otp': 'Phone OTP', 'email': 'Email'},
+            icons: const {'otp': LpgIcons.smartphone},
+            selected: 'otp',
+            onSelected: changes.add,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Phone OTP'));
+      await tester.tap(find.text('Email'));
+      expect(changes, ['email']);
+    });
+  });
+
+  group('LpgSplashOffline', () {
+    Widget splash({required VoidCallback onRetry, bool retrying = false}) =>
+        MaterialApp(
+          theme: LpgTheme.light,
+          localizationsDelegates: lpgLocalizationsDelegates,
+          home: LpgSplash(
+            logo: MemoryImage(_transparentPixel),
+            title: 'LPG Agency',
+            tagline: 'Your gas, delivered safely.',
+            footer: LpgSplashOffline(onRetry: onRetry, retrying: retrying),
+          ),
+        );
+
+    testWidgets('says it cannot reach the server, and Retry fires', (
+      tester,
+    ) async {
+      var retried = 0;
+      await tester.pumpWidget(splash(onRetry: () => retried++));
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(find.text("Can't reach the server"), findsOneWidget);
+      expect(find.textContaining('sign-in is safe'), findsOneWidget);
+      await tester.tap(find.text('Retry'));
+      expect(retried, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('while an attempt runs the button says so and is off', (
+      tester,
+    ) async {
+      var retried = 0;
+      await tester.pumpWidget(splash(onRetry: () => retried++, retrying: true));
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(find.text('Trying…'), findsOneWidget);
+      await tester.tap(find.text('Trying…'), warnIfMissed: false);
+      expect(retried, 0);
+    });
+
+    testWidgets('fits a small phone at 2x text without overflow', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 568),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: splash(onRetry: () {}),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 2));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('LpgProgressBar', () {
     testWidgets('the filled part stands out from the track by 3:1 or more', (
       tester,

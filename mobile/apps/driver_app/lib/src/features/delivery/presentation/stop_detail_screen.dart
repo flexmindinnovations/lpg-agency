@@ -162,12 +162,11 @@ class StopDetailScreen extends ConsumerWidget {
     String id,
   ) async {
     final choice =
-        await showModalBottomSheet<
+        await LpgFeedback.showSheet<
           ({String reason, String? action, String? note})
         >(
-          context: context,
-          showDragHandle: true,
-          isScrollControlled: true,
+          context,
+          title: 'Why did the delivery fail?',
           builder: (_) => const FailedDeliverySheet(),
         );
     if (choice == null || !context.mounted) return;

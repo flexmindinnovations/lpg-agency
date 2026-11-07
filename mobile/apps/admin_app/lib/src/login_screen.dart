@@ -198,23 +198,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: LpgSpacing.lg),
 
-              SegmentedButton<_AuthMethod>(
-                segments: const [
-                  ButtonSegment(
-                    value: _AuthMethod.phoneOtp,
-                    label: Text('Phone OTP'),
-                    icon: Icon(Icons.phone_android),
-                  ),
-                  ButtonSegment(
-                    value: _AuthMethod.emailPassword,
-                    label: Text('Email & Password'),
-                    icon: Icon(Icons.lock_outline),
-                  ),
-                ],
-                selected: {_authMethod},
-                onSelectionChanged: (selected) {
+              LpgSegmentedControl<_AuthMethod>(
+                options: const {
+                  _AuthMethod.phoneOtp: 'Phone OTP',
+                  _AuthMethod.emailPassword: 'Email & Password',
+                },
+                icons: const {
+                  _AuthMethod.phoneOtp: LpgIcons.smartphone,
+                  _AuthMethod.emailPassword: LpgIcons.lock,
+                },
+                selected: _authMethod,
+                onSelected: (method) {
                   setState(() {
-                    _authMethod = selected.first;
+                    _authMethod = method;
                     _errorMessage = null;
                   });
                 },

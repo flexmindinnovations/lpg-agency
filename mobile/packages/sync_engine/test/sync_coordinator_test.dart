@@ -80,11 +80,12 @@ void main() {
 
   tearDown(() async {
     coordinator.stop();
+    await coordinator.whenIdle();
     await db.close();
   });
 
-  Future<void> settle() =>
-      Future<void>.delayed(const Duration(milliseconds: 100));
+  /// Waits for the sync pass an enqueue started (no fixed sleep).
+  Future<void> settle() => coordinator.whenIdle();
 
   Future<SyncOperation> onlyOp() async =>
       (await db.select(db.syncOperations).get()).single;
@@ -155,6 +156,21 @@ void main() {
     await settle();
 
     expect(fakeAdapter.lastRequest?.path, '/api/v1/orders');
+    expect((await onlyOp()).status, 'synced');
+  });
+
+  test('whenIdle waits for the pass an enqueue started, and is instant when '
+      'nothing is running', () async {
+    await coordinator.whenIdle(); // nothing running: returns at once
+
+    fakeAdapter.responseStatus = 200;
+    await coordinator.enqueueOperation(
+      'order_depart',
+      _departPayload('order-1'),
+    );
+    // enqueueOperation does not wait for the send; whenIdle does.
+    await coordinator.whenIdle();
+
     expect((await onlyOp()).status, 'synced');
   });
 
