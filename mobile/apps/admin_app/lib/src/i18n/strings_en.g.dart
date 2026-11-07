@@ -84,6 +84,21 @@ class AdminStrings$profile$en {
 
 	/// en: 'For colleagues to reach you. Optional.'
 	String get phoneHelp => 'For colleagues to reach you. Optional.';
+
+	/// en: 'Profile picture'
+	String get pictureTitle => 'Profile picture';
+
+	/// en: 'Take photo'
+	String get takePhoto => 'Take photo';
+
+	/// en: 'Choose from gallery'
+	String get chooseFromGallery => 'Choose from gallery';
+
+	/// en: 'Remove photo'
+	String get removePhoto => 'Remove photo';
+
+	/// en: 'Change profile picture'
+	String get changePicture => 'Change profile picture';
 }
 
 // Path: dashboard.hero
@@ -121,6 +136,11 @@ extension on AdminStrings {
 			'profile.contactPhone' => 'Contact phone',
 			'profile.name' => 'Name',
 			'profile.phoneHelp' => 'For colleagues to reach you. Optional.',
+			'profile.pictureTitle' => 'Profile picture',
+			'profile.takePhoto' => 'Take photo',
+			'profile.chooseFromGallery' => 'Choose from gallery',
+			'profile.removePhoto' => 'Remove photo',
+			'profile.changePicture' => 'Change profile picture',
 			_ => null,
 		};
 	}
