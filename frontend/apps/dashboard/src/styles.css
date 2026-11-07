@@ -97,6 +97,25 @@ body {
    Strength and the light/dark flip come from the --paper-grain-* tokens;
    high contrast and print turn it off.
    ======================================================================== */
+/* The mist layer sits UNDER the content (z-index -1 inside body's own stacking
+   context), so the see-through cards and chrome show the paper through them,
+   as on mobile. */
+body {
+  isolation: isolate;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--paper-haze-image);
+  background-size: 256px 256px;
+  opacity: var(--paper-haze-opacity);
+  filter: invert(var(--paper-grain-invert));
+}
+
 body::after {
   content: '';
   position: fixed;
@@ -115,6 +134,7 @@ body::after {
 }
 
 @media print {
+  body::before,
   body::after {
     display: none;
   }
