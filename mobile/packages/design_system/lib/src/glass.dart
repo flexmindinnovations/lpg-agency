@@ -100,7 +100,7 @@ class LpgGlassLook {
 
     final page = LpgBackdropLook.of(colors);
     final pageSamples = <Color>[
-      for (final c in [colors.canvas, page.base])
+      for (final c in [colors.canvas, ...page.samples])
         colors.tint(page.speck, page.grainStrength, over: c),
     ];
     const extremes = [Color(0xFF000000), Color(0xFFFFFFFF)];

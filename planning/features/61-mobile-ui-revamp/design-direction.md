@@ -76,3 +76,4 @@ The owner asked for see-through, blurred surfaces after the first no-glass rule 
 - **One file.** Backdrop filters, grain over a surface and see-through fills are made only in `glass.dart`; `surfaces_test` scans the source so they cannot spread.
 - **Honest limit.** In the light theme the page's colour is faint (washes at most 16 percent), so a 0.62 white card over it looks almost the same as a solid one; the effect is clearest in dark mode and on sheets.
 - **Grain on the elements (5.25).** Cards, buttons (not text buttons), choice chips and sheets carry the paper grain themselves, over their fill and under their content (`LpgGrainLayer`). Fields, direct Material chips and the extended action button do not yet (5.26).
+- **Soft wash (5.27).** The page also carries two soft glows of the theme's colours and a softened copy of the grain under the sharp grain. Both are made once and cached with the page; nothing blurs per frame.

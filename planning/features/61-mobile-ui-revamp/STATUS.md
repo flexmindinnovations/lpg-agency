@@ -308,3 +308,12 @@ Asked: remove box shadows from all apps and keep only borders.
 - Tests: `glass_test` (grain visible and text contrast on the worst pixel for cards, none in high contrast, sheet text with the grain over its fill); goldens regenerated.
 - Checked on the Android emulator (the phone dropped off wireless debugging): Dashboard and Orders show the grain on cards. Not seen on a device: sheets, filled buttons, chips. Not covered: see 5.26.
 - Suggestion for the owner (a blur over the page): a real blur of what is behind a card is what made scrolling drop frames. A static veil is free: a soft wash or a pre-softened grain painted into the page's cached layer once. Not done; says so in the answer.
+
+## 5.27 Soft wash and softened grain on the page (2026-11-07)
+Asked (as a suggestion): add a soft blur over the noisy background without hurting performance.
+
+- A real blur of what is behind a surface is what cost frames in 5.15, so this is done with things that are made once. `_BackdropPainter` now paints, into the page's cached layer: the paper, two radial gradients (the theme's primary colour at the top left, its accent at the bottom right; plain gradient shaders, no blur filter), the haze, then the sharp grain.
+- The haze is `paper_grain.png` blurred once when the grain loads (`LpgGrain._soften`: laid 3 by 3 so it stays seamless, blurred as one picture, cropped back; sigma 3 tile pixels, drawn at 1.0 scale so the clouds are bigger than a speck). The only `ImageFilter.blur` outside `glass.dart`; `surfaces_test` allows `grain.dart` for it and nothing else.
+- Contrast: `LpgBackdropLook.washedBase` is the page where both glows overlap; the grain budget is found with that worst case counted, and `LpgGlassLook` counts it for cards, bars and sheets. The budget is split `sharpGrain` 65% and `hazeGrain` 35%, so the worst pixel is the same as before. High contrast is plain.
+- Checked on the S25 Ultra (dark: a blue glow top left, a warm one bottom right, soft mist-like grain) and on the emulator (light: a cool tint top left, a faint warm one bottom right). Not measured: a frame trace on the phone. The page is still painted once per route into its own layer, the same as before.
+- Tunable in one place: `_washLight`, `_washDark` (glow strength), the 65/35 split, `_hazeSigma`, `hazeScale`.

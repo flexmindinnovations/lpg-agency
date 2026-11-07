@@ -175,9 +175,7 @@ void main() {
       expect(d.borderRadius, LpgRadius.cardRadius);
     });
 
-    testWidgets('a sheet is rounder than a card', (
-      tester,
-    ) async {
+    testWidgets('a sheet is rounder than a card', (tester) async {
       await pump(tester, LpgThemeVariant.dark, LpgSurfaceLevel.sheet);
       final d = decoration(tester);
       final colors = LpgTheme.colorsFor(LpgThemeVariant.dark);
@@ -257,8 +255,21 @@ void main() {
         for (final f in sources())
           if (f.uri.pathSegments.last != 'glass.dart' &&
               RegExp(
-                r'BackdropFilter|ImageFilter\.blur|ImageFiltered',
+                r'BackdropFilter|ImageFiltered',
               ).hasMatch(f.readAsStringSync()))
+            f.path,
+      ];
+
+      expect(offenders, isEmpty);
+    });
+
+    test('the only other blur is the grain softened once at start-up', () {
+      // `LpgGrain` blurs its tile once into the page's haze; nothing else
+      // (and nothing that runs per frame) may blur.
+      final offenders = [
+        for (final f in sources())
+          if (!{'glass.dart', 'grain.dart'}.contains(f.uri.pathSegments.last) &&
+              RegExp(r'ImageFilter\.blur').hasMatch(f.readAsStringSync()))
             f.path,
       ];
 

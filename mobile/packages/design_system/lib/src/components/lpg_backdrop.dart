@@ -51,9 +51,17 @@ class _LpgBackdropState extends State<LpgBackdrop> {
               child: RepaintBoundary(
                 child: ValueListenableBuilder<ui.Image?>(
                   valueListenable: LpgGrain.image,
-                  builder: (context, grain, _) => CustomPaint(
-                    painter: _BackdropPainter(look: look, grain: grain),
-                  ),
+                  builder: (context, grain, _) =>
+                      ValueListenableBuilder<ui.Image?>(
+                        valueListenable: LpgGrain.haze,
+                        builder: (context, haze, _) => CustomPaint(
+                          painter: _BackdropPainter(
+                            look: look,
+                            grain: grain,
+                            haze: haze,
+                          ),
+                        ),
+                      ),
                 ),
               ),
             ),
@@ -79,10 +87,28 @@ class LpgBackdropLook {
     required this.base,
     required this.speck,
     required this.grainStrength,
+    required this.washes,
+    required this.washedBase,
   });
 
   /// The paper itself.
   final Color base;
+
+  /// Soft glows of the theme's own colours, painted into the page once. Plain
+  /// gradients, nothing blurred at run time.
+  final List<LpgBackdropWash> washes;
+
+  /// The page where every wash overlaps, its worst case for contrast.
+  final Color washedBase;
+
+  /// The page colours a text colour can land on, for contrast checks.
+  List<Color> get samples => [base, washedBase];
+
+  /// How the page's grain budget [grainStrength] is shared between the sharp
+  /// grain and the softened haze under it (they add up to the budget, so the
+  /// worst pixel is the same).
+  double get sharpGrain => grainStrength * 0.65;
+  double get hazeGrain => grainStrength * 0.35;
 
   /// The colour of the grain speck that hurts contrast most (black on a light
   /// page, white on a dark one).
@@ -124,9 +150,31 @@ class LpgBackdropLook {
     return lo;
   }
 
+  /// How strong each glow is at its centre. A dark page takes a little more.
+  static const _washLight = 0.07;
+  static const _washDark = 0.12;
+
   static LpgBackdropLook of(LpgColors colors) {
     final base = colors.surfaceBase;
     final text = colors.textSecondary;
+
+    final strength = base.computeLuminance() > 0.5 ? _washLight : _washDark;
+    final washes = [
+      LpgBackdropWash(
+        alignment: Alignment.topLeft,
+        radius: 1.1,
+        color: colors.actionPrimary.withValues(alpha: strength),
+      ),
+      LpgBackdropWash(
+        alignment: Alignment.bottomRight,
+        radius: 0.9,
+        color: colors.accent.withValues(alpha: strength),
+      ),
+    ];
+    final washedBase = washes.fold(
+      base,
+      (under, wash) => Color.alphaBlend(wash.color, under),
+    );
 
     // The speck that hurts most: black on a light page, white on a dark one.
     final speck = base.computeLuminance() > 0.5
@@ -135,10 +183,19 @@ class LpgBackdropLook {
     final grain = largest(
       _grainTarget,
       (s) =>
-          contrast(text, colors.tint(speck, s, over: base)) >= minTextContrast,
+          contrast(text, colors.tint(speck, s, over: base)) >=
+              minTextContrast &&
+          contrast(text, colors.tint(speck, s, over: washedBase)) >=
+              minTextContrast,
     );
 
-    return LpgBackdropLook(base: base, speck: speck, grainStrength: grain);
+    return LpgBackdropLook(
+      base: base,
+      speck: speck,
+      grainStrength: grain,
+      washes: washes,
+      washedBase: washedBase,
+    );
   }
 
   @override
@@ -146,31 +203,68 @@ class LpgBackdropLook {
       other is LpgBackdropLook &&
       other.base == base &&
       other.speck == speck &&
-      other.grainStrength == grainStrength;
+      other.grainStrength == grainStrength &&
+      other.washedBase == washedBase;
 
   @override
-  int get hashCode => Object.hash(base, speck, grainStrength);
+  int get hashCode => Object.hash(base, speck, grainStrength, washedBase);
+}
+
+/// One soft glow on the page: a radial gradient from [color] at [alignment]
+/// fading to nothing at [radius] times the shorter side.
+@immutable
+class LpgBackdropWash {
+  const LpgBackdropWash({
+    required this.alignment,
+    required this.radius,
+    required this.color,
+  });
+
+  final Alignment alignment;
+  final double radius;
+  final Color color;
 }
 
 class _BackdropPainter extends CustomPainter {
-  _BackdropPainter({required this.look, required this.grain});
+  _BackdropPainter({
+    required this.look,
+    required this.grain,
+    required this.haze,
+  });
 
   final LpgBackdropLook look;
   final ui.Image? grain;
+  final ui.Image? haze;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     canvas.drawRect(rect, Paint()..color = look.base);
 
+    // Soft glows: plain gradients, painted once into this cached layer.
+    for (final wash in look.washes) {
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = RadialGradient(
+            center: wash.alignment,
+            radius: wash.radius,
+            colors: [wash.color, wash.color.withValues(alpha: 0)],
+          ).createShader(rect),
+      );
+    }
+
+    // The softened grain first, then the sharp grain on top.
+    final mist = haze;
+    if (mist != null) LpgGrain.paintHaze(canvas, rect, mist, look.hazeGrain);
     final tile = grain;
     if (tile == null) return;
-    LpgGrain.paint(canvas, rect, tile, look.grainStrength);
+    LpgGrain.paint(canvas, rect, tile, look.sharpGrain);
   }
 
   @override
   bool shouldRepaint(_BackdropPainter old) =>
-      old.look != look || old.grain != grain;
+      old.look != look || old.grain != grain || old.haze != haze;
 }
 
 /// Wraps [inner] so the page is drawn under the screen it shows. Screens'

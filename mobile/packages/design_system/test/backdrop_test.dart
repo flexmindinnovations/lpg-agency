@@ -31,7 +31,30 @@ void main() {
           LpgBackdropLook.contrast(colors.textPrimary, speckled),
           greaterThanOrEqualTo(7),
         );
+
+        // Where the soft glows overlap, with the worst speck on top.
+        final glowing = colors.tint(
+          look.speck,
+          look.grainStrength,
+          over: look.washedBase,
+        );
+        expect(
+          LpgBackdropLook.contrast(text, glowing),
+          greaterThanOrEqualTo(4.5),
+          reason: 'text on the glows',
+        );
       });
+
+      test(
+        '${variant.name}: the sharp and soft grain add up to the budget',
+        () {
+          final look = LpgBackdropLook.of(LpgTheme.colorsFor(variant));
+          expect(
+            look.sharpGrain + look.hazeGrain,
+            closeTo(look.grainStrength, 1e-9),
+          );
+        },
+      );
     }
 
     test('every theme has room to show the grain', () {
