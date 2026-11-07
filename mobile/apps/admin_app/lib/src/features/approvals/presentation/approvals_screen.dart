@@ -97,6 +97,7 @@ class _ApprovalsScreenState extends ConsumerState<ApprovalsScreen> {
                                 denominations: item.denominations,
                                 varianceReason: item.varianceReason,
                                 upiExpected: item.upiExpected,
+                                collections: item.collections,
                               ),
                             ),
                           ),

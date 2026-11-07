@@ -21,6 +21,7 @@ from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.cash_handover import (
     CashBookCollectionResponse,
     CashBookResponse,
+    CashHandoverCollectionResponse,
     CashHandoverRegisterEntryResponse,
     CashHandoverResponse,
     CashHandoverReviewResponse,
@@ -287,6 +288,16 @@ def _register_entry_to_response(
         denominations=handover.denominations,
         variance_reason=handover.variance_reason,
         upi_expected=handover.upi_expected,
+        collections=[
+            CashHandoverCollectionResponse(
+                order_id=c.order_id,
+                order_number=c.order_number,
+                customer_id=c.customer_id,
+                customer_name=c.customer_name,
+                amount=c.amount,
+            )
+            for c in entry.collections
+        ],
         review_status=review.outcome if review is not None else "pending",
         review=(
             CashHandoverReviewResponse(

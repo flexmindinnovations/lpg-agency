@@ -18,6 +18,7 @@ class CashHandoverReviewScreen extends ConsumerStatefulWidget {
     this.denominations,
     this.varianceReason,
     this.upiExpected,
+    this.collections = const [],
   });
 
   final String cashHandoverId;
@@ -34,6 +35,9 @@ class CashHandoverReviewScreen extends ConsumerStatefulWidget {
   /// UPI the driver collected on the route; paid straight to the agency, so
   /// it is not part of the cash to hand over.
   final double? upiExpected;
+
+  /// The cash deliveries on the route; customer and order open their details.
+  final List<CashHandoverCollection> collections;
 
   @override
   ConsumerState<CashHandoverReviewScreen> createState() =>
@@ -232,6 +236,54 @@ class _CashHandoverReviewScreenState
                   ),
                 ),
               ],
+              if (widget.collections.isNotEmpty) ...[
+                const SizedBox(height: LpgSpacing.md),
+                LpgCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LpgSectionHeader.compact(
+                        title: 'Cash collected (${widget.collections.length})',
+                      ),
+                      const SizedBox(height: LpgSpacing.sm),
+                      for (final c in widget.collections)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _LinkText(
+                                      label: c.customerName,
+                                      onTap: () => context.push(
+                                        '/customers/${c.customerId}',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    _LinkText(
+                                      label:
+                                          c.orderNumber ??
+                                          'Order ${c.orderId.substring(0, 8)}',
+                                      onTap: () =>
+                                          context.push('/orders/${c.orderId}'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                LpgFormat.currency(c.amount),
+                                style: text.titleSmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: LpgSpacing.lg),
               LpgTextField(
                 controller: _noteController,
@@ -262,6 +314,30 @@ class _CashHandoverReviewScreenState
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LinkText extends StatelessWidget {
+  const _LinkText({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Text(
+          label,
+          style: context.lpgText.bodyMedium?.copyWith(
+            color: context.lpgColors.actionPrimary,
+            decoration: TextDecoration.underline,
           ),
         ),
       ),

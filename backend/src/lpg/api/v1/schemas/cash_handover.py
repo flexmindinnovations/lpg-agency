@@ -71,6 +71,17 @@ class CashHandoverReviewResponse(BaseModel):
     reviewed_at: datetime
 
 
+class CashHandoverCollectionResponse(BaseModel):
+    """A cash delivery on the route: lets the reviewer open the order and
+    the customer to confirm the cash."""
+
+    order_id: uuid.UUID
+    order_number: str | None = None
+    customer_id: uuid.UUID
+    customer_name: str
+    amount: Decimal
+
+
 class CashHandoverRegisterEntryResponse(BaseModel):
     """One row of the accountant's cash-handover register (DA-33)."""
 
@@ -94,6 +105,7 @@ class CashHandoverRegisterEntryResponse(BaseModel):
     #: `pending` until the office reviews it, then `accepted` or `disputed`.
     review_status: str
     review: CashHandoverReviewResponse | None = None
+    collections: list[CashHandoverCollectionResponse] = []
 
 
 class ReviewCashHandoverRequest(BaseModel):
