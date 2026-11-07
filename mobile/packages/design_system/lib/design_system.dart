@@ -18,6 +18,7 @@ export 'src/theme_engine.dart';
 export 'src/tone.dart';
 export 'src/icons.dart';
 export 'src/motion.dart';
+export 'src/haptics.dart';
 export 'src/format.dart';
 export 'src/i18n/lpg_locale.dart';
 export 'src/i18n/lpg_strings_delegate.dart';

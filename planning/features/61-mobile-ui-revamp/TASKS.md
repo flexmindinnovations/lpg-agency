@@ -37,7 +37,10 @@ Epic 11 (device control) was built first and is merged into this branch; release
   - [x] 4.3b `LpgHeroStats` and `LpgMetricTile` rolled out to Customer Home (hero counts) and Driver Today (hero strip, large "Open this stop" button, cash in hand tile); parts of 7.2 and 8.1
   - [x] 4.3c lists, status chips, action cards, section headers: Customer Home recent orders use the shared grouped list with a status chip per row; metric-tile captions use the tone only when the tile needs attention; new `LpgActionCard` (tonal card with the attention bar, icon, title, message, action label) replaces the hand-built live-order card (Customer) and van-load / cash-pending cards (Driver); section headers are bolder and "See all" carries a chevron. The timeline was reviewed against the design direction and left as it is.
   - [ ] 4.3d small charts (a sparkline needs a data source, e.g. a daily trend from the overview API; not built)
-- [ ] 4.4 Motion kit: page transitions, count-up, press feedback, haptics, all with reduce-motion versions (1)
+- [~] 4.4 Motion kit: page transitions, count-up, press feedback, haptics, all with reduce-motion versions (1)
+  - [x] Already in place before this work and checked: count-up, spring press feedback, staggered fade-slide-in, skeleton shimmer, bounded pulse, platform page transitions (instant under reduce-motion)
+  - [x] `LpgHaptics` (selection / success / warning) added, used by the quantity stepper, choice chips, bottom tabs and the Driver's delivery-error buzz
+  - [ ] Shared-axis page transitions as the direction asks: Flutter's core has none, so this needs the `animations` package (a new dependency, owner's call); until then pages use the platform transitions
 - [ ] 4.5 Component gallery app, golden tests, accessibility checks (2)
 
 ## E5 Domain icons, illustrations, animation (8 days)

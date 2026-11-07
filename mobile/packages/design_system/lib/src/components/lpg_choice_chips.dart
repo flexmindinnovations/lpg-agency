@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../haptics.dart';
 import '../layout.dart';
 import '../theme.dart';
 
@@ -63,6 +64,7 @@ class LpgChoiceChips<T> extends StatelessWidget {
               width: colors.isHighContrast ? 2 : 1,
             ),
             onSelected: (isSelected) {
+              LpgHaptics.selection();
               if (isSelected) {
                 onSelected(entry.key);
               } else if (allowDeselect) {

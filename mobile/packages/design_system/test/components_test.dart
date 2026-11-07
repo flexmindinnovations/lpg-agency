@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -978,6 +979,62 @@ void main() {
 
       expect(await bars(attention: true), 1);
       expect(await bars(attention: false), 0);
+    });
+  });
+
+  group('LpgHaptics', () {
+    testWidgets('a stepper tap ticks once and still reports the change', (
+      tester,
+    ) async {
+      final calls = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            calls.add(call.arguments as String);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      int? changed;
+      await tester.pumpWidget(
+        _wrap(LpgQuantityStepper(value: 1, onChanged: (v) => changed = v)),
+      );
+
+      await tester.tap(find.byTooltip('Increase'));
+      await tester.pump();
+
+      expect(changed, 2);
+      expect(calls, ['HapticFeedbackType.selectionClick']);
+    });
+
+    test('names map to distinct strengths', () async {
+      final calls = <String>[];
+      TestWidgetsFlutterBinding.ensureInitialized();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'HapticFeedback.vibrate') {
+              calls.add(call.arguments as String);
+            }
+            return null;
+          });
+      await LpgHaptics.selection();
+      await LpgHaptics.success();
+      await LpgHaptics.warning();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+
+      expect(calls, [
+        'HapticFeedbackType.selectionClick',
+        'HapticFeedbackType.mediumImpact',
+        'HapticFeedbackType.heavyImpact',
+      ]);
     });
   });
 
