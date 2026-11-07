@@ -4,6 +4,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../i18n/admin_strings.dart';
 import '../../../providers.dart';
 import '../data/profile_provider.dart';
 
@@ -97,7 +98,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
           ),
           const SizedBox(height: LpgSpacing.md),
           LpgTextField(
-            label: 'Name',
+            label: context.strings.profile.name,
             controller: _name,
             prefixIcon: LpgIcons.profile,
             maxLength: 120,
@@ -106,11 +107,11 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
           ),
           const SizedBox(height: LpgSpacing.md),
           LpgTextField(
-            label: 'Contact phone',
+            label: context.strings.profile.contactPhone,
             controller: _phone,
             prefixIcon: LpgIcons.phone,
             keyboardType: TextInputType.phone,
-            helperText: 'For colleagues to reach you. Optional.',
+            helperText: context.strings.profile.phoneHelp,
             enabled: !_busy,
           ),
         ],

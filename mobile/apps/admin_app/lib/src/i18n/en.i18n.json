@@ -1,5 +1,19 @@
 {
   "app": {
     "title": "LPG Agency Admin"
+  },
+  "dashboard": {
+    "hero": {
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "toApprove": "To approve"
+    }
+  },
+  "profile": {
+    "editTitle": "Edit profile",
+    "updated": "Profile updated.",
+    "contactPhone": "Contact phone",
+    "name": "Name",
+    "phoneHelp": "For colleagues to reach you. Optional."
   }
 }

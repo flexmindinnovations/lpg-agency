@@ -87,7 +87,9 @@ class LpgEmptyState extends StatelessWidget {
                 Text(
                   footnote!,
                   textAlign: TextAlign.center,
-                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                  // Secondary text is only 3.85:1 on the page background,
+                  // which is too low for 12 sp text.
+                  style: text.bodySmall?.copyWith(color: colors.textPrimary),
                 ),
               ],
               if (actionLabel != null && onAction != null) ...[

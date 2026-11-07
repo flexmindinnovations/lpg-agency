@@ -36,6 +36,8 @@ class AdminStrings with BaseTranslations<AdminLocale, AdminStrings> {
 
 	// Translations
 	late final AdminStrings$app$en app = AdminStrings$app$en.internal(_root);
+	late final AdminStrings$dashboard$en dashboard = AdminStrings$dashboard$en.internal(_root);
+	late final AdminStrings$profile$en profile = AdminStrings$profile$en.internal(_root);
 }
 
 // Path: app
@@ -50,6 +52,58 @@ class AdminStrings$app$en {
 	String get title => 'LPG Agency Admin';
 }
 
+// Path: dashboard
+class AdminStrings$dashboard$en {
+	AdminStrings$dashboard$en.internal(this._root);
+
+	final AdminStrings _root; // ignore: unused_field
+
+	// Translations
+	late final AdminStrings$dashboard$hero$en hero = AdminStrings$dashboard$hero$en.internal(_root);
+}
+
+// Path: profile
+class AdminStrings$profile$en {
+	AdminStrings$profile$en.internal(this._root);
+
+	final AdminStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Edit profile'
+	String get editTitle => 'Edit profile';
+
+	/// en: 'Profile updated.'
+	String get updated => 'Profile updated.';
+
+	/// en: 'Contact phone'
+	String get contactPhone => 'Contact phone';
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'For colleagues to reach you. Optional.'
+	String get phoneHelp => 'For colleagues to reach you. Optional.';
+}
+
+// Path: dashboard.hero
+class AdminStrings$dashboard$hero$en {
+	AdminStrings$dashboard$hero$en.internal(this._root);
+
+	final AdminStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Delivered'
+	String get delivered => 'Delivered';
+
+	/// en: 'Failed'
+	String get failed => 'Failed';
+
+	/// en: 'To approve'
+	String get toApprove => 'To approve';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -59,6 +113,14 @@ extension on AdminStrings {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
 			'app.title' => 'LPG Agency Admin',
+			'dashboard.hero.delivered' => 'Delivered',
+			'dashboard.hero.failed' => 'Failed',
+			'dashboard.hero.toApprove' => 'To approve',
+			'profile.editTitle' => 'Edit profile',
+			'profile.updated' => 'Profile updated.',
+			'profile.contactPhone' => 'Contact phone',
+			'profile.name' => 'Name',
+			'profile.phoneHelp' => 'For colleagues to reach you. Optional.',
 			_ => null,
 		};
 	}
