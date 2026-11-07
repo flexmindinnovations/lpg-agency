@@ -45,7 +45,7 @@ class LpgActionCard extends StatelessWidget {
       tone: tone,
       onTap: onTap,
       padding: EdgeInsets.zero,
-      semanticLabel: '$title. $message',
+      semanticLabel: [title, message].join('. '),
       child: Stack(
         children: [
           Positioned.fill(
