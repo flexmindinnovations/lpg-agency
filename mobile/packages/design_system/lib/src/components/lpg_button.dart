@@ -20,6 +20,19 @@ enum LpgButtonVariant { primary, secondary, text, tonal, destructive }
 /// one-handed screen is built around (the Driver's "Open this stop").
 enum LpgButtonSize { regular, large }
 
+/// Makes every [LpgButton] below it fill the width it is given, as if each had
+/// `expand: true`. Used by `LpgActionRow.equal`, which hands each button an
+/// equal share of a row (or the full width when it stacks).
+class LpgButtonExpansion extends InheritedWidget {
+  const LpgButtonExpansion({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LpgButtonExpansion>() != null;
+
+  @override
+  bool updateShouldNotify(LpgButtonExpansion old) => false;
+}
+
 /// The app's button. Colour carries the hierarchy, and press feedback is a
 /// real spring-physics scale-down ([LpgMotion.spatialSpring]) rather than a
 /// shadow change. `text` and high contrast fall back to the native Material
@@ -79,6 +92,9 @@ class _LpgButtonState extends State<LpgButton>
       SpringSimulation(LpgMotion.spatialSpring, _controller.value, target, 0),
     );
   }
+
+  bool _expands(BuildContext context) =>
+      widget.expand || LpgButtonExpansion.of(context);
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +179,7 @@ class _LpgButtonState extends State<LpgButton>
       ),
     );
 
-    final sized = widget.expand
+    final sized = _expands(context)
         ? SizedBox(width: double.infinity, child: button)
         : button;
     // Keyboard focus draws a 2 px ring in the focus colour, set a little off
@@ -276,7 +292,7 @@ class _LpgButtonState extends State<LpgButton>
       LpgButtonVariant.text => TextButton(onPressed: onPressed, child: child),
     };
 
-    return widget.expand
+    return _expands(context)
         ? SizedBox(width: double.infinity, child: button)
         : button;
   }

@@ -18,7 +18,7 @@ Defines semantic color palettes across Light, Dark, and High Contrast themes, te
 | Token | Value (approx.) | Contrast Notes |
 |---|---|---|
 | color-text-primary | near-black (gray-900) | 15:1+ on white surface |
-| color-text-secondary | mid-gray (gray-500) | 4.5:1 minimum on white |
+| color-text-secondary | dark-gray (gray-600), 7.6:1 on white | 4.5:1 minimum on white |
 | color-surface-base | white | — |
 | color-action-primary | gasBlue-800 (#162b66) | 10.15:1 against white |
 | color-highlight-background / color-highlight-color | flameOrange-100 (#ffe6d3) / gasBlue-900 (#0b173c) | 10.46:1 — active/selected states (e.g. the active sidebar item), never a default surface |

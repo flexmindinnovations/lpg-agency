@@ -197,6 +197,63 @@ void main() {
     expect(rights[2], rights[0]);
   });
 
+  testWidgets('a row with no chevron can keep its space, so the trailing '
+      'icons of a mixed list line up', (tester) async {
+    const icon = Icon(LpgIcons.success);
+    await tester.pumpWidget(
+      _wrap(
+        Column(
+          children: [
+            LpgListTile(
+              title: 'Opens',
+              trailing: icon,
+              showChevron: true,
+              onTap: () {},
+            ),
+            const LpgListTile(
+              title: 'Does not open',
+              trailing: icon,
+              reserveChevronSpace: true,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final icons = find.byIcon(LpgIcons.success);
+    expect(
+      tester.getTopRight(icons.at(1)).dx,
+      tester.getTopRight(icons.at(0)).dx,
+    );
+  });
+
+  testWidgets('a grouped list keeps trailing content in line when only some '
+      'rows have a chevron', (tester) async {
+    const icon = Icon(LpgIcons.success);
+    await tester.pumpWidget(
+      _wrap(
+        LpgGroupedList(
+          children: [
+            LpgListTile(
+              title: 'Opens',
+              trailing: icon,
+              showChevron: true,
+              onTap: () {},
+            ),
+            const LpgListTile(title: 'Does not open', trailing: icon),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final icons = find.byIcon(LpgIcons.success);
+    expect(
+      tester.getTopRight(icons.at(1)).dx,
+      tester.getTopRight(icons.at(0)).dx,
+    );
+  });
+
   testWidgets('LpgListTile renders title, subtitle and trailing', (
     tester,
   ) async {
@@ -671,9 +728,9 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(LpgNavigationBar), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
-    await tester.tap(find.text('Alerts'));
+    await tester.tap(find.byTooltip('Alerts, 2 new'));
     expect(selected, 1);
   });
 
@@ -726,7 +783,7 @@ void main() {
 
     testWidgets('uses a bottom bar on a phone', (tester) async {
       await pumpAt(tester, const Size(390, 844));
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(LpgNavigationBar), findsOneWidget);
       expect(find.byType(NavigationRail), findsNothing);
       expect(tester.getSize(find.byKey(const Key('body'))).width, 390);
     });
@@ -736,7 +793,7 @@ void main() {
     ) async {
       await pumpAt(tester, const Size(820, 1180));
       expect(find.byType(NavigationRail), findsOneWidget);
-      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byType(LpgNavigationBar), findsNothing);
       expect(
         tester.getSize(find.byKey(const Key('body'))).width,
         lessThanOrEqualTo(LpgBreakpoints.contentMaxWidth),
@@ -1027,8 +1084,10 @@ void main() {
       expect(calm, isNot(urgent));
     });
 
-    testWidgets('draws the attention bar only when asked', (tester) async {
-      Future<int> bars({required bool attention}) async {
+    testWidgets('has no bar down its left edge, attention or not', (
+      tester,
+    ) async {
+      for (final attention in [true, false]) {
         await tester.pumpWidget(
           _wrap(
             LpgMetricTile(
@@ -1039,19 +1098,14 @@ void main() {
             ),
           ),
         );
-        return find
-            .byWidgetPredicate(
-              (w) =>
-                  w is SizedBox &&
-                  w.width == LpgMetricTile.railWidth &&
-                  w.child is ColoredBox,
-            )
-            .evaluate()
-            .length;
-      }
 
-      expect(await bars(attention: true), 1);
-      expect(await bars(attention: false), 0);
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is SizedBox && w.width == 4 && w.child is ColoredBox,
+          ),
+          findsNothing,
+        );
+      }
     });
   });
 
@@ -1168,6 +1222,57 @@ void main() {
       expect(last.top, greaterThan(first.bottom));
       expect(last.right, tester.getTopRight(find.byType(LpgActionRow)).dx);
       expect(first.right, last.right);
+    });
+
+    // The visible button, not the widget around it: a button's own box is
+    // what has to be an equal share.
+    final shown = find.descendant(
+      of: find.byType(LpgButton),
+      matching: find.byType(Material),
+    );
+
+    Future<void> pumpEqual(WidgetTester tester, {double textScale = 1.0}) =>
+        tester.pumpWidget(
+          _wrap(
+            MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+              child: SizedBox(
+                width: 400,
+                child: LpgActionRow.equal(
+                  children: [
+                    LpgButton(label: 'Dispute', onPressed: () {}),
+                    LpgButton(label: 'Accept & Verify', onPressed: () {}),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('equal: the buttons share the row in equal halves', (
+      tester,
+    ) async {
+      await pumpEqual(tester);
+
+      final first = tester.getRect(shown.first);
+      final last = tester.getRect(shown.last);
+      expect(first.width, last.width);
+      expect(first.left, tester.getTopLeft(find.byType(LpgActionRow)).dx);
+      expect(last.right, tester.getTopRight(find.byType(LpgActionRow)).dx);
+      expect(last.left - first.right, LpgActionRow.gap);
+      expect(first.top, last.top);
+    });
+
+    testWidgets('equal: at large text the buttons stack, each full width', (
+      tester,
+    ) async {
+      await pumpEqual(tester, textScale: 2.0);
+
+      final first = tester.getRect(shown.first);
+      final last = tester.getRect(shown.last);
+      expect(first.width, 400);
+      expect(last.width, 400);
+      expect(last.top - first.bottom, LpgActionRow.gap);
     });
   });
 
@@ -1447,6 +1552,66 @@ void main() {
       await tester.pump();
       expect(find.text('LPG Agency'), findsOneWidget);
       expect(tester.hasRunningAnimations, isFalse);
+    });
+  });
+
+  group('LpgProgressBar', () {
+    testWidgets('the filled part stands out from the track by 3:1 or more', (
+      tester,
+    ) async {
+      for (final v in LpgThemeVariant.values) {
+        final c = LpgTheme.colorsFor(v);
+        final track = c.tint(c.textSecondary, 0.25, over: c.card);
+
+        expect(
+          LpgBackdropLook.contrast(c.actionPrimary, track),
+          greaterThanOrEqualTo(3),
+          reason: '$v',
+        );
+      }
+    });
+
+    testWidgets('reports its progress to a screen reader', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LpgTheme.build(LpgThemeVariant.light),
+          home: const Scaffold(
+            body: LpgProgressBar(value: 0.5, semanticsLabel: 'Trip progress'),
+          ),
+        ),
+      );
+
+      expect(find.bySemanticsLabel('Trip progress'), findsOneWidget);
+      semantics.dispose();
+    });
+  });
+
+  group('section headings', () {
+    testWidgets('a label is bold capitals in the main text colour', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(const LpgSectionLabel('Godown and papers')),
+      );
+
+      final text = tester.widget<Text>(find.text('GODOWN AND PAPERS'));
+      final colors = LpgTheme.colorsFor(LpgThemeVariant.light);
+      expect(text.style?.color, colors.textPrimary);
+      expect(text.style?.fontWeight, FontWeight.w800);
+    });
+
+    testWidgets('a header is still announced as a heading, once', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(_wrap(const LpgSectionHeader(title: 'Recent')));
+
+      expect(
+        tester.getSemantics(find.text('Recent')),
+        matchesSemantics(label: 'Recent', isHeader: true),
+      );
+      semantics.dispose();
     });
   });
 }

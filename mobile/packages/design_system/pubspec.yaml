@@ -44,6 +44,8 @@ flutter:
   # assets/illustrations/README.md).
   assets:
     - assets/illustrations/
+    # The grain tile behind every page (tool/make_paper_grain.py makes it).
+    - assets/textures/
   # Inter is bundled rather than fetched at runtime: no network request on
   # first launch, and identical metrics on every device. Apps reference it
   # through `LpgTheme`, which sets `fontFamily: 'packages/design_system/Inter'`.

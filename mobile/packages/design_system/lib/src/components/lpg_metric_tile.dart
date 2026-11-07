@@ -12,9 +12,9 @@ import 'lpg_illustration.dart';
 /// tabular numerals so columns of tiles line up, a label, and an optional
 /// caption in the tile's tone ("4 to review").
 ///
-/// When [attention] is set, a solid bar in the tone runs down the left edge
-/// and the caption takes the tone, so a tile that needs the owner stands out
-/// without relying on colour alone: the caption says why. Otherwise the
+/// When [attention] is set, the caption takes the tone, so a tile that needs
+/// the owner stands out without relying on colour alone: the caption says
+/// why. Otherwise the
 /// caption stays in the secondary text colour, so it never reads as a link.
 class LpgMetricTile extends StatelessWidget {
   const LpgMetricTile({
@@ -37,9 +37,8 @@ class LpgMetricTile extends StatelessWidget {
   /// tile's tone behind the figure (bottom right). Purely decorative: it
   /// never changes what the tile says or where its content sits.
   ///
-  /// The label and caption then use the primary text colour: the secondary
-  /// one only just clears 4.5:1 on a plain card, so it cannot sit over any
-  /// tint.
+  /// The label and caption then use the primary text colour, which keeps
+  /// the most room over the strongest tint of the picture.
   final LpgIllustration? illustration;
 
   /// A smaller line under the label ("3 invoices").
@@ -49,9 +48,6 @@ class LpgMetricTile extends StatelessWidget {
   /// Makes the tile tappable and shows a chevron.
   final VoidCallback? onTap;
   final bool attention;
-
-  /// Width of the attention bar.
-  static const double railWidth = 4;
 
   @override
   Widget build(BuildContext context) {
@@ -85,19 +81,7 @@ class LpgMetricTile extends StatelessWidget {
                   tone: tone,
                 ),
               ),
-            if (attention)
-              Positioned.fill(
-                right: null,
-                child: ExcludeSemantics(
-                  child: SizedBox(
-                    width: railWidth,
-                    child: ColoredBox(color: railColor),
-                  ),
-                ),
-              ),
             Padding(
-              // The bar sits in the left padding, so tiles line up whether or
-              // not they carry one.
               padding: const EdgeInsets.all(LpgSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

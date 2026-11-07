@@ -112,6 +112,11 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
             ),
+            const SizedBox(height: LpgSpacing.md),
+            LpgThemeModePicker(
+              controller: ref.read(lpgThemeModeControllerProvider),
+            ),
+            const SizedBox(height: LpgSpacing.md),
             const LpgListTile(
               title: 'App Version',
               subtitle: '1.0.0+1 (Admin Build)',

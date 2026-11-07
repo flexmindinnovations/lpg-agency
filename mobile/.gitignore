@@ -1,2 +1,8 @@
 # Per-package Dart DevTools state, regenerated on demand by the tooling.
 devtools_options.yaml
+
+# Gradle's Kotlin session cache, written next to the Android project on build.
+.kotlin/
+
+# Flutter writes the diff images of a failing golden test here.
+**/test/failures/

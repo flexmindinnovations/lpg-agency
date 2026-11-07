@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../glass.dart';
 import '../icons.dart';
 import '../layout.dart';
+import '../surface.dart';
 import '../theme.dart';
 import '../tone.dart';
 import 'lpg_button.dart';
@@ -52,8 +54,9 @@ abstract final class LpgFeedback {
       );
   }
 
-  /// A modal bottom sheet with the theme's drag handle, an optional title,
-  /// and keyboard-aware padding.
+  /// A modal bottom sheet of frosted glass (the screen behind it, dimmed, is
+  /// blurred through it), with a grab handle, an optional title, and
+  /// keyboard-aware padding. High contrast gets a solid sheet.
   static Future<T?> showSheet<T>(
     BuildContext context, {
     required WidgetBuilder builder,
@@ -61,64 +64,75 @@ abstract final class LpgFeedback {
     String? subtitle,
     bool isScrollControlled = true,
   }) {
+    const top = BorderRadius.vertical(top: Radius.circular(LpgRadius.xxl));
     return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,
       useSafeArea: true,
+      // The glass below draws its own fill, shape and handle.
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      showDragHandle: false,
       // Centred, phone-ish width on tablets instead of a full-width slab.
       constraints: const BoxConstraints(maxWidth: 560),
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          left: LpgSpacing.mdl,
-          right: LpgSpacing.mdl,
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + LpgSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (title != null) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Semantics(
-                          header: true,
-                          child: Text(
-                            title,
-                            style: sheetContext.lpgText.titleLarge,
-                          ),
-                        ),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: LpgSpacing.xs),
-                          Text(
-                            subtitle,
-                            style: sheetContext.lpgText.bodyMedium?.copyWith(
-                              color: sheetContext.lpgColors.textSecondary,
+      builder: (sheetContext) => LpgGlass(
+        level: LpgSurfaceLevel.sheet,
+        radius: top,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: LpgSpacing.mdl,
+            right: LpgSpacing.mdl,
+            bottom:
+                MediaQuery.viewInsetsOf(sheetContext).bottom + LpgSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const LpgSheetHandle(),
+              if (title != null) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Semantics(
+                            header: true,
+                            child: Text(
+                              title,
+                              style: sheetContext.lpgText.titleLarge,
                             ),
                           ),
+                          if (subtitle != null) ...[
+                            const SizedBox(height: LpgSpacing.xs),
+                            Text(
+                              subtitle,
+                              style: sheetContext.lpgText.bodyMedium?.copyWith(
+                                color: sheetContext.lpgColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  // A visible way out, for people who do not discover the
-                  // drag handle or a tap on the scrim.
-                  IconButton(
-                    tooltip: MaterialLocalizations.of(
-                      sheetContext,
-                    ).closeButtonTooltip,
-                    onPressed: () => Navigator.of(sheetContext).maybePop(),
-                    icon: const Icon(LpgIcons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: LpgSpacing.sm),
+                    // A visible way out, for people who do not discover the
+                    // drag handle or a tap on the scrim.
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(
+                        sheetContext,
+                      ).closeButtonTooltip,
+                      onPressed: () => Navigator.of(sheetContext).maybePop(),
+                      icon: const Icon(LpgIcons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: LpgSpacing.sm),
+              ],
+              Flexible(child: builder(sheetContext)),
             ],
-            Flexible(child: builder(sheetContext)),
-          ],
+          ),
         ),
       ),
     );

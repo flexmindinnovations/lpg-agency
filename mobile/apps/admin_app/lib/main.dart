@@ -10,6 +10,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_storage/local_storage.dart';
 import 'package:realtime/realtime.dart';
 
 import 'src/auth_provider.dart';
@@ -111,6 +112,15 @@ void main() async {
     // Best effort: nothing to show the user for this failure.
   }
 
+  // How the app looks (follow the phone, light or dark) is a per-device
+  // choice kept outside the per-session tree below, so signing out does not
+  // change it.
+  const preferences = SecureValueStore();
+  final themeMode = await LpgThemeModeController.load(
+    read: () => preferences.read('ui.theme_mode'),
+    write: (value) => preferences.write('ui.theme_mode', value),
+  );
+
   runApp(
     // A new state tree whenever a signed-in session ends, so the next person
     // on this phone never sees the previous person's cached screens.
@@ -124,6 +134,7 @@ void main() async {
         // blip a second attempt clears (story 0.4).
         retry: quietRetry,
         overrides: [
+          lpgThemeModeControllerProvider.overrideWithValue(themeMode),
           authControllerProvider.overrideWithValue(authController),
           deviceControlProvider.overrideWithValue(deviceControl),
           apiClientProvider.overrideWithValue(apiClient),
@@ -246,7 +257,7 @@ class _AdminAppState extends ConsumerState<AdminApp> {
       darkTheme: _theme.dark,
       highContrastTheme: _theme.highContrast,
       highContrastDarkTheme: _theme.highContrast,
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(lpgThemeModeProvider),
       builder: _theme.builder,
       routerConfig: router,
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../components/components.dart';
+import '../glass.dart';
 import '../icons.dart';
 import '../layout.dart';
 import '../theme.dart';
@@ -52,6 +53,17 @@ final List<GalleryEntry> galleryEntries = [
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         LpgActionRow(
+          children: [
+            LpgButton(
+              label: 'Dispute',
+              variant: LpgButtonVariant.destructive,
+              onPressed: _noop,
+            ),
+            LpgButton(label: 'Accept & Verify', onPressed: _noop),
+          ],
+        ),
+        _gap,
+        LpgActionRow.equal(
           children: [
             LpgButton(
               label: 'Dispute',
@@ -251,6 +263,126 @@ final List<GalleryEntry> galleryEntries = [
           ),
         ],
       ],
+    );
+  }),
+  GalleryEntry('page_backdrop', (context) {
+    // The page behind every screen, with the text that has to stay readable
+    // on it: a heading, secondary text straight on the page, and cards.
+    final text = context.lpgText;
+    final colors = context.lpgColors;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 560),
+      child: LpgBackdrop(
+        child: Padding(
+          padding: const EdgeInsets.all(LpgSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Orders right now', style: text.titleLarge),
+              const SizedBox(height: LpgSpacing.xs),
+              Text(
+                'Live · pull down to refresh',
+                style: text.bodyMedium?.copyWith(color: colors.textSecondary),
+              ),
+              _gap,
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: LpgMetricTile(
+                      label: 'Out for delivery',
+                      value: '9',
+                      icon: LpgIcons.navigate,
+                      illustration: LpgIllustration.route,
+                    ),
+                  ),
+                  SizedBox(width: LpgSpacing.smd),
+                  Expanded(
+                    child: LpgMetricTile(
+                      label: 'Overdue',
+                      value: '₹35,916',
+                      icon: LpgIcons.clock,
+                      tone: LpgTone.danger,
+                      illustration: LpgIllustration.overdue,
+                    ),
+                  ),
+                ],
+              ),
+              _gap,
+              Text(
+                'Nothing else needs you today. Secondary text sits straight on '
+                'the page, so it has to stay readable here.',
+                style: text.bodyMedium?.copyWith(color: colors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }),
+  GalleryEntry('glass_surfaces', (context) {
+    // A frosted panel over loud content (dark and bright blocks, text): the
+    // content shows blurred through it and the panel's own text stays
+    // readable. Below it, a card on the page, which is see-through without a
+    // blur.
+    final text = context.lpgText;
+    final colors = context.lpgColors;
+    Widget block(Color color, double width) => Container(
+      width: width,
+      height: 28,
+      margin: const EdgeInsets.only(bottom: LpgSpacing.sm),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(LpgRadius.md),
+      ),
+    );
+    return LpgBackdrop(
+      child: Padding(
+        padding: const EdgeInsets.all(LpgSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Stack(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    block(colors.actionPrimary, 300),
+                    block(colors.statusDanger, 240),
+                    block(colors.statusSuccess, 320),
+                    block(colors.statusWarning, 200),
+                    block(colors.textPrimary, 280),
+                    block(colors.statusInfo, 340),
+                  ],
+                ),
+                Positioned(
+                  left: LpgSpacing.md,
+                  right: LpgSpacing.md,
+                  top: 36,
+                  child: LpgGlass(
+                    padding: const EdgeInsets.all(LpgSpacing.mdl),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Deliver order 1042', style: text.titleMedium),
+                        const SizedBox(height: LpgSpacing.xs),
+                        Text(
+                          'Frosted glass: the screen behind is blurred.',
+                          style: text.bodyMedium?.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            _gap,
+            const LpgCard(child: Text('A card on the page: see-through')),
+          ],
+        ),
+      ),
     );
   }),
   GalleryEntry('cards_and_tiles', (context) {

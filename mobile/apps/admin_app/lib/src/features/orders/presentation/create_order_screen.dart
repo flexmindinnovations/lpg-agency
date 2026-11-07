@@ -341,6 +341,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               const SizedBox(height: LpgSpacing.xl),
               LpgButton(
                 label: 'Book order',
+                expand: true,
                 isLoading: _submitting,
                 onPressed: _submitting ? null : _submit,
               ),

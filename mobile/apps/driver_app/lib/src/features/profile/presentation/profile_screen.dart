@@ -83,6 +83,10 @@ class ProfileScreen extends ConsumerWidget {
               issues: ref.watch(syncIssuesProvider).value?.length ?? 0,
             ),
           ),
+          const SizedBox(height: LpgSpacing.md),
+          LpgThemeModePicker(
+            controller: ref.read(lpgThemeModeControllerProvider),
+          ),
           const SizedBox(height: LpgSpacing.xl),
           LpgButton(
             label: 'Log Out',

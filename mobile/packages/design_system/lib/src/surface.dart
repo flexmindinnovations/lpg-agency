@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
+import 'glass.dart';
 import 'layout.dart';
 import 'theme.dart';
 
 /// The solid layers every surface belongs to, lowest to highest.
 ///
-/// Depth is made of **tone**, **soft shadow** and a **1 px hairline**, never of
-/// transparency or blur. Light themes step mostly by shadow (white cards on a
-/// faintly tinted canvas), dark themes by tone (each level a lighter solid),
-/// and high contrast by a 2 px border with no shadow.
+/// Depth is made of **tone**, **soft shadow** and a **1 px hairline**. Light
+/// themes step mostly by shadow (white cards on a faintly tinted canvas), dark
+/// themes by tone (each level a lighter fill), and high contrast by a 2 px
+/// border with no shadow.
+///
+/// Cards are frosted glass: slightly see-through and lightly blurred, with a
+/// fine grain, so the paper page shows softly through them (see `LpgGlassLook`); sheets are frosted glass (see `LpgGlass`) when they
+/// float over content and solid otherwise. Every other level, and every level
+/// in high contrast, is a solid fill.
 enum LpgSurfaceLevel {
   /// The page behind everything.
   canvas,
@@ -48,12 +54,13 @@ extension LpgSurfaceColors on LpgColors {
     }
     return isHighContrast
         ? BorderSide(color: borderStrong, width: 2)
-        : BorderSide(color: borderDefault);
+        : BorderSide(color: outline);
   }
 }
 
-/// A solid container drawn from the surface system: [level]'s fill, hairline
-/// and shadow, with the radius that level uses (cards 18 px, sheets 24 px).
+/// A container drawn from the surface system: [level]'s fill, hairline and
+/// shadow, with the radius that level uses (cards 18 px, sheets 24 px). A card
+/// is see-through (the page shows softly through it); other levels are solid.
 ///
 /// Use this instead of hand-building a `DecoratedBox` with a colour, so every
 /// custom surface follows the theme in all three variants.
@@ -87,6 +94,18 @@ class LpgSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     final shape = radius ?? radiusFor(level);
+    // A card is frosted glass: see-through, lightly blurred, with a fine
+    // grain. Its shadow is drawn outside its shape (see LpgGlass), because a
+    // shadow behind a see-through fill would show through it.
+    if (level == LpgSurfaceLevel.card && !colors.isHighContrast) {
+      return LpgGlass(
+        level: level,
+        radius: shape,
+        shadow: shadow,
+        padding: padding,
+        child: child,
+      );
+    }
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colors.surfaceFor(level),
