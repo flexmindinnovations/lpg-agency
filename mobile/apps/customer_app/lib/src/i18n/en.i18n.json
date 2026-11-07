@@ -1,5 +1,11 @@
 {
   "app": {
     "title": "LPG Agency"
+  },
+  "dashboard": {
+    "hero": {
+      "onTheWay": "On the way",
+      "ordersPlaced": "Orders placed"
+    }
   }
 }
