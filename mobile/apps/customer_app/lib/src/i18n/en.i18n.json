@@ -25,6 +25,7 @@
     }
   },
   "invoice": {
+    "title": "INVOICE",
     "billedTo": "Billed to",
     "order": "Order",
     "item": "Item",

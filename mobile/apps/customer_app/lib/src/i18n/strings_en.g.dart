@@ -93,6 +93,9 @@ class CustomerStrings$invoice$en {
 
 	// Translations
 
+	/// en: 'INVOICE'
+	String get title => 'INVOICE';
+
 	/// en: 'Billed to'
 	String get billedTo => 'Billed to';
 
@@ -216,6 +219,7 @@ extension on CustomerStrings {
 			'orders.search.hint' => 'Search by order number, status or date',
 			'orders.search.clear' => 'Clear search',
 			'orders.search.noMatch' => 'No orders match your search.',
+			'invoice.title' => 'INVOICE',
 			'invoice.billedTo' => 'Billed to',
 			'invoice.order' => 'Order',
 			'invoice.item' => 'Item',

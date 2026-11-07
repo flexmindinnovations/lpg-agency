@@ -144,7 +144,10 @@ Future<Uint8List> buildInvoicePdf(
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('INVOICE', style: ts(size: 24, bold: true, spacing: 1)),
+                pw.Text(
+                  s.invoice.title,
+                  style: ts(size: 24, bold: true, spacing: 1),
+                ),
                 pw.SizedBox(height: 2),
                 pw.Text(invoice.reference, style: ts(color: muted)),
               ],
