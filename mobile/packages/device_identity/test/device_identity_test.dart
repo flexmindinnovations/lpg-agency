@@ -45,48 +45,10 @@ void main() {
       });
     });
 
-    test('asks for a name until one is saved, suggesting the model', () async {
-      final storage = MemoryStorage();
-      final identity = await loadIdentity(storage: storage);
-
-      expect(identity.needsName, isTrue);
-      expect(identity.suggestedName, 'Redmi 12');
-      expect(identity.name, 'Redmi 12');
-
-      await identity.saveName('  Van 2 phone ');
-
-      expect(identity.needsName, isFalse);
-      expect(identity.name, 'Van 2 phone');
-      expect(storage.name, 'Van 2 phone');
-      expect((await loadIdentity(storage: storage)).needsName, isFalse);
-    });
-
-    test('does not save a blank name', () async {
+    test('the sign-in body carries the details and no name', () async {
       final identity = await loadIdentity();
 
-      await identity.saveName('   ');
-
-      expect(identity.needsName, isTrue);
-    });
-
-    test(
-      'falls back to a plain name when the phone reports no model',
-      () async {
-        final identity = await loadIdentity(
-          source: const FakeDetailsSource(DeviceDetails()),
-        );
-
-        expect(identity.suggestedName, 'This phone');
-      },
-    );
-
-    test('the sign-in body carries the details and the name', () async {
-      final identity = await loadIdentity(
-        storage: MemoryStorage(name: 'Van 2'),
-      );
-
       expect(identity.authBody, {
-        'name': 'Van 2',
         'manufacturer': 'Xiaomi',
         'model': 'Redmi 12',
         'os_version': 'Android 13',

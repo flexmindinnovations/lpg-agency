@@ -43,8 +43,19 @@ class DeviceAccessController extends ChangeNotifier {
 
   DeviceAccess _access = DeviceAccess.allowed;
   bool _checking = false;
+  bool _needsName = false;
+  String? _displayName;
 
   DeviceAccess get access => _access;
+
+  /// True when the agency has not seen this phone before and nobody has named
+  /// it yet — the app asks for a name once. A phone the agency already knows
+  /// (even after a reinstall) is never asked.
+  bool get needsName => _needsName;
+
+  /// The name the agency has for this phone (a generated `device_<code>`
+  /// until the user picks one), or `null` before the server has answered.
+  String? get displayName => _displayName;
 
   /// True while a [refresh] is running (the waiting screen shows progress).
   bool get isChecking => _checking;
@@ -83,11 +94,27 @@ class DeviceAccessController extends ChangeNotifier {
     }
   }
 
+  /// Gives this phone a name. Returns `null` when the agency accepted it, else
+  /// the sentence to show (for a name another phone already has, it includes
+  /// the name to try instead).
+  Future<String?> setName(String name) async {
+    final result = await api.setName(name);
+    String? problem;
+    result.when(
+      onSuccess: _apply,
+      onFailure: (failure) => problem = failure.message,
+    );
+    notifyListeners();
+    return problem;
+  }
+
   /// Back to "allowed" so the sign-in screen can try again; a refusal at
   /// sign-in puts the state straight back.
   void reset() => _set(DeviceAccess.allowed);
 
   void _apply(DeviceStatusReport report) {
+    _needsName = report.needsName;
+    _displayName = report.displayName ?? _displayName;
     if (!report.allowed) {
       switch (report.status) {
         case 'pending':

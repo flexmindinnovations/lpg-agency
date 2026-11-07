@@ -25,7 +25,12 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select, text
 
 from lpg.domain.license.license import License, LicenseFeatureOverride
-from lpg.domain.license.linked_device import DeviceDetails, DeviceStatus, LinkedDevice
+from lpg.domain.license.linked_device import (
+    DeviceDetails,
+    DeviceStatus,
+    LinkedDevice,
+    name_key,
+)
 from lpg.infrastructure.persistence.models.platform import (
     LicenseFeatureOverrideModel,
     LicenseModel,
@@ -240,6 +245,36 @@ class SqlAlchemyLinkedDeviceRepository:
         self._uow.register_aggregate(device)
         return device
 
+    async def get_by_hardware_ref(
+        self, tenant_id: uuid.UUID, app_type: str, hardware_ref: str
+    ) -> LinkedDevice | None:
+        result = await self._uow.session.execute(
+            select(LinkedDeviceModel).where(
+                LinkedDeviceModel.tenant_id == tenant_id,
+                LinkedDeviceModel.app_type == app_type,
+                LinkedDeviceModel.hardware_ref == hardware_ref,
+            )
+        )
+        row = result.scalars().first()
+        if row is None:
+            return None
+
+        device = self._to_domain(row)
+        self._uow.register_aggregate(device)
+        return device
+
+    async def active_names(
+        self, tenant_id: uuid.UUID, *, excluding: uuid.UUID | None = None
+    ) -> set[str]:
+        stmt = select(LinkedDeviceModel.display_name).where(
+            LinkedDeviceModel.tenant_id == tenant_id,
+            LinkedDeviceModel.status != DeviceStatus.REMOVED.value,
+        )
+        if excluding is not None:
+            stmt = stmt.where(LinkedDeviceModel.id != excluding)
+        result = await self._uow.session.execute(stmt)
+        return {name_key(name) for name in result.scalars().all()}
+
     async def list_for_tenant(
         self,
         tenant_id: uuid.UUID,
@@ -300,6 +335,9 @@ class SqlAlchemyLinkedDeviceRepository:
             raise LookupError(msg)
 
         _copy_to_row(device, row)
+        # Flushed now so a hardware link handed from one record to another is
+        # written in order and the unique index never sees both at once.
+        await self._uow.session.flush()
 
     @staticmethod
     def _to_domain(row: LinkedDeviceModel) -> LinkedDevice:
@@ -320,6 +358,7 @@ class SqlAlchemyLinkedDeviceRepository:
                 platform=row.platform,
             ),
             hardware_ref=row.hardware_ref,
+            name_confirmed=row.name_confirmed,
             asset_note=row.asset_note,
             last_user_id=row.last_user_id,
             last_user_name=row.last_user_name,
@@ -334,7 +373,9 @@ class SqlAlchemyLinkedDeviceRepository:
 def _copy_to_row(device: LinkedDevice, row: LinkedDeviceModel) -> None:
     """The columns that change over a device's life (identity columns are set
     once, at insert)."""
+    row.device_identifier = device.device_identifier
     row.display_name = device.display_name
+    row.name_confirmed = device.name_confirmed
     row.status = device.status.value
     row.manufacturer = device.details.manufacturer
     row.model = device.details.model

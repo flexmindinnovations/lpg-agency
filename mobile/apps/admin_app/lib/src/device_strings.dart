@@ -10,7 +10,8 @@ const adminDeviceStrings = DeviceStrings(
   nameTitle: 'Name this phone',
   nameIntro:
       'Your agency keeps a list of phones that use the Admin app. '
-      'Give this phone a name the owner will know.',
+      'This phone is new to your agency. Keep the suggested name or '
+      'type one the owner will know.',
   nameFieldLabel: 'Phone name',
   nameFieldHint: 'For example: Counter phone, Manager',
   nameWhy:

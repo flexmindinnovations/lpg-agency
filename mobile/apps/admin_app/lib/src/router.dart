@@ -87,7 +87,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: DeviceRoutes.name,
         builder: (context, state) => NameThisPhoneScreen(
           strings: adminDeviceStrings,
-          suggestedName: deviceControl.identity.suggestedName,
+          suggestedName: deviceControl.suggestedName,
           onSubmit: deviceControl.saveName,
         ),
       ),
@@ -95,7 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: DeviceRoutes.waiting,
         builder: (context, state) => WaitingForApprovalScreen(
           strings: adminDeviceStrings,
-          phoneName: deviceControl.identity.name,
+          phoneName: deviceControl.phoneName,
           controller: deviceControl.access,
           onSignOut: () => authController.logout(),
         ),

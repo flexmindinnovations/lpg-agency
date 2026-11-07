@@ -8,6 +8,7 @@ class DeviceStatusReport {
     required this.status,
     required this.allowed,
     this.displayName,
+    this.needsName = false,
   });
 
   factory DeviceStatusReport.fromJson(Map<String, dynamic> json) =>
@@ -16,6 +17,7 @@ class DeviceStatusReport {
         status: json['status'] as String?,
         allowed: json['allowed'] as bool? ?? true,
         displayName: json['display_name'] as String?,
+        needsName: json['needs_name'] as bool? ?? false,
       );
 
   /// The agency's mode: `off`, `observe` or `enforce`.
@@ -28,6 +30,10 @@ class DeviceStatusReport {
   /// Whether the agency lets this phone use the app right now.
   final bool allowed;
   final String? displayName;
+
+  /// True when the agency has not seen this phone before and nobody has named
+  /// it: the app asks for a name once. False for a phone already registered.
+  final bool needsName;
 }
 
 /// `GET /api/v1/devices/me` — the one call a waiting or blocked phone can
@@ -41,6 +47,23 @@ class DeviceApi {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/devices/me',
+      );
+      return Success(DeviceStatusReport.fromJson(response.data!));
+    } on DioException catch (error) {
+      return FailureResult(_failureFrom(error));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// `PUT /api/v1/devices/me/name` — names this phone. The server refuses a
+  /// name another phone in the agency already has (`DUPLICATE_DEVICE_NAME`)
+  /// and says which name to try instead in the message.
+  Future<Result<DeviceStatusReport>> setName(String name) async {
+    try {
+      final response = await _dio.put<Map<String, dynamic>>(
+        '/api/v1/devices/me/name',
+        data: {'name': name},
       );
       return Success(DeviceStatusReport.fromJson(response.data!));
     } on DioException catch (error) {

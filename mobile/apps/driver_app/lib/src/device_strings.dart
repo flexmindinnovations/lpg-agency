@@ -10,7 +10,8 @@ const driverDeviceStrings = DeviceStrings(
   nameTitle: 'Name this phone',
   nameIntro:
       'Your agency keeps a list of phones that use the Driver app. '
-      'Give this phone a name the office will know.',
+      'This phone is new to your agency. Keep the suggested name or '
+      'type one the office will know.',
   nameFieldLabel: 'Phone name',
   nameFieldHint: 'For example: Ramesh, Van 2',
   nameWhy:

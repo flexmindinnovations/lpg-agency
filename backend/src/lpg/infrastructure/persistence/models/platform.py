@@ -177,6 +177,7 @@ class LinkedDeviceModel(Base):
     app_version: Mapped[str | None] = mapped_column(String(50))
     platform: Mapped[str | None] = mapped_column(String(20))
     hardware_ref: Mapped[str | None] = mapped_column(String(64))
+    name_confirmed: Mapped[bool] = mapped_column(Boolean(), server_default=text("true"))
     asset_note: Mapped[str | None] = mapped_column(String(64))
     last_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid())
     last_user_name: Mapped[str | None] = mapped_column(String(200))
