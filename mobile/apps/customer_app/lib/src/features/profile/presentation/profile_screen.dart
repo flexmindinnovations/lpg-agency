@@ -186,7 +186,7 @@ class ProfileScreen extends ConsumerWidget {
                   label: 'Log Out',
                   icon: LpgIcons.logout,
                   onPressed: () => _logOut(context, ref),
-                  variant: LpgButtonVariant.secondary,
+                  variant: LpgButtonVariant.destructive,
                   expand: true,
                 ),
               ],

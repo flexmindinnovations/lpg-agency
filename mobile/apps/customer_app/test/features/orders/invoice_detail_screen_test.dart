@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:customer_app/src/features/orders/data/cylinder_types_provider.dart';
 import 'package:customer_app/src/features/orders/data/invoices_provider.dart';
 import 'package:customer_app/src/features/orders/presentation/invoice_detail_screen.dart';
+import 'package:customer_app/src/i18n/customer_strings.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,6 +53,7 @@ Widget _screen({
   ],
   child: MaterialApp(
     theme: LpgTheme.light,
+    localizationsDelegates: customerLocalizationsDelegates,
     home: const InvoiceDetailScreen(invoiceId: 'inv-abcd1234'),
   ),
 );

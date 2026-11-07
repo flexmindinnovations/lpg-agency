@@ -91,7 +91,7 @@ class ProfileScreen extends ConsumerWidget {
           LpgButton(
             label: 'Log Out',
             icon: LpgIcons.logout,
-            variant: LpgButtonVariant.secondary,
+            variant: LpgButtonVariant.destructive,
             expand: true,
             onPressed: () async {
               final confirmed = await LpgFeedback.confirm(
