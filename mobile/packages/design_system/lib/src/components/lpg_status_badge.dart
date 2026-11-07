@@ -68,12 +68,14 @@ class LpgStatusBadge extends StatelessWidget {
             ),
             const SizedBox(width: LpgSpacing.xs + 2),
           ],
-          Text(
-            label,
-            style: context.lpgText.labelSmall?.copyWith(
-              color: colors.isHighContrast ? color : colors.textPrimary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
+          Flexible(
+            child: Text(
+              label,
+              style: context.lpgText.labelSmall?.copyWith(
+                color: colors.isHighContrast ? color : colors.textPrimary,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
             ),
           ),
         ],
