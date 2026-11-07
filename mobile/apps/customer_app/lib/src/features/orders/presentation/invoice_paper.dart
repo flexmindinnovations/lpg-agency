@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../i18n/customer_strings.dart';
 import 'invoice_presentation.dart';
 
-/// The invoice drawn like a sheet of paper: white, softly shadowed, narrow
+/// The invoice drawn like a sheet of paper: white, hairline-bordered, narrow
 /// and centred, with a ruled item table and a totals block. It stays white in
 /// dark theme on purpose, as a real printout would.
 class InvoicePaper extends StatelessWidget {
@@ -54,13 +54,7 @@ class InvoicePaper extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(6),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33000000),
-                blurRadius: 16,
-                offset: Offset(0, 6),
-              ),
-            ],
+            border: Border.all(color: _rule),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
