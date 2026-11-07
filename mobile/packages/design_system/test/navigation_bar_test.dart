@@ -136,6 +136,45 @@ void main() {
     expect(tester.hasRunningAnimations, isFalse);
   });
 
+  testWidgets('there is one pill and it slides to the new tab', (tester) async {
+    _phone(tester);
+    final pill = find.byWidgetPredicate(
+      (w) =>
+          w is DecoratedBox &&
+          w.decoration is ShapeDecoration &&
+          (w.decoration as ShapeDecoration).shape is StadiumBorder &&
+          (w.decoration as ShapeDecoration).color ==
+              LpgTheme.colorsFor(LpgThemeVariant.light).actionPrimaryContainer,
+    );
+    Rect cell(String label) => tester.getRect(
+      find
+          .ancestor(
+            of: find.byTooltip(label),
+            matching: find.byType(Positioned),
+          )
+          .first,
+    );
+
+    await tester.pumpWidget(_bar(selected: 0));
+    expect(pill, findsOneWidget);
+    final start = tester.getRect(pill);
+    expect(start.left, closeTo(cell('Dashboard').left, 0.5));
+
+    await tester.pumpWidget(_bar(selected: 2));
+    await tester.pump(const Duration(milliseconds: 150));
+    // On the way: still one pill, between where it was and where it is going.
+    expect(pill, findsOneWidget);
+    final middle = tester.getRect(pill);
+    expect(middle.left, greaterThan(start.left));
+
+    await tester.pumpAndSettle();
+    final end = tester.getRect(pill);
+    expect(middle.left, lessThan(end.left));
+    // At rest it sits exactly under the active tab.
+    expect(end.left, closeTo(cell('Dispatch').left, 0.5));
+    expect(end.width, closeTo(cell('Dispatch').width, 0.5));
+  });
+
   testWidgets('under reduce-motion the change is instant', (tester) async {
     _phone(tester);
     await tester.pumpWidget(_bar(selected: 0, reduceMotion: true));

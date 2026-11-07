@@ -1634,6 +1634,53 @@ void main() {
       );
       semantics.dispose();
     });
+
+    testWidgets('spacing is automatic: none above the first child of a list, '
+        'a gap above the rest', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ListView(
+            children: const [
+              LpgSectionHeader(title: 'First'),
+              SizedBox(height: 40),
+              LpgSectionHeader(title: 'Second'),
+            ],
+          ),
+        ),
+      );
+
+      final first = tester.getTopLeft(find.text('First')).dy;
+      final second = tester.getTopLeft(find.text('Second')).dy;
+      final firstBox = tester
+          .getTopLeft(find.byType(LpgSectionHeader).first)
+          .dy;
+      final secondBox = tester
+          .getTopLeft(find.byType(LpgSectionHeader).last)
+          .dy;
+      // The first heading's text starts at the top of its own box...
+      expect(first - firstBox, 0);
+      // ...and the later one is pushed down by the section gap.
+      expect(second - secondBox, LpgSpacing.lg);
+    });
+
+    testWidgets(
+      'a heading inside a column is not the first thing on the page',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            ListView(
+              children: const [
+                Column(children: [LpgSectionHeader(title: 'Nested')]),
+              ],
+            ),
+          ),
+        );
+
+        final text = tester.getTopLeft(find.text('Nested')).dy;
+        final box = tester.getTopLeft(find.byType(LpgSectionHeader)).dy;
+        expect(text - box, LpgSpacing.lg);
+      },
+    );
   });
 }
 

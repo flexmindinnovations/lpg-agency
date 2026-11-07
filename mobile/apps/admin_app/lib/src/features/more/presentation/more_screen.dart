@@ -128,12 +128,8 @@ class MoreScreen extends ConsumerWidget {
       body: ListView(
         padding: LpgSpacing.page,
         children: [
-          for (final (i, (heading, items)) in groups.indexed) ...[
-            // The first heading sits straight under the app bar.
-            if (i == 0)
-              LpgSectionHeader.first(title: heading)
-            else
-              LpgSectionHeader(title: heading),
+          for (final (heading, items) in groups) ...[
+            LpgSectionHeader(title: heading),
             LpgGroupedList(
               children: [for (final item in items) _MoreTile(item: item)],
             ),

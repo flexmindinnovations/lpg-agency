@@ -80,3 +80,4 @@ The owner asked for see-through, blurred surfaces after the first no-glass rule 
 - **Frosted sheets (5.29).** `LpgGlassSource` (around the navigator) lets `LpgFeedback.showSheet` take one small picture of the app and blur it once; the sheet draws it behind `sheetGlass` (tint found by `LpgGlassLook.sheetAlpha`). Smooth because nothing is blurred while the sheet moves.
 - **One picker look (5.29).** `LpgDropdownField` is the card row used by every other picker, with a `LpgSectionHeader.compact` label.
 - **Card opacity (5.32).** Cards, fields and chips target 30% opaque (`LpgGlassLook.cardTarget`), so most of the page's grain shows through; contrast still decides the floor. Filled primary buttons stay solid.
+- **Global spacing and nav pill (5.33).** Section-heading spacing is automatic (none above the first child of a list), never set per screen. The bottom bar has one pill that slides to the active tab.
