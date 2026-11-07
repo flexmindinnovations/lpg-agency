@@ -170,7 +170,7 @@ class _SetPriceSheetState extends ConsumerState<SetPriceSheet> {
           ),
           if (row != null && row.earlier().isNotEmpty) ...[
             const SizedBox(height: LpgSpacing.md),
-            Text('Earlier prices', style: text.titleSmall),
+            LpgSectionHeader.compact(title: 'Earlier prices'),
             const SizedBox(height: LpgSpacing.sm),
             LpgGroupedList(
               children: [

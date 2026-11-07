@@ -142,7 +142,7 @@ class _DispatchScreenState extends ConsumerState<DispatchScreen> {
                 ),
                 const SizedBox(height: LpgSpacing.md),
               ],
-              Text('Waiting for a trip', style: text.titleMedium),
+              LpgSectionHeader.compact(title: 'Waiting for a trip'),
               const SizedBox(height: LpgSpacing.sm),
               waitingAsync.when(
                 loading: () => const LpgSkeleton(height: 72),
@@ -183,7 +183,7 @@ class _DispatchScreenState extends ConsumerState<DispatchScreen> {
                 },
               ),
               const SizedBox(height: LpgSpacing.lg),
-              Text('Trips', style: text.titleMedium),
+              LpgSectionHeader.compact(title: 'Trips'),
               const SizedBox(height: LpgSpacing.sm),
               LpgChoiceChips<bool>(
                 options: const {false: 'On now', true: 'Past'},

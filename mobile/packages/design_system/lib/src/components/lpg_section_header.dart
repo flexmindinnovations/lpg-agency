@@ -23,6 +23,14 @@ class LpgSectionHeader extends StatelessWidget {
     ),
   });
 
+  /// A heading the layout already spaces (inside a sheet or a form column):
+  /// the same style, no outer padding, no subtitle, no action.
+  const LpgSectionHeader.compact({super.key, required this.title})
+    : subtitle = null,
+      actionLabel = null,
+      onAction = null,
+      padding = EdgeInsets.zero;
+
   final String title;
   final String? subtitle;
   final String? actionLabel;

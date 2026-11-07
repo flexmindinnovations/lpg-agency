@@ -414,7 +414,7 @@ class _SendOutSheetState extends ConsumerState<SendOutSheet> {
             onChanged: _busy ? null : (id) => setState(() => _warehouseId = id),
           ),
           const SizedBox(height: LpgSpacing.md),
-          Text('Cylinders', style: text.titleSmall),
+          LpgSectionHeader.compact(title: 'Cylinders'),
           const SizedBox(height: LpgSpacing.xs),
           for (final row in rows) _LoadRowTile(row: row),
           if (short) ...[
@@ -574,7 +574,7 @@ class _FleetBlockers extends StatelessWidget {
         ],
         if (busyTrips.isNotEmpty) ...[
           const SizedBox(height: LpgSpacing.md),
-          Text('Who is holding them', style: text.titleSmall),
+          LpgSectionHeader.compact(title: 'Who is holding them'),
           const SizedBox(height: LpgSpacing.xs),
           for (final trip in busyTrips)
             Padding(

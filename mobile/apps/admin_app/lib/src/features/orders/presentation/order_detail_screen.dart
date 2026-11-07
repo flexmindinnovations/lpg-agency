@@ -308,7 +308,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               ),
             ],
             const SizedBox(height: LpgSpacing.lg),
-            Text('Order lines', style: text.titleMedium),
+            LpgSectionHeader.compact(title: 'Order lines'),
             const SizedBox(height: LpgSpacing.sm),
             for (final line in order.lines)
               Padding(

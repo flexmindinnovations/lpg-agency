@@ -261,7 +261,7 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
             ),
           ),
           const SizedBox(height: LpgSpacing.sm),
-          Text('Handed over', style: text.titleSmall),
+          LpgSectionHeader.compact(title: 'Handed over'),
           for (var i = 0; i < lines.length; i++) ...[
             const SizedBox(height: LpgSpacing.sm),
             Text(
@@ -361,7 +361,7 @@ class _DeliverSheetState extends ConsumerState<DeliverSheet> {
             ),
           ),
           const SizedBox(height: LpgSpacing.md),
-          Text('Delivery photo (optional)', style: text.titleSmall),
+          LpgSectionHeader.compact(title: 'Delivery photo (optional)'),
           const SizedBox(height: LpgSpacing.sm),
           if (_photoBytes case final photo?) ...[
             ClipRRect(

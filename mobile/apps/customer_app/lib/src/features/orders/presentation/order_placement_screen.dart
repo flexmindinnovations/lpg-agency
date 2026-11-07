@@ -277,7 +277,7 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Quantity', style: context.lpgText.titleSmall),
+                        LpgSectionHeader.compact(title: 'Quantity'),
                         Text(
                           'Cylinders to deliver',
                           style: context.lpgText.bodySmall,

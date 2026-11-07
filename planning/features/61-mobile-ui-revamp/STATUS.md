@@ -282,7 +282,8 @@ Asked: section titles were capitals in one place and sentence case in another, a
 
 - There were three heading styles: `LpgSectionHeader` (bold, titleMedium), the Admin `SectionHeading` (titleMedium) and `LpgSectionLabel` (bold capitals, used only on the More screen). Now there is one: `LpgSectionHeader`, title shown exactly as written (it never changes case), `FontWeight.w400`, main text colour. `SectionHeading` builds a `LpgSectionHeader`, and `LpgSectionLabel` is deleted. The trailing action of an Admin heading now has the chevron the design-system heading has.
 - The string rule is: write headings in sentence case. Changed the four Title Case ones found (Customer "Payment history", "Your recent tickets"; Admin "System overview", page title "Admin profile").
-- Not covered: a heading written as plain `Text` with its own style somewhere else is not found by a search for the widget; a new one would be a review finding. No lint enforces the case of the strings.
+- Hand-written headings (`Text('Customer', style: text.titleMedium)` and the `titleSmall` ones inside sheets, 23 of them in Admin, Customer and Driver) now use `LpgSectionHeader.compact` (same style, no outer padding, for a heading the layout already spaces). "Cash Handover Reviews" is now "Cash handover reviews".
+- Not covered: a heading built from a variable or a multi-line `Text` with a title style is not found by search, and nothing lints the case of the strings; a new one would be a review finding. Card titles, list-row titles and dialog titles are not section headings and keep their own styles.
 - The 5.14 paragraph above about "bold capitals" is now superseded by this.
 
 ## 5.18 No shadows, borders only (2026-11-07)

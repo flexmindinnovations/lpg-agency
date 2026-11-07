@@ -144,10 +144,7 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Or pay by bank transfer',
-                      style: context.lpgText.titleSmall,
-                    ),
+                    LpgSectionHeader.compact(title: 'Or pay by bank transfer'),
                     const SizedBox(height: LpgSpacing.sm),
                     Text(bank.accountHolder),
                     Text('${bank.bankName} ${bank.branch}'.trim()),

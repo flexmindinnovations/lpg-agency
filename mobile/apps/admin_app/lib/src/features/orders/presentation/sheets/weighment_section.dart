@@ -128,7 +128,7 @@ class _WeighmentSectionState extends ConsumerState<WeighmentSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Weigh the cylinders', style: text.titleSmall),
+        LpgSectionHeader.compact(title: 'Weigh the cylinders'),
         const SizedBox(height: LpgSpacing.xs),
         Text(
           'Every cylinder on this trip is weighed before it is loaded. Log '

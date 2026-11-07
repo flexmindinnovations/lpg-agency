@@ -199,7 +199,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                   ),
                 if (trip.status == 'completed')
                   const SizedBox(height: LpgSpacing.md),
-                Text('Stops', style: text.titleMedium),
+                LpgSectionHeader.compact(title: 'Stops'),
                 const SizedBox(height: LpgSpacing.sm),
                 if (stops.isEmpty)
                   Text(
@@ -233,7 +233,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                 ],
                 if (trip.loadedLines.isNotEmpty) ...[
                   const SizedBox(height: LpgSpacing.lg),
-                  Text('On the van', style: text.titleMedium),
+                  LpgSectionHeader.compact(title: 'On the van'),
                   const SizedBox(height: LpgSpacing.sm),
                   for (final line in trip.loadedLines)
                     LpgKeyValueRow(
@@ -289,12 +289,11 @@ class _Weighments extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final records = ref.watch(tripWeighmentsProvider(tripId)).value ?? const [];
     if (records.isEmpty) return const SizedBox.shrink();
-    final text = context.lpgText;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: LpgSpacing.lg),
-        Text('Weight checks', style: text.titleMedium),
+        LpgSectionHeader.compact(title: 'Weight checks'),
         const SizedBox(height: LpgSpacing.sm),
         for (final r in records)
           LpgKeyValueRow(
@@ -325,13 +324,12 @@ class _Cash extends ConsumerWidget {
     }
     final cash = ref.watch(tripCashProvider(tripId)).value;
     if (cash == null) return const SizedBox.shrink();
-    final text = context.lpgText;
     final handover = cash.handover;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: LpgSpacing.lg),
-        Text('Cash', style: text.titleMedium),
+        LpgSectionHeader.compact(title: 'Cash'),
         const SizedBox(height: LpgSpacing.sm),
         LpgKeyValueRow(
           label: 'Cash to collect',
