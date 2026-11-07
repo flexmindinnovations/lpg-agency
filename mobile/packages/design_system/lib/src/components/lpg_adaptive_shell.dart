@@ -11,28 +11,21 @@ class LpgContentWidth extends StatelessWidget {
     super.key,
     required this.child,
     this.maxWidth = LpgBreakpoints.contentMaxWidth,
-    this.paintCanvas = false,
   });
 
   final Widget child;
   final double maxWidth;
 
-  /// Paints the page canvas either side of the column — for a full-screen
-  /// route that has no shell [Scaffold] behind it.
-  final bool paintCanvas;
-
+  /// Paints nothing of its own: the paper page is drawn under every route, so
+  /// it shows either side of the column.
   @override
-  Widget build(BuildContext context) {
-    final capped = Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: child,
-      ),
-    );
-    if (!paintCanvas) return capped;
-    return ColoredBox(color: context.lpgColors.canvas, child: capped);
-  }
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: child,
+    ),
+  );
 }
 
 /// The app shell both apps use around their tab screens: a bottom

@@ -1,3 +1,4 @@
+import 'package:core/core.dart' show FailureCarrier;
 import 'package:dio/dio.dart';
 
 /// `/auth/*` paths that must never be bearer-attached-and-retried by the
@@ -19,6 +20,11 @@ const _authEndpointPaths = ['/auth/login', '/auth/refresh', '/auth/otp/verify'];
 /// /lib/src/*_provider.dart` wires the real `TokenStorage`-backed closures
 /// in at app start, exactly the constructor-injectable-functions pattern
 /// `local_storage`'s `DriftLocalDatabase` already established.
+///
+/// [refreshAccessToken] returns `null` when the session is really over (the
+/// server refused the refresh token), which ends it through
+/// [onSessionExpired]. When the refresh could not be tried at all (no network,
+/// server busy) it throws a `FailureCarrier` instead: the session is kept.
 final class ApiClient {
   ApiClient({
     required String baseUrl,
@@ -71,7 +77,16 @@ final class ApiClient {
           // (including `onRequest`), so a `getAccessToken` that still
           // returns the old value would silently overwrite the header set
           // here and retry with the stale token again.
-          final newToken = await _refreshAccessToken();
+          final String? newToken;
+          try {
+            newToken = await _refreshAccessToken();
+          } on FailureCarrier {
+            // The refresh could not be tried (no network, server busy), which
+            // says nothing about the session: it stays, and this one request
+            // fails with its own error so the screen can offer a retry.
+            handler.next(error);
+            return;
+          }
           if (newToken == null) {
             _onSessionExpired();
             handler.next(error);

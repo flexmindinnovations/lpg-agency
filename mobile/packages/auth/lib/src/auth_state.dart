@@ -35,14 +35,26 @@ class AuthSessionState {
 /// is where each app wraps this in a `Provider<AuthController>`, exactly
 /// mirroring `local_database_provider.dart`'s pattern.
 class AuthController extends ChangeNotifier {
-  AuthController(this._repository) {
+  AuthController(
+    this._repository, {
+    this.restoreRetryBase = const Duration(seconds: 2),
+    this.restoreRetryMax = const Duration(seconds: 30),
+  }) {
     // Fire-and-forget: `state` starts at `unknown`, `restoreSession()`'s
     // result lands via `notifyListeners()` whichever way it resolves — a
     // route guard checking `state.status == unknown` covers the gap.
     unawaited(_restoreOnStartup());
   }
 
+  /// The wait before the first retry of a start-up restore that could not reach
+  /// the server; it doubles each time up to [restoreRetryMax].
+  final Duration restoreRetryBase;
+  final Duration restoreRetryMax;
+
   final AuthRepository _repository;
+  Timer? _restoreRetry;
+  var _restoreAttempts = 0;
+  var _disposed = false;
   AuthSessionState _state = const AuthSessionState.unknown();
   final Completer<void> _settled = Completer<void>();
 
@@ -121,7 +133,37 @@ class AuthController extends ChangeNotifier {
 
   String? get accessToken => _repository.accessToken;
 
-  Future<void> _restoreOnStartup() => restoreSession();
+  /// Restores the session at start-up. Only an answer from the server settles
+  /// it: a refresh token it refuses means signed out, but when the server
+  /// cannot be reached (a cold start from a notification tap, before the radio
+  /// is up) the stored session is still good, so the state stays `unknown`
+  /// (the splash) and the restore is tried again until it can be decided.
+  Future<void> _restoreOnStartup() async {
+    final result = await _repository.restoreSession();
+    if (_disposed || _state.status != AuthStatus.unknown) return;
+    switch (result) {
+      case FailureResult(:final failure) when isTransientError(failure):
+        _scheduleRestoreRetry();
+      default:
+        _apply(result);
+    }
+  }
+
+  void _scheduleRestoreRetry() {
+    final doubled = restoreRetryBase * (1 << _restoreAttempts.clamp(0, 10));
+    _restoreAttempts++;
+    _restoreRetry = Timer(
+      doubled > restoreRetryMax ? restoreRetryMax : doubled,
+      () => unawaited(_restoreOnStartup()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _restoreRetry?.cancel();
+    super.dispose();
+  }
 
   void _markSettled() {
     if (!_settled.isCompleted) _settled.complete();

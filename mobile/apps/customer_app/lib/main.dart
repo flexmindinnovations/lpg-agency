@@ -67,7 +67,10 @@ void main() async {
           realtimeClient.updateAccessToken();
           return authRepository.accessToken;
         },
-        onFailure: (_) => null,
+        // Only a refusal ends the session; no network or a busy server must
+        // not sign the person out.
+        onFailure: (failure) =>
+            isTransientError(failure) ? throw FailureException(failure) : null,
       );
     },
     onSessionExpired: () => authController.handleSessionExpired(),
