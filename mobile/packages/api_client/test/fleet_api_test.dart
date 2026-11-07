@@ -68,8 +68,9 @@ void main() {
         }, 200);
       });
 
-      final result = await FleetApi(client.dio)
-          .getFilledStock('warehouse', 'w-1');
+      final result = await FleetApi(
+        client.dio,
+      ).getFilledStock('warehouse', 'w-1');
 
       final stock = result.when(onSuccess: (s) => s, onFailure: (_) => null);
       expect(stock, {'ct-1': 6});
@@ -184,8 +185,9 @@ void main() {
         return jsonResponse({'blob_ref': 'tenant/t/compliance-staging/a'}, 201);
       });
 
-      final result = await FleetApi(client.dio)
-          .uploadDocument(bytes: [1, 2, 3], filename: 'dl.jpg');
+      final result = await FleetApi(
+        client.dio,
+      ).uploadDocument(bytes: [1, 2, 3], filename: 'dl.jpg');
 
       expect(
         result.when(onSuccess: (r) => r, onFailure: (_) => null),
@@ -209,8 +211,9 @@ void main() {
         }, 200);
       });
 
-      final result = await FleetApi(client.dio)
-          .recognizeDocument('ref', 'driving_licence');
+      final result = await FleetApi(
+        client.dio,
+      ).recognizeDocument('ref', 'driving_licence');
 
       final doc = result.when(onSuccess: (r) => r, onFailure: (_) => null);
       expect(doc!.validTill, DateTime(2028, 5, 1));
@@ -253,8 +256,9 @@ void main() {
         }, 200);
       });
 
-      final result = await FleetApi(client.dio)
-          .moveDriverToBranch('d-1', employeeId: 'e-1', branchId: 'b-2');
+      final result = await FleetApi(
+        client.dio,
+      ).moveDriverToBranch('d-1', employeeId: 'e-1', branchId: 'b-2');
 
       expect(
         result.when(onSuccess: (d) => d.branchId, onFailure: (_) => null),
@@ -313,8 +317,9 @@ void main() {
         }, 200),
       );
 
-      final result = await FleetApi(client.dio)
-          .getBalanceLines('vehicle', 'v-1');
+      final result = await FleetApi(
+        client.dio,
+      ).getBalanceLines('vehicle', 'v-1');
 
       final lines = result.when(onSuccess: (l) => l, onFailure: (_) => null);
       expect(lines!.map((l) => l.status), ['filled', 'empty']);
@@ -429,8 +434,9 @@ void main() {
         }, 200);
       });
 
-      final result = await FleetApi(client.dio)
-          .listTransactions('warehouse', 'w-1', limit: 5);
+      final result = await FleetApi(
+        client.dio,
+      ).listTransactions('warehouse', 'w-1', limit: 5);
 
       final t = result
           .when(onSuccess: (r) => r, onFailure: (_) => null)!
@@ -478,40 +484,43 @@ void main() {
       expect(grn.quantity, 40);
     });
 
-    test('listReconciliations filters by state and rejectCount posts why', () async {
-      final client = ApiClient(baseUrl: 'https://api.test');
-      final seen = <String>[];
-      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
-        seen.add('${options.method} ${options.path}');
-        if (options.method == 'GET') {
-          expect(options.queryParameters, {'state': 'pending'});
-          return jsonResponse({'items': <Object>[]}, 200);
-        }
-        expect(options.data, {'reason': 'Count again'});
-        return jsonResponse({
-          'id': 'r-1',
-          'cylinder_type_id': 'c-1',
-          'status': 'filled',
-          'expected_quantity': 42,
-          'actual_quantity': 40,
-          'variance': -2,
-          'state': 'rejected',
-        }, 200);
-      });
-      final api = FleetApi(client.dio);
+    test(
+      'listReconciliations filters by state and rejectCount posts why',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        final seen = <String>[];
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          seen.add('${options.method} ${options.path}');
+          if (options.method == 'GET') {
+            expect(options.queryParameters, {'state': 'pending'});
+            return jsonResponse({'items': <Object>[]}, 200);
+          }
+          expect(options.data, {'reason': 'Count again'});
+          return jsonResponse({
+            'id': 'r-1',
+            'cylinder_type_id': 'c-1',
+            'status': 'filled',
+            'expected_quantity': 42,
+            'actual_quantity': 40,
+            'variance': -2,
+            'state': 'rejected',
+          }, 200);
+        });
+        final api = FleetApi(client.dio);
 
-      await api.listReconciliations('warehouse', 'w-1', state: 'pending');
-      final rejected = await api.rejectCount('r-1', reason: 'Count again');
+        await api.listReconciliations('warehouse', 'w-1', state: 'pending');
+        final rejected = await api.rejectCount('r-1', reason: 'Count again');
 
-      expect(seen, [
-        'GET /api/v1/inventory-locations/warehouse/w-1/reconciliation-records',
-        'POST /api/v1/reconciliation-records/r-1/reject',
-      ]);
-      expect(
-        rejected.when(onSuccess: (r) => r.state, onFailure: (_) => null),
-        'rejected',
-      );
-    });
+        expect(seen, [
+          'GET /api/v1/inventory-locations/warehouse/w-1/reconciliation-records',
+          'POST /api/v1/reconciliation-records/r-1/reject',
+        ]);
+        expect(
+          rejected.when(onSuccess: (r) => r.state, onFailure: (_) => null),
+          'rejected',
+        );
+      },
+    );
   });
   group('FleetApi compliance documents', () {
     Map<String, Object?> doc({String? expiry = '2026-11-10'}) => {

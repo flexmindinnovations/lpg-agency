@@ -279,13 +279,15 @@ void main() {
       await insert('driver-2', 'theirs', threeDaysAgo);
 
       expect(
-        await signedInAs('driver-1')
-            .pruneOtherOwners(olderThan: const Duration(days: 5)),
+        await signedInAs(
+          'driver-1',
+        ).pruneOtherOwners(olderThan: const Duration(days: 5)),
         0,
       );
       expect(
-        await signedInAs('driver-1')
-            .pruneOtherOwners(olderThan: const Duration(days: 1)),
+        await signedInAs(
+          'driver-1',
+        ).pruneOtherOwners(olderThan: const Duration(days: 1)),
         1,
       );
     });

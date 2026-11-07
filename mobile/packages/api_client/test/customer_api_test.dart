@@ -6,27 +6,30 @@ import 'support/fake_http_client_adapter.dart';
 
 void main() {
   group('CustomerApi', () {
-    test('addCustomerAddress strips the JSON quotes dio leaves on a bare-string response', () async {
-      // dio special-cases a `String` type parameter to
-      // `ResponseType.plain`, skipping JSON decoding entirely — a naive
-      // `_dio.post<String>()` here would return `'"address-1"'` (quotes
-      // included) instead of `'address-1'`.
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter(
-        (options) => jsonResponse('address-1', 201),
-      );
-      final customerApi = CustomerApi(client.dio);
+    test(
+      'addCustomerAddress strips the JSON quotes dio leaves on a bare-string response',
+      () async {
+        // dio special-cases a `String` type parameter to
+        // `ResponseType.plain`, skipping JSON decoding entirely — a naive
+        // `_dio.post<String>()` here would return `'"address-1"'` (quotes
+        // included) instead of `'address-1'`.
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter(
+          (options) => jsonResponse('address-1', 201),
+        );
+        final customerApi = CustomerApi(client.dio);
 
-      final result = await customerApi.addCustomerAddress(
-        'customer-1',
-        const AddCustomerAddressRequest(line1: '221B Baker Street'),
-      );
+        final result = await customerApi.addCustomerAddress(
+          'customer-1',
+          const AddCustomerAddressRequest(line1: '221B Baker Street'),
+        );
 
-      expect(
-        result.when(onSuccess: (id) => id, onFailure: (_) => null),
-        'address-1',
-      );
-    });
+        expect(
+          result.when(onSuccess: (id) => id, onFailure: (_) => null),
+          'address-1',
+        );
+      },
+    );
 
     test(
       'updateAddress PUTs to the address path and succeeds on 200',

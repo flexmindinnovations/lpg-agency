@@ -71,16 +71,19 @@ class _FakeAuthRepository implements AuthRepository {
 
 void main() {
   group('AuthController', () {
-    test('starts unknown, then settles to unauthenticated when startup restore fails', () async {
-      final repository = _FakeAuthRepository();
-      final controller = AuthController(repository);
+    test(
+      'starts unknown, then settles to unauthenticated when startup restore fails',
+      () async {
+        final repository = _FakeAuthRepository();
+        final controller = AuthController(repository);
 
-      expect(controller.state.status, AuthStatus.unknown);
+        expect(controller.state.status, AuthStatus.unknown);
 
-      await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
 
-      expect(controller.state.status, AuthStatus.unauthenticated);
-    });
+        expect(controller.state.status, AuthStatus.unauthenticated);
+      },
+    );
 
     test(
       'settles to authenticated when a session can be restored at startup',
@@ -142,24 +145,27 @@ void main() {
       expect(notifications, 1);
     });
 
-    test('handleSessionExpired transitions to unauthenticated exactly once for repeated calls', () async {
-      final repository = _FakeAuthRepository(
-        restoreSessionResult: const Success(_principal),
-      );
-      final controller = AuthController(repository);
-      await Future<void>.delayed(Duration.zero);
+    test(
+      'handleSessionExpired transitions to unauthenticated exactly once for repeated calls',
+      () async {
+        final repository = _FakeAuthRepository(
+          restoreSessionResult: const Success(_principal),
+        );
+        final controller = AuthController(repository);
+        await Future<void>.delayed(Duration.zero);
 
-      var notifications = 0;
-      controller.addListener(() => notifications++);
+        var notifications = 0;
+        controller.addListener(() => notifications++);
 
-      controller.handleSessionExpired();
-      controller.handleSessionExpired();
+        controller.handleSessionExpired();
+        controller.handleSessionExpired();
 
-      expect(controller.state.status, AuthStatus.unauthenticated);
-      // The second call is a no-op — already unauthenticated, no need to
-      // notify listeners again for the same transition.
-      expect(notifications, 1);
-    });
+        expect(controller.state.status, AuthStatus.unauthenticated);
+        // The second call is a no-op — already unauthenticated, no need to
+        // notify listeners again for the same transition.
+        expect(notifications, 1);
+      },
+    );
   });
 
   group('whenSettled', () {

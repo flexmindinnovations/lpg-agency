@@ -86,26 +86,30 @@ void main() {
       );
     });
 
-    test('does not attempt a refresh-and-retry for a 401 on the login endpoint itself', () async {
-      var refreshCalls = 0;
-      final adapter = _FakeHttpClientAdapter(
-        (options) => _jsonResponse({'error_code': 'INVALID_CREDENTIALS'}, 401),
-      );
-      final client = ApiClient(
-        baseUrl: 'https://api.test',
-        refreshAccessToken: () async {
-          refreshCalls++;
-          return 'new-token';
-        },
-      );
-      client.dio.httpClientAdapter = adapter;
+    test(
+      'does not attempt a refresh-and-retry for a 401 on the login endpoint itself',
+      () async {
+        var refreshCalls = 0;
+        final adapter = _FakeHttpClientAdapter(
+          (options) =>
+              _jsonResponse({'error_code': 'INVALID_CREDENTIALS'}, 401),
+        );
+        final client = ApiClient(
+          baseUrl: 'https://api.test',
+          refreshAccessToken: () async {
+            refreshCalls++;
+            return 'new-token';
+          },
+        );
+        client.dio.httpClientAdapter = adapter;
 
-      await expectLater(
-        client.dio.post<void>('/api/v1/auth/login', data: {}),
-        throwsA(isA<DioException>()),
-      );
-      expect(refreshCalls, 0);
-    });
+        await expectLater(
+          client.dio.post<void>('/api/v1/auth/login', data: {}),
+          throwsA(isA<DioException>()),
+        );
+        expect(refreshCalls, 0);
+      },
+    );
 
     test(
       'refreshes and retries once on a 401 from an ordinary endpoint',

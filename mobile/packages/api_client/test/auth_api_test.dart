@@ -15,8 +15,9 @@ void main() {
         return jsonResponse({'code': '482913'}, 200);
       });
 
-      final result = await AuthApi(client.dio)
-          .fetchDevOtp(phoneNumber: '+919999900099');
+      final result = await AuthApi(
+        client.dio,
+      ).fetchDevOtp(phoneNumber: '+919999900099');
 
       expect(
         result.when(onSuccess: (code) => code, onFailure: (_) => null),
@@ -31,8 +32,9 @@ void main() {
         (options) => jsonResponse({'detail': 'Not Found'}, 404),
       );
 
-      final result = await AuthApi(client.dio)
-          .fetchDevOtp(phoneNumber: '+919999900099');
+      final result = await AuthApi(
+        client.dio,
+      ).fetchDevOtp(phoneNumber: '+919999900099');
 
       expect(
         result.when(onSuccess: (_) => 'ok', onFailure: (_) => 'failed'),
@@ -64,30 +66,33 @@ void main() {
       );
     });
 
-    test('login maps a 401 Problem Details body into a Failure with the error_code', () async {
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter(
-        (options) => jsonResponse({
-          'error_code': 'INVALID_CREDENTIALS',
-          'title': 'Invalid credentials',
-          'detail': 'Incorrect email or password.',
-        }, 401),
-      );
-      final authApi = AuthApi(client.dio);
+    test(
+      'login maps a 401 Problem Details body into a Failure with the error_code',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter(
+          (options) => jsonResponse({
+            'error_code': 'INVALID_CREDENTIALS',
+            'title': 'Invalid credentials',
+            'detail': 'Incorrect email or password.',
+          }, 401),
+        );
+        final authApi = AuthApi(client.dio);
 
-      final result = await authApi.login(
-        email: 'staff@example.com',
-        password: 'wrong',
-      );
+        final result = await authApi.login(
+          email: 'staff@example.com',
+          password: 'wrong',
+        );
 
-      final failure = result.when(
-        onSuccess: (_) => null,
-        onFailure: (failure) => failure,
-      );
-      expect(failure, isA<Failure>());
-      expect(failure!.errorCode, 'INVALID_CREDENTIALS');
-      expect(failure.message, 'Incorrect email or password.');
-    });
+        final failure = result.when(
+          onSuccess: (_) => null,
+          onFailure: (failure) => failure,
+        );
+        expect(failure, isA<Failure>());
+        expect(failure!.errorCode, 'INVALID_CREDENTIALS');
+        expect(failure.message, 'Incorrect email or password.');
+      },
+    );
 
     test('me maps a 200 into a Success(Principal)', () async {
       final client = ApiClient(baseUrl: 'https://api.test');

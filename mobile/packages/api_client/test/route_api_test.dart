@@ -233,8 +233,9 @@ void main() {
         }, 200);
       });
 
-      final result = await RouteApi(client.dio)
-          .listRoutes(status: 'planned', branchId: 'branch-1');
+      final result = await RouteApi(
+        client.dio,
+      ).listRoutes(status: 'planned', branchId: 'branch-1');
 
       final routes = result.when(onSuccess: (r) => r, onFailure: (_) => null);
       expect(routes, hasLength(1));

@@ -23,10 +23,8 @@ export 'src/order_api.dart';
 export 'src/payment_api.dart';
 export 'src/price_list_api.dart';
 export 'src/quiet_retry.dart';
-
 // Re-exported so existing imports keep working; they live in `core` now.
 export 'package:core/core.dart' show FailureCarrier, FailureException;
-
 export 'src/route_api.dart';
 export 'src/weighment_api.dart';
 export 'src/admin_api.dart';
