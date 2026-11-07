@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../compliance/data/compliance_provider.dart';
+import '../../../i18n/admin_strings.dart';
 import '../../../shared/admin_app_bar.dart';
 import '../../../shared/metric_tile.dart';
 import '../../approvals/data/approvals_provider.dart';
@@ -225,11 +226,22 @@ class _Body extends StatelessWidget {
               '${o.bookingsToday}',
               style: text.displaySmall?.copyWith(color: colors.onHero),
             ),
-            const SizedBox(height: LpgSpacing.sm),
-            Text(
-              '${o.deliveredToday} delivered  •  ${o.failedToday} failed  •  '
-              '${o.pendingCancellations} cancellations to approve',
-              style: text.bodySmall?.copyWith(color: colors.onHero),
+            const SizedBox(height: LpgSpacing.md),
+            LpgHeroStats(
+              stats: [
+                LpgHeroStat(
+                  value: '${o.deliveredToday}',
+                  label: context.strings.dashboard.hero.delivered,
+                ),
+                LpgHeroStat(
+                  value: '${o.failedToday}',
+                  label: context.strings.dashboard.hero.failed,
+                ),
+                LpgHeroStat(
+                  value: '${o.pendingCancellations}',
+                  label: context.strings.dashboard.hero.toApprove,
+                ),
+              ],
             ),
           ],
         ),

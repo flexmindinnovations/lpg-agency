@@ -879,6 +879,120 @@ void main() {
     });
   });
 
+  group('LpgMetricTile', () {
+    testWidgets('reads as one label and fires onTap', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        _wrap(
+          LpgMetricTile(
+            label: 'Cash with drivers',
+            value: '₹2,717',
+            caption: '4 to review',
+            icon: Icons.payments,
+            tone: LpgTone.accent,
+            onTap: () => taps++,
+          ),
+        ),
+      );
+
+      expect(
+        find.bySemanticsLabel('Cash with drivers: ₹2,717, 4 to review'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('₹2,717'));
+      expect(taps, 1);
+    });
+
+    testWidgets('keeps the same content position with or without the bar', (
+      tester,
+    ) async {
+      Future<Offset> valueTopLeft({required bool attention}) async {
+        await tester.pumpWidget(
+          _wrap(
+            SizedBox(
+              width: 200,
+              child: LpgMetricTile(
+                label: 'Overdue',
+                value: '₹35,916',
+                icon: Icons.schedule,
+                attention: attention,
+              ),
+            ),
+          ),
+        );
+        return tester.getTopLeft(find.text('₹35,916'));
+      }
+
+      expect(
+        await valueTopLeft(attention: true),
+        await valueTopLeft(attention: false),
+      );
+    });
+
+    testWidgets('draws the attention bar only when asked', (tester) async {
+      Future<int> bars({required bool attention}) async {
+        await tester.pumpWidget(
+          _wrap(
+            LpgMetricTile(
+              label: 'Overdue',
+              value: '4',
+              icon: Icons.schedule,
+              attention: attention,
+            ),
+          ),
+        );
+        return find
+            .byWidgetPredicate(
+              (w) =>
+                  w is SizedBox &&
+                  w.width == LpgMetricTile.railWidth &&
+                  w.child is ColoredBox,
+            )
+            .evaluate()
+            .length;
+      }
+
+      expect(await bars(attention: true), 1);
+      expect(await bars(attention: false), 0);
+    });
+  });
+
+  group('LpgHeroStats', () {
+    testWidgets('shows each figure with its label under a hero card', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          LpgHeroCard(
+            child: LpgHeroStats(
+              stats: [
+                LpgHeroStat(value: '12', label: 'Delivered'),
+                LpgHeroStat(value: '1', label: 'Failed'),
+                LpgHeroStat(value: '3', label: 'To approve'),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      for (final text in [
+        '12',
+        'Delivered',
+        '1',
+        'Failed',
+        '3',
+        'To approve',
+      ]) {
+        expect(find.text(text), findsOneWidget);
+      }
+      expect(
+        tester.getSemantics(find.text('12')).label,
+        contains('Delivered: 12'),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('LpgSplash', () {
     testWidgets('shows the name, tagline and badge once it has played', (
       tester,

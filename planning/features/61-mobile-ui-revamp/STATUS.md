@@ -124,6 +124,10 @@ First measurement of pure-Dart AES-GCM on this server (Xeon 2.1 GHz, JIT and AOT
 - **Native AES on Android and iOS (Driver app):** `cryptography_flutter` uses the phone's own AES for payloads from 2 KB to 20 MB on Android. The Driver app tries it first and falls back to the isolate cipher if it is unavailable or fails (then stops trying it). `--dart-define=NATIVE_MEDIA_CIPHER=false` forces the isolate cipher, to compare the two on a real phone. All implementations seal the same layout, so a file written by one opens with another (tested); a tampered file is rejected and not retried.
 - **Not measured:** the native path itself (it needs a real Android or iOS device), and anything on a real budget phone. The package source marks Android AES-GCM with a TODO calling its implementation slow, even though it enables it, so **the native speed on Android must be checked on a device** before trusting it; the isolate fallback and the kill switch exist for that reason. Android needs the plugin's minSdk 24 (the app takes the larger of Flutter's default and 23, so confirm Flutter's default is 24 or raise it); iOS is 13+, which the app already targets. No Android or iOS build was run here.
 
+### First visible screen change (Admin dashboard)
+
+Two new design-system components, checked on the emulator with hot reload and covered by widget tests: `LpgHeroStats` replaces the "3 delivered • 0 failed • 2 to approve" sentence in the hero with three figures under their own labels, and `LpgMetricTile` gives the order and money tiles a heavy tabular figure plus a solid tone bar down the left edge when a tile needs attention (the caption says why, so colour is not the only signal). Admin's `MetricTile` is now a thin wrapper. Customer Home and Driver Today still use the old tiles; they are next.
+
 ## Not done
 Everything else in TASKS.md (epics E2 from 2.2, E4 to E10 and E12).
 
