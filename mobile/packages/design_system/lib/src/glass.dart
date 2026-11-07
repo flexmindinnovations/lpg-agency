@@ -42,7 +42,7 @@ class LpgGlassLook {
   final double barAlpha;
 
   /// What each would like to be if contrast allowed it.
-  static const cardTarget = 0.7;
+  static const cardTarget = 0.6;
   static const barTarget = 0.4;
   static const sheetTarget = 0.78;
 

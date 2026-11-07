@@ -271,12 +271,12 @@ Asked: the apps lag, maybe because of the blurred background; the header colour 
 - **Decision for the owner:** the colourful washes are gone, so the page is no longer tinted orange and blue. If a tint is wanted back it can be a plain gradient (no blur filter), which is cheap.
 
 ## 5.16 UI elements show the paper (2026-11-07)
-Asked: UI elements should have the paper noise too, or be transparent so the paper shows, in every app, light and dark. First made fully transparent; on a Galaxy S25 Ultra that looked too bare, so the owner chose **70% opaque**.
+Asked: UI elements should have the paper noise too, or be transparent so the paper shows, in every app, light and dark. First made fully transparent; on a Galaxy S25 Ultra that looked too bare, so the owner chose 70%, then lowered it to **60% opaque**.
 
-- `LpgGlassLook.cardTarget` is 0.7 and a card is held to `cardContrast` (the page's own 4.55:1), so the fill is 0.7 unless the page behind it needs more. Everything that used the card glass follows: cards, `LpgTextField`, `LpgDropdownField`, choice chips, segmented controls. The search field, the dropdown field, the secondary button and the skeleton cards used the solid card colour and now use the glass fill. High contrast stays opaque. The hairline outline stays.
+- `LpgGlassLook.cardTarget` is 0.6 and a card is held to `cardContrast` (the page's own 4.55:1), so the fill is 0.6 unless the page behind it needs more. Everything that used the card glass follows: cards, `LpgTextField`, `LpgDropdownField`, choice chips, segmented controls. The search field, the dropdown field, the secondary button and the skeleton cards used the solid card colour and now use the glass fill. High contrast stays opaque. The hairline outline stays.
 - Stays solid on purpose: tonal cards and icon boxes (they carry a status colour), filled and tonal buttons, dialogs, menus, snackbars (they float over arbitrary content). Sheets keep their frosted fill.
 - The Admin `LoginScreen` set `backgroundColor: colors.canvas` on its `Scaffold`, which covered the paper page: the only screen in the three apps that did. Removed.
-- Checked on a Galaxy S25 Ultra (profile build, local backend through `adb reverse`): Dashboard and Orders at 80% looked right; 70% is the owner's later choice and is the setting that ships.
+- Checked on a Galaxy S25 Ultra (profile build, local backend through `adb reverse`): Dashboard and Orders at 80% looked right; 60% is the owner's later choice and is the setting that ships; checked again at 60% on the S25 Ultra (Dashboard and Orders), light mode, text and borders read cleanly.
 
 ## 5.17 One section heading (2026-11-07)
 Asked: section titles were capitals in one place and sentence case in another, and bold; make them sentence case and normal weight everywhere.
