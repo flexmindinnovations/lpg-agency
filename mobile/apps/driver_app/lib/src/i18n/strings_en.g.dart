@@ -36,6 +36,7 @@ class DriverStrings with BaseTranslations<DriverLocale, DriverStrings> {
 
 	// Translations
 	late final DriverStrings$app$en app = DriverStrings$app$en.internal(_root);
+	late final DriverStrings$today$en today = DriverStrings$today$en.internal(_root);
 }
 
 // Path: app
@@ -50,6 +51,34 @@ class DriverStrings$app$en {
 	String get title => 'LPG Agency';
 }
 
+// Path: today
+class DriverStrings$today$en {
+	DriverStrings$today$en.internal(this._root);
+
+	final DriverStrings _root; // ignore: unused_field
+
+	// Translations
+	late final DriverStrings$today$stats$en stats = DriverStrings$today$stats$en.internal(_root);
+}
+
+// Path: today.stats
+class DriverStrings$today$stats$en {
+	DriverStrings$today$stats$en.internal(this._root);
+
+	final DriverStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Delivered'
+	String get delivered => 'Delivered';
+
+	/// en: 'Remaining'
+	String get remaining => 'Remaining';
+
+	/// en: 'Failed'
+	String get failed => 'Failed';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -59,6 +88,9 @@ extension on DriverStrings {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
 			'app.title' => 'LPG Agency',
+			'today.stats.delivered' => 'Delivered',
+			'today.stats.remaining' => 'Remaining',
+			'today.stats.failed' => 'Failed',
 			_ => null,
 		};
 	}

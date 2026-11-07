@@ -11,6 +11,7 @@ import 'package:admin_app/src/features/dashboard/presentation/dashboard_screen.d
 import 'package:admin_app/src/features/dispatch/data/dispatch_provider.dart';
 import 'package:admin_app/src/features/notifications/data/notifications_provider.dart';
 import 'package:admin_app/src/features/orders/data/orders_provider.dart';
+import 'package:admin_app/src/i18n/admin_strings.dart';
 import 'package:admin_app/src/providers.dart';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
@@ -137,7 +138,11 @@ Future<_FakeServer> _pumpDashboard(
         complianceDueCountProvider.overrideWith((ref) => 0),
         unreadNotificationCountProvider.overrideWith((ref) => 0),
       ],
-      child: MaterialApp(theme: LpgTheme.light, home: const DashboardScreen()),
+      child: MaterialApp(
+        theme: LpgTheme.light,
+        localizationsDelegates: adminLocalizationsDelegates,
+        home: const DashboardScreen(),
+      ),
     ),
   );
   return server;
