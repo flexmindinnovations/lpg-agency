@@ -37,6 +37,7 @@ class DriverStrings with BaseTranslations<DriverLocale, DriverStrings> {
 	// Translations
 	late final DriverStrings$app$en app = DriverStrings$app$en.internal(_root);
 	late final DriverStrings$today$en today = DriverStrings$today$en.internal(_root);
+	late final DriverStrings$stop$en stop = DriverStrings$stop$en.internal(_root);
 }
 
 // Path: app
@@ -61,6 +62,16 @@ class DriverStrings$today$en {
 	late final DriverStrings$today$stats$en stats = DriverStrings$today$stats$en.internal(_root);
 }
 
+// Path: stop
+class DriverStrings$stop$en {
+	DriverStrings$stop$en.internal(this._root);
+
+	final DriverStrings _root; // ignore: unused_field
+
+	// Translations
+	late final DriverStrings$stop$failedSheet$en failedSheet = DriverStrings$stop$failedSheet$en.internal(_root);
+}
+
 // Path: today.stats
 class DriverStrings$today$stats$en {
 	DriverStrings$today$stats$en.internal(this._root);
@@ -79,6 +90,18 @@ class DriverStrings$today$stats$en {
 	String get failed => 'Failed';
 }
 
+// Path: stop.failedSheet
+class DriverStrings$stop$failedSheet$en {
+	DriverStrings$stop$failedSheet$en.internal(this._root);
+
+	final DriverStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Why did the delivery fail?'
+	String get title => 'Why did the delivery fail?';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -91,6 +114,7 @@ extension on DriverStrings {
 			'today.stats.delivered' => 'Delivered',
 			'today.stats.remaining' => 'Remaining',
 			'today.stats.failed' => 'Failed',
+			'stop.failedSheet.title' => 'Why did the delivery fail?',
 			_ => null,
 		};
 	}
