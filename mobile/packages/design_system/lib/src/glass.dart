@@ -50,7 +50,7 @@ class LpgGlassLook {
 
   /// How much of a coloured element survives being blurred into the screen
   /// around it, for the worst case behind a sheet.
-  static const _blurredShare = 0.6;
+  static const _blurredShare = 0.4;
 
   /// What text on a card, field or chip keeps. They sit on the page, so they
   /// are held to what the page itself is: as readable as the page under them.

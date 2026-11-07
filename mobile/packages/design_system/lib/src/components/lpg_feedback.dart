@@ -96,30 +96,17 @@ abstract final class LpgFeedback {
             children: [
               const LpgSheetHandle(),
               if (title != null) ...[
+                // The title and the close button share one centred line; the
+                // subtitle, when there is one, sits under both.
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Semantics(
-                            header: true,
-                            child: Text(
-                              title,
-                              style: sheetContext.lpgText.titleLarge,
-                            ),
-                          ),
-                          if (subtitle != null) ...[
-                            const SizedBox(height: LpgSpacing.xs),
-                            Text(
-                              subtitle,
-                              style: sheetContext.lpgText.bodyMedium?.copyWith(
-                                color: sheetContext.lpgColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ],
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          title,
+                          style: sheetContext.lpgText.titleLarge,
+                        ),
                       ),
                     ),
                     // A visible way out, for people who do not discover the
@@ -131,6 +118,13 @@ abstract final class LpgFeedback {
                     ),
                   ],
                 ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: sheetContext.lpgText.bodyMedium?.copyWith(
+                      color: sheetContext.lpgColors.textSecondary,
+                    ),
+                  ),
                 const SizedBox(height: LpgSpacing.sm),
               ],
               Flexible(child: builder(sheetContext)),

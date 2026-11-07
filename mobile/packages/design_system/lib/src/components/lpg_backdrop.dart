@@ -119,9 +119,9 @@ class LpgBackdropLook {
   double get hazeGrain => grainStrength * 0.35;
 
   /// How much of the page's grain budget the texture laid over a frosted sheet
-  /// uses (see [LpgBackdrop.overlay]). Over a tinted, blurred screen the room
-  /// for text contrast is smaller than on the plain page, so it is lighter.
-  static const overlayShare = 0.5;
+  /// uses (see [LpgBackdrop.overlay]): all of it, so a sheet's paper reads as
+  /// clearly as the page's. The sheet's tint is sized with it counted.
+  static const overlayShare = 1.0;
 
   /// The colour of the grain speck that hurts contrast most (black on a light
   /// page, white on a dark one).
