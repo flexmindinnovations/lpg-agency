@@ -13,7 +13,7 @@ Calm, **solid** surfaces. Depth comes from **tonal elevation** (each level a sli
 
 ## Rules
 
-**Surfaces and elevation** (no `BackdropFilter`, no alpha-blended fills for surfaces)
+**Surfaces and elevation** (5.18: no shadows anywhere, depth is tone and a hairline border; no `BackdropFilter`, no alpha-blended fills for surfaces)
 - Five solid layers: canvas, card, raised, overlay (sheets and menus), and inverse (hero, snackbars). Light mode steps by tone and shadow; dark mode steps by lighter tone and relies little on shadow; high contrast uses a 2 px border and no shadow.
 - Cards: 16 px radius, hairline border (`borderDefault`), soft shadow in light mode only. Sheets and dialogs: 20 px top or all-round radius.
 - A hairline is always 1 px (`borderWidth.thin`), never a thinner or translucent line.
@@ -27,6 +27,7 @@ Calm, **solid** surfaces. Depth comes from **tonal elevation** (each level a sli
 - Roles: display (hero figures), headline, title, body, label, caption. Body is at least 14 sp; the Driver app's primary text is 16 sp or larger because it is read outdoors at arm's length.
 - Figures in tables and stat cards use tabular numerals and a heavier weight. Amounts always show the rupee sign and Indian grouping.
 - Text scale is honoured up to 1.3x on dense screens (lists, tables) and 2.0x elsewhere, where layouts reflow rather than clip; the engine owns the clamp.
+- **Section headings** (5.17): one style, `LpgSectionHeader`: sentence case written in the string (no capitals, no Title Case), normal weight, main text colour. Never a second heading widget.
 - Hindi and Marathi run 30 to 40 percent longer: no fixed-width labels, no text baked into images.
 
 **Shape and touch**
@@ -68,10 +69,15 @@ A stat card may carry one flat illustration behind its figure, drawn in the card
 
 The owner asked for see-through, blurred surfaces after the first no-glass rule was written. It is allowed only in this form:
 
-- **Where glass exists.** Cards are frosted: see-through, lightly blurred (sigma 14) and finely grained (the grain is laid under the fill, never over text), over a page whose colour washes were strengthened (plus two small crisper orbs where cards sit) so the glass is visible (5.13). The bottom navigation bar is see-through with grain, no blur (nothing scrolls under it). Bottom sheets are frosted: the dimmed screen behind is blurred (sigma 22) through them. Everything else stays solid: buttons, input fields, chips, dialogs, snackbars, menus, tonal cards and anything inside the hero.
-- **Blur only where there is something to blur.** A card sits on a static, already soft page, so a backdrop filter there would cost a layer per list row and change almost nothing. Blur is used only on sheets, over scrolling content. The bar and the app bar have only the page under them (the screens do not scroll under them), so they are see-through without a blur.
-- **Opacity is computed, not picked.** `LpgGlassLook` finds the most transparent fill that keeps primary and secondary text at 6:1 (more than the 4.5:1 AA needs, so text reads crisply) on the worst thing behind it: the page's worst pixel for a card, black or white for a sheet (the extremes a blur can average to). The grain speck under the glass is counted in the check. Today: cards 0.73 in light and 0.81 in dark, sheets 0.90 in light and fully opaque in dark (a dark sheet cannot do better than the theme's own sheet colour). The dark sheet is the least see-through because light text needs a darker ground.
+- **Where glass exists.** (Changed in 5.15 for scroll speed.) The page is paper and a fine grain as strong as the navigation bar's, with nothing blurred on it. Cards, text fields, chips and secondary buttons are 60% opaque (5.16), with a hairline and an outside shadow: the page's grain shows through, there is no backdrop blur and no grain of their own, because a blur per card is redone every frame of a scroll. The bottom navigation bar is see-through with grain, no blur. The header is always transparent, so it never changes colour as a page scrolls. Bottom sheets are frosted glass (5.29): a picture of the screen behind, blurred once as the sheet opens and drawn still behind a tint, with no border. A live backdrop blur is not allowed anywhere. Everything else stays solid: buttons, input fields, chips, dialogs, snackbars, menus, tonal cards and anything inside the hero.
+- **Opacity is computed, not picked.** `LpgGlassLook` finds the most transparent fill that keeps primary and secondary text at 6:1 (more than the 4.5:1 AA needs, so text reads crisply) on the worst thing behind it: the page's worst pixel (paper plus a grain speck) for a card, black or white for a sheet (the extremes a blur can average to). The grain speck under the glass is counted in the check. Today: cards 0.73 in light and 0.81 in dark, sheets 0.90 in light and fully opaque in dark (a dark sheet cannot do better than the theme's own sheet colour). The dark sheet is the least see-through because light text needs a darker ground.
 - **Shadows go outside.** A drop shadow painted under a see-through fill shows through as a grey patch, so see-through surfaces draw their shadow with the shape cut out (`LpgGlassShadow`).
 - **High contrast is never glass.** Opaque, 2 px border, no blur.
-- **One file.** Backdrop filters, grain over a surface and see-through fills are made only in `glass.dart`; `surfaces_test` scans the source so they cannot spread.
+- **One file.** See-through fills are made only in `glass.dart`; `surfaces_test` scans the source so nothing blurs and none spreads.
 - **Honest limit.** In the light theme the page's colour is faint (washes at most 16 percent), so a 0.62 white card over it looks almost the same as a solid one; the effect is clearest in dark mode and on sheets.
+- **Grain on the elements (5.25), superseded by 5.28.** Elements have no texture of their own: the page's paper (grain and glows) is painted once, globally, in `LpgBackdrop`, and cards, fields, chips, buttons and bars are see-through fills over it. A sheet is a nested `LpgBackdrop`.
+- **Soft wash (5.27).** The page also carries two soft glows of the theme's colours and a softened copy of the grain under the sharp grain. Both are made once and cached with the page; nothing blurs per frame.
+- **Frosted sheets (5.29).** `LpgGlassSource` (around the navigator) lets `LpgFeedback.showSheet` take one small picture of the app and blur it once; the sheet draws it behind `sheetGlass` (tint found by `LpgGlassLook.sheetAlpha`). Smooth because nothing is blurred while the sheet moves.
+- **One picker look (5.29).** `LpgDropdownField` is the card row used by every other picker, with a `LpgSectionHeader.compact` label.
+- **Card opacity (5.32).** Cards, fields and chips target 30% opaque (`LpgGlassLook.cardTarget`), so most of the page's grain shows through; contrast still decides the floor. Filled primary buttons stay solid.
+- **Global spacing and nav pill (5.33).** Section-heading spacing is automatic (none above the first child of a list), never set per screen. The bottom bar has one pill that slides to the active tab.

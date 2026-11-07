@@ -264,7 +264,6 @@ class _FailedDeliverySheetState extends ConsumerState<FailedDeliverySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final text = context.lpgText;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -281,7 +280,7 @@ class _FailedDeliverySheetState extends ConsumerState<FailedDeliverySheet> {
                   },
           ),
           const SizedBox(height: LpgSpacing.md),
-          Text('What next?', style: text.titleSmall),
+          LpgSectionHeader.compact(title: 'What next?'),
           const SizedBox(height: LpgSpacing.sm),
           LpgChoiceChips<String>(
             options: failedDeliveryResolutions,

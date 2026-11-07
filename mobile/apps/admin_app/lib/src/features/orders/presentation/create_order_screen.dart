@@ -196,7 +196,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 LpgBanner(message: _serverError!, tone: LpgTone.danger),
                 const SizedBox(height: LpgSpacing.md),
               ],
-              Text('Customer', style: text.titleMedium),
+              LpgSectionHeader.compact(title: 'Customer'),
               const SizedBox(height: LpgSpacing.sm),
               LpgCard(
                 onTap: _submitting ? null : _pickCustomer,
@@ -232,7 +232,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ),
               if (customer != null) ...[
                 const SizedBox(height: LpgSpacing.lg),
-                Text('Delivery address', style: text.titleMedium),
+                LpgSectionHeader.compact(title: 'Delivery address'),
                 const SizedBox(height: LpgSpacing.sm),
                 if (customer.addresses.isEmpty)
                   const LpgBanner(
@@ -282,7 +282,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 ),
               ),
               const SizedBox(height: LpgSpacing.lg),
-              Text('Cylinders', style: text.titleMedium),
+              LpgSectionHeader.compact(title: 'Cylinders'),
               const SizedBox(height: LpgSpacing.sm),
               if (customer == null)
                 Text(

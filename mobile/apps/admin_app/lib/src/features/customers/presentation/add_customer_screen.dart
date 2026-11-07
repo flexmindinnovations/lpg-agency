@@ -251,7 +251,7 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
                 ),
               ],
               const SizedBox(height: LpgSpacing.xl),
-              Text('Delivery address', style: text.titleMedium),
+              LpgSectionHeader.compact(title: 'Delivery address'),
               const SizedBox(height: LpgSpacing.md),
               LpgTextField(
                 label: 'House, building and street',

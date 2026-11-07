@@ -36,10 +36,8 @@ void main() {
       expect(theme.textTheme.bodyLarge?.fontFamily, LpgTheme.fontFamily);
     });
 
-    test('high contrast drops shadows and gradients', () {
+    test('high contrast drops gradients', () {
       final hc = LpgTheme.colorsFor(LpgThemeVariant.highContrast);
-      expect(hc.cardShadow, isEmpty);
-      expect(hc.floatingShadow, isEmpty);
       expect(hc.heroGradient.toSet(), hasLength(1));
     });
 

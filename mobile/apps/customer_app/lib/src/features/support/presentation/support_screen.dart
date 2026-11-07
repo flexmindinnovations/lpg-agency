@@ -59,7 +59,7 @@ class SupportScreen extends ConsumerWidget {
                   const LpgFadeSlideIn(child: EmergencyContactsCard()),
                   const SizedBox(height: LpgSpacing.md),
                   LpgFadeSlideIn(index: 1, child: header),
-                  const LpgSectionHeader(title: 'Your Recent Tickets'),
+                  const LpgSectionHeader(title: 'Your recent tickets'),
                 ],
               ),
             ),

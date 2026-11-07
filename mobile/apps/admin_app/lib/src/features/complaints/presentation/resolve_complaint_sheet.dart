@@ -72,7 +72,7 @@ class _ResolveComplaintSheetState extends ConsumerState<ResolveComplaintSheet> {
             style: text.bodyMedium?.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: LpgSpacing.md),
-          Text('Outcome', style: text.titleSmall),
+          LpgSectionHeader.compact(title: 'Outcome'),
           const SizedBox(height: LpgSpacing.sm),
           LpgChoiceChips<String>(
             options: resolutionOutcomes,

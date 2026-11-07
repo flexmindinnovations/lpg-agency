@@ -98,7 +98,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'login',
         builder: (context, state) => const LpgContentWidth(
           maxWidth: LpgBreakpoints.formMaxWidth,
-          paintCanvas: true,
           child: LoginScreen(),
         ),
       ),
@@ -111,7 +110,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/routes/:routeId/cash-handover',
         name: 'cashHandover',
         builder: (context, state) => LpgContentWidth(
-          paintCanvas: true,
           child: CashHandoverScreen(routeId: state.pathParameters['routeId']!),
         ),
       ),
@@ -119,7 +117,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/routes/:routeId/load',
         name: 'vanLoad',
         builder: (context, state) => LpgContentWidth(
-          paintCanvas: true,
           child: VanLoadScreen(routeId: state.pathParameters['routeId']!),
         ),
       ),

@@ -1,9 +1,6 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../motion.dart';
 import '../theme.dart';
 import '../tone.dart';
 
@@ -138,15 +135,14 @@ class _ToneColors extends ColorMapper {
   int get hashCode => Object.hash(soft, mid, strong, ground);
 }
 
-/// A flat, solid-colour illustration that settles into place once and then
-/// breathes a few times before resting, so a screen of them is lively when it
-/// opens and still afterwards.
+/// A flat, solid-colour illustration, still: it is drawn once and never moves,
+/// so a screen of tiles costs nothing while it scrolls.
 ///
-/// Decorative: excluded from semantics and touches. Nothing here uses
-/// transparency, so contrast does not depend on what is behind it. Under the
-/// platform's reduce-motion setting it is drawn finished and never moves; in
+/// Decorative: excluded from semantics and touches. It is drawn at
+/// [opacity] so it sits quietly behind the tile's text; it is only ever
+/// fainter than the solid art, so it cannot cost the text any contrast. In
 /// high contrast it is not drawn at all, because fills stay plain there.
-class LpgIllustrationArt extends StatefulWidget {
+class LpgIllustrationArt extends StatelessWidget {
   const LpgIllustrationArt({
     super.key,
     required this.illustration,
@@ -160,95 +156,32 @@ class LpgIllustrationArt extends StatefulWidget {
 
   static const double defaultSize = 116;
 
-  @override
-  State<LpgIllustrationArt> createState() => _LpgIllustrationArtState();
-}
-
-class _LpgIllustrationArtState extends State<LpgIllustrationArt>
-    with TickerProviderStateMixin {
-  static const _settle = Duration(milliseconds: 800);
-  static const _breath = Duration(milliseconds: 2600);
-
-  late final AnimationController _entry = AnimationController(
-    vsync: this,
-    duration: _settle,
-  );
-  late final AnimationController _breathing = AnimationController(
-    vsync: this,
-    duration: _breath,
-  );
-  late final Animation<double> _arrival = CurvedAnimation(
-    parent: _entry,
-    curve: Curves.easeOutBack,
-  );
-  bool _started = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-    final reduce = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    if (reduce) {
-      _entry.value = 1;
-      return;
-    }
-    _entry.forward().whenComplete(() {
-      if (!mounted) return;
-      _breathing.repeat(count: LpgMotion.pulseRepeats);
-    });
-  }
-
-  @override
-  void dispose() {
-    _entry.dispose();
-    _breathing.dispose();
-    super.dispose();
-  }
+  /// How strongly the art shows over the card, 0 to 1.
+  static const double opacity = 0.4;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     if (colors.isHighContrast) return const SizedBox.shrink();
-    final base = widget.tone.foreground(colors);
-    // Drawn once into its own layer; the motion below only moves that layer.
-    final picture = RepaintBoundary(
-      child: SvgPicture.asset(
-        widget.illustration.assetPath,
-        package: 'design_system',
-        width: widget.size,
-        height: widget.size,
-        colorMapper: _ToneColors(
-          soft: colors.tint(base, LpgIllustrationTint.soft),
-          mid: colors.tint(base, LpgIllustrationTint.mid),
-          strong: colors.tint(base, LpgIllustrationTint.strong),
-          ground: colors.card,
-        ),
-      ),
-    );
+    final base = tone.foreground(colors);
     return ExcludeSemantics(
       child: IgnorePointer(
-        child: SizedBox.square(
-          dimension: widget.size,
-          child: AnimatedBuilder(
-            animation: Listenable.merge([_arrival, _breathing]),
-            child: picture,
-            builder: (context, child) {
-              final e = _arrival.value;
-              // One slow in-and-out, ending exactly where it began.
-              final b = math.sin(_breathing.value * 2 * math.pi);
-              return Transform.translate(
-                offset: Offset(
-                  widget.size * 0.18 * (1 - e),
-                  widget.size * 0.14 * (1 - e) + b * 2,
-                ),
-                child: Transform.scale(
-                  scale: (0.86 + 0.14 * e) * (1 + 0.012 * b),
-                  alignment: Alignment.bottomRight,
-                  child: child,
-                ),
-              );
-            },
+        // Drawn once into its own layer, so a scroll only moves that picture.
+        child: RepaintBoundary(
+          child: Opacity(
+            opacity: opacity,
+            child: SvgPicture.asset(
+              illustration.assetPath,
+              package: 'design_system',
+              width: size,
+              height: size,
+              colorMapper: _ToneColors(
+                soft: colors.tint(base, LpgIllustrationTint.soft),
+                mid: colors.tint(base, LpgIllustrationTint.mid),
+                strong: colors.tint(base, LpgIllustrationTint.strong),
+                ground: colors.card,
+              ),
+            ),
           ),
         ),
       ),

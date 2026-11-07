@@ -54,7 +54,6 @@ class LpgHeroCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: colors.heroGradient,
         ),
-        boxShadow: colors.isHighContrast ? null : colors.floatingShadow,
       ),
       child: Material(
         type: MaterialType.transparency,

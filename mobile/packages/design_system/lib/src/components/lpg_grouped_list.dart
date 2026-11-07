@@ -6,7 +6,7 @@ import 'lpg_card.dart';
 import 'lpg_list_tile.dart';
 
 /// The one list look every app uses: a single rounded card, rows divided by
-/// hairlines inset past the icon, each row fading in just after the one above
+/// full-width hairlines, each row fading in just after the one above
 /// it. Fill it with [LpgListTile]s (or a [Column] that starts with one).
 ///
 /// When some rows open a detail screen (a chevron) and others do not, the rows
@@ -21,7 +21,7 @@ class LpgGroupedList extends StatelessWidget {
     super.key,
     required this.children,
     this.staggerFrom = 0,
-    this.variant = LpgCardVariant.elevated,
+    this.variant = LpgCardVariant.outlined,
   });
 
   final List<Widget> children;
@@ -45,7 +45,7 @@ class LpgGroupedList extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const Divider(indent: LpgSpacing.md),
+            if (i > 0) const Divider(),
             LpgFadeSlideIn(index: staggerFrom + i, child: children[i]),
           ],
         ],

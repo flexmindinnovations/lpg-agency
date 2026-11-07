@@ -168,6 +168,67 @@ void main() {
     );
   });
 
+  group('start-up restore that cannot reach the server', () {
+    const offline = FailureResult<Principal>(
+      Failure(message: 'offline', errorCode: 'NETWORK_UNAVAILABLE'),
+    );
+
+    test('stays signed-in-pending (unknown), then restores once the server '
+        'answers', () async {
+      final repository = _FakeAuthRepository(restoreSessionResult: offline);
+      final controller = AuthController(
+        repository,
+        restoreRetryBase: const Duration(milliseconds: 10),
+      );
+      addTearDown(controller.dispose);
+      var settled = false;
+      unawaited(controller.whenSettled.then((_) => settled = true));
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      // Not signed out: the stored session is not known to be bad.
+      expect(controller.state.status, AuthStatus.unknown);
+      expect(settled, isFalse);
+
+      repository.restoreSessionResult = const Success(_principal);
+      await controller.whenSettled;
+
+      expect(controller.state.isAuthenticated, isTrue);
+    });
+
+    test('a refusal after a retry still signs the person out', () async {
+      final repository = _FakeAuthRepository(restoreSessionResult: offline);
+      final controller = AuthController(
+        repository,
+        restoreRetryBase: const Duration(milliseconds: 10),
+      );
+      addTearDown(controller.dispose);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      repository.restoreSessionResult = const FailureResult(
+        Failure(message: 'expired', errorCode: 'REFRESH_TOKEN_INVALID'),
+      );
+      await controller.whenSettled;
+
+      expect(controller.state.status, AuthStatus.unauthenticated);
+    });
+
+    test('a sign-in while retrying wins and stops the retries', () async {
+      final repository = _FakeAuthRepository(restoreSessionResult: offline);
+      final controller = AuthController(
+        repository,
+        restoreRetryBase: const Duration(milliseconds: 10),
+      );
+      addTearDown(controller.dispose);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      await controller.login(email: 'a@b.c', password: 'pw');
+      // A later failed retry must not overwrite the sign-in.
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      expect(controller.state.isAuthenticated, isTrue);
+    });
+  });
+
   group('whenSettled', () {
     test('completes once the start-up restore signs the person in', () async {
       final controller = AuthController(

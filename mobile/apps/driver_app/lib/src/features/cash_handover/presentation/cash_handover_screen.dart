@@ -441,7 +441,7 @@ class _Receipt extends StatelessWidget {
                 ],
                 if (handover.denominations != null) ...[
                   const Divider(height: LpgSpacing.xl),
-                  Text('Notes counted', style: context.lpgText.titleSmall),
+                  LpgSectionHeader.compact(title: 'Notes counted'),
                   const SizedBox(height: LpgSpacing.xs),
                   for (final value in cashDenominations)
                     if ((handover.denominations![value] ?? 0) > 0)

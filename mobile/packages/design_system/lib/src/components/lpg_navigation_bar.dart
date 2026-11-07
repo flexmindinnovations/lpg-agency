@@ -31,9 +31,10 @@ class LpgNavDestination {
 
 /// The bottom navigation bar both apps' shells use.
 ///
-/// Every tab shows just its icon; the active one grows into a pill that also
-/// carries its label. Switching tab is one continuous motion: the old pill
-/// shrinks back to an icon while the new one widens, the label wipes in
+/// Every tab shows just its icon; the active one sits on a pill that also
+/// carries its label. There is one pill, and switching tab is one continuous
+/// motion: the pill slides from the old tab to the new one and changes width
+/// to fit the new label, the old label wipes away, the new one wipes in
 /// beside its icon, and the icon pops as it fills. Under the platform's
 /// reduce-motion setting the change is instant.
 ///
@@ -109,7 +110,7 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
     final labelStyle = (context.lpgText.labelLarge ?? const TextStyle())
         .copyWith(fontWeight: FontWeight.w700);
 
-    final bar = DecoratedBox(
+    return DecoratedBox(
       decoration: BoxDecoration(
         // See-through, like a card: the page shows softly through the bar.
         color: colors.barGlass,
@@ -147,11 +148,6 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
         ),
       ),
     );
-    // Grain on the bar like on a card; no blur, since the page does not scroll
-    // under the bar and there is nothing sharp behind it to blur.
-    return colors.isHighContrast
-        ? bar
-        : LpgGlassPane(radius: BorderRadius.zero, child: bar);
   }
 
   Widget _items(BuildContext context, double width, TextStyle labelStyle) {
@@ -180,7 +176,23 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
         actives[lower] + (actives[upper] - actives[lower]) * between;
     final rest = count == 1 ? width : (width - travelling) / (count - 1);
 
-    final children = <Widget>[];
+    // The one pill. At rest on tab p it starts after p resting tabs, so it
+    // sits exactly under that tab; in between it slides and changes width.
+    final pill = hc ? colors.actionPrimary : colors.actionPrimaryContainer;
+    final children = <Widget>[
+      Positioned(
+        left: position * rest,
+        width: travelling,
+        top: 0,
+        bottom: 0,
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: pill,
+            shape: const StadiumBorder(),
+          ),
+        ),
+      ),
+    ];
     var left = 0.0;
     for (var i = 0; i < count; i++) {
       // 1 when this tab is the active one, 0 when not, between while the
@@ -251,9 +263,6 @@ class _Item extends StatelessWidget {
     final active = highContrast
         ? colors.textInverse
         : colors.onActionPrimaryContainer;
-    final pill = highContrast
-        ? colors.actionPrimary
-        : colors.actionPrimaryContainer;
 
     final icon = weight > 0.5 ? destination.selectedIcon : destination.icon;
     // A small pop as the icon fills, back to 1 at both ends of the motion.
@@ -287,21 +296,6 @@ class _Item extends StatelessWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              if (weight > 0)
-                Positioned.fill(
-                  child: Align(
-                    child: FractionallySizedBox(
-                      widthFactor: weight,
-                      heightFactor: 1,
-                      child: DecoratedBox(
-                        decoration: ShapeDecoration(
-                          color: pill,
-                          shape: const StadiumBorder(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

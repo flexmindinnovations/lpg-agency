@@ -40,7 +40,7 @@ class _ApprovalsScreenState extends ConsumerState<ApprovalsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Cash Handover Reviews', style: text.titleMedium),
+              LpgSectionHeader.compact(title: 'Cash handover reviews'),
               const SizedBox(height: LpgSpacing.sm),
 
               handoversAsync.when(

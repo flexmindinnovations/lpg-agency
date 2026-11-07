@@ -571,6 +571,21 @@ void main() {
     expect(opacity.opacity, 1.0);
   });
 
+  testWidgets('LpgFadeSlideIn does not animate rows past the first screenful', (
+    tester,
+  ) async {
+    // A row built far down while a list scrolls must not animate an opacity
+    // layer mid-scroll.
+    await tester.pumpWidget(
+      _wrap(const LpgFadeSlideIn(index: 40, child: Text('Row'))),
+    );
+    expect(tester.hasRunningAnimations, isFalse);
+    expect(
+      find.ancestor(of: find.text('Row'), matching: find.byType(Opacity)),
+      findsNothing,
+    );
+  });
+
   testWidgets('LpgFadeSlideIn renders immediately under reduce-motion', (
     tester,
   ) async {
@@ -960,6 +975,11 @@ void main() {
       expect(find.byType(LpgCard), findsOneWidget);
       expect(find.byType(LpgListTile), findsNWidgets(3));
       expect(find.byType(Divider), findsNWidgets(2));
+      // Edge to edge: no inset from the card's side.
+      for (final d in tester.widgetList<Divider>(find.byType(Divider))) {
+        expect(d.indent, isNull);
+        expect(d.endIndent, isNull);
+      }
     });
   });
 
@@ -1588,17 +1608,18 @@ void main() {
   });
 
   group('section headings', () {
-    testWidgets('a label is bold capitals in the main text colour', (
+    testWidgets('a header is sentence case, normal weight, main colour', (
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(const LpgSectionLabel('Godown and papers')),
+        _wrap(const LpgSectionHeader(title: 'Godown and papers')),
       );
 
-      final text = tester.widget<Text>(find.text('GODOWN AND PAPERS'));
+      // Shown exactly as written: no capitals added.
+      final text = tester.widget<Text>(find.text('Godown and papers'));
       final colors = LpgTheme.colorsFor(LpgThemeVariant.light);
       expect(text.style?.color, colors.textPrimary);
-      expect(text.style?.fontWeight, FontWeight.w800);
+      expect(text.style?.fontWeight, FontWeight.w400);
     });
 
     testWidgets('a header is still announced as a heading, once', (
@@ -1613,6 +1634,53 @@ void main() {
       );
       semantics.dispose();
     });
+
+    testWidgets('spacing is automatic: none above the first child of a list, '
+        'a gap above the rest', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ListView(
+            children: const [
+              LpgSectionHeader(title: 'First'),
+              SizedBox(height: 40),
+              LpgSectionHeader(title: 'Second'),
+            ],
+          ),
+        ),
+      );
+
+      final first = tester.getTopLeft(find.text('First')).dy;
+      final second = tester.getTopLeft(find.text('Second')).dy;
+      final firstBox = tester
+          .getTopLeft(find.byType(LpgSectionHeader).first)
+          .dy;
+      final secondBox = tester
+          .getTopLeft(find.byType(LpgSectionHeader).last)
+          .dy;
+      // The first heading's text starts at the top of its own box...
+      expect(first - firstBox, 0);
+      // ...and the later one is pushed down by the section gap.
+      expect(second - secondBox, LpgSpacing.lg);
+    });
+
+    testWidgets(
+      'a heading inside a column is not the first thing on the page',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            ListView(
+              children: const [
+                Column(children: [LpgSectionHeader(title: 'Nested')]),
+              ],
+            ),
+          ),
+        );
+
+        final text = tester.getTopLeft(find.text('Nested')).dy;
+        final box = tester.getTopLeft(find.byType(LpgSectionHeader)).dy;
+        expect(text - box, LpgSpacing.lg);
+      },
+    );
   });
 }
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:core/core.dart';
 import 'package:api_client/api_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -217,6 +218,34 @@ void main() {
           throwsA(isA<DioException>()),
         );
         expect(sessionExpired, isTrue);
+      },
+    );
+
+    test(
+      'keeps the session when the refresh could not be tried (no network)',
+      () async {
+        final adapter = _FakeHttpClientAdapter(
+          (options) =>
+              _jsonResponse({'error_code': 'AUTHENTICATION_REQUIRED'}, 401),
+        );
+        var sessionExpired = false;
+        final client = ApiClient(
+          baseUrl: 'https://api.test',
+          getAccessToken: () => 'stale-token',
+          refreshAccessToken: () async => throw const FailureException(
+            Failure(message: 'offline', errorCode: 'NETWORK_UNAVAILABLE'),
+          ),
+          onSessionExpired: () => sessionExpired = true,
+        );
+        client.dio.httpClientAdapter = adapter;
+
+        // The request itself fails, with its own error ...
+        await expectLater(
+          client.dio.get<void>('/api/v1/orders'),
+          throwsA(isA<DioException>()),
+        );
+        // ... but the person stays signed in.
+        expect(sessionExpired, isFalse);
       },
     );
   });

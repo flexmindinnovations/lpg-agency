@@ -3,72 +3,64 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'components/lpg_backdrop.dart';
-import 'grain.dart';
+import 'glass_snapshot.dart';
 import 'layout.dart';
 import 'surface.dart';
 import 'theme.dart';
 
 /// How see-through glass surfaces are, worked out from the theme's own colours
-/// the same way the page's washes are (see [LpgBackdropLook]): the **most
+/// the same way the page's grain is (see [LpgBackdropLook]): the **most
 /// transparent** fill that still keeps primary and secondary text at 4.5:1 or
 /// better on the worst thing that can be behind it.
 ///
-/// * A card sits on the page, so the worst thing behind it is the page's worst
-///   pixel (a wash at its strongest, a grain speck on top).
-/// * A frosted sheet sits over arbitrary content, blurred. The worst blurred
-///   content is an average of whatever is under it, which can be no darker than
-///   black or lighter than white, so those two are the worst case.
-///
-/// So a theme with little room (dark text on a dark-ish page) gets a more
-/// opaque glass, and it loosens by itself if a text colour is improved. High
-/// contrast is not glass at all: fully opaque.
+/// Cards, fields, chips and bars sit on the page, so the worst thing behind
+/// them is the page's worst pixel (a wash at its strongest, a grain speck on
+/// top). They carry no texture of their own: the page's paper shows through the
+/// fill, which is the one place the background is painted. A frosted sheet sits
+/// over whatever screen opened it, so the worst thing behind it is the theme's
+/// strongest colours, blurred. A theme with little room (dark text on a dark-ish page) gets a more opaque fill, and it loosens
+/// by itself if a text colour is improved. High contrast is not glass at all:
+/// fully opaque.
 @immutable
 class LpgGlassLook {
   const LpgGlassLook({
     required this.cardAlpha,
-    required this.sheetAlpha,
     this.barAlpha = 1,
+    this.sheetAlpha = 1,
   });
 
   /// Opacity of a card's fill, 0 to 1.
   final double cardAlpha;
 
-  /// Opacity of a frosted sheet's fill, 0 to 1.
-  final double sheetAlpha;
-
   /// Opacity of a bar's fill (the navigation bar, the header once the page is
   /// scrolled), 0 to 1. A bar holds only short, bold labels and icons, so it is
-  /// sized to AA's 4.5:1 rather than the 6:1 of a card and is more see-through.
+  /// more see-through than a card.
   final double barAlpha;
 
-  /// What each would like to be if contrast allowed it.
-  static const cardTarget = 0.55;
+  /// Opacity of a frosted sheet's tint over the blurred screen behind it. The
+  /// lower, the more of that blurred screen shows.
+  final double sheetAlpha;
+
+  /// What each would like to be if contrast allowed it. Lower means more of the
+  /// page shows through; this is the knob for how much background a card lets
+  /// by.
+  static const cardTarget = 0.3;
   static const barTarget = 0.4;
-  static const sheetTarget = 0.78;
+  static const sheetTarget = 0.6;
 
-  /// How much the backdrop behind a frosted sheet is blurred, in logical px.
-  static const blurSigma = 22.0;
+  /// How much of a coloured element survives being blurred into the screen
+  /// around it, for the worst case behind a sheet.
+  static const _blurredShare = 0.4;
 
-  /// How much a card blurs what is behind it. Less than a sheet: behind a card
-  /// there is only the soft page, and a light blur is enough to melt the
-  /// small orbs into it.
-  static const cardBlurSigma = 14.0;
-
-  /// How much of the grain is laid under a card's fill, 0 to 1 (it shows
-  /// through the see-through fill at roughly half this). The grain is under the
-  /// fill and so never touches text; the opacity search below still counts a
-  /// speck at this strength in what the fill is laid over. A sheet floats over
-  /// arbitrary content, so it has less room and a finer grain.
-  static const grainStrength = 0.2;
-  static const sheetGrainStrength = 0.08;
-
-  /// Text on glass keeps this contrast on the worst
-  /// pixel behind it, so it reads crisply, not just legally. Well above the
-  /// 4.5:1 the page itself is held to.
-  static const readableContrast = 6.0;
+  /// What text on a card, field or chip keeps. They sit on the page, so they
+  /// are held to what the page itself is: as readable as the page under them.
+  static const cardContrast = LpgBackdropLook.minTextContrast;
 
   /// What a bar's text and icons keep (WCAG AA for normal text).
   static const barContrast = LpgBackdropLook.minTextContrast;
+
+  /// What a sheet's text keeps over the worst blurred thing behind it.
+  static const sheetContrast = LpgBackdropLook.minTextContrast;
 
   static final Expando<LpgGlassLook> _cache = Expando();
 
@@ -77,67 +69,70 @@ class LpgGlassLook {
 
   static LpgGlassLook _compute(LpgColors colors) {
     if (colors.isHighContrast) {
-      return const LpgGlassLook(cardAlpha: 1, sheetAlpha: 1, barAlpha: 1);
+      return const LpgGlassLook(cardAlpha: 1, barAlpha: 1, sheetAlpha: 1);
     }
 
     final page = LpgBackdropLook.of(colors);
     final pageSamples = <Color>[
-      for (final c in [
-        colors.canvas,
-        page.base,
-        ...page.washes.map((w) => w.color),
-      ])
+      for (final c in [colors.canvas, ...page.samples])
         colors.tint(page.speck, page.grainStrength, over: c),
     ];
-    const extremes = [Color(0xFF000000), Color(0xFFFFFFFF)];
 
     return LpgGlassLook(
-      cardAlpha: _smallest(
-        cardTarget,
-        colors.card,
-        pageSamples,
-        colors,
-        page.speck,
-        grainStrength,
-      ),
+      cardAlpha: _smallest(cardTarget, colors, pageSamples, cardContrast),
+      barAlpha: _smallest(barTarget, colors, pageSamples, barContrast),
       sheetAlpha: _smallest(
         sheetTarget,
-        colors.sheet,
-        extremes,
         colors,
-        page.speck,
-        sheetGrainStrength,
-      ),
-      barAlpha: _smallest(
-        barTarget,
-        colors.card,
-        pageSamples,
-        colors,
-        page.speck,
-        grainStrength,
-        minContrast: barContrast,
+        sheetBackdrops(colors, pageSamples),
+        sheetContrast,
+        fill: colors.sheet,
+        // The paper's grain is laid over the tint, under the text.
+        speck: page.speck,
+        grain: page.grainStrength * LpgBackdropLook.overlayShare,
       ),
     );
   }
 
-  /// The smallest opacity from [target] up to 1 at which text stays readable
-  /// on [fill] laid over every one of [behind], with a grain [speck] under it.
+  /// What a blurred screen can average to behind a sheet: the page and a card,
+  /// and each strong colour (the brand colour of a button or hero, the status
+  /// colours of a badge or banner) at partial strength, since a blur mixes them
+  /// into their surroundings. [page] is what the page itself can be.
+  static List<Color> sheetBackdrops(LpgColors colors, List<Color> page) => [
+    ...page,
+    colors.card,
+    for (final c in [
+      colors.actionPrimary,
+      colors.accent,
+      colors.statusDanger,
+      colors.statusSuccess,
+      colors.statusWarning,
+      colors.statusInfo,
+    ])
+      colors.tint(c, _blurredShare, over: colors.canvas),
+  ];
+
+  /// The smallest opacity from [target] up to 1 at which text stays at
+  /// [minContrast] on [fill] (the card colour by default) laid over every one
+  /// of [behind].
   static double _smallest(
     double target,
-    Color fill,
-    List<Color> behind,
     LpgColors colors,
-    Color speck,
-    double grain, {
-    double minContrast = readableContrast,
+    List<Color> behind,
+    double minContrast, {
+    Color? fill,
+    Color speck = const Color(0xFF000000),
+    double grain = 0,
   }) {
     bool readable(double alpha) {
       for (final back in behind) {
-        // The grain sits under the fill (never over the text), so it is part
-        // of what the fill is laid over.
-        final glass = Color.alphaBlend(
-          fill.withValues(alpha: alpha),
-          colors.tint(speck, grain, over: back),
+        final glass = colors.tint(
+          speck,
+          grain,
+          over: Color.alphaBlend(
+            (fill ?? colors.card).withValues(alpha: alpha),
+            back,
+          ),
         );
         for (final text in [colors.textPrimary, colors.textSecondary]) {
           if (LpgBackdropLook.contrast(text, glass) < minContrast) {
@@ -166,11 +161,11 @@ class LpgGlassLook {
   bool operator ==(Object other) =>
       other is LpgGlassLook &&
       other.cardAlpha == cardAlpha &&
-      other.sheetAlpha == sheetAlpha &&
-      other.barAlpha == barAlpha;
+      other.barAlpha == barAlpha &&
+      other.sheetAlpha == sheetAlpha;
 
   @override
-  int get hashCode => Object.hash(cardAlpha, sheetAlpha, barAlpha);
+  int get hashCode => Object.hash(cardAlpha, barAlpha, sheetAlpha);
 }
 
 extension LpgGlassColors on LpgColors {
@@ -183,187 +178,39 @@ extension LpgGlassColors on LpgColors {
   /// page is scrolled. Lighter than a card's (see [LpgGlassLook.barAlpha]).
   Color get barGlass => card.withValues(alpha: LpgGlassLook.of(this).barAlpha);
 
-  /// The see-through fill of a frosted sheet. Only ever use it together with a
-  /// blur (see [LpgGlass]): on its own, content behind it would show through.
+  /// The tint of a frosted sheet, laid over the blurred screen behind it.
   Color get sheetGlass =>
       sheet.withValues(alpha: LpgGlassLook.of(this).sheetAlpha);
 }
 
-/// A surface's resting shadow, drawn **outside** the shape only.
+/// A glass container. At card level it is a see-through fill and a hairline
+/// laid over the page: nothing is blurred and it has no texture of its own, so
+/// the page's paper shows through. At sheet level (it floats over the screen)
+/// it is frosted glass: the screen behind, blurred, under a tint and the
+/// paper's grain, with no border. The blur is a still picture taken once as the sheet opens (see
+/// [LpgGlassSnapshot]) and passed as [backdrop], so nothing is blurred while
+/// the sheet moves; until it arrives, or without one, the sheet is the page's
+/// paper. In high contrast both are plain opaque surfaces.
 ///
-/// A `BoxDecoration` shadow is painted under the whole box, so behind a
-/// see-through fill it would show through as a grey patch inside the card.
-/// This paints the same shadow with the shape cut out of it.
-class LpgGlassShadow extends StatelessWidget {
-  const LpgGlassShadow({
-    super.key,
-    required this.shadows,
-    required this.radius,
-    required this.child,
-  });
-
-  final List<BoxShadow> shadows;
-  final BorderRadius radius;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (shadows.isEmpty) return child;
-    return CustomPaint(
-      painter: _OutsideShadowPainter(shadows, radius),
-      child: child,
-    );
-  }
-}
-
-class _OutsideShadowPainter extends CustomPainter {
-  _OutsideShadowPainter(this.shadows, this.radius);
-
-  final List<BoxShadow> shadows;
-  final BorderRadius radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final box = radius.toRRect(Offset.zero & size);
-    final everything = Path()..addRect((Offset.zero & size).inflate(160));
-    final outside = Path.combine(
-      PathOperation.difference,
-      everything,
-      Path()..addRRect(box),
-    );
-    canvas.save();
-    canvas.clipPath(outside);
-    for (final shadow in shadows) {
-      canvas.drawRRect(
-        box.shift(shadow.offset).inflate(shadow.spreadRadius),
-        shadow.toPaint(),
-      );
-    }
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_OutsideShadowPainter old) =>
-      old.radius != radius || !_same(old.shadows, shadows);
-
-  static bool _same(List<BoxShadow> a, List<BoxShadow> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-}
-
-/// Frosted glass, the layers every glass surface is made of: whatever is
-/// behind it blurred by [blurSigma] (none when `null`), then [child] (the
-/// fill, hairline and content), then a fine grain over the top.
-///
-/// Clips to [radius]. This is the one place a backdrop filter or grain is
-/// laid over a surface, so a card, a sheet and a custom panel all look alike.
-class LpgGlassPane extends StatefulWidget {
-  const LpgGlassPane({
-    super.key,
-    required this.radius,
-    required this.child,
-    this.blurSigma,
-    this.grain = LpgGlassLook.grainStrength,
-  });
-
-  final BorderRadius radius;
-  final double? blurSigma;
-
-  /// How much of the grain shows over the top, 0 to 1.
-  final double grain;
-  final Widget child;
-
-  @override
-  State<LpgGlassPane> createState() => _LpgGlassPaneState();
-}
-
-class _LpgGlassPaneState extends State<LpgGlassPane> {
-  @override
-  void initState() {
-    super.initState();
-    LpgGrain.ensureLoaded();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Widget pane = Stack(
-      fit: StackFit.passthrough,
-      children: [
-        // Under the content, never over it: the grain must not touch text.
-        Positioned.fill(
-          child: ExcludeSemantics(
-            child: IgnorePointer(
-              child: ValueListenableBuilder<ui.Image?>(
-                valueListenable: LpgGrain.image,
-                builder: (context, tile, _) => tile == null || widget.grain <= 0
-                    ? const SizedBox.shrink()
-                    : CustomPaint(painter: _GrainPainter(tile, widget.grain)),
-              ),
-            ),
-          ),
-        ),
-        widget.child,
-      ],
-    );
-    final sigma = widget.blurSigma;
-    if (sigma != null) {
-      pane = BackdropFilter(
-        filter: ui.ImageFilter.blur(
-          sigmaX: sigma,
-          sigmaY: sigma,
-          tileMode: TileMode.clamp,
-        ),
-        child: pane,
-      );
-    }
-    return ClipRRect(borderRadius: widget.radius, child: pane);
-  }
-}
-
-class _GrainPainter extends CustomPainter {
-  _GrainPainter(this.tile, this.strength);
-
-  final ui.Image tile;
-  final double strength;
-
-  @override
-  void paint(Canvas canvas, Size size) =>
-      LpgGrain.paint(canvas, Offset.zero & size, tile, strength);
-
-  @override
-  bool shouldRepaint(_GrainPainter old) =>
-      old.tile != tile || old.strength != strength;
-}
-
-/// A frosted-glass container: a see-through fill, a hairline, the content
-/// behind it blurred (when [blur] is on) and a fine grain over the top.
-///
-/// A card-level glass blurs lightly ([LpgGlassLook.cardBlurSigma]) with the
-/// card fill; a sheet-level glass blurs strongly ([LpgGlassLook.blurSigma])
-/// with the stronger sheet fill, sized for any content behind. Without [blur]
-/// the fill is the card glass, which is safe only over the page. In high
-/// contrast both are fully opaque and nothing is blurred.
+/// There is no live backdrop blur anywhere: redrawing one every frame of a
+/// scroll or a sheet's slide is what made them drop frames.
 class LpgGlass extends StatelessWidget {
   const LpgGlass({
     super.key,
     required this.child,
     this.level = LpgSurfaceLevel.sheet,
-    this.blur = true,
     this.padding,
     this.radius,
-    this.shadow = true,
+    this.backdrop,
   });
 
   final Widget child;
   final LpgSurfaceLevel level;
-  final bool blur;
   final EdgeInsetsGeometry? padding;
   final BorderRadius? radius;
-  final bool shadow;
+
+  /// The blurred screen behind a sheet, as [LpgGlassSnapshot.capture] makes it.
+  final Future<ui.Image?>? backdrop;
 
   @override
   Widget build(BuildContext context) {
@@ -374,38 +221,91 @@ class LpgGlass extends StatelessWidget {
         : Padding(padding: padding!, child: child);
 
     if (colors.isHighContrast) {
-      return LpgSurface(
-        level: level,
-        radius: shape,
-        shadow: shadow,
-        child: content,
-      );
+      return LpgSurface(level: level, radius: shape, child: content);
     }
 
-    final isCard = level == LpgSurfaceLevel.card;
-    final panel = LpgGlassPane(
-      radius: shape,
-      grain: isCard
-          ? LpgGlassLook.grainStrength
-          : LpgGlassLook.sheetGrainStrength,
-      blurSigma: !blur
-          ? null
-          : isCard
-          ? LpgGlassLook.cardBlurSigma
-          : LpgGlassLook.blurSigma,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: blur && !isCard ? colors.sheetGlass : colors.cardGlass,
-          borderRadius: shape,
-          border: Border.fromBorderSide(colors.hairlineFor(level)),
+    if (level == LpgSurfaceLevel.card) {
+      return ClipRRect(
+        borderRadius: shape,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.cardGlass,
+            borderRadius: shape,
+            border: Border.fromBorderSide(colors.hairlineFor(level)),
+          ),
+          child: content,
         ),
-        child: content,
+      );
+    }
+    return ClipRRect(
+      borderRadius: shape,
+      child: LpgBackdrop(
+        child: _FrostedSheet(backdrop: backdrop, child: content),
       ),
     );
-    return LpgGlassShadow(
-      shadows: shadow ? colors.shadowFor(level) : const [],
-      radius: shape,
-      child: panel,
+  }
+}
+
+/// The blurred screen, then the tint, then the paper's grain, then the
+/// content. The picture fades in over the paper when it arrives.
+class _FrostedSheet extends StatefulWidget {
+  const _FrostedSheet({required this.backdrop, required this.child});
+
+  final Future<ui.Image?>? backdrop;
+  final Widget child;
+
+  @override
+  State<_FrostedSheet> createState() => _FrostedSheetState();
+}
+
+class _FrostedSheetState extends State<_FrostedSheet> {
+  ui.Image? _image;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.backdrop?.then((image) {
+      if (mounted) setState(() => _image = image);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lpgColors;
+    final image = _image;
+    final fade = (MediaQuery.maybeOf(context)?.disableAnimations ?? false)
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        Positioned.fill(
+          child: ExcludeSemantics(
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: image == null ? 0 : 1,
+                duration: fade,
+                child: image == null
+                    ? const SizedBox.expand()
+                    : RepaintBoundary(
+                        child: CustomPaint(
+                          painter: LpgSnapshotPainter(
+                            image,
+                            screenHeight: MediaQuery.sizeOf(context).height,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(child: ColoredBox(color: colors.sheetGlass)),
+        ),
+        // The paper's grain over the blurred screen and the tint, under the
+        // content, so a sheet carries the same texture as the page.
+        LpgBackdrop(overlay: true, child: widget.child),
+      ],
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../i18n/customer_strings.dart';
 import '../../../providers.dart';
 import '../data/order_payments_provider.dart';
 
@@ -144,9 +145,12 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Or pay by bank transfer',
-                      style: context.lpgText.titleSmall,
+                    LpgSectionHeader.compact(
+                      title: context
+                          .strings
+                          .payments
+                          .onlineSection
+                          .bankTransferTitle,
                     ),
                     const SizedBox(height: LpgSpacing.sm),
                     Text(bank.accountHolder),

@@ -191,13 +191,6 @@ class _LpgSplashState extends State<LpgSplash> with TickerProviderStateMixin {
                               color: colors.onHero.withValues(alpha: 0.55),
                               width: 2,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.35),
-                                blurRadius: 32,
-                                offset: const Offset(0, 14),
-                              ),
-                            ],
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(30),

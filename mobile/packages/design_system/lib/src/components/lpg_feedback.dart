@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../glass.dart';
+import '../glass_snapshot.dart';
 import '../icons.dart';
 import '../layout.dart';
 import '../surface.dart';
@@ -63,13 +64,16 @@ abstract final class LpgFeedback {
     String? title,
     String? subtitle,
     bool isScrollControlled = true,
-  }) {
+  }) async {
     const top = BorderRadius.vertical(top: Radius.circular(LpgRadius.xxl));
-    return showModalBottomSheet<T>(
+    // The blurred screen behind the sheet, taken once now, before the sheet
+    // covers it; the sheet fades it in when it is ready.
+    final backdrop = LpgGlassSnapshot.capture(context);
+    final result = await showModalBottomSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,
       useSafeArea: true,
-      // The glass below draws its own fill, shape and handle.
+      // The sheet below draws its own paper, shape and handle.
       backgroundColor: Colors.transparent,
       elevation: 0,
       showDragHandle: false,
@@ -78,6 +82,7 @@ abstract final class LpgFeedback {
       builder: (sheetContext) => LpgGlass(
         level: LpgSurfaceLevel.sheet,
         radius: top,
+        backdrop: backdrop,
         child: Padding(
           padding: EdgeInsets.only(
             left: LpgSpacing.mdl,
@@ -91,30 +96,17 @@ abstract final class LpgFeedback {
             children: [
               const LpgSheetHandle(),
               if (title != null) ...[
+                // The title and the close button share one centred line; the
+                // subtitle, when there is one, sits under both.
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Semantics(
-                            header: true,
-                            child: Text(
-                              title,
-                              style: sheetContext.lpgText.titleLarge,
-                            ),
-                          ),
-                          if (subtitle != null) ...[
-                            const SizedBox(height: LpgSpacing.xs),
-                            Text(
-                              subtitle,
-                              style: sheetContext.lpgText.bodyMedium?.copyWith(
-                                color: sheetContext.lpgColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ],
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          title,
+                          style: sheetContext.lpgText.titleLarge,
+                        ),
                       ),
                     ),
                     // A visible way out, for people who do not discover the
@@ -128,6 +120,13 @@ abstract final class LpgFeedback {
                     ),
                   ],
                 ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: sheetContext.lpgText.bodyMedium?.copyWith(
+                      color: sheetContext.lpgColors.textSecondary,
+                    ),
+                  ),
                 const SizedBox(height: LpgSpacing.sm),
               ],
               Flexible(child: builder(sheetContext)),
@@ -136,6 +135,8 @@ abstract final class LpgFeedback {
         ),
       ),
     );
+    (await backdrop)?.dispose();
+    return result;
   }
 
   /// A yes/no confirmation. Resolves `true` only when the user confirms.

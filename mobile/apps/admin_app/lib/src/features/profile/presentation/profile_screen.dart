@@ -36,7 +36,7 @@ class ProfileScreen extends ConsumerWidget {
     final profileAsync = ref.watch(adminProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Admin Profile')),
+      appBar: AppBar(title: const Text('Admin profile')),
       body: SingleChildScrollView(
         padding: LpgSpacing.page,
         child: Column(
@@ -96,8 +96,10 @@ class ProfileScreen extends ConsumerWidget {
                     onPressed: () => _edit(context, profile),
                   ),
                   const SizedBox(height: LpgSpacing.lg),
-                  Text('System Overview', style: text.titleSmall),
-                  const SizedBox(height: LpgSpacing.sm),
+                  const LpgSectionHeader(
+                    title: 'System overview',
+                    padding: EdgeInsets.only(bottom: LpgSpacing.sm),
+                  ),
                   if (profile.contactPhone != null)
                     LpgListTile(
                       title: context.strings.profile.contactPhone,

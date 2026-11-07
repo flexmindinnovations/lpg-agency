@@ -71,7 +71,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'login',
         builder: (context, state) => const LpgContentWidth(
           maxWidth: LpgBreakpoints.formMaxWidth,
-          paintCanvas: true,
           child: LoginScreen(),
         ),
       ),

@@ -34,7 +34,6 @@ class LpgBrandMark extends StatelessWidget {
                 )
               : null,
           color: image == null ? null : colors.card,
-          boxShadow: colors.isHighContrast ? null : colors.floatingShadow,
           border: colors.isHighContrast
               ? Border.all(color: colors.borderStrong, width: 2)
               : null,

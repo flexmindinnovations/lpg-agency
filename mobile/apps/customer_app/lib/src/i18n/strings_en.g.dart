@@ -37,6 +37,7 @@ class CustomerStrings with BaseTranslations<CustomerLocale, CustomerStrings> {
 	// Translations
 	late final CustomerStrings$app$en app = CustomerStrings$app$en.internal(_root);
 	late final CustomerStrings$dashboard$en dashboard = CustomerStrings$dashboard$en.internal(_root);
+	late final CustomerStrings$payments$en payments = CustomerStrings$payments$en.internal(_root);
 }
 
 // Path: app
@@ -60,6 +61,16 @@ class CustomerStrings$dashboard$en {
 	// Translations
 	late final CustomerStrings$dashboard$hero$en hero = CustomerStrings$dashboard$hero$en.internal(_root);
 	late final CustomerStrings$dashboard$liveOrder$en liveOrder = CustomerStrings$dashboard$liveOrder$en.internal(_root);
+}
+
+// Path: payments
+class CustomerStrings$payments$en {
+	CustomerStrings$payments$en.internal(this._root);
+
+	final CustomerStrings _root; // ignore: unused_field
+
+	// Translations
+	late final CustomerStrings$payments$onlineSection$en onlineSection = CustomerStrings$payments$onlineSection$en.internal(_root);
 }
 
 // Path: dashboard.hero
@@ -92,6 +103,18 @@ class CustomerStrings$dashboard$liveOrder$en {
 	String get action => 'Track';
 }
 
+// Path: payments.onlineSection
+class CustomerStrings$payments$onlineSection$en {
+	CustomerStrings$payments$onlineSection$en.internal(this._root);
+
+	final CustomerStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Or pay by bank transfer'
+	String get bankTransferTitle => 'Or pay by bank transfer';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -105,6 +128,7 @@ extension on CustomerStrings {
 			'dashboard.hero.ordersPlaced' => 'Orders placed',
 			'dashboard.liveOrder.title' => 'On its way',
 			'dashboard.liveOrder.action' => 'Track',
+			'payments.onlineSection.bankTransferTitle' => 'Or pay by bank transfer',
 			_ => null,
 		};
 	}

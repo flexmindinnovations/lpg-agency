@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../glass.dart';
 import '../layout.dart';
 import '../theme.dart';
 import 'lpg_skeleton.dart';
@@ -90,7 +91,7 @@ class LpgSkeletonCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(LpgSpacing.mdl),
       decoration: BoxDecoration(
-        color: colors.card,
+        color: colors.cardGlass,
         borderRadius: LpgRadius.cardRadius,
         border: Border.all(color: colors.borderDefault),
       ),

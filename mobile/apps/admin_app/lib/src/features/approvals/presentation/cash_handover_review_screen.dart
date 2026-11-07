@@ -204,7 +204,7 @@ class _CashHandoverReviewScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Notes counted', style: text.titleSmall),
+                      LpgSectionHeader.compact(title: 'Notes counted'),
                       const SizedBox(height: LpgSpacing.sm),
                       for (final value in cashDenominations)
                         if ((notes[value] ?? 0) > 0)
