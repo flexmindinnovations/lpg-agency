@@ -6419,6 +6419,12 @@
             ],
             "title": "Display Name"
           },
+          "needs_name": {
+            "default": false,
+            "description": "True when nobody has named this phone yet (it carries the generated device_<ref> name): the app asks the user once. False for a phone that is already registered in the agency.",
+            "title": "Needs Name",
+            "type": "boolean"
+          },
           "status": {
             "anyOf": [
               {
@@ -6505,6 +6511,21 @@
           "contact_phone"
         ],
         "title": "MyProfileResponse",
+        "type": "object"
+      },
+      "NameMyDeviceRequest": {
+        "properties": {
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "NameMyDeviceRequest",
         "type": "object"
       },
       "NextConsumerNumberResponse": {
@@ -18828,6 +18849,47 @@
           }
         },
         "summary": "This phone's approval state and whether the agency lets it in",
+        "tags": [
+          "Device session"
+        ]
+      }
+    },
+    "/api/v1/devices/me/name": {
+      "put": {
+        "operationId": "name_my_device_api_v1_devices_me_name_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameMyDeviceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyDeviceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Name this phone (asked once, for a phone the agency has not seen)",
         "tags": [
           "Device session"
         ]

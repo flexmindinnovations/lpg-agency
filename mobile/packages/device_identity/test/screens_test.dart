@@ -50,7 +50,10 @@ void main() {
           NameThisPhoneScreen(
             strings: _strings,
             suggestedName: 'Redmi 12',
-            onSubmit: (name) async => sent = name,
+            onSubmit: (name) async {
+              sent = name;
+              return null;
+            },
           ),
         ),
       );
@@ -75,7 +78,10 @@ void main() {
           NameThisPhoneScreen(
             strings: _strings,
             suggestedName: 'Redmi 12',
-            onSubmit: (_) async => sent = true,
+            onSubmit: (_) async {
+              sent = true;
+              return null;
+            },
           ),
         ),
       );
@@ -86,6 +92,30 @@ void main() {
       await tester.pump();
 
       expect(sent, isFalse);
+    });
+
+    testWidgets('shows the agency\'s message when the name is taken', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          NameThisPhoneScreen(
+            strings: _strings,
+            suggestedName: 'device_a1b2c3d4',
+            onSubmit: (_) async =>
+                "Another phone already has the name 'Van 2'. "
+                "Try 'Van 2 2'.",
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(TextField), 'Van 2');
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining("Try 'Van 2 2'"), findsOneWidget);
     });
   });
 

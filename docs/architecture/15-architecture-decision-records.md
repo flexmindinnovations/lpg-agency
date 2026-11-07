@@ -1740,6 +1740,29 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 - **Grace period after release** — replaced by the `off`/`observe`/`enforce` mode, which is explicit and reversible.
 - **Checking the device only at sign-in** — rejected: a blocked phone would keep working until its token expired.
 
+## ADR-072: One Record Per Phone Per Agency; The Agency Names a New Phone, the User Confirms It Once
+
+**Status:** Accepted (2026-11-07, owner request). Builds on ADR-071.
+
+**Context:** The Driver and Admin apps asked for a phone name before the first sign-in and the name travelled to the server on every sign-in. The only identity was the random install ID, which changes when the app is reinstalled or its data cleared, so the same physical phone could be registered twice, and nothing stopped two phones sharing a name.
+
+**Decision:**
+- **Identifier.** The most stable id a normal app can read: the Android ID (`android_id` package; scoped to app signing key + user + device, so it survives reinstall and updates, and changes only on factory reset) and the iOS vendor ID. The hardware **serial number is not used**: from Android 10 it needs a privileged permission and is blocked for normal apps, and iOS never exposes it. The id is stored only as a SHA-256 (`platform.linked_device.hardware_ref`), as before.
+- **One record per phone.** Unique index `uq_linked_device_tenant_app_hardware` on `(tenant_id, app_type, hardware_ref)` where `hardware_ref` is not null. (`app_type` is part of the key because the Driver and Admin apps on one phone hold separate seats.) At sign-in the server matches by hardware reference first, then by install ID. A known phone that arrives with a new install ID keeps its record, approval and name; only the install ID is replaced (`DeviceIdentifierRebound` clears the cached record). A removed phone that comes back is reopened, never duplicated. The migration retires older duplicates of one phone (the most recently seen stays) and keeps their history.
+- **Names.** The sign-in no longer carries a name. A new phone gets `device_<first 8 hex of its hardware hash>` (install-ID hash if the phone reports no hardware id) with `name_confirmed = false`. `GET /devices/me` returns `needs_name`; the app then shows the "Name this phone" step once, after sign-in and before the waiting screen, with the generated name pre-filled. `PUT /devices/me/name` (allowed while the phone is pending) saves it. A phone the agency already has (including after a reinstall) is never asked.
+- **No duplicate names.** Within an agency, names of devices that are not removed are unique, compared ignoring case and spacing. Registration auto-suffixes (`Van 2` -> `Van 2 2`); naming itself or an admin rename is refused with `409 DUPLICATE_DEVICE_NAME` and the message suggests a free name. Enforced in the use cases rather than by a database index, because existing data may already hold duplicate names.
+
+**Consequences:**
+- The generated name uses a hash prefix, not the real hardware id or serial, so the name reveals nothing about the phone.
+- Whoever knows another phone's Android ID and holds a login in the same agency could make their phone take over that record. The Android ID is not shown anywhere (the dashboard shows only a short hash reference) and an approved record's takeover is visible in the audit trail and in `last_user_name`; the install ID stays the credential the per-request check uses.
+- A factory reset gives a new Android ID, so that phone registers again as new, which is correct.
+- Older app builds still send a name; it is used for a new phone (confirmed) and ignored for a known one.
+
+**Alternatives Considered:**
+- **Hardware serial / IMEI** - not readable by normal apps (see above); rejected as in ADR-071.
+- **Database unique index on names** - rejected: would fail the migration on existing data and turn a race into a 500; the use cases suggest a free name instead.
+- **Asking for the name before sign-in** - impossible to skip for a known phone, because the agency is not known until the user signs in.
+
 ## Deferred Decisions
 
 Decisions deliberately left open, each with a defined trigger point:

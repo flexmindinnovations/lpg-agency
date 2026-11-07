@@ -10,7 +10,7 @@ void main() {
 
   setUp(() async {
     identity = await loadIdentity(
-      storage: MemoryStorage(installId: 'install-id-0123456789', name: 'Van 2'),
+      storage: MemoryStorage(installId: 'install-id-0123456789'),
     );
     refusals = [];
   });

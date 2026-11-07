@@ -44,6 +44,8 @@ if TYPE_CHECKING:
 #: agency's records, never a proof of identity.
 MAX_ASSET_NOTE_LENGTH = 64
 MAX_DISPLAY_NAME_LENGTH = 60
+#: Characters of the identifier hash used in a generated `device_<ref>` name.
+DEFAULT_NAME_REF_LENGTH = 8
 
 
 class DeviceStatus(StrEnum):
@@ -90,6 +92,27 @@ class DeviceStatusChanged(DomainEvent):
     display_name: str
 
 
+@dataclass(frozen=True, slots=True)
+class DeviceIdentifierRebound(DomainEvent):
+    """A known phone came back with a new install ID (app reinstalled or its
+    data cleared). Only drives cache invalidation — nothing the user sees."""
+
+    device_id: uuid.UUID
+    tenant_id: uuid.UUID
+
+
+def default_device_name(reference: str) -> str:
+    """`device_<ref>`: the name a phone gets when nobody typed one. `reference`
+    is the start of the stored hardware (or install) hash, never the plain
+    hardware ID."""
+    return f"device_{reference[:DEFAULT_NAME_REF_LENGTH].lower()}"
+
+
+def name_key(name: str) -> str:
+    """What "the same name" means: case and spacing do not count."""
+    return " ".join(name.split()).casefold()
+
+
 def _clean(value: str | None, limit: int) -> str | None:
     if value is None:
         return None
@@ -109,6 +132,7 @@ class LinkedDevice(AggregateRoot):
         "_last_user_id",
         "_last_user_name",
         "_license_id",
+        "_name_confirmed",
         "_registered_at",
         "_revoked_at",
         "_status",
@@ -130,6 +154,7 @@ class LinkedDevice(AggregateRoot):
         status: DeviceStatus = DeviceStatus.PENDING,
         details: DeviceDetails | None = None,
         hardware_ref: str | None = None,
+        name_confirmed: bool = True,
         asset_note: str | None = None,
         last_user_id: uuid.UUID | None = None,
         last_user_name: str | None = None,
@@ -153,6 +178,7 @@ class LinkedDevice(AggregateRoot):
         self._status = status
         self._details = details or DeviceDetails()
         self._hardware_ref = hardware_ref
+        self._name_confirmed = name_confirmed
         self._asset_note = asset_note
         self._last_user_id = last_user_id
         self._last_user_name = last_user_name
@@ -179,6 +205,7 @@ class LinkedDevice(AggregateRoot):
         hardware_ref: str | None,
         user_id: uuid.UUID | None,
         user_name: str | None,
+        name_confirmed: bool = True,
     ) -> LinkedDevice:
         """A phone seen for the first time. `status` is decided by the caller
         (the agency's device-control mode and seat limit)."""
@@ -196,6 +223,7 @@ class LinkedDevice(AggregateRoot):
             status=status,
             details=details,
             hardware_ref=hardware_ref,
+            name_confirmed=name_confirmed,
             last_user_id=user_id,
             last_user_name=user_name,
         )
@@ -223,6 +251,12 @@ class LinkedDevice(AggregateRoot):
     @property
     def display_name(self) -> str:
         return self._display_name
+
+    @property
+    def name_confirmed(self) -> bool:
+        """False while the name is the generated `device_<ref>` default and
+        nobody has chosen one yet — the app then asks once."""
+        return self._name_confirmed
 
     @property
     def registered_at(self) -> datetime:
@@ -310,6 +344,19 @@ class LinkedDevice(AggregateRoot):
             msg = "A device needs a name."
             raise InvariantViolation(msg, device_id=str(self.id))
         self._display_name = cleaned
+        self._name_confirmed = True
+
+    def rebind_identifier(self, device_identifier: str) -> None:
+        """The same phone (same hardware) now holds a different install ID."""
+        if device_identifier == self._device_identifier:
+            return
+        self._device_identifier = device_identifier
+        self.record_event(DeviceIdentifierRebound(device_id=self.id, tenant_id=self._tenant_id))
+
+    def release_hardware_ref(self) -> None:
+        """Let go of the hardware link — used when a newer record for the
+        same phone takes over, so the link stays one-to-one."""
+        self._hardware_ref = None
 
     def set_asset_note(self, note: str | None) -> None:
         cleaned = _clean(note, MAX_ASSET_NOTE_LENGTH + 1)

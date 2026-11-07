@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const _installIdKey = 'device.install_id';
-const _deviceNameKey = 'device.name';
 
 Future<void> _defaultWrite(String key, String value) =>
     const FlutterSecureStorage().write(key: key, value: value);
@@ -11,8 +10,7 @@ Future<void> _defaultWrite(String key, String value) =>
 Future<String?> _defaultRead(String key) =>
     const FlutterSecureStorage().read(key: key);
 
-/// Durable storage for this app instance's install ID and the name the user
-/// gave the phone.
+/// Durable storage for this app instance's install ID.
 ///
 /// The install ID is the access key the agency approves (ADR-071), so it
 /// lives in platform secure storage (Keystore / Keychain), exactly like the
@@ -22,8 +20,6 @@ Future<String?> _defaultRead(String key) =>
 abstract interface class DeviceIdentityStorage {
   Future<String?> readInstallId();
   Future<void> writeInstallId(String value);
-  Future<String?> readName();
-  Future<void> writeName(String value);
 }
 
 /// [DeviceIdentityStorage] backed by `flutter_secure_storage`. Tests inject
@@ -43,12 +39,6 @@ final class SecureDeviceIdentityStorage implements DeviceIdentityStorage {
 
   @override
   Future<void> writeInstallId(String value) => _write(_installIdKey, value);
-
-  @override
-  Future<String?> readName() => _read(_deviceNameKey);
-
-  @override
-  Future<void> writeName(String value) => _write(_deviceNameKey, value);
 }
 
 /// A fresh install ID: 32 random bytes from a cryptographically secure

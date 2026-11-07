@@ -20,12 +20,20 @@ from typing import TYPE_CHECKING
 from lpg.application.common.cqrs import Command
 from lpg.application.common.errors import (
     DeviceLimitReachedError,
+    DuplicateDeviceNameError,
     NotFoundError,
     TooManyWaitingDevicesError,
     ValidationError,
 )
 from lpg.domain.license.device_control import CONTROLLED_APP_TYPES, DeviceControlMode
-from lpg.domain.license.linked_device import DeviceDetails, DeviceStatus, LinkedDevice
+from lpg.domain.license.linked_device import (
+    MAX_DISPLAY_NAME_LENGTH,
+    DeviceDetails,
+    DeviceStatus,
+    LinkedDevice,
+    default_device_name,
+    name_key,
+)
 
 if TYPE_CHECKING:
     from lpg.application.audit.ports import AuditLogEntry, AuditLogRepository, AuditTrail
@@ -52,7 +60,8 @@ class RegisterDeviceCommand(Command):
     app_type: str
     #: SHA-256 of the install ID — the plain value never gets this far.
     device_identifier: str
-    display_name: str
+    #: What the user typed, or `None`: the phone then gets `device_<ref>`.
+    display_name: str | None
     details: DeviceDetails
     #: SHA-256 of the Android ID / iOS vendor ID, if the phone reported one.
     hardware_ref: str | None
@@ -71,6 +80,13 @@ class DeviceRegistration:
 
 class RegisterDeviceUseCase:
     """Find or create the record for a phone that just signed in.
+
+    A phone is recognised by its hardware reference first (the hashed Android
+    ID / iOS vendor ID), then by its install ID. A known phone that comes back
+    with a new install ID — the app was reinstalled or its data cleared — keeps
+    its record, approval and name; only the install ID is replaced. So the same
+    phone can never be listed twice in an agency, and is never asked for a
+    name again.
 
     A first-time phone starts **pending** (it needs an admin's approval).
     The one exception is `observe` mode, whose job is to build the list
@@ -102,26 +118,31 @@ class RegisterDeviceUseCase:
             raise NotFoundError(msg, tenant_id=str(command.tenant_id))
 
         now = datetime.now(UTC)
-        existing = await self._device_repository.get_by_identifier(
-            command.tenant_id, command.app_type, command.device_identifier
-        )
+        existing = await self._find_existing(command)
 
         if existing is None:
             status = await self._starting_status(command, license_)
             await self._guard_waiting_queue(command, status)
+            device_id = uuid.uuid4()
+            typed = " ".join((command.display_name or "").split())
+            name = unique_device_name(
+                typed or default_device_name(command.hardware_ref or command.device_identifier),
+                await self._device_repository.active_names(command.tenant_id),
+            )
             device = LinkedDevice.register(
-                uuid.uuid4(),
+                device_id,
                 command.tenant_id,
                 license_.id,
                 command.app_type,
                 command.device_identifier,
-                command.display_name,
+                name,
                 at=now,
                 status=status,
                 details=command.details,
                 hardware_ref=command.hardware_ref,
                 user_id=command.user_id,
                 user_name=command.user_name,
+                name_confirmed=bool(typed),
             )
             await self._device_repository.add(device)
             await self._audit_registered(device, command.mode)
@@ -133,6 +154,11 @@ class RegisterDeviceUseCase:
             status = await self._starting_status(command, license_)
             await self._guard_waiting_queue(command, status)
             existing.reopen(status=status, at=now)
+            taken = await self._device_repository.active_names(
+                command.tenant_id, excluding=existing.id
+            )
+            if name_key(existing.display_name) in taken:
+                existing.rename(unique_device_name(existing.display_name, taken))
             is_new = True
         existing.record_sign_in(
             at=now,
@@ -146,6 +172,30 @@ class RegisterDeviceUseCase:
             await self._audit_registered(existing, command.mode)
         await self._unit_of_work.commit()
         return DeviceRegistration(existing, is_new=is_new)
+
+    async def _find_existing(self, command: RegisterDeviceCommand) -> LinkedDevice | None:
+        by_install = await self._device_repository.get_by_identifier(
+            command.tenant_id, command.app_type, command.device_identifier
+        )
+        if command.hardware_ref is None:
+            return by_install
+        by_hardware = await self._device_repository.get_by_hardware_ref(
+            command.tenant_id, command.app_type, command.hardware_ref
+        )
+        if by_hardware is None:
+            return by_install
+        if by_install is None or by_install.id == by_hardware.id:
+            # Same phone, new install ID (or nothing changed).
+            by_hardware.rebind_identifier(command.device_identifier)
+            return by_hardware
+        # An older record for this install and a newer one for this hardware:
+        # keep the install's record and retire the other, so the hardware link
+        # stays one-to-one.
+        if by_hardware.is_active:
+            by_hardware.remove(by=None, at=datetime.now(UTC))
+        by_hardware.release_hardware_ref()
+        await self._device_repository.save(by_hardware)
+        return by_install
 
     async def _guard_waiting_queue(
         self, command: RegisterDeviceCommand, status: DeviceStatus
@@ -183,6 +233,76 @@ class RegisterDeviceUseCase:
             details={"app_type": device.app_type, "mode": mode.value},
             after={"status": device.status.value},
         )
+
+
+def unique_device_name(wanted: str, taken: set[str]) -> str:
+    """`wanted`, or `wanted 2`, `wanted 3`… — the first one not in `taken`
+    (a set of `name_key`s)."""
+    base = " ".join(wanted.split())[:MAX_DISPLAY_NAME_LENGTH]
+    if name_key(base) not in taken:
+        return base
+    counter = 2
+    while True:
+        suffix = f" {counter}"
+        candidate = f"{base[: MAX_DISPLAY_NAME_LENGTH - len(suffix)]}{suffix}"
+        if name_key(candidate) not in taken:
+            return candidate
+        counter += 1
+
+
+async def require_name_free(
+    repository: LinkedDeviceRepository, tenant_id: uuid.UUID, name: str, device_id: uuid.UUID
+) -> None:
+    """Refuse a name another phone in the agency already has, and suggest one."""
+    taken = await repository.active_names(tenant_id, excluding=device_id)
+    if name_key(name) in taken:
+        suggestion = unique_device_name(name, taken)
+        msg = f"Another phone already has the name '{name.strip()}'. Try '{suggestion}'."
+        raise DuplicateDeviceNameError(msg, suggestion=suggestion)
+
+
+# -- A phone naming itself ----------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class NameOwnDeviceCommand(Command):
+    tenant_id: uuid.UUID
+    device_id: uuid.UUID
+    name: str
+    user_id: uuid.UUID | None = None
+
+
+class NameOwnDeviceUseCase:
+    """The name a phone's user picks once, right after the phone is first
+    seen. Not an admin decision: allowed whatever state the phone is in."""
+
+    def __init__(
+        self, device_repository: LinkedDeviceRepository, audit: AuditTrail, unit_of_work: UnitOfWork
+    ) -> None:
+        self._device_repository = device_repository
+        self._audit = audit
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: NameOwnDeviceCommand) -> LinkedDevice:
+        device = await _load_device(self._device_repository, command.tenant_id, command.device_id)
+        if not device.is_active:
+            msg = "This phone was removed. Sign in again to register it."
+            raise ValidationError(msg, device_id=str(device.id))
+        old_name = device.display_name
+        await require_name_free(self._device_repository, command.tenant_id, command.name, device.id)
+        device.rename(command.name)
+        await self._device_repository.save(device)
+        await self._audit.record(
+            action=f"{_AUDIT_ACTION_PREFIX}named",
+            entity_name=AUDIT_ENTITY_NAME,
+            entity_id=str(device.id),
+            entity_display_name=device.display_name,
+            details={"app_type": device.app_type},
+            before={"display_name": old_name},
+            after={"display_name": device.display_name},
+        )
+        await self._unit_of_work.commit()
+        return device
 
 
 # -- Admin decisions ----------------------------------------------------------------
@@ -307,6 +427,9 @@ class UpdateDeviceDetailsUseCase:
         old_name = device.display_name
 
         if command.display_name is not None:
+            await require_name_free(
+                self._device_repository, device.tenant_id, command.display_name, device.id
+            )
             device.rename(command.display_name)
         if command.change_asset_note:
             device.set_asset_note(command.asset_note)

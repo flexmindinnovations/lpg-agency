@@ -68,7 +68,7 @@ class FakeRegistrar:
             uuid.uuid4(),
             command.app_type,
             command.device_identifier,
-            command.display_name,
+            command.display_name or "device_test",
             datetime.now(UTC),
             status=self.status,
             details=command.details,
@@ -185,12 +185,12 @@ async def test_a_driver_sign_in_is_recorded_with_only_hashed_identifiers(
     assert command.mode is mode
 
 
-async def test_the_device_name_defaults_to_the_model() -> None:
+async def test_no_typed_name_is_passed_on_as_none_so_the_agency_generates_one() -> None:
     context = DeviceContext(install_id=_INSTALL, details=DeviceDetails(model="Redmi 12"))
 
     _, registrar = await _bind(DeviceControlMode.OBSERVE, _user(), context)
 
-    assert registrar.commands[0].display_name == "Redmi 12"
+    assert registrar.commands[0].display_name is None
 
 
 @pytest.mark.parametrize("role", ["customer", "agency_admin"])

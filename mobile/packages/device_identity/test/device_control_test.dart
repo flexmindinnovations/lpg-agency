@@ -16,10 +16,30 @@ class _Api extends DeviceApi {
     status: 'approved',
     allowed: true,
   );
+  final List<String> named = [];
+  String? refuseNamesWith;
 
   @override
   Future<Result<DeviceStatusReport>> me() async {
     calls++;
+    return Success(report);
+  }
+
+  @override
+  Future<Result<DeviceStatusReport>> setName(String name) async {
+    named.add(name);
+    final refusal = refuseNamesWith;
+    if (refusal != null) {
+      return FailureResult(
+        Failure(message: refusal, errorCode: 'DUPLICATE_DEVICE_NAME'),
+      );
+    }
+    report = DeviceStatusReport(
+      control: report.control,
+      status: report.status,
+      allowed: report.allowed,
+      displayName: name,
+    );
     return Success(report);
   }
 }
@@ -46,26 +66,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('redirect', () {
-    test(
-      'sends a phone that was never named to the naming step before sign-in',
-      () async {
-        final (control, _) = await _control();
-
-        expect(
-          control.redirect(location: '/login', authenticated: false),
-          DeviceRoutes.name,
-        );
-        expect(
-          control.redirect(location: DeviceRoutes.name, authenticated: false),
-          isNull,
-        );
-      },
-    );
-
-    test('lets a named phone carry on to sign-in', () async {
-      final (control, _) = await _control(
-        storage: MemoryStorage(name: 'Van 2'),
-      );
+    test('never asks anyone to name the phone before sign-in', () async {
+      final (control, _) = await _control();
 
       expect(
         control.redirect(location: '/login', authenticated: false),
@@ -73,27 +75,92 @@ void main() {
       );
     });
 
-    test('does not ask a signed-in user to name the phone', () async {
-      final (control, _) = await _control();
+    test('sends a signed-in phone the agency has not seen to the naming '
+        'step', () async {
+      final (control, api) = await _control();
+      api.report = const DeviceStatusReport(
+        control: 'enforce',
+        status: 'pending',
+        allowed: false,
+        displayName: 'device_a1b2c3d4',
+        needsName: true,
+      );
+      await control.access.refresh();
 
-      expect(control.redirect(location: '/', authenticated: true), isNull);
+      // Naming comes before the waiting screen.
+      expect(
+        control.redirect(location: '/', authenticated: true),
+        DeviceRoutes.name,
+      );
+      expect(
+        control.redirect(location: DeviceRoutes.name, authenticated: true),
+        isNull,
+      );
+      expect(control.suggestedName, 'device_a1b2c3d4');
     });
 
-    test('moves on from the naming step once the name is saved', () async {
-      final (control, _) = await _control();
+    test('does not ask a phone the agency already knows', () async {
+      final (control, api) = await _control();
+      api.report = const DeviceStatusReport(
+        control: 'enforce',
+        status: 'approved',
+        allowed: true,
+        displayName: 'Van 2',
+      );
+      await control.access.refresh();
 
-      await control.saveName('Van 2');
+      expect(control.redirect(location: '/', authenticated: true), isNull);
+      expect(control.phoneName, 'Van 2');
+    });
 
+    test('moves on from the naming step once the name is accepted', () async {
+      final (control, api) = await _control();
+      api.report = const DeviceStatusReport(
+        control: 'enforce',
+        status: 'approved',
+        allowed: true,
+        displayName: 'device_a1b2c3d4',
+        needsName: true,
+      );
+      await control.access.refresh();
+
+      final problem = await control.saveName('  Van 2 ');
+
+      expect(problem, isNull);
+      expect(api.named, ['Van 2']);
       expect(
-        control.redirect(location: DeviceRoutes.name, authenticated: false),
+        control.redirect(location: DeviceRoutes.name, authenticated: true),
         '/',
+      );
+    });
+
+    test('stays on the naming step and shows the agency\'s message when the '
+        'name is taken', () async {
+      final (control, api) = await _control();
+      api.report = const DeviceStatusReport(
+        control: 'enforce',
+        status: 'approved',
+        allowed: true,
+        needsName: true,
+      );
+      await control.access.refresh();
+      api.refuseNamesWith =
+          "Another phone already has the name 'Van 2'. "
+          "Try 'Van 2 2'.";
+
+      final problem = await control.saveName('Van 2');
+
+      expect(problem, contains('Van 2 2'));
+      expect(
+        control.redirect(location: DeviceRoutes.name, authenticated: true),
+        isNull,
       );
     });
 
     test(
       'shows the waiting screen to a signed-in phone that is waiting',
       () async {
-        final (control, _) = await _control(storage: MemoryStorage(name: 'x'));
+        final (control, _) = await _control(storage: MemoryStorage());
         control.access.reportRefusal('DEVICE_PENDING');
 
         expect(
@@ -115,7 +182,7 @@ void main() {
     test(
       'shows the blocked screen whether or not anyone is signed in',
       () async {
-        final (control, _) = await _control(storage: MemoryStorage(name: 'x'));
+        final (control, _) = await _control(storage: MemoryStorage());
         control.access.reportRefusal('DEVICE_BLOCKED');
 
         expect(
@@ -137,7 +204,7 @@ void main() {
     );
 
     test('leaves the blocked screen when the user tries again', () async {
-      final (control, _) = await _control(storage: MemoryStorage(name: 'x'));
+      final (control, _) = await _control(storage: MemoryStorage());
       control.access.reportRefusal('DEVICE_BLOCKED');
 
       control.tryAgain();
@@ -149,7 +216,7 @@ void main() {
     });
 
     test('leaves the waiting screen once approved', () async {
-      final (control, _) = await _control(storage: MemoryStorage(name: 'x'));
+      final (control, _) = await _control(storage: MemoryStorage());
       control.access.reportRefusal('DEVICE_PENDING');
       control.access.reset();
 
@@ -162,7 +229,7 @@ void main() {
 
   group('followSession', () {
     test('asks the server when the user signs in', () async {
-      final (control, api) = await _control(storage: MemoryStorage(name: 'x'));
+      final (control, api) = await _control(storage: MemoryStorage());
       final session = _Session();
       control.followSession(
         session: session,
@@ -176,7 +243,7 @@ void main() {
     });
 
     test('asks at start-up when a session is already restored', () async {
-      final (control, api) = await _control(storage: MemoryStorage(name: 'x'));
+      final (control, api) = await _control(storage: MemoryStorage());
       final session = _Session()..authenticated = true;
 
       control.followSession(
@@ -189,27 +256,9 @@ void main() {
     });
 
     test(
-      'names an unnamed phone after the model when someone signs in',
-      () async {
-        final (control, _) = await _control();
-        final session = _Session();
-        control.followSession(
-          session: session,
-          isAuthenticated: () => session.authenticated,
-        );
-
-        session.set(true);
-        await Future<void>.delayed(Duration.zero);
-
-        expect(control.identity.needsName, isFalse);
-        expect(control.identity.name, 'Redmi 12');
-      },
-    );
-
-    test(
       'forgets the waiting state when the user signs out of a waiting phone',
       () async {
-        final (control, _) = await _control(storage: MemoryStorage(name: 'x'));
+        final (control, _) = await _control(storage: MemoryStorage());
         final session = _Session();
         control.followSession(
           session: session,
@@ -225,7 +274,7 @@ void main() {
     );
 
     test('keeps the blocked state after the forced sign-out', () async {
-      final (control, _) = await _control(storage: MemoryStorage(name: 'x'));
+      final (control, _) = await _control(storage: MemoryStorage());
       final session = _Session();
       control.followSession(
         session: session,
@@ -242,9 +291,7 @@ void main() {
     test(
       'asks again when the app returns to the foreground while signed in',
       () async {
-        final (control, api) = await _control(
-          storage: MemoryStorage(name: 'x'),
-        );
+        final (control, api) = await _control(storage: MemoryStorage());
         final session = _Session()..authenticated = true;
         control.followSession(
           session: session,
@@ -261,7 +308,7 @@ void main() {
     );
 
     test('does not ask on resume while signed out', () async {
-      final (control, api) = await _control(storage: MemoryStorage(name: 'x'));
+      final (control, api) = await _control(storage: MemoryStorage());
       final session = _Session();
       control.followSession(
         session: session,
