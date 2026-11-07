@@ -78,8 +78,8 @@ class _CountReviewSheetState extends ConsumerState<CountReviewSheet> {
     final count = widget.count;
     final names = ref.watch(cylinderNamesProvider).value ?? const {};
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -139,45 +139,17 @@ class _CountReviewSheetState extends ConsumerState<CountReviewSheet> {
               textCapitalization: TextCapitalization.sentences,
             ),
           ],
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          if (_rejecting) ...[
-            LpgButton(
-              label: 'Reject count',
-              icon: LpgIcons.close,
-              isLoading: _busy,
-              expand: true,
-              onPressed: _busy ? null : () => _decide(false),
-            ),
-            const SizedBox(height: LpgSpacing.sm),
-            LpgButton(
-              label: 'Back',
-              variant: LpgButtonVariant.secondary,
-              expand: true,
-              onPressed: _busy
-                  ? null
-                  : () => setState(() => _rejecting = false),
-            ),
-          ] else ...[
-            LpgButton(
-              label: 'Approve count',
-              icon: LpgIcons.check,
-              isLoading: _busy,
-              expand: true,
-              onPressed: _busy ? null : () => _decide(true),
-            ),
-            const SizedBox(height: LpgSpacing.sm),
-            LpgButton(
-              label: 'Reject',
-              variant: LpgButtonVariant.secondary,
-              expand: true,
-              onPressed: _busy ? null : () => setState(() => _rejecting = true),
-            ),
-          ],
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: _rejecting ? 'Reject count' : 'Approve count',
+        primaryIcon: _rejecting ? LpgIcons.close : LpgIcons.check,
+        isLoading: _busy,
+        onPrimary: () => _decide(!_rejecting),
+        secondaryLabel: _rejecting ? 'Back' : 'Reject',
+        secondaryVariant: LpgButtonVariant.secondary,
+        onSecondary: () => setState(() => _rejecting = !_rejecting),
+        error: _error,
       ),
     );
   }

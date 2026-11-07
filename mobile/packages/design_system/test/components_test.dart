@@ -1113,6 +1113,54 @@ void main() {
       await tester.tap(find.text('Cancel'), warnIfMissed: false);
       expect(pressed, 0);
     });
+
+    testWidgets('a second decision can be loading; both buttons then wait', (
+      tester,
+    ) async {
+      var pressed = 0;
+      await tester.pumpWidget(
+        _wrap(
+          LpgSheetActions(
+            primaryLabel: 'Accept',
+            onPrimary: () => pressed++,
+            secondaryLabel: 'Reject',
+            secondaryVariant: LpgButtonVariant.secondary,
+            isSecondaryLoading: true,
+            onSecondary: () => pressed++,
+          ),
+        ),
+      );
+
+      final buttons = tester.widgetList<LpgButton>(find.byType(LpgButton));
+      expect(buttons.last.variant, LpgButtonVariant.secondary);
+      expect(buttons.last.isLoading, isTrue);
+      expect(buttons.first.isLoading, isFalse);
+      expect(buttons.first.onPressed, isNull);
+
+      await tester.tap(find.text('Accept'), warnIfMissed: false);
+      expect(pressed, 0);
+    });
+
+    testWidgets(
+      'a second action is a quiet text button unless told otherwise',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            LpgSheetActions(
+              primaryLabel: 'Save',
+              onPrimary: () {},
+              secondaryLabel: 'Cancel',
+              onSecondary: () {},
+            ),
+          ),
+        );
+
+        expect(
+          tester.widgetList<LpgButton>(find.byType(LpgButton)).last.variant,
+          LpgButtonVariant.text,
+        );
+      },
+    );
   });
 
   group('LpgHaptics', () {

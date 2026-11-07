@@ -133,8 +133,8 @@ class _MoveStockSheetState extends ConsumerState<MoveStockSheet> {
     final catalog = ref.watch(cylinderCatalogProvider).value ?? const [];
     final transitions = ref.watch(statusTransitionsProvider);
 
-    return SingleChildScrollView(
-      child: transitions.when(
+    return LpgSheetLayout(
+      body: transitions.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(LpgSpacing.lg),
           child: LpgSkeleton(height: 120),
@@ -223,22 +223,21 @@ class _MoveStockSheetState extends ConsumerState<MoveStockSheet> {
                   textCapitalization: TextCapitalization.sentences,
                 ),
               ],
-              if (_error != null) ...[
-                const SizedBox(height: LpgSpacing.sm),
-                LpgBanner(tone: LpgTone.danger, message: _error!),
-              ],
-              const SizedBox(height: LpgSpacing.lg),
-              LpgButton(
-                label: widget.correction ? 'Save correction' : 'Move stock',
-                icon: LpgIcons.check,
-                isLoading: _busy,
-                expand: true,
-                onPressed: _busy ? null : _submit,
-              ),
             ],
           );
         },
       ),
+      footer: transitions.hasValue
+          ? LpgSheetActions(
+              primaryLabel: widget.correction
+                  ? 'Save correction'
+                  : 'Move stock',
+              primaryIcon: LpgIcons.check,
+              isLoading: _busy,
+              onPrimary: _submit,
+              error: _error,
+            )
+          : null,
     );
   }
 }
@@ -343,8 +342,8 @@ class _ReturnToOmcSheetState extends ConsumerState<ReturnToOmcSheet> {
     final colors = context.lpgColors;
     final catalog = ref.watch(cylinderCatalogProvider).value ?? const [];
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -411,19 +410,14 @@ class _ReturnToOmcSheetState extends ConsumerState<ReturnToOmcSheet> {
             inputFormatters: [LengthLimitingTextInputFormatter(20)],
             enabled: !_busy,
           ),
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          LpgButton(
-            label: 'Send back',
-            icon: LpgIcons.upload,
-            isLoading: _busy,
-            expand: true,
-            onPressed: _busy ? null : _submit,
-          ),
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Send back',
+        primaryIcon: LpgIcons.upload,
+        isLoading: _busy,
+        onPrimary: _submit,
+        error: _error,
       ),
     );
   }
@@ -509,9 +503,11 @@ class _ReceiptSampleSheetState extends ConsumerState<ReceiptSampleSheet> {
     final text = context.lpgText;
     final colors = context.lpgColors;
     final scales = ref.watch(receiptScalesProvider(widget.godown.id));
+    final list = scales.value ?? const [];
+    final scaleId = list.isEmpty ? null : (_scaleId ?? list.first.id);
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -566,31 +562,28 @@ class _ReceiptSampleSheetState extends ConsumerState<ReceiptSampleSheet> {
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     enabled: !_busy,
                   ),
-                  if (_error != null) ...[
-                    const SizedBox(height: LpgSpacing.sm),
-                    LpgBanner(tone: LpgTone.danger, message: _error!),
-                  ],
-                  const SizedBox(height: LpgSpacing.lg),
-                  LpgButton(
-                    label: 'Save sample',
-                    icon: LpgIcons.check,
-                    isLoading: _busy,
-                    expand: true,
-                    onPressed: _busy ? null : () => _submit(id),
-                  ),
-                  const SizedBox(height: LpgSpacing.sm),
                 ],
               );
             },
           ),
-          LpgButton(
-            label: 'Skip',
-            variant: LpgButtonVariant.secondary,
-            expand: true,
-            onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-          ),
         ],
       ),
+      footer: scaleId == null
+          ? LpgSheetActions(
+              primaryLabel: 'Skip',
+              primaryVariant: LpgButtonVariant.secondary,
+              onPrimary: () => Navigator.of(context).pop(false),
+            )
+          : LpgSheetActions(
+              primaryLabel: 'Save sample',
+              primaryIcon: LpgIcons.check,
+              isLoading: _busy,
+              onPrimary: () => _submit(scaleId),
+              secondaryLabel: 'Skip',
+              secondaryVariant: LpgButtonVariant.secondary,
+              onSecondary: () => Navigator.of(context).pop(false),
+              error: _error,
+            ),
     );
   }
 }

@@ -67,8 +67,8 @@ class _ProposalSheetState extends ConsumerState<ProposalSheet>
     };
     final current = widget.currentPrice;
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -113,27 +113,18 @@ class _ProposalSheetState extends ConsumerState<ProposalSheet>
             'Accepting adds this to the price list. Rejecting leaves prices as they are.',
             style: text.bodySmall?.copyWith(color: colors.textSecondary),
           ),
-          if (_error != null) ...[
-            const SizedBox(height: LpgSpacing.sm),
-            LpgBanner(tone: LpgTone.danger, message: _error!),
-          ],
-          const SizedBox(height: LpgSpacing.lg),
-          LpgButton(
-            label: 'Accept new price',
-            icon: LpgIcons.check,
-            isLoading: isBusy('accept'),
-            expand: true,
-            onPressed: anyBusy ? null : () => _decide(true),
-          ),
-          const SizedBox(height: LpgSpacing.sm),
-          LpgButton(
-            label: 'Reject',
-            variant: LpgButtonVariant.secondary,
-            expand: true,
-            isLoading: isBusy('reject'),
-            onPressed: anyBusy ? null : () => _decide(false),
-          ),
         ],
+      ),
+      footer: LpgSheetActions(
+        primaryLabel: 'Accept new price',
+        primaryIcon: LpgIcons.check,
+        isLoading: isBusy('accept'),
+        onPrimary: () => _decide(true),
+        secondaryLabel: 'Reject',
+        secondaryVariant: LpgButtonVariant.secondary,
+        isSecondaryLoading: isBusy('reject'),
+        onSecondary: () => _decide(false),
+        error: _error,
       ),
     );
   }

@@ -1,3 +1,22 @@
+// Fix AGP 9.0.1 conflict when both ANDROID_PREFS_ROOT and ANDROID_USER_HOME exist in OS env
+run {
+    fun removeFromEnv(key: String) {
+        try {
+            val env = System.getenv()
+            val field = env.javaClass.getDeclaredField("m")
+            field.isAccessible = true
+            (field.get(env) as? MutableMap<*, *>)?.remove(key)
+        } catch (_: Throwable) {}
+        try {
+            val pe = Class.forName("java.lang.ProcessEnvironment")
+            val field = pe.getDeclaredField("theCaseInsensitiveEnvironment")
+            field.isAccessible = true
+            (field.get(null) as? MutableMap<*, *>)?.remove(key)
+        } catch (_: Throwable) {}
+    }
+    removeFromEnv("ANDROID_PREFS_ROOT")
+}
+
 pluginManagement {
     val flutterSdkPath =
         run {

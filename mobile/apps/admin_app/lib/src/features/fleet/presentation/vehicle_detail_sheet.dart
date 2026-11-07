@@ -142,8 +142,8 @@ class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
     }
     final targets = vehicleStatusTargets[vehicle.status] ?? const <String>[];
 
-    return SingleChildScrollView(
-      child: Column(
+    return LpgSheetLayout(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -163,7 +163,8 @@ class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
             ],
           ),
           const SizedBox(height: LpgSpacing.md),
-          if (_error != null) ...[
+          // While editing, the error sits above the pinned Save button.
+          if (_error != null && !_editing) ...[
             LpgBanner(tone: LpgTone.danger, message: _error!),
             const SizedBox(height: LpgSpacing.md),
           ],
@@ -217,18 +218,6 @@ class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
               controller: _capacity,
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: LpgSpacing.md),
-            LpgButton(
-              label: 'Save',
-              expand: true,
-              isLoading: _busy && _pending == 'save',
-              onPressed: _busy ? null : () => _save(vehicle),
-            ),
-            LpgButton(
-              label: 'Cancel',
-              variant: LpgButtonVariant.text,
-              onPressed: _busy ? null : () => setState(() => _editing = false),
-            ),
           ],
           const SizedBox(height: LpgSpacing.lg),
           if (!_editing && vehicle.status != 'inactive')
@@ -270,6 +259,16 @@ class _VehicleSheetState extends ConsumerState<_VehicleSheet> {
           const SizedBox(height: LpgSpacing.md),
         ],
       ),
+      footer: _editing
+          ? LpgSheetActions(
+              primaryLabel: 'Save',
+              isLoading: _busy && _pending == 'save',
+              onPrimary: () => _save(vehicle),
+              secondaryLabel: 'Cancel',
+              onSecondary: () => setState(() => _editing = false),
+              error: _error,
+            )
+          : null,
     );
   }
 }

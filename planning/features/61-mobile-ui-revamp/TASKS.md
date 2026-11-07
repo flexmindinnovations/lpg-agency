@@ -36,7 +36,9 @@ Epic 11 (device control) was built first and is merged into this branch; release
   - [x] Buttons: `LpgButtonSize.large` (64 dp) for the Driver's main delivery actions; a 2 px focus ring set off the button for keyboard users
   - [x] Sheets: visible Close button and an optional subtitle in `LpgFeedback.showSheet` (all 26 sheets get the Close button)
   - [x] Sticky action footer: `LpgSheetLayout` (body scrolls, footer pinned) and `LpgSheetActions` (error banner, full-width primary, optional text secondary); 8 single-action sheets migrated (resolve and assign complaint, add address, record payment, set price, count stock, receive stock, Driver failed delivery)
-  - [ ] Migrate the multi-action sheets (compliance document, KYC review, settle trip, price proposal, count review, stock moves, driver and van details), and a Driver larger-control pass on fields
+  - [x] Multi-action sheets on `LpgSheetLayout`: price proposal (Accept / Reject), count review and KYC review (Approve or Verify / Reject, then Reject / Back), compliance document (Renew, then Save renewal / Back), settle trip, and the stock move, return to OMC and receipt sample sheets. `LpgSheetActions` gained a typed second button (`secondaryVariant`, `secondaryIcon`, `isSecondaryLoading`); while either button works, both wait
+  - [x] Driver and van detail sheets: the edit forms (van details, driver licence, move branch) pin Save / Cancel and their error; the status action buttons stay in the scrolling body because there can be several
+  - [ ] A Driver larger-control pass on fields
 - [ ] 4.3 Cards, lists, stat tiles, hero, status, timeline, small charts for the dashboard (3)
   - [x] 4.3a `LpgMetricTile` (figure, label, caption, attention bar) and `LpgHeroStats` (figure strip for hero cards); first used on the Admin dashboard
   - [x] 4.3b `LpgHeroStats` and `LpgMetricTile` rolled out to Customer Home (hero counts) and Driver Today (hero strip, large "Open this stop" button, cash in hand tile); parts of 7.2 and 8.1

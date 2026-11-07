@@ -275,5 +275,29 @@ void main() {
 
       expect(find.textContaining('Say why'), findsOneWidget);
     });
+
+    testWidgets('on a short screen the decision buttons stay in view', (
+      tester,
+    ) async {
+      // A small phone with the keyboard up leaves little room for the sheet.
+      tester.view.physicalSize = const Size(360, 380);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(host(CountReviewSheet(count: _count())));
+      await tester.pumpAndSettle();
+
+      for (final label in ['Approve count', 'Reject']) {
+        final bottom = tester.getBottomLeft(find.text(label)).dy;
+        expect(bottom, lessThan(380), reason: '$label is pinned on screen');
+      }
+
+      await tester.tap(find.text('Reject'));
+      await tester.pumpAndSettle();
+      final reject = tester.getBottomLeft(find.text('Reject count')).dy;
+      expect(reject, lessThan(380));
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Approve count'), findsOneWidget);
+    });
   });
 }

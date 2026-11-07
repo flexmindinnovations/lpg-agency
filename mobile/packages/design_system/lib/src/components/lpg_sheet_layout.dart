@@ -34,8 +34,12 @@ class LpgSheetLayout extends StatelessWidget {
 }
 
 /// The pinned actions of a form sheet: an optional error banner, one full
-/// width primary button, and an optional text button for the alternative
-/// ("Cancel", "Skip").
+/// width primary button, and an optional second button for the alternative
+/// ("Cancel", "Skip", "Reject", "Back").
+///
+/// The second button is a quiet text button by default; give it
+/// [secondaryVariant] `secondary` when it is a real decision of equal weight
+/// (Accept / Reject). While either button is loading, both are disabled.
 class LpgSheetActions extends StatelessWidget {
   const LpgSheetActions({
     super.key,
@@ -46,6 +50,9 @@ class LpgSheetActions extends StatelessWidget {
     this.isLoading = false,
     this.secondaryLabel,
     this.onSecondary,
+    this.secondaryIcon,
+    this.secondaryVariant = LpgButtonVariant.text,
+    this.isSecondaryLoading = false,
     this.error,
   });
 
@@ -55,9 +62,16 @@ class LpgSheetActions extends StatelessWidget {
   final VoidCallback? onPrimary;
   final IconData? primaryIcon;
   final LpgButtonVariant primaryVariant;
+
+  /// The primary button is working.
   final bool isLoading;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
+  final IconData? secondaryIcon;
+  final LpgButtonVariant secondaryVariant;
+
+  /// The second button is working (a sheet with two decisions).
+  final bool isSecondaryLoading;
 
   /// Shown above the buttons as a danger banner, so it is never scrolled out
   /// of sight.
@@ -65,6 +79,7 @@ class LpgSheetActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final busy = isLoading || isSecondaryLoading;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -79,15 +94,21 @@ class LpgSheetActions extends StatelessWidget {
           variant: primaryVariant,
           isLoading: isLoading,
           expand: true,
-          onPressed: isLoading ? null : onPrimary,
+          onPressed: busy ? null : onPrimary,
         ),
         if (secondaryLabel != null) ...[
-          const SizedBox(height: LpgSpacing.xs),
+          SizedBox(
+            height: secondaryVariant == LpgButtonVariant.text
+                ? LpgSpacing.xs
+                : LpgSpacing.sm,
+          ),
           LpgButton(
             label: secondaryLabel!,
-            variant: LpgButtonVariant.text,
+            icon: secondaryIcon,
+            variant: secondaryVariant,
+            isLoading: isSecondaryLoading,
             expand: true,
-            onPressed: isLoading ? null : onSecondary,
+            onPressed: busy ? null : onSecondary,
           ),
         ],
       ],
