@@ -6,14 +6,14 @@ import '../layout.dart';
 import '../theme.dart';
 import 'lpg_feedback.dart';
 import 'lpg_list_tile.dart';
-import 'lpg_text_field.dart';
+import 'lpg_section_header.dart';
 
 /// More options than this and the picker gains a search box.
 const _searchableFrom = 7;
 
-/// A labelled field that looks exactly like [LpgTextField] (same fill,
-/// border, radius and focus colour, all from the theme's
-/// `inputDecorationTheme`) and opens a themed bottom sheet to choose from.
+/// A labelled picker that looks like every other picker in the apps (a tappable
+/// card row: the card's radius, padding and outline, under a section heading)
+/// and opens a themed bottom sheet to choose from.
 ///
 /// The sheet suits a phone better than a popup menu: big touch targets, a
 /// tick on the current choice, optional per-option [icons] and a search box
@@ -93,6 +93,7 @@ class _LpgDropdownFieldState<T> extends State<LpgDropdownField<T>> {
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     final text = context.lpgText;
+    final hc = colors.isHighContrast;
     final enabled = widget.onChanged != null;
     final selected = _selected;
     final shown = selected == null ? null : widget.items[selected];
@@ -105,59 +106,85 @@ class _LpgDropdownFieldState<T> extends State<LpgDropdownField<T>> {
       enabled: enabled,
       builder: (state) {
         final label = shown ?? widget.placeholder;
-        return Semantics(
-          button: true,
-          enabled: enabled,
-          label: [
-            if (widget.label != null)
-              widget.isRequired ? '${widget.label}, required' : widget.label!,
-            ?label,
-          ].join(', '),
-          excludeSemantics: true,
-          onTap: enabled ? () => _open(state) : null,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(LpgRadius.lg),
-            onTap: enabled ? () => _open(state) : null,
-            child: InputDecorator(
-              isEmpty: false,
-              decoration: InputDecoration(
-                enabled: enabled,
-                errorText: state.errorText,
-                fillColor: enabled ? colors.cardGlass : colors.surfaceOverlay,
-                prefixIcon: widget.prefixIcon == null
-                    ? null
-                    : Icon(widget.prefixIcon, size: LpgSizes.iconMd),
-                suffixIcon: Icon(
-                  LpgIcons.chevronDown,
-                  color: colors.textSecondary,
-                ),
-              ),
-              // One line that ends in an ellipsis, so a long address never
-              // looks cut off mid-word (CA-14); the sheet shows it in full.
-              child: Row(
-                children: [
-                  if (shownIcon != null) ...[
-                    Icon(shownIcon, size: LpgSizes.iconMd),
-                    const SizedBox(width: LpgSpacing.sm),
-                  ],
-                  Expanded(
-                    child: Text(
-                      label ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodyLarge?.copyWith(
-                        color: shown == null
-                            ? colors.textDisabled
-                            : (enabled
-                                  ? colors.textPrimary
-                                  : colors.textSecondary),
-                      ),
+        final hasError = state.hasError;
+        // The same shape, room and outline as any tappable card row (the
+        // customer and date pickers beside it), so a picker looks like one
+        // thing wherever it appears.
+        final shape = RoundedRectangleBorder(
+          borderRadius: LpgRadius.cardRadius,
+          side: BorderSide(
+            color: hasError ? colors.statusDanger : colors.outline,
+            width: hc || hasError ? 2 : 1,
+          ),
+        );
+        final leading = shownIcon ?? widget.prefixIcon;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(
+              button: true,
+              enabled: enabled,
+              label: [
+                if (widget.label != null)
+                  widget.isRequired
+                      ? '${widget.label}, required'
+                      : widget.label!,
+                ?label,
+              ].join(', '),
+              excludeSemantics: true,
+              onTap: enabled ? () => _open(state) : null,
+              child: Material(
+                color: enabled ? colors.cardGlass : colors.surfaceOverlay,
+                shape: shape,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: enabled ? () => _open(state) : null,
+                  customBorder: shape,
+                  child: Padding(
+                    padding: const EdgeInsets.all(LpgSpacing.mdl),
+                    // One line that ends in an ellipsis, so a long address
+                    // never looks cut off mid-word (CA-14); the sheet shows it
+                    // in full.
+                    child: Row(
+                      children: [
+                        if (leading != null) ...[
+                          Icon(leading, size: LpgSizes.iconMd),
+                          const SizedBox(width: LpgSpacing.sm),
+                        ],
+                        Expanded(
+                          child: Text(
+                            label ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodyLarge?.copyWith(
+                              color: shown == null
+                                  ? colors.textSecondary
+                                  : (enabled
+                                        ? colors.textPrimary
+                                        : colors.textSecondary),
+                            ),
+                          ),
+                        ),
+                        Icon(LpgIcons.chevronDown, color: colors.textSecondary),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+            if (state.errorText != null)
+              Padding(
+                padding: const EdgeInsets.only(
+                  top: LpgSpacing.xs,
+                  left: LpgSpacing.md,
+                ),
+                child: Text(
+                  state.errorText!,
+                  style: text.bodySmall?.copyWith(color: colors.statusDanger),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -168,8 +195,11 @@ class _LpgDropdownFieldState<T> extends State<LpgDropdownField<T>> {
       mainAxisSize: MainAxisSize.min,
       children: [
         ExcludeSemantics(
-          child: LpgFieldLabel(widget.label!, isRequired: widget.isRequired),
+          child: LpgSectionHeader.compact(
+            title: widget.isRequired ? '${widget.label} *' : widget.label!,
+          ),
         ),
+        const SizedBox(height: LpgSpacing.sm),
         field,
       ],
     );

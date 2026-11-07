@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'components/lpg_backdrop.dart';
+import 'glass_snapshot.dart';
 import 'layout.dart';
 import 'theme.dart';
 import 'tokens.dart';
@@ -251,7 +252,8 @@ class LpgThemeEngine {
             density,
           ],
         ),
-        child: child ?? const SizedBox.shrink(),
+        // What a frosted sheet is frosted from (see LpgGlassSource).
+        child: LpgGlassSource(child: child ?? const SizedBox.shrink()),
       ),
     );
   }

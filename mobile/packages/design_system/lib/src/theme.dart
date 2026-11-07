@@ -888,7 +888,8 @@ abstract final class LpgTheme {
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(LpgRadius.xxl),
           ),
-          side: cardBorder,
+          // A sheet is glass, not a card: no outline (high contrast keeps it).
+          side: hc ? cardBorder : BorderSide.none,
         ),
       ),
       snackBarTheme: SnackBarThemeData(

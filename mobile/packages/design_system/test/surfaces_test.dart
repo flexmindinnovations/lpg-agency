@@ -264,12 +264,16 @@ void main() {
       expect(offenders, isEmpty);
     });
 
-    test('the only other blur is the grain softened once at start-up', () {
-      // `LpgGrain` blurs its tile once into the page's haze; nothing else
-      // (and nothing that runs per frame) may blur.
+    test('the only blurs are made once: the grain, and a sheet picture', () {
+      // `LpgGrain` blurs its tile once at start-up and `LpgGlassSnapshot`
+      // blurs one small still picture as a sheet opens; nothing else (and
+      // nothing that runs per frame) may blur.
       final offenders = [
         for (final f in sources())
-          if (f.uri.pathSegments.last != 'grain.dart' &&
+          if (!{
+                'grain.dart',
+                'glass_snapshot.dart',
+              }.contains(f.uri.pathSegments.last) &&
               RegExp(r'ImageFilter\.blur').hasMatch(f.readAsStringSync()))
             f.path,
       ];

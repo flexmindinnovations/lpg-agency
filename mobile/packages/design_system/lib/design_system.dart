@@ -13,6 +13,7 @@ export 'src/async/quiet_when.dart';
 export 'src/tokens.dart';
 export 'src/layout.dart';
 export 'src/glass.dart';
+export 'src/glass_snapshot.dart';
 export 'src/surface.dart';
 export 'src/theme.dart';
 export 'src/theme_engine.dart';

@@ -30,6 +30,7 @@ void main() {
 
       expect(look.cardAlpha, 1);
       expect(look.barAlpha, 1);
+      expect(look.sheetAlpha, 1);
     });
 
     test('light and dark are genuinely see-through', () {
@@ -74,6 +75,32 @@ void main() {
         }
       },
     );
+
+    test('a sheet shows the blurred screen, and its text holds over the worst '
+        'colours that can be blurred behind it', () {
+      for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
+        final c = LpgTheme.colorsFor(v);
+        final alpha = LpgGlassLook.of(c).sheetAlpha;
+        expect(
+          alpha,
+          inInclusiveRange(LpgGlassLook.sheetTarget, 1.0),
+          reason: '$v',
+        );
+        // Not (nearly) opaque: some of the screen behind has to show.
+        expect(alpha, lessThan(0.9), reason: '$v');
+
+        for (final back in LpgGlassLook.sheetBackdrops(c, [c.canvas])) {
+          final sheet = Color.alphaBlend(c.sheetGlass, back);
+          for (final text in [c.textPrimary, c.textSecondary]) {
+            expect(
+              _contrast(text, sheet),
+              greaterThanOrEqualTo(LpgGlassLook.sheetContrast - 0.01),
+              reason: '$v over $back',
+            );
+          }
+        }
+      }
+    });
 
     test('a bar keeps AA text contrast', () {
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
@@ -132,16 +159,27 @@ void main() {
       }
     });
 
-    testWidgets('a sheet-level glass is the paper itself, not blurred', (
-      tester,
-    ) async {
-      for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
-        await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
+    testWidgets(
+      'a sheet-level glass is frosted with no border, not blurred live',
+      (tester) async {
+        for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
+          await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
 
-        expect(_paperIn(LpgGlass), findsOneWidget, reason: '$v');
-        expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
-      }
-    });
+          // The paper is there until (or unless) the blurred picture arrives.
+          expect(_paperIn(LpgGlass), findsOneWidget, reason: '$v');
+          expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
+          final borders = tester
+              .widgetList<DecoratedBox>(
+                find.descendant(
+                  of: find.byType(LpgGlass),
+                  matching: find.byType(DecoratedBox),
+                ),
+              )
+              .where((b) => (b.decoration as BoxDecoration).border != null);
+          expect(borders, isEmpty, reason: '$v: no sheet border');
+        }
+      },
+    );
 
     testWidgets('is a solid surface, with no paper, in high contrast', (
       tester,
@@ -225,6 +263,56 @@ void main() {
     });
   });
 
+  group('glass snapshot', () {
+    testWidgets('is a small blurred picture of the app, made once', (
+      tester,
+    ) async {
+      late BuildContext inside;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LpgTheme.light,
+          home: LpgGlassSource(
+            child: Builder(
+              builder: (context) {
+                inside = context;
+                return const ColoredBox(
+                  color: Colors.red,
+                  child: SizedBox(width: 400, height: 800),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      final image = await tester.runAsync(
+        () => LpgGlassSnapshot.capture(inside),
+      );
+
+      expect(image, isNotNull);
+      expect(image!.width, lessThan(400));
+      image.dispose();
+    });
+
+    testWidgets('is null when there is no source to take it from', (
+      tester,
+    ) async {
+      late BuildContext inside;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              inside = context;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(await LpgGlassSnapshot.capture(inside), isNull);
+    });
+  });
+
   group('bottom sheet', () {
     Future<void> open(WidgetTester tester, LpgThemeVariant variant) async {
       await tester.pumpWidget(
@@ -251,7 +339,9 @@ void main() {
     }
 
     for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
-      testWidgets('is the paper, unblurred, in ${v.name}', (tester) async {
+      testWidgets('is frosted, with no live blur, in ${v.name}', (
+        tester,
+      ) async {
         await open(tester, v);
 
         expect(find.byType(BackdropFilter), findsNothing);
