@@ -11,9 +11,18 @@ class AdminProfile {
     required this.role,
     this.email,
     this.agencyName,
+    this.ownName,
+    this.contactPhone,
   });
 
+  /// What to show: the name, or the email, or "Admin".
   final String displayName;
+
+  /// The name as saved on the account (`null` when none), for editing.
+  final String? ownName;
+
+  /// A number colleagues can use to reach this person (`null` when none).
+  final String? contactPhone;
   final String role;
   final String? email;
 
@@ -35,8 +44,20 @@ final adminProfileProvider = FutureProvider<AdminProfile>((ref) async {
     _ => null,
   };
 
+  // Also a nicety: the contact number only comes from the profile route.
+  final own = switch (await ref.watch(authApiProvider).myProfile()) {
+    Success(:final value) => value,
+    FailureResult() => null,
+  };
+
+  // The profile route is read fresh; the principal's name can lag behind an
+  // edit, so it is only the fallback when the profile route is unavailable.
+  final ownName = own == null ? principal.displayName : own.displayName;
+
   return AdminProfile(
-    displayName: principal.displayName ?? principal.email ?? 'Admin',
+    displayName: ownName ?? principal.email ?? 'Admin',
+    ownName: ownName,
+    contactPhone: own?.contactPhone,
     role: principal.role,
     email: principal.email,
     agencyName: agencyName,

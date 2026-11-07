@@ -37,6 +37,7 @@ class AdminStrings with BaseTranslations<AdminLocale, AdminStrings> {
 	// Translations
 	late final AdminStrings$app$en app = AdminStrings$app$en.internal(_root);
 	late final AdminStrings$dashboard$en dashboard = AdminStrings$dashboard$en.internal(_root);
+	late final AdminStrings$profile$en profile = AdminStrings$profile$en.internal(_root);
 }
 
 // Path: app
@@ -59,6 +60,30 @@ class AdminStrings$dashboard$en {
 
 	// Translations
 	late final AdminStrings$dashboard$hero$en hero = AdminStrings$dashboard$hero$en.internal(_root);
+}
+
+// Path: profile
+class AdminStrings$profile$en {
+	AdminStrings$profile$en.internal(this._root);
+
+	final AdminStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Edit profile'
+	String get editTitle => 'Edit profile';
+
+	/// en: 'Profile updated.'
+	String get updated => 'Profile updated.';
+
+	/// en: 'Contact phone'
+	String get contactPhone => 'Contact phone';
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'For colleagues to reach you. Optional.'
+	String get phoneHelp => 'For colleagues to reach you. Optional.';
 }
 
 // Path: dashboard.hero
@@ -91,6 +116,11 @@ extension on AdminStrings {
 			'dashboard.hero.delivered' => 'Delivered',
 			'dashboard.hero.failed' => 'Failed',
 			'dashboard.hero.toApprove' => 'To approve',
+			'profile.editTitle' => 'Edit profile',
+			'profile.updated' => 'Profile updated.',
+			'profile.contactPhone' => 'Contact phone',
+			'profile.name' => 'Name',
+			'profile.phoneHelp' => 'For colleagues to reach you. Optional.',
 			_ => null,
 		};
 	}

@@ -73,6 +73,36 @@ final class AuthApi {
     }
   }
 
+  /// The signed-in staff member's own name and contact number.
+  Future<Result<MyProfile>> myProfile() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/auth/me/profile',
+      );
+      return Success(MyProfile.fromJson(response.data!));
+    } on DioException catch (error) {
+      return FailureResult(mapDioError(error));
+    }
+  }
+
+  /// Sets the signed-in staff member's own name and contact number. The
+  /// server replaces both, so send the one you are not changing as it is; an
+  /// empty string clears a value.
+  Future<Result<MyProfile>> updateMyProfile({
+    required String displayName,
+    required String contactPhone,
+  }) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/api/v1/auth/me/profile',
+        data: {'display_name': displayName, 'contact_phone': contactPhone},
+      );
+      return Success(MyProfile.fromJson(response.data!));
+    } on DioException catch (error) {
+      return FailureResult(mapDioError(error));
+    }
+  }
+
   Future<Result<void>> requestPasswordReset({required String email}) =>
       _post('/api/v1/auth/password/forgot', {'email': email});
 
