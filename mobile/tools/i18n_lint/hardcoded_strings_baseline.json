@@ -53,7 +53,6 @@
     "apps/admin_app/lib/src/login_screen.dart": 18,
     "apps/admin_app/lib/src/router.dart": 1,
     "apps/admin_app/lib/src/shared/admin_app_bar.dart": 1,
-    "apps/admin_app/lib/src/shared/metric_tile.dart": 1,
     "apps/admin_app/lib/src/shared/order_row.dart": 1,
     "apps/admin_app/lib/src/splash_screen.dart": 1,
     "apps/customer_app/lib/src/features/dashboard/presentation/dashboard_screen.dart": 9,

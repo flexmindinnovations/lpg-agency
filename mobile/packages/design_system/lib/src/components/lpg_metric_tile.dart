@@ -54,7 +54,10 @@ class LpgMetricTile extends StatelessWidget {
 
     return Semantics(
       button: tappable,
-      label: '$label: $value${caption == null ? '' : ', $caption'}',
+      label: [
+        '$label: $value',
+        if (caption != null) caption!,
+      ].join(', '),
       excludeSemantics: true,
       child: LpgCard(
         onTap: onTap,
