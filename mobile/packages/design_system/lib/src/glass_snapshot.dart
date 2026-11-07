@@ -44,10 +44,10 @@ class _GlassSourceScope extends InheritedWidget {
 abstract final class LpgGlassSnapshot {
   /// How much of the screen's resolution the picture keeps. It is going to be
   /// blurred, so little detail is needed, and a small picture is quick to take.
-  static const pixelRatio = 0.3;
+  static const pixelRatio = 0.2;
 
   /// The blur, in the picture's own pixels (about 27 logical pixels).
-  static const sigma = 8.0;
+  static const sigma = 5.5;
 
   /// A blurred picture of what [context]'s app shows now, or `null` when there
   /// is nothing to take it from (no [LpgGlassSource] above, or the picture

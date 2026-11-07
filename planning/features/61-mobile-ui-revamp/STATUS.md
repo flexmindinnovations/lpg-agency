@@ -340,3 +340,17 @@ Asked: a blur like the Galaxy S25 Ultra notification drawer, butter smooth, show
 - **Blur rule.** `surfaces_test`: no `BackdropFilter` or `ImageFiltered` anywhere; the only `ImageFilter.blur` are `grain.dart` (start-up) and `glass_snapshot.dart` (once per sheet).
 - **Checked on the Android emulator (not the phone, which is away):** Admin New order in dark (all three pickers identical; sheet without border), Stock Receive stock sheet in dark and light (the blurred blue hero card shows through the sheet; text clear). Not measured: frame timings. The emulator draws in software, so smoothness has to be confirmed on the S25 Ultra: open and close the Receive stock sheet and watch for a hitch as it opens (the picture is taken just before it).
 - **Tests.** `glass_test` (sheet alpha and contrast, no border, no live blur, snapshot is a small image, none without a source), `surfaces_test`, goldens regenerated.
+
+## 5.30 Checked on the S25 Ultra (2026-11-07)
+Profile build of Admin on the phone (Galaxy S25 Ultra, SM-S938B), frame timings in 60-frame batches; "jank" is a frame over 16.7 ms, "slow" over 33.4 ms. The batches include idle frames, so read them against the baseline taken the same way, not as absolute.
+
+| | Before (5.28 baseline) | After (5.28 + 5.29) |
+|---|---|---|
+| Sheet open and close | jank 5 to 13 of 60, slow up to 5, worst 43 to 69 ms | jank 1 to 10, slow 0 to 1, worst 17 to 40 ms |
+| Dashboard list scroll | mostly 0 jank, a few batches 2 to 6, worst 26 to 28 ms | 0 to 6 jank, slow 0 to 2, worst 4 to 35 ms |
+
+- The sheet's worst frames fell from 43 to 69 ms to at most 40 ms, and frames over 33 ms from up to 5 a batch to at most 1. Some frames still miss 16.7 ms while a sheet moves (it builds a form and takes one small picture as it opens); not zero jank. Raster average is about the same, so the saving is in the worst frames, which is what was seen as lag.
+- The list scroll is unchanged within noise: it was not the heavy part. The per-row entrance animation and per-card paint it used to carry are gone, though.
+- Capture size: tried 0.3 and 0.2 of screen resolution; no measurable difference in frames, so 0.2 (smaller, cheaper) is kept with the blur scaled to match.
+- Seen on the phone: light and dark. Receive stock sheet shows the blurred hero card through the glass (strong in light, a soft glow in dark), no sheet border. Admin New order: Customer, Booked through and Delivery on pickers identical; the Booked through sheet frosted and borderless. Dividers run edge to edge; no per-card noise.
+- Not measured: Customer and Driver apps (same design system, same code path), and a trace of the open frame itself.
