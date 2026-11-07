@@ -87,6 +87,9 @@ class LpgGlassLook {
         sheetBackdrops(colors, pageSamples),
         sheetContrast,
         fill: colors.sheet,
+        // The paper's grain is laid over the tint, under the text.
+        speck: page.speck,
+        grain: page.grainStrength * LpgBackdropLook.overlayShare,
       ),
     );
   }
@@ -118,12 +121,18 @@ class LpgGlassLook {
     List<Color> behind,
     double minContrast, {
     Color? fill,
+    Color speck = const Color(0xFF000000),
+    double grain = 0,
   }) {
     bool readable(double alpha) {
       for (final back in behind) {
-        final glass = Color.alphaBlend(
-          (fill ?? colors.card).withValues(alpha: alpha),
-          back,
+        final glass = colors.tint(
+          speck,
+          grain,
+          over: Color.alphaBlend(
+            (fill ?? colors.card).withValues(alpha: alpha),
+            back,
+          ),
         );
         for (final text in [colors.textPrimary, colors.textSecondary]) {
           if (LpgBackdropLook.contrast(text, glass) < minContrast) {
@@ -177,8 +186,8 @@ extension LpgGlassColors on LpgColors {
 /// A glass container. At card level it is a see-through fill and a hairline
 /// laid over the page: nothing is blurred and it has no texture of its own, so
 /// the page's paper shows through. At sheet level (it floats over the screen)
-/// it is frosted glass: the screen behind, blurred, under a tint, with no
-/// border. The blur is a still picture taken once as the sheet opens (see
+/// it is frosted glass: the screen behind, blurred, under a tint and the
+/// paper's grain, with no border. The blur is a still picture taken once as the sheet opens (see
 /// [LpgGlassSnapshot]) and passed as [backdrop], so nothing is blurred while
 /// the sheet moves; until it arrives, or without one, the sheet is the page's
 /// paper. In high contrast both are plain opaque surfaces.
@@ -237,8 +246,8 @@ class LpgGlass extends StatelessWidget {
   }
 }
 
-/// The blurred screen, then the tint, then the content. The picture fades in
-/// over the paper when it arrives.
+/// The blurred screen, then the tint, then the paper's grain, then the
+/// content. The picture fades in over the paper when it arrives.
 class _FrostedSheet extends StatefulWidget {
   const _FrostedSheet({required this.backdrop, required this.child});
 
@@ -293,7 +302,9 @@ class _FrostedSheetState extends State<_FrostedSheet> {
         Positioned.fill(
           child: IgnorePointer(child: ColoredBox(color: colors.sheetGlass)),
         ),
-        widget.child,
+        // The paper's grain over the blurred screen and the tint, under the
+        // content, so a sheet carries the same texture as the page.
+        LpgBackdrop(overlay: true, child: widget.child),
       ],
     );
   }

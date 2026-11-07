@@ -354,3 +354,11 @@ Profile build of Admin on the phone (Galaxy S25 Ultra, SM-S938B), frame timings 
 - Capture size: tried 0.3 and 0.2 of screen resolution; no measurable difference in frames, so 0.2 (smaller, cheaper) is kept with the blur scaled to match.
 - Seen on the phone: light and dark. Receive stock sheet shows the blurred hero card through the glass (strong in light, a soft glow in dark), no sheet border. Admin New order: Customer, Booked through and Delivery on pickers identical; the Booked through sheet frosted and borderless. Dividers run edge to edge; no per-card noise.
 - Not measured: Customer and Driver apps (same design system, same code path), and a trace of the open frame itself.
+
+## 5.31 Paper grain over frosted sheets (2026-11-07)
+Asked: the sheet showed only the blurred screen; the paper grain was missing. It was there but hidden: the sheet was paper, then the blurred picture (opaque once loaded), then the tint, so the picture covered the paper.
+
+- `LpgBackdrop` has an `overlay` mode that paints only the haze and grain (no paper, no glows) over whatever is below. The sheet is now: paper (the fallback until the picture loads), blurred picture, tint, grain overlay, content. The overlay is the page's own cached painter, so no extra cost per frame.
+- The grain over a blurred, tinted screen has less contrast room than on the plain page, so the overlay uses half the page's grain budget (`LpgBackdropLook.overlayShare`) and `sheetAlpha` counts it: light 0.60 to 0.69, dark 0.79 to 0.86. A little less of the screen shows through; text keeps 4.55:1 over the worst blurred colour with the grain on.
+- On a snapshot being "standard": the Flutter engine's own guidance for a static backdrop is to snapshot a filter once rather than redraw it each frame (flutter/flutter#32804). The picture lives in memory only while the sheet is open (about 0.7 MB at 0.2 scale), is not written to disk and adds nothing to the app size.
+- Checked on the S25 Ultra (light): fine speckle visible over the glass and the blurred hero card; text sharp. Tests: `glass_test` (two paper layers in a sheet, one an overlay; contrast with the grain counted), goldens regenerated.

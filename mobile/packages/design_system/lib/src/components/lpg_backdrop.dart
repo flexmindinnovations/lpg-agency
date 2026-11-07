@@ -18,9 +18,14 @@ import '../theme.dart';
 /// The theme puts one under every route (see `lpgBackdropTransitions`), so
 /// screens do not use this directly.
 class LpgBackdrop extends StatefulWidget {
-  const LpgBackdrop({super.key, required this.child});
+  const LpgBackdrop({super.key, required this.child, this.overlay = false});
 
   final Widget child;
+
+  /// Paint only the grain and its haze, over whatever is already there and
+  /// under [child], instead of the whole page. A frosted sheet uses this to put
+  /// the paper's texture over the blurred screen.
+  final bool overlay;
 
   @override
   State<LpgBackdrop> createState() => _LpgBackdropState();
@@ -37,7 +42,9 @@ class _LpgBackdropState extends State<LpgBackdrop> {
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     if (colors.isHighContrast) {
-      return ColoredBox(color: colors.canvas, child: widget.child);
+      return widget.overlay
+          ? widget.child
+          : ColoredBox(color: colors.canvas, child: widget.child);
     }
     final look = LpgBackdropLook.of(colors);
     return Stack(
@@ -59,6 +66,7 @@ class _LpgBackdropState extends State<LpgBackdrop> {
                             look: look,
                             grain: grain,
                             haze: haze,
+                            overlay: widget.overlay,
                           ),
                         ),
                       ),
@@ -109,6 +117,11 @@ class LpgBackdropLook {
   /// worst pixel is the same).
   double get sharpGrain => grainStrength * 0.65;
   double get hazeGrain => grainStrength * 0.35;
+
+  /// How much of the page's grain budget the texture laid over a frosted sheet
+  /// uses (see [LpgBackdrop.overlay]). Over a tinted, blurred screen the room
+  /// for text contrast is smaller than on the plain page, so it is lighter.
+  static const overlayShare = 0.5;
 
   /// The colour of the grain speck that hurts contrast most (black on a light
   /// page, white on a dark one).
@@ -230,19 +243,23 @@ class _BackdropPainter extends CustomPainter {
     required this.look,
     required this.grain,
     required this.haze,
+    required this.overlay,
   });
 
   final LpgBackdropLook look;
   final ui.Image? grain;
   final ui.Image? haze;
 
+  /// Only the texture, no paper and no glows (see [LpgBackdrop.overlay]).
+  final bool overlay;
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..color = look.base);
+    if (!overlay) canvas.drawRect(rect, Paint()..color = look.base);
 
     // Soft glows: plain gradients, painted once into this cached layer.
-    for (final wash in look.washes) {
+    for (final wash in overlay ? const <LpgBackdropWash>[] : look.washes) {
       canvas.drawRect(
         rect,
         Paint()
@@ -256,15 +273,21 @@ class _BackdropPainter extends CustomPainter {
 
     // The softened grain first, then the sharp grain on top.
     final mist = haze;
-    if (mist != null) LpgGrain.paintHaze(canvas, rect, mist, look.hazeGrain);
+    final share = overlay ? LpgBackdropLook.overlayShare : 1.0;
+    if (mist != null) {
+      LpgGrain.paintHaze(canvas, rect, mist, look.hazeGrain * share);
+    }
     final tile = grain;
     if (tile == null) return;
-    LpgGrain.paint(canvas, rect, tile, look.sharpGrain);
+    LpgGrain.paint(canvas, rect, tile, look.sharpGrain * share);
   }
 
   @override
   bool shouldRepaint(_BackdropPainter old) =>
-      old.look != look || old.grain != grain || old.haze != haze;
+      old.look != look ||
+      old.grain != grain ||
+      old.haze != haze ||
+      old.overlay != overlay;
 }
 
 /// Wraps [inner] so the page is drawn under the screen it shows. Screens'

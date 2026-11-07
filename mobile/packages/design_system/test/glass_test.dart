@@ -90,7 +90,13 @@ void main() {
         expect(alpha, lessThan(0.9), reason: '$v');
 
         for (final back in LpgGlassLook.sheetBackdrops(c, [c.canvas])) {
-          final sheet = Color.alphaBlend(c.sheetGlass, back);
+          // The paper's grain is over the tint and under the text.
+          final page = LpgBackdropLook.of(c);
+          final sheet = c.tint(
+            page.speck,
+            page.grainStrength * LpgBackdropLook.overlayShare,
+            over: Color.alphaBlend(c.sheetGlass, back),
+          );
           for (final text in [c.textPrimary, c.textSecondary]) {
             expect(
               _contrast(text, sheet),
@@ -165,8 +171,17 @@ void main() {
         for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
           await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
 
-          // The paper is there until (or unless) the blurred picture arrives.
-          expect(_paperIn(LpgGlass), findsOneWidget, reason: '$v');
+          // The paper under the blurred picture (it shows until the picture
+          // arrives) and its grain over the picture: two layers of the page's
+          // own painter.
+          expect(_paperIn(LpgGlass), findsNWidgets(2), reason: '$v');
+          expect(
+            tester
+                .widgetList<LpgBackdrop>(_paperIn(LpgGlass))
+                .where((b) => b.overlay),
+            hasLength(1),
+            reason: '$v: grain over the glass',
+          );
           expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
           final borders = tester
               .widgetList<DecoratedBox>(
@@ -345,7 +360,7 @@ void main() {
         await open(tester, v);
 
         expect(find.byType(BackdropFilter), findsNothing);
-        expect(_paperIn(LpgGlass), findsOneWidget);
+        expect(_paperIn(LpgGlass), findsNWidgets(2));
         expect(find.text('Deliver order'), findsOneWidget);
         expect(find.text('Body'), findsOneWidget);
         expect(find.byType(LpgSheetHandle), findsOneWidget);
