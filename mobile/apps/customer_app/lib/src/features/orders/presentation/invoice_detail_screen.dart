@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../payments/presentation/pay_online_section.dart';
 import '../data/cylinder_types_provider.dart';
 import '../data/invoices_provider.dart';
-import 'invoice_presentation.dart';
+import 'invoice_paper.dart';
+import 'invoice_pdf.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
   const InvoiceDetailScreen({super.key, required this.invoiceId});
@@ -15,8 +16,6 @@ class InvoiceDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final invoiceAsync = ref.watch(invoiceDetailProvider(invoiceId));
-    final colors = context.lpgColors;
-    final text = context.lpgText;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Invoice Details')),
@@ -42,134 +41,27 @@ class InvoiceDetailScreen extends ConsumerWidget {
           final balanceDue = invoice.balanceDue;
 
           final sections = <Widget>[
-            LpgHeroCard(
-              watermark: LpgIcons.invoice,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          invoice.reference,
-                          style: text.titleMedium?.copyWith(
-                            color: colors.onHero,
-                          ),
-                        ),
-                      ),
-                      LpgStatusBadge(
-                        label: invoice.statusLabel,
-                        severity: invoice.statusSeverity,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: LpgSpacing.lg),
-                  Text(
-                    'Total',
-                    style: text.labelLarge?.copyWith(color: colors.heroMuted),
-                  ),
-                  Text(
-                    LpgFormat.currency(invoice.totalAmount),
-                    style: text.displayMedium?.copyWith(color: colors.onHero),
-                  ),
-                  const SizedBox(height: LpgSpacing.smd),
-                  Text(
-                    [
-                      'Issued ${LpgFormat.date(invoice.issuedAt)}',
-                      if (invoice.orderNumber != null)
-                        'Order ${invoice.orderNumber}',
-                    ].join('  ·  '),
-                    style: text.bodySmall?.copyWith(color: colors.heroMuted),
-                  ),
-                ],
-              ),
+            InvoicePaper(invoice: invoice, cylinderNames: cylinderNames),
+            const SizedBox(height: LpgSpacing.lg),
+            LpgButton(
+              label: 'Download PDF',
+              icon: LpgIcons.download,
+              variant: LpgButtonVariant.secondary,
+              expand: true,
+              onPressed: () async {
+                try {
+                  await shareInvoicePdf(invoice, cylinderNames: cylinderNames);
+                } catch (e) {
+                  if (context.mounted) {
+                    LpgFeedback.showToast(
+                      context,
+                      'Could not create the PDF.',
+                      tone: LpgTone.danger,
+                    );
+                  }
+                }
+              },
             ),
-            const LpgSectionHeader(title: 'Cylinders'),
-            LpgCard(
-              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
-              child: Column(
-                children: [
-                  for (final (index, line) in invoice.lines.indexed) ...[
-                    if (index > 0) const Divider(indent: LpgSpacing.md),
-                    LpgListTile(
-                      leadingIcon: LpgIcons.cylinder,
-                      title: cylinderNames[line.cylinderTypeId] ?? 'Cylinder',
-                      subtitle: [
-                        'Qty ${line.quantity} × '
-                            '${LpgFormat.currency(line.unitPrice)}',
-                        // GST exactly as the invoice carries it (CA-15).
-                        if (line.taxAmount > 0)
-                          'GST ${LpgFormat.currency(line.taxAmount)}',
-                      ].join('  ·  '),
-                      trailing: Text(
-                        LpgFormat.currency(line.totalAmount),
-                        style: text.titleSmall,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const LpgSectionHeader(title: 'Summary'),
-            LpgCard(
-              child: Column(
-                children: [
-                  LpgKeyValueRow(
-                    label: 'Subtotal',
-                    value: LpgFormat.currency(invoice.subtotal),
-                  ),
-                  LpgKeyValueRow(
-                    label: 'GST',
-                    value: LpgFormat.currency(invoice.taxAmount),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: LpgSpacing.sm),
-                    child: Divider(),
-                  ),
-                  LpgKeyValueRow(
-                    label: 'Total',
-                    value: LpgFormat.currency(invoice.totalAmount),
-                    emphasize: true,
-                  ),
-                  LpgKeyValueRow(
-                    label: 'Amount Paid',
-                    value: LpgFormat.currency(invoice.amountPaid),
-                    valueColor: colors.statusSuccess,
-                  ),
-                  LpgKeyValueRow(
-                    label: 'Balance Due',
-                    value: LpgFormat.currency(balanceDue),
-                    valueColor: balanceDue > 0 ? colors.statusDanger : null,
-                  ),
-                ],
-              ),
-            ),
-            if (invoice.payments.isNotEmpty) ...[
-              const LpgSectionHeader(title: 'Payment history'),
-              LpgCard(
-                padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
-                child: Column(
-                  children: [
-                    for (final (index, payment)
-                        in invoice.payments.indexed) ...[
-                      if (index > 0) const Divider(indent: LpgSpacing.md),
-                      LpgListTile(
-                        leadingIcon: LpgIcons.cash,
-                        leadingTone: LpgTone.success,
-                        title: LpgFormat.statusLabel(payment.method),
-                        subtitle: LpgFormat.dateTime(payment.collectedAt),
-                        trailing: Text(
-                          LpgFormat.currency(payment.amount),
-                          style: text.titleSmall?.copyWith(
-                            color: colors.statusSuccess,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
             const SizedBox(height: LpgSpacing.lg),
             PayOnlineSection(
               orderId: invoice.orderId,

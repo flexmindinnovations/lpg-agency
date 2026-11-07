@@ -34,12 +34,24 @@ class SupportScreen extends ConsumerWidget {
             style: text.bodyMedium?.copyWith(color: colors.heroMuted),
           ),
           const SizedBox(height: LpgSpacing.mdl),
-          LpgButton(
-            label: 'Raise a Complaint',
-            icon: LpgIcons.complaint,
-            variant: LpgButtonVariant.secondary,
-            onPressed: () => context.push('/support/raise'),
-            expand: true,
+          // On the hero gradient a translucent "glass" button loses its
+          // contrast in the light theme, so this is a solid on-hero button
+          // with hero-coloured text.
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => context.push('/support/raise'),
+              icon: const Icon(LpgIcons.complaint),
+              label: const Text('Raise a Complaint'),
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.onHero,
+                foregroundColor: colors.heroGradient.first,
+                minimumSize: const Size.fromHeight(LpgSizes.touchTarget),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(LpgRadius.lg),
+                ),
+              ),
+            ),
           ),
         ],
       ),

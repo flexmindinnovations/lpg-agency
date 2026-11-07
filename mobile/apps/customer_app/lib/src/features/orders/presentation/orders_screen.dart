@@ -6,11 +6,25 @@ import 'package:go_router/go_router.dart';
 import '../data/orders_provider.dart';
 import 'order_presentation.dart';
 
-class OrdersScreen extends ConsumerWidget {
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(
@@ -49,6 +63,20 @@ class OrdersScreen extends ConsumerWidget {
             );
           }
 
+          final q = _query.trim().toLowerCase();
+          final shown = q.isEmpty
+              ? orders
+              : orders
+                    .where(
+                      (o) =>
+                          o.reference.toLowerCase().contains(q) ||
+                          o.statusLabel.toLowerCase().contains(q) ||
+                          LpgFormat.shortDate(
+                            o.requestedDate,
+                          ).toLowerCase().contains(q),
+                    )
+                    .toList();
+
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(ordersProvider.future),
             child: ListView(
@@ -57,9 +85,34 @@ class OrdersScreen extends ConsumerWidget {
                 bottom: LpgSizes.touchTarget * 2,
               ),
               children: [
+                TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _query = v),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: 'Search by order number, status or date',
+                    prefixIcon: const Icon(LpgIcons.search),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            icon: const Icon(LpgIcons.close),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
+                  ),
+                ),
+                const SizedBox(height: LpgSpacing.md),
+                if (shown.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: LpgSpacing.xl),
+                    child: Center(child: Text('No orders match your search.')),
+                  ),
                 LpgGroupedList(
                   children: [
-                    for (final order in orders)
+                    for (final order in shown)
                       LpgListTile(
                         leadingIcon: order.statusIcon,
                         leadingTone: order.statusSeverity.tone,
