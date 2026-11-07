@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/customer_strings.dart';
 import '../data/orders_provider.dart';
 import 'order_presentation.dart';
 
@@ -90,12 +91,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   onChanged: (v) => setState(() => _query = v),
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    hintText: 'Search by order number, status or date',
+                    hintText: context.strings.orders.search.hint,
                     prefixIcon: const Icon(LpgIcons.search),
                     suffixIcon: _query.isEmpty
                         ? null
                         : IconButton(
-                            tooltip: 'Clear search',
+                            tooltip: context.strings.orders.search.clear,
                             icon: const Icon(LpgIcons.close),
                             onPressed: () {
                               _searchController.clear();
@@ -106,9 +107,13 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 ),
                 const SizedBox(height: LpgSpacing.md),
                 if (shown.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: LpgSpacing.xl),
-                    child: Center(child: Text('No orders match your search.')),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: LpgSpacing.xl,
+                    ),
+                    child: Center(
+                      child: Text(context.strings.orders.search.noMatch),
+                    ),
                   ),
                 LpgGroupedList(
                   children: [

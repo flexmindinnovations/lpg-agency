@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../../i18n/customer_strings.dart';
 import 'invoice_presentation.dart';
 
 /// Builds an A4 PDF of [invoice] on the device, so downloading needs no
@@ -14,6 +15,7 @@ import 'invoice_presentation.dart';
 Future<Uint8List> buildInvoicePdf(
   InvoiceResponse invoice, {
   required Map<String, String> cylinderNames,
+  required CustomerStrings s,
 }) async {
   final money = NumberFormat.currency(
     locale: 'en_IN',
@@ -60,26 +62,30 @@ Future<Uint8List> buildInvoicePdf(
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
                 pw.Text(invoice.reference),
-                pw.Text('Issued ${dateFmt.format(invoice.issuedAt.toLocal())}'),
-                pw.Text('Status: ${invoice.statusLabel}'),
+                pw.Text(
+                  s.invoice.issued(
+                    date: dateFmt.format(invoice.issuedAt.toLocal()),
+                  ),
+                ),
+                pw.Text(s.invoice.status(status: invoice.statusLabel)),
               ],
             ),
           ],
         ),
         pw.SizedBox(height: 16),
-        if (invoice.customerName != null) pw.Text('Billed to'),
+        if (invoice.customerName != null) pw.Text(s.invoice.billedTo),
         if (invoice.customerName != null)
           pw.Text(
             invoice.customerName!,
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           ),
         if (invoice.customerGstin != null)
-          pw.Text('GSTIN: ${invoice.customerGstin}'),
+          pw.Text(s.invoice.gstin(gstin: invoice.customerGstin!)),
         if (invoice.orderNumber != null)
-          pw.Text('Order ${invoice.orderNumber}'),
+          pw.Text(s.invoice.orderNumber(number: invoice.orderNumber!)),
         pw.SizedBox(height: 16),
         pw.TableHelper.fromTextArray(
-          headers: ['Item', 'Qty', 'Rate', 'GST', 'Total'],
+          headers: [s.invoice.item, 'Qty', 'Rate', 'GST', 'Total'],
           data: [
             for (final l in invoice.lines)
               [
@@ -135,7 +141,12 @@ Future<Uint8List> buildInvoicePdf(
 Future<void> shareInvoicePdf(
   InvoiceResponse invoice, {
   required Map<String, String> cylinderNames,
+  required CustomerStrings s,
 }) async {
-  final bytes = await buildInvoicePdf(invoice, cylinderNames: cylinderNames);
+  final bytes = await buildInvoicePdf(
+    invoice,
+    cylinderNames: cylinderNames,
+    s: s,
+  );
   await Printing.sharePdf(bytes: bytes, filename: '${invoice.reference}.pdf');
 }

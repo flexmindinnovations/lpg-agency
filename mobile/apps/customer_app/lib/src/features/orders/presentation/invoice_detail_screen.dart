@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../payments/presentation/pay_online_section.dart';
 import '../data/cylinder_types_provider.dart';
 import '../data/invoices_provider.dart';
+import '../../../i18n/customer_strings.dart';
 import 'invoice_paper.dart';
 import 'invoice_pdf.dart';
 
@@ -44,18 +45,22 @@ class InvoiceDetailScreen extends ConsumerWidget {
             InvoicePaper(invoice: invoice, cylinderNames: cylinderNames),
             const SizedBox(height: LpgSpacing.lg),
             LpgButton(
-              label: 'Download PDF',
+              label: context.strings.invoice.download,
               icon: LpgIcons.download,
               variant: LpgButtonVariant.secondary,
               expand: true,
               onPressed: () async {
                 try {
-                  await shareInvoicePdf(invoice, cylinderNames: cylinderNames);
+                  await shareInvoicePdf(
+                    invoice,
+                    cylinderNames: cylinderNames,
+                    s: context.strings,
+                  );
                 } catch (e) {
                   if (context.mounted) {
                     LpgFeedback.showToast(
                       context,
-                      'Could not create the PDF.',
+                      context.strings.invoice.downloadFailed,
                       tone: LpgTone.danger,
                     );
                   }

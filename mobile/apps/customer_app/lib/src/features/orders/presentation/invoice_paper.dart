@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
+import '../../../i18n/customer_strings.dart';
 import 'invoice_presentation.dart';
 
 /// The invoice drawn like a sheet of paper: white, softly shadowed, narrow
@@ -24,6 +25,7 @@ class InvoicePaper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
+    final strings = context.strings;
     final base = Theme.of(context).textTheme;
     final small = base.bodySmall?.copyWith(color: _muted);
     final body = base.bodyMedium?.copyWith(color: _ink);
@@ -86,7 +88,9 @@ class InvoicePaper extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        'Issued ${LpgFormat.date(invoice.issuedAt)}',
+                        strings.invoice.issued(
+                          date: LpgFormat.date(invoice.issuedAt),
+                        ),
                         style: small,
                       ),
                       const SizedBox(height: 4),
@@ -108,11 +112,13 @@ class InvoicePaper extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Billed to', style: small),
+                            Text(strings.invoice.billedTo, style: small),
                             Text(invoice.customerName!, style: bold),
                             if (invoice.customerGstin != null)
                               Text(
-                                'GSTIN ${invoice.customerGstin}',
+                                strings.invoice.gstin(
+                                  gstin: invoice.customerGstin!,
+                                ),
                                 style: small,
                               ),
                           ],
@@ -122,7 +128,7 @@ class InvoicePaper extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('Order', style: small),
+                          Text(strings.invoice.order, style: small),
                           Text(invoice.orderNumber!, style: bold),
                         ],
                       ),
@@ -134,8 +140,8 @@ class InvoicePaper extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   children: [
-                    Expanded(child: Text('Item', style: small)),
-                    Text('Amount', style: small),
+                    Expanded(child: Text(strings.invoice.item, style: small)),
+                    Text(strings.invoice.amount, style: small),
                   ],
                 ),
               ),
@@ -188,7 +194,7 @@ class InvoicePaper extends StatelessWidget {
               ),
               if (invoice.payments.isNotEmpty) ...[
                 const SizedBox(height: LpgSpacing.md),
-                Text('Payments', style: small),
+                Text(strings.invoice.payments, style: small),
                 for (final p in invoice.payments)
                   kv(
                     '${LpgFormat.statusLabel(p.method)}  ·  '

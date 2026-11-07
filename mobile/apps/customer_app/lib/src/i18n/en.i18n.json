@@ -16,5 +16,25 @@
     "onlineSection": {
       "bankTransferTitle": "Or pay by bank transfer"
     }
+  },
+  "orders": {
+    "search": {
+      "hint": "Search by order number, status or date",
+      "clear": "Clear search",
+      "noMatch": "No orders match your search."
+    }
+  },
+  "invoice": {
+    "billedTo": "Billed to",
+    "order": "Order",
+    "item": "Item",
+    "amount": "Amount",
+    "payments": "Payments",
+    "issued": "Issued {date}",
+    "status": "Status: {status}",
+    "gstin": "GSTIN: {gstin}",
+    "orderNumber": "Order {number}",
+    "downloadFailed": "Could not create the PDF.",
+    "download": "Download PDF"
   }
 }
