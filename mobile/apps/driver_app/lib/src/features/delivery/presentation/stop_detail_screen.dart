@@ -113,6 +113,7 @@ class StopDetailScreen extends ConsumerWidget {
             label: 'Start this delivery',
             icon: LpgIcons.navigate,
             expand: true,
+            size: LpgButtonSize.large,
             onPressed: () => _run(
               context,
               ref,
@@ -126,6 +127,7 @@ class StopDetailScreen extends ConsumerWidget {
           LpgButton(
             label: 'Record delivery',
             expand: true,
+            size: LpgButtonSize.large,
             icon: LpgIcons.check,
             onPressed: () => context.goNamed(
               'deliver',

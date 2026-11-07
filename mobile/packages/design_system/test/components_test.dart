@@ -982,6 +982,70 @@ void main() {
     });
   });
 
+  group('LpgButton size and focus', () {
+    testWidgets('large is taller than regular', (tester) async {
+      Future<double> heightOf(LpgButtonSize size) async {
+        await tester.pumpWidget(
+          _wrap(
+            Column(
+              children: [LpgButton(label: 'Go', onPressed: () {}, size: size)],
+            ),
+          ),
+        );
+        return tester.getSize(find.byType(LpgButton)).height;
+      }
+
+      final regular = await heightOf(LpgButtonSize.regular);
+      final large = await heightOf(LpgButtonSize.large);
+      expect(large, greaterThan(regular));
+      expect(large, LpgSizes.buttonHeightLarge);
+    });
+
+    testWidgets('keyboard focus draws a ring around the button', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(LpgButton(label: 'One', onPressed: () {})));
+      expect(find.byKey(const ValueKey('focus-ring')), findsNothing);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('focus-ring')), findsOneWidget);
+    });
+  });
+
+  group('LpgFeedback.showSheet', () {
+    testWidgets('shows the title, subtitle and a Close button that dismisses', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => LpgFeedback.showSheet<void>(
+                context,
+                title: 'Record payment',
+                subtitle: 'INV-12 · ₹500 due',
+                builder: (_) => const Text('body'),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Record payment'), findsOneWidget);
+      expect(find.text('INV-12 · ₹500 due'), findsOneWidget);
+      expect(find.text('body'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('body'), findsNothing);
+    });
+  });
+
   group('LpgHaptics', () {
     testWidgets('a stepper tap ticks once and still reports the change', (
       tester,

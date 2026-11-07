@@ -58,6 +58,7 @@ abstract final class LpgFeedback {
     BuildContext context, {
     required WidgetBuilder builder,
     String? title,
+    String? subtitle,
     bool isScrollControlled = true,
   }) {
     return showModalBottomSheet<T>(
@@ -77,11 +78,44 @@ abstract final class LpgFeedback {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (title != null) ...[
-              Semantics(
-                header: true,
-                child: Text(title, style: sheetContext.lpgText.titleLarge),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            title,
+                            style: sheetContext.lpgText.titleLarge,
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: LpgSpacing.xs),
+                          Text(
+                            subtitle,
+                            style: sheetContext.lpgText.bodyMedium?.copyWith(
+                              color: sheetContext.lpgColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  // A visible way out, for people who do not discover the
+                  // drag handle or a tap on the scrim.
+                  IconButton(
+                    tooltip: MaterialLocalizations.of(
+                      sheetContext,
+                    ).closeButtonTooltip,
+                    onPressed: () => Navigator.of(sheetContext).maybePop(),
+                    icon: const Icon(LpgIcons.close),
+                  ),
+                ],
               ),
-              const SizedBox(height: LpgSpacing.md),
+              const SizedBox(height: LpgSpacing.sm),
             ],
             Flexible(child: builder(sheetContext)),
           ],

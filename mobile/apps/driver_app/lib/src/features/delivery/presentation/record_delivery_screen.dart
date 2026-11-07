@@ -618,6 +618,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 label: 'Complete delivery',
                 icon: LpgIcons.check,
                 expand: true,
+                size: LpgButtonSize.large,
                 isLoading: _submitting,
                 onPressed: _submitting || _done || !settled
                     ? null
