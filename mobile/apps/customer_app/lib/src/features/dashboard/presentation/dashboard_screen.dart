@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/customer_strings.dart';
 import '../../orders/data/orders_provider.dart';
 import '../../orders/presentation/order_presentation.dart';
 import '../../profile/data/profile_provider.dart';
@@ -153,6 +154,7 @@ class _BalanceHero extends ConsumerWidget {
     final colors = context.lpgColors;
     final text = context.lpgText;
     final ledgerAsync = ref.watch(ledgerProvider);
+    final orders = ref.watch(ordersProvider).value;
 
     Widget caption(String value) =>
         Text(value, style: text.bodyMedium?.copyWith(color: colors.heroMuted));
@@ -208,6 +210,23 @@ class _BalanceHero extends ConsumerWidget {
                               '${balances.length == 1 ? 'type' : 'types'}'
                         : 'No outstanding cylinders',
                   ),
+                  // Counts straight from the orders list, shown once it has
+                  // loaded and the customer has ordered before.
+                  if (orders != null && orders.isNotEmpty) ...[
+                    const SizedBox(height: LpgSpacing.md),
+                    LpgHeroStats(
+                      stats: [
+                        LpgHeroStat(
+                          value: '${orders.where((o) => o.isTrackable).length}',
+                          label: context.strings.dashboard.hero.onTheWay,
+                        ),
+                        LpgHeroStat(
+                          value: '${orders.length}',
+                          label: context.strings.dashboard.hero.ordersPlaced,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               );
             },

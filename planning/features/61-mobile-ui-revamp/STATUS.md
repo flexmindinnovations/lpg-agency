@@ -126,7 +126,9 @@ First measurement of pure-Dart AES-GCM on this server (Xeon 2.1 GHz, JIT and AOT
 
 ### First visible screen change (Admin dashboard)
 
-Two new design-system components, checked on the emulator with hot reload and covered by widget tests: `LpgHeroStats` replaces the "3 delivered • 0 failed • 2 to approve" sentence in the hero with three figures under their own labels, and `LpgMetricTile` gives the order and money tiles a heavy tabular figure plus a solid tone bar down the left edge when a tile needs attention (the caption says why, so colour is not the only signal). Admin's `MetricTile` is now a thin wrapper. Customer Home and Driver Today still use the old tiles; they are next.
+Two new design-system components, checked on the emulator with hot reload and covered by widget tests: `LpgHeroStats` replaces the "3 delivered • 0 failed • 2 to approve" sentence in the hero with three figures under their own labels, and `LpgMetricTile` gives the order and money tiles a heavy tabular figure plus a solid tone bar down the left edge when a tile needs attention (the caption says why, so colour is not the only signal). Admin's `MetricTile` is now a thin wrapper. 
+
+**Customer Home and Driver Today (same pattern).** Driver Today: the Delivered / Remaining / Failed strip now sits inside the route hero (the separate row of three tiles is gone), the next-stop card carries a large "Open this stop" button as the screen's one primary action, and cash in hand is a metric tile placed after the next stop. Customer Home: the cylinder-balance hero shows "On the way" and "Orders placed" counts once the customer has ordered. What is still the old look on these two screens: the list rows, the quick-action tiles, the live-order card and the section headers; these wait for 4.3c.
 
 ## Not done
 Everything else in TASKS.md (epics E2 from 2.2, E4 to E10 and E12).
