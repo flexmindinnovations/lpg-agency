@@ -59,6 +59,7 @@ class CustomerStrings$dashboard$en {
 
 	// Translations
 	late final CustomerStrings$dashboard$hero$en hero = CustomerStrings$dashboard$hero$en.internal(_root);
+	late final CustomerStrings$dashboard$liveOrder$en liveOrder = CustomerStrings$dashboard$liveOrder$en.internal(_root);
 }
 
 // Path: dashboard.hero
@@ -76,6 +77,21 @@ class CustomerStrings$dashboard$hero$en {
 	String get ordersPlaced => 'Orders placed';
 }
 
+// Path: dashboard.liveOrder
+class CustomerStrings$dashboard$liveOrder$en {
+	CustomerStrings$dashboard$liveOrder$en.internal(this._root);
+
+	final CustomerStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'On its way'
+	String get title => 'On its way';
+
+	/// en: 'Track'
+	String get action => 'Track';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -87,6 +103,8 @@ extension on CustomerStrings {
 			'app.title' => 'LPG Agency',
 			'dashboard.hero.onTheWay' => 'On the way',
 			'dashboard.hero.ordersPlaced' => 'Orders placed',
+			'dashboard.liveOrder.title' => 'On its way',
+			'dashboard.liveOrder.action' => 'Track',
 			_ => null,
 		};
 	}

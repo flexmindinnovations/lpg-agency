@@ -6,6 +6,10 @@
     "hero": {
       "onTheWay": "On the way",
       "ordersPlaced": "Orders placed"
+    },
+    "liveOrder": {
+      "title": "On its way",
+      "action": "Track"
     }
   }
 }

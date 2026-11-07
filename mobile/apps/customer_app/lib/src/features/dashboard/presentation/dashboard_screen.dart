@@ -248,9 +248,9 @@ class _ActiveOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LpgActionCard(
       icon: LpgIcons.truck,
-      title: 'On its way',
+      title: context.strings.dashboard.liveOrder.title,
       message: '${order.reference} is out for delivery',
-      actionLabel: 'Track',
+      actionLabel: context.strings.dashboard.liveOrder.action,
       onTap: () => context.push('/orders/${order.id}/track'),
     );
   }
