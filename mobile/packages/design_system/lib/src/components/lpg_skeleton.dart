@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../glass.dart';
 import '../layout.dart';
 import '../motion.dart';
 import '../theme.dart';
@@ -145,7 +146,7 @@ class LpgSkeletonList extends StatelessWidget {
         itemBuilder: (_, _) => Container(
           padding: const EdgeInsets.all(LpgSpacing.md),
           decoration: BoxDecoration(
-            color: colors.card,
+            color: colors.cardGlass,
             borderRadius: LpgRadius.cardRadius,
             border: Border.all(color: colors.borderDefault),
           ),

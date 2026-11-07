@@ -42,7 +42,7 @@ class LpgGlassLook {
   final double barAlpha;
 
   /// What each would like to be if contrast allowed it.
-  static const cardTarget = 0.55;
+  static const cardTarget = 0.0;
   static const barTarget = 0.4;
   static const sheetTarget = 0.78;
 
@@ -58,10 +58,16 @@ class LpgGlassLook {
   static const grainStrength = 0.2;
   static const sheetGrainStrength = 0.08;
 
-  /// Text on glass keeps this contrast on the worst
-  /// pixel behind it, so it reads crisply, not just legally. Well above the
-  /// 4.5:1 the page itself is held to.
+  /// Text on a sheet keeps this contrast on the worst pixel behind it, so it
+  /// reads crisply, not just legally. Well above the 4.5:1 the page itself is
+  /// held to.
   static const readableContrast = 6.0;
+
+  /// What text on a card, field or chip keeps. They sit on the page, so they
+  /// are held to what the page itself is: as readable as the page under them.
+  /// That is why they are fully transparent when the page allows it (it does
+  /// in every theme), and show the paper's grain.
+  static const cardContrast = LpgBackdropLook.minTextContrast;
 
   /// What a bar's text and icons keep (WCAG AA for normal text).
   static const barContrast = LpgBackdropLook.minTextContrast;
@@ -91,6 +97,7 @@ class LpgGlassLook {
         colors,
         page.speck,
         0,
+        minContrast: cardContrast,
       ),
       sheetAlpha: _smallest(
         sheetTarget,

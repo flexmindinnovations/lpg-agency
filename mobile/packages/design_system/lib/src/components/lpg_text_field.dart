@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../glass.dart';
 import '../icons.dart';
 import '../layout.dart';
 import '../theme.dart';
@@ -222,7 +223,7 @@ class _LpgTextFieldState extends State<LpgTextField> {
                           size: LpgSizes.iconMd,
                         )
                       : null),
-              fillColor: widget.enabled ? colors.card : colors.surfaceOverlay,
+              fillColor: widget.enabled ? colors.cardGlass : colors.surfaceOverlay,
             ),
           ),
         ),

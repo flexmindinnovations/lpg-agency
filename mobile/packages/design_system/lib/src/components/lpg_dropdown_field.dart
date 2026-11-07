@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../glass.dart';
 import '../icons.dart';
 import '../layout.dart';
 import '../theme.dart';
@@ -122,7 +123,7 @@ class _LpgDropdownFieldState<T> extends State<LpgDropdownField<T>> {
               decoration: InputDecoration(
                 enabled: enabled,
                 errorText: state.errorText,
-                fillColor: enabled ? colors.card : colors.surfaceOverlay,
+                fillColor: enabled ? colors.cardGlass : colors.surfaceOverlay,
                 prefixIcon: widget.prefixIcon == null
                     ? null
                     : Icon(widget.prefixIcon, size: LpgSizes.iconMd),

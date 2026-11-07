@@ -30,11 +30,9 @@ void main() {
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
         final look = LpgGlassLook.of(LpgTheme.colorsFor(v));
 
-        expect(
-          look.cardAlpha,
-          inInclusiveRange(LpgGlassLook.cardTarget, 0.95),
-          reason: '$v card',
-        );
+        // A card, field or chip is practically see-through: the paper and its
+        // grain are what shows, because the page already keeps text at AA.
+        expect(look.cardAlpha, lessThan(0.05), reason: '$v card');
         expect(
           look.sheetAlpha,
           inInclusiveRange(LpgGlassLook.sheetTarget, 1.0),
@@ -43,7 +41,7 @@ void main() {
       }
     });
 
-    test('text on a card stays at 6:1 on the worst pixel of the page', () {
+    test('text on a card is as readable as on the page, worst pixel included', () {
       for (final v in LpgThemeVariant.values) {
         final c = LpgTheme.colorsFor(v);
         final page = LpgBackdropLook.of(c);
@@ -60,12 +58,12 @@ void main() {
           );
           expect(
             _contrast(c.textPrimary, glass),
-            greaterThanOrEqualTo(LpgGlassLook.readableContrast - 0.01),
+            greaterThanOrEqualTo(LpgGlassLook.cardContrast - 0.01),
             reason: '$v primary',
           );
           expect(
             _contrast(c.textSecondary, glass),
-            greaterThanOrEqualTo(LpgGlassLook.readableContrast - 0.01),
+            greaterThanOrEqualTo(LpgGlassLook.cardContrast - 0.01),
             reason: '$v secondary',
           );
         }
@@ -73,14 +71,14 @@ void main() {
     });
 
     test(
-      'a bar is more see-through than a card but keeps AA text contrast',
+      'a bar keeps AA text contrast',
       () {
         for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
           final c = LpgTheme.colorsFor(v);
           final page = LpgBackdropLook.of(c);
           expect(
             LpgGlassLook.of(c).barAlpha,
-            lessThan(LpgGlassLook.of(c).cardAlpha),
+            inInclusiveRange(LpgGlassLook.barTarget, 1.0),
           );
 
           for (final w in [c.canvas, page.base]) {

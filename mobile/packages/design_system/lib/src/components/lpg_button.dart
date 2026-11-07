@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' show SpringSimulation;
 
+import '../glass.dart';
 import '../layout.dart';
 import '../motion.dart';
 import '../theme.dart';
@@ -118,7 +119,7 @@ class _LpgButtonState extends State<LpgButton>
         colors.actionPrimaryContainer,
         colors.onActionPrimaryContainer,
       ),
-      _ => (colors.card, colors.textPrimary),
+      _ => (colors.cardGlass, colors.textPrimary),
     };
 
     final content = AnimatedSwitcher(
