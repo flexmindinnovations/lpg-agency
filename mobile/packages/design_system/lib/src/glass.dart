@@ -320,7 +320,7 @@ class LpgSheetHandle extends StatelessWidget {
     return Semantics(
       container: true,
       button: true,
-      label: 'Dismiss',
+      label: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       onTap: () => Navigator.of(context).maybePop(),
       excludeSemantics: true,
       child: GestureDetector(

@@ -43,7 +43,7 @@ class LpgActionCard extends StatelessWidget {
       tone: tone,
       onTap: onTap,
       padding: EdgeInsets.zero,
-      semanticLabel: '$title. $message',
+      semanticLabel: [title, message].join('. '),
       child: Padding(
         padding: const EdgeInsets.all(LpgSpacing.md),
         child: Row(

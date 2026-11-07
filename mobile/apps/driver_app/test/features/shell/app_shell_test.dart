@@ -57,10 +57,7 @@ void main() {
       expect(find.byType(LpgNavigationBar), findsOneWidget);
       expect(find.text('TODAY BODY'), findsOneWidget);
       for (final label in ['Today', 'Deliveries', 'Alerts', 'Profile']) {
-        expect(
-          find.byTooltip(label),
-          findsOneWidget,
-        );
+        expect(find.byTooltip(label), findsOneWidget);
       }
     });
 
