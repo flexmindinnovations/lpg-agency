@@ -94,9 +94,8 @@ void main() {
         return jsonResponse(_handoverJson(shortfall: '0.00'), 201);
       });
 
-      final result = await CashHandoverApi(
-        client.dio,
-      ).declare(routeId: 'route-1', driverId: 'drv-1', actualAmount: 900);
+      final result = await CashHandoverApi(client.dio)
+          .declare(routeId: 'route-1', driverId: 'drv-1', actualAmount: 900);
 
       expect(captured!.path, '/api/v1/cash-handovers');
       expect(captured!.method, 'POST');
@@ -118,9 +117,8 @@ void main() {
         }, 409),
       );
 
-      final result = await CashHandoverApi(
-        client.dio,
-      ).declare(routeId: 'route-1', driverId: 'drv-1', actualAmount: 900);
+      final result = await CashHandoverApi(client.dio)
+          .declare(routeId: 'route-1', driverId: 'drv-1', actualAmount: 900);
 
       final failure = result.when(onSuccess: (_) => null, onFailure: (f) => f);
       expect(failure!.errorCode, 'CONFLICT');
@@ -170,9 +168,8 @@ void main() {
         return jsonResponse(_handoverJson(shortfall: '0.00'), 201);
       });
 
-      await CashHandoverApi(
-        client.dio,
-      ).declare(routeId: 'route-1', driverId: 'drv-1', actualAmount: 900);
+      await CashHandoverApi(client.dio)
+          .declare(routeId: 'route-1', driverId: 'drv-1', actualAmount: 900);
 
       expect((captured!.data as Map).containsKey('denominations'), isFalse);
       expect((captured!.data as Map).containsKey('variance_reason'), isFalse);

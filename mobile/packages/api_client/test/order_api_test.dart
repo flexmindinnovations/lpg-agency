@@ -265,9 +265,8 @@ void main() {
         return jsonResponse(_orderJson(status: 'failed_delivery'), 200);
       });
 
-      await OrderApi(
-        client.dio,
-      ).recordFailedDelivery('order-1', reasonCode: 'wrong_address');
+      await OrderApi(client.dio)
+          .recordFailedDelivery('order-1', reasonCode: 'wrong_address');
 
       expect(captured!.data, {'reason_code': 'wrong_address'});
     });
@@ -312,9 +311,8 @@ void main() {
         }, 200);
       });
 
-      final result = await OrderApi(
-        client.dio,
-      ).getSettlement('o1', delivered: {'ct1': 2});
+      final result = await OrderApi(client.dio)
+          .getSettlement('o1', delivered: {'ct1': 2});
 
       expect(captured!.path, '/api/v1/orders/o1/settlement');
       expect(captured!.queryParameters['delivered'], ['ct1:2']);
@@ -437,9 +435,8 @@ void main() {
         }, 200),
       );
 
-      final result = await OrderApi(
-        client.dio,
-      ).getPendingCancellation('order-1');
+      final result = await OrderApi(client.dio)
+          .getPendingCancellation('order-1');
       final request = result.when(onSuccess: (r) => r, onFailure: (_) => null);
       expect(request!.reason, 'Booked twice');
     });
@@ -485,9 +482,8 @@ void main() {
         return jsonResponse({'id': 'c-1'}, 200);
       });
 
-      final result = await OrderApi(
-        client.dio,
-      ).rejectCancellation('order-1', 'Already loaded');
+      final result = await OrderApi(client.dio)
+          .rejectCancellation('order-1', 'Already loaded');
 
       expect(result, isA<Success<void>>());
     });
@@ -500,9 +496,8 @@ void main() {
         return jsonResponse(_orderJson(status: 'confirmed'), 200);
       });
 
-      final result = await OrderApi(
-        client.dio,
-      ).rescheduleOrder('order-1', DateTime.utc(2026, 11, 2));
+      final result = await OrderApi(client.dio)
+          .rescheduleOrder('order-1', DateTime.utc(2026, 11, 2));
 
       expect(result, isA<Success<OrderResponse>>());
     });

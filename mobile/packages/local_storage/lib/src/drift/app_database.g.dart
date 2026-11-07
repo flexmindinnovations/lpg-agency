@@ -1348,13 +1348,11 @@ class $$SchemaMetadataTableTableManager
               $$SchemaMetadataTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$SchemaMetadataTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> key = const Value.absent(),
-                Value<String> value = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) =>
-                  SchemaMetadataCompanion(key: key, value: value, rowid: rowid),
+          updateCompanionCallback: ({
+            Value<String> key = const Value.absent(),
+            Value<String> value = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) => SchemaMetadataCompanion(key: key, value: value, rowid: rowid),
           createCompanionCallback:
               ({
                 required String key,

@@ -33,9 +33,8 @@ void main() {
           return jsonResponse(_payment(), 201);
         });
 
-        final result = await PaymentApi(
-          client.dio,
-        ).createPaymentLink('order-1');
+        final result = await PaymentApi(client.dio)
+            .createPaymentLink('order-1');
 
         final payment = result.when(
           onSuccess: (p) => p,

@@ -196,9 +196,8 @@ void main() {
         }, 200);
       });
 
-      await ComplaintApi(
-        client.dio,
-      ).getMyComplaints(status: 'Open', customerId: 'customer-1');
+      await ComplaintApi(client.dio)
+          .getMyComplaints(status: 'Open', customerId: 'customer-1');
 
       expect(seen!.queryParameters['status'], 'Open');
       expect(seen!.queryParameters['customer_id'], 'customer-1');
