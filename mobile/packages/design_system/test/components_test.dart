@@ -157,6 +157,46 @@ void main() {
     expect(find.text('Delivered'), findsOneWidget);
   });
 
+  testWidgets('LpgListTile chevrons line up whatever the trailing content', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        Column(
+          children: [
+            LpgListTile(title: 'Plain', showChevron: true, onTap: () {}),
+            LpgListTile(
+              title: 'With a badge',
+              trailing: const LpgStatusBadge(
+                label: '5',
+                severity: LpgStatusSeverity.danger,
+              ),
+              showChevron: true,
+              onTap: () {},
+            ),
+            LpgListTile(
+              title: 'With a long status',
+              trailing: const LpgStatusBadge(
+                label: 'Out for delivery',
+                severity: LpgStatusSeverity.warning,
+              ),
+              showChevron: true,
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final chevrons = find.byIcon(LpgIcons.chevronRight);
+    expect(chevrons, findsNWidgets(3));
+    final rights = [
+      for (var i = 0; i < 3; i++) tester.getTopRight(chevrons.at(i)).dx,
+    ];
+    expect(rights[1], rights[0]);
+    expect(rights[2], rights[0]);
+  });
+
   testWidgets('LpgListTile renders title, subtitle and trailing', (
     tester,
   ) async {
