@@ -140,7 +140,7 @@ class _DayPicker extends StatelessWidget {
         children: [
           IconButton(
             tooltip: 'Previous day',
-            icon: const Icon(LpgIcons.back),
+            icon: const Icon(LpgIcons.chevronLeft),
             onPressed: onPrevious,
           ),
           Expanded(
