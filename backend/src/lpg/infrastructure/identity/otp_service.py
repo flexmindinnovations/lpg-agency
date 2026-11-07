@@ -53,7 +53,7 @@ class OtpService:
         redis = self._client.client
         stored_hash = await redis.get(key)
         if stored_hash is None:
-            msg = "The OTP has expired."
+            msg = "This code is no longer valid. Please request a new code."
             raise OtpExpiredError(msg)
 
         if hmac.compare_digest(self._hash(code), stored_hash):
