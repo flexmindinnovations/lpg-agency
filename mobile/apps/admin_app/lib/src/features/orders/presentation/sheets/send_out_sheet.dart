@@ -598,31 +598,26 @@ class _FleetBlockers extends StatelessWidget {
             ),
         ],
         const SizedBox(height: LpgSpacing.sm),
-        Row(
+        LpgActionRow(
           children: [
             if (needDriver)
-              Expanded(
-                child: LpgButton(
-                  label: 'Add a driver',
-                  icon: LpgIcons.add,
-                  variant: LpgButtonVariant.secondary,
-                  onPressed: () => _go(
-                    context,
-                    (router) => router.pushNamed('fleet_driver_new'),
-                  ),
+              LpgButton(
+                label: 'Add a driver',
+                icon: LpgIcons.add,
+                variant: LpgButtonVariant.secondary,
+                onPressed: () => _go(
+                  context,
+                  (router) => router.pushNamed('fleet_driver_new'),
                 ),
               ),
-            if (needDriver && needVan) const SizedBox(width: LpgSpacing.sm),
             if (needVan)
-              Expanded(
-                child: LpgButton(
-                  label: 'Add a van',
-                  icon: LpgIcons.add,
-                  variant: LpgButtonVariant.secondary,
-                  onPressed: () => _go(
-                    context,
-                    (router) => router.pushNamed('fleet_vehicle_new'),
-                  ),
+              LpgButton(
+                label: 'Add a van',
+                icon: LpgIcons.add,
+                variant: LpgButtonVariant.secondary,
+                onPressed: () => _go(
+                  context,
+                  (router) => router.pushNamed('fleet_vehicle_new'),
                 ),
               ),
           ],

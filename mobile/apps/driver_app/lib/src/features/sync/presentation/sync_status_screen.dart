@@ -172,25 +172,18 @@ class _IssueCard extends StatelessWidget {
               onPressed: onDiscard,
             )
           else
-            Row(
+            LpgActionRow(
               children: [
-                Expanded(
-                  child: LpgButton(
-                    label: 'Retry',
-                    icon: LpgIcons.sync,
-                    expand: true,
-                    onPressed: onRetry,
-                  ),
+                LpgButton(
+                  label: 'Discard',
+                  icon: LpgIcons.delete,
+                  variant: LpgButtonVariant.secondary,
+                  onPressed: onDiscard,
                 ),
-                const SizedBox(width: LpgSpacing.smd),
-                Expanded(
-                  child: LpgButton(
-                    label: 'Discard',
-                    icon: LpgIcons.delete,
-                    variant: LpgButtonVariant.secondary,
-                    expand: true,
-                    onPressed: onDiscard,
-                  ),
+                LpgButton(
+                  label: 'Retry',
+                  icon: LpgIcons.sync,
+                  onPressed: onRetry,
                 ),
               ],
             ),
