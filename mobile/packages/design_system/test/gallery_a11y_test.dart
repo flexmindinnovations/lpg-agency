@@ -12,7 +12,7 @@ import 'support/gallery_harness.dart';
 /// the test below then checks that group again.
 const _knownContrastGaps = {'status_and_banners / light'};
 
-/// Groups drawn on the textured page or on glass (grain and blur). Flutter's
+/// Groups drawn on the textured page or on glass (grain). Flutter's
 /// contrast guideline samples the picture around each text and cannot tell a
 /// speckled background from text, so it reports nonsense there. Their contrast
 /// is held instead by `backdrop_test.dart` and `glass_test.dart`, which check

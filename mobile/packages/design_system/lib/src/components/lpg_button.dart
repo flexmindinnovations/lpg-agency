@@ -148,38 +148,32 @@ class _LpgButtonState extends State<LpgButton>
       color: visuallyDisabled ? colors.surfaceOverlay : baseColor,
       shape: shape,
       clipBehavior: Clip.antiAlias,
-      // The paper grain is over the fill and under the label.
-      child: LpgGrainLayer(
-        strength: widget.variant == LpgButtonVariant.secondary
-            ? LpgGlassLook.of(colors).surfaceGrain
-            : LpgGlassLook.solidGrain,
-        child: InkWell(
-          onTap: unpressable ? null : widget.onPressed,
-          onTapDown: unpressable ? null : (_) => _animateTo(_pressedScale),
-          onTapUp: unpressable ? null : (_) => _animateTo(1.0),
-          onTapCancel: unpressable ? null : () => _animateTo(1.0),
-          onFocusChange: (focused) => setState(() => _focused = focused),
-          customBorder: shape,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: widget.size == LpgButtonSize.large
-                  ? LpgSizes.buttonHeightLarge
-                  : LpgSizes.buttonHeight,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: LpgSpacing.lg),
-              child: Center(
-                widthFactor: 1,
-                child: visuallyDisabled
-                    ? DefaultTextStyle.merge(
-                        style: TextStyle(color: colors.textDisabled),
-                        child: IconTheme.merge(
-                          data: IconThemeData(color: colors.textDisabled),
-                          child: _label(context, colors.textDisabled),
-                        ),
-                      )
-                    : content,
-              ),
+      child: InkWell(
+        onTap: unpressable ? null : widget.onPressed,
+        onTapDown: unpressable ? null : (_) => _animateTo(_pressedScale),
+        onTapUp: unpressable ? null : (_) => _animateTo(1.0),
+        onTapCancel: unpressable ? null : () => _animateTo(1.0),
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        customBorder: shape,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: widget.size == LpgButtonSize.large
+                ? LpgSizes.buttonHeightLarge
+                : LpgSizes.buttonHeight,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: LpgSpacing.lg),
+            child: Center(
+              widthFactor: 1,
+              child: visuallyDisabled
+                  ? DefaultTextStyle.merge(
+                      style: TextStyle(color: colors.textDisabled),
+                      child: IconTheme.merge(
+                        data: IconThemeData(color: colors.textDisabled),
+                        child: _label(context, colors.textDisabled),
+                      ),
+                    )
+                  : content,
             ),
           ),
         ),

@@ -107,30 +107,25 @@ void main() {
       expect(labelColor(), colors.textPrimary);
     });
 
-    testWidgets('moves once, then settles and stays still', (tester) async {
-      await tester.pumpWidget(host(tile(art: LpgIllustration.banknotes)));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.hasRunningAnimations, isTrue);
+    for (final reduce in [false, true]) {
+      testWidgets('is still: nothing animates (reduce-motion: $reduce)', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          host(tile(art: LpgIllustration.banknotes), reduceMotion: reduce),
+        );
+        await settleAssets(tester);
 
-      // Entrance plus a few breaths, then nothing is left running.
-      await tester.pumpAndSettle();
-      expect(tester.hasRunningAnimations, isFalse);
-    });
-
-    testWidgets('under reduce-motion it never moves', (tester) async {
-      await tester.pumpWidget(
-        host(tile(art: LpgIllustration.banknotes), reduceMotion: true),
-      );
-      await settleAssets(tester);
-      expect(tester.hasRunningAnimations, isFalse);
-      expect(
-        find.descendant(
-          of: find.byType(LpgIllustrationArt),
-          matching: find.byType(SvgPicture),
-        ),
-        findsOneWidget,
-      );
-    });
+        expect(tester.hasRunningAnimations, isFalse);
+        expect(
+          find.descendant(
+            of: find.byType(LpgIllustrationArt),
+            matching: find.byType(SvgPicture),
+          ),
+          findsOneWidget,
+        );
+      });
+    }
 
     testWidgets('in high contrast no picture is drawn', (tester) async {
       await tester.pumpWidget(

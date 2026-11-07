@@ -571,6 +571,21 @@ void main() {
     expect(opacity.opacity, 1.0);
   });
 
+  testWidgets('LpgFadeSlideIn does not animate rows past the first screenful', (
+    tester,
+  ) async {
+    // A row built far down while a list scrolls must not animate an opacity
+    // layer mid-scroll.
+    await tester.pumpWidget(
+      _wrap(const LpgFadeSlideIn(index: 40, child: Text('Row'))),
+    );
+    expect(tester.hasRunningAnimations, isFalse);
+    expect(
+      find.ancestor(of: find.text('Row'), matching: find.byType(Opacity)),
+      findsNothing,
+    );
+  });
+
   testWidgets('LpgFadeSlideIn renders immediately under reduce-motion', (
     tester,
   ) async {
@@ -960,6 +975,11 @@ void main() {
       expect(find.byType(LpgCard), findsOneWidget);
       expect(find.byType(LpgListTile), findsNWidgets(3));
       expect(find.byType(Divider), findsNWidgets(2));
+      // Edge to edge: no inset from the card's side.
+      for (final d in tester.widgetList<Divider>(find.byType(Divider))) {
+        expect(d.indent, isNull);
+        expect(d.endIndent, isNull);
+      }
     });
   });
 

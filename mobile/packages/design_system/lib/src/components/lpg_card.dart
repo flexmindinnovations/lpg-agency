@@ -74,15 +74,9 @@ class LpgCard extends StatelessWidget {
       color: fill,
       shape: shape,
       clipBehavior: Clip.antiAlias,
-      // The paper grain is over the fill and under the content.
-      child: LpgGrainLayer(
-        strength: variant == LpgCardVariant.tonal
-            ? LpgGlassLook.solidGrain
-            : LpgGlassLook.of(colors).surfaceGrain,
-        child: onTap == null
-            ? content
-            : InkWell(onTap: onTap, customBorder: shape, child: content),
-      ),
+      child: onTap == null
+          ? content
+          : InkWell(onTap: onTap, customBorder: shape, child: content),
     );
 
     Widget card = surface;

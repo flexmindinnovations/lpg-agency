@@ -321,65 +321,35 @@ final List<GalleryEntry> galleryEntries = [
     );
   }),
   GalleryEntry('glass_surfaces', (context) {
-    // A frosted panel over loud content (dark and bright blocks, text): the
-    // content shows blurred through it and the panel's own text stays
-    // readable. Below it, a card on the page, which is see-through without a
-    // blur.
+    // A card is a see-through fill over the page, whose paper shows through;
+    // a sheet floats over the screen, so it is the paper itself. Neither is
+    // blurred.
     final text = context.lpgText;
     final colors = context.lpgColors;
-    Widget block(Color color, double width) => Container(
-      width: width,
-      height: 28,
-      margin: const EdgeInsets.only(bottom: LpgSpacing.sm),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(LpgRadius.md),
-      ),
-    );
     return LpgBackdrop(
       child: Padding(
         padding: const EdgeInsets.all(LpgSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Stack(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    block(colors.actionPrimary, 300),
-                    block(colors.statusDanger, 240),
-                    block(colors.statusSuccess, 320),
-                    block(colors.statusWarning, 200),
-                    block(colors.textPrimary, 280),
-                    block(colors.statusInfo, 340),
-                  ],
-                ),
-                Positioned(
-                  left: LpgSpacing.md,
-                  right: LpgSpacing.md,
-                  top: 36,
-                  child: LpgGlass(
-                    padding: const EdgeInsets.all(LpgSpacing.mdl),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Deliver order 1042', style: text.titleMedium),
-                        const SizedBox(height: LpgSpacing.xs),
-                        Text(
-                          'Frosted glass: the screen behind is blurred.',
-                          style: text.bodyMedium?.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
+            const LpgCard(child: Text('A card on the page: see-through')),
+            _gap,
+            LpgGlass(
+              padding: const EdgeInsets.all(LpgSpacing.mdl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Deliver order 1042', style: text.titleMedium),
+                  const SizedBox(height: LpgSpacing.xs),
+                  Text(
+                    'A sheet: the paper itself, with the same grain as the page.',
+                    style: text.bodyMedium?.copyWith(
+                      color: colors.textSecondary,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            _gap,
-            const LpgCard(child: Text('A card on the page: see-through')),
           ],
         ),
       ),

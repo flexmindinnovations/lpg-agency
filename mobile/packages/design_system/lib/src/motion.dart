@@ -110,7 +110,7 @@ class LpgFadeSlideIn extends StatefulWidget {
   /// How far below its resting place the child starts, in logical pixels.
   final double offset;
 
-  /// The stagger step and the cap on how many steps a delay may add up to.
+  /// The stagger step, and how many rows enter at all (see the build).
   static final _staggerStep = LpgTokens.motionDurationMicro ~/ 2;
   static const _maxStaggerSteps = 8;
 
@@ -133,7 +133,10 @@ class _LpgFadeSlideInState extends State<LpgFadeSlideIn>
         (MediaQuery.maybeOf(context)?.disableAnimations ?? false)) {
       return;
     }
-    final steps = widget.index.clamp(0, LpgFadeSlideIn._maxStaggerSteps);
+    // Only the first screenful enters. A row built further down, while the
+    // list scrolls, would animate an opacity layer mid-scroll and drop frames.
+    if (widget.index >= LpgFadeSlideIn._maxStaggerSteps) return;
+    final steps = widget.index;
     final delay = LpgFadeSlideIn._staggerStep * steps;
     final total = delay + duration;
     final controller = AnimationController(vsync: this, duration: total);

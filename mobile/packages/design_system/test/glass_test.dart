@@ -4,6 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 double _contrast(Color a, Color b) => LpgBackdropLook.contrast(a, b);
 
+/// The page's paper inside [parent]. (The app's own page is one outside it.)
+Finder _paperIn(Type parent) => find.descendant(
+  of: find.byType(parent),
+  matching: find.byType(LpgBackdrop),
+);
+
 Future<void> _pump(
   WidgetTester tester,
   LpgThemeVariant variant,
@@ -23,24 +29,19 @@ void main() {
       );
 
       expect(look.cardAlpha, 1);
-      expect(look.sheetAlpha, 1);
+      expect(look.barAlpha, 1);
     });
 
     test('light and dark are genuinely see-through', () {
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
         final look = LpgGlassLook.of(LpgTheme.colorsFor(v));
 
-        // A card, field or chip is 60% opaque: the paper's grain shows
+        // A card, field or chip is 60% opaque: the page's paper shows
         // through softly, and text stays readable on it.
         expect(
           look.cardAlpha,
           inInclusiveRange(LpgGlassLook.cardTarget, 0.95),
           reason: '$v card',
-        );
-        expect(
-          look.sheetAlpha,
-          inInclusiveRange(LpgGlassLook.sheetTarget, 1.0),
-          reason: '$v sheet',
         );
       }
     });
@@ -53,11 +54,11 @@ void main() {
           final page = LpgBackdropLook.of(c);
           final behind = [
             c.canvas,
-            page.base,
+            ...page.samples,
           ].map((b) => c.tint(page.speck, page.grainStrength, over: b));
 
           for (final back in behind) {
-            // A card has no grain of its own: the page's shows through.
+            // A card has no texture of its own: the page's shows through.
             final glass = Color.alphaBlend(c.cardGlass, back);
             expect(
               _contrast(c.textPrimary, glass),
@@ -83,8 +84,8 @@ void main() {
           inInclusiveRange(LpgGlassLook.barTarget, 1.0),
         );
 
-        for (final w in [c.canvas, page.base]) {
-          final back = c.tint(page.speck, LpgGlassLook.grainStrength, over: w);
+        for (final w in [c.canvas, ...page.samples]) {
+          final back = c.tint(page.speck, page.grainStrength, over: w);
           final bar = Color.alphaBlend(c.barGlass, back);
           expect(
             _contrast(c.textPrimary, bar),
@@ -110,90 +111,39 @@ void main() {
         }
       },
     );
-
-    test('cards, fields, chips and buttons carry grain over the fill, and text '
-        'on the worst pixel still clears the page contrast', () {
-      for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
-        final c = LpgTheme.colorsFor(v);
-        final look = LpgGlassLook.of(c);
-        final page = LpgBackdropLook.of(c);
-        // Visible, not a token amount.
-        expect(look.surfaceGrain, greaterThan(0.05), reason: '$v surface');
-        expect(look.sheetGrain, greaterThan(0.05), reason: '$v sheet');
-        for (final base in [c.canvas, page.base]) {
-          final back = c.tint(page.speck, page.grainStrength, over: base);
-          final glass = c.tint(
-            page.speck,
-            look.surfaceGrain,
-            over: Color.alphaBlend(c.cardGlass, back),
-          );
-          for (final text in [c.textPrimary, c.textSecondary]) {
-            expect(
-              _contrast(text, glass),
-              greaterThanOrEqualTo(LpgGlassLook.cardContrast - 0.01),
-              reason: '$v over $base',
-            );
-          }
-        }
-      }
-    });
-
-    test('high contrast has no grain on surfaces', () {
-      final look = LpgGlassLook.of(
-        LpgTheme.colorsFor(LpgThemeVariant.highContrast),
-      );
-      expect(look.surfaceGrain, 0);
-      expect(look.sheetGrain, 0);
-    });
-
-    test('text on a frosted sheet, grain over its fill included, stays at AA '
-        'over black or white content, the extremes a blur can average to', () {
-      for (final v in LpgThemeVariant.values) {
-        final c = LpgTheme.colorsFor(v);
-        final page = LpgBackdropLook.of(c);
-        final floor = LpgGlassLook.sheetContrast - 0.01;
-        for (final back in const [Color(0xFF000000), Color(0xFFFFFFFF)]) {
-          // The grain is over the fill and under the text.
-          final glass = c.tint(
-            page.speck,
-            LpgGlassLook.of(c).sheetGrain,
-            over: Color.alphaBlend(c.sheetGlass, back),
-          );
-          expect(
-            _contrast(c.textSecondary, glass),
-            greaterThanOrEqualTo(floor),
-            reason: '$v over $back',
-          );
-          expect(
-            _contrast(c.textPrimary, glass),
-            greaterThanOrEqualTo(floor),
-            reason: '$v over $back',
-          );
-        }
-      }
-    });
   });
 
   group('LpgGlass', () {
-    testWidgets('blurs what is behind it, in light and dark', (tester) async {
+    testWidgets('a card-level glass is not blurred, in light and dark', (
+      tester,
+    ) async {
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
-        await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
+        await _pump(
+          tester,
+          v,
+          const LpgGlass(
+            level: LpgSurfaceLevel.card,
+            child: SizedBox(width: 80),
+          ),
+        );
 
-        expect(find.byType(BackdropFilter), findsOneWidget, reason: '$v');
+        expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
+        expect(_paperIn(LpgGlass), findsNothing, reason: '$v');
       }
     });
 
-    testWidgets('blur can be left off', (tester) async {
-      await _pump(
-        tester,
-        LpgThemeVariant.light,
-        const LpgGlass(blur: false, child: SizedBox(width: 80)),
-      );
+    testWidgets('a sheet-level glass is the paper itself, not blurred', (
+      tester,
+    ) async {
+      for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
+        await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
 
-      expect(find.byType(BackdropFilter), findsNothing);
+        expect(_paperIn(LpgGlass), findsOneWidget, reason: '$v');
+        expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
+      }
     });
 
-    testWidgets('is a solid surface, with no blur, in high contrast', (
+    testWidgets('is a solid surface, with no paper, in high contrast', (
       tester,
     ) async {
       await _pump(
@@ -235,7 +185,8 @@ void main() {
         // A backdrop blur per card, redrawn every frame of a scroll, is what
         // made lists drop frames.
         expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
-        expect(find.byType(LpgGlassPane), findsNothing, reason: '$v');
+        // No texture of its own: the page's paper is what shows through.
+        expect(_paperIn(LpgCard), findsNothing, reason: '$v');
       }
     });
 
@@ -247,7 +198,7 @@ void main() {
       );
 
       expect(find.byType(BackdropFilter), findsNothing);
-      expect(find.byType(LpgGlassPane), findsNothing);
+      expect(_paperIn(LpgSurface), findsNothing);
     });
 
     testWidgets('are opaque in high contrast, with no blur or grain', (
@@ -261,7 +212,6 @@ void main() {
 
       expect(fillOf(tester).a, 1.0);
       expect(find.byType(BackdropFilter), findsNothing);
-      expect(find.byType(LpgGlassPane), findsNothing);
     });
 
     testWidgets('a tonal card stays an opaque tint', (tester) async {
@@ -301,10 +251,11 @@ void main() {
     }
 
     for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
-      testWidgets('is frosted glass in ${v.name}', (tester) async {
+      testWidgets('is the paper, unblurred, in ${v.name}', (tester) async {
         await open(tester, v);
 
-        expect(find.byType(BackdropFilter), findsOneWidget);
+        expect(find.byType(BackdropFilter), findsNothing);
+        expect(_paperIn(LpgGlass), findsOneWidget);
         expect(find.text('Deliver order'), findsOneWidget);
         expect(find.text('Body'), findsOneWidget);
         expect(find.byType(LpgSheetHandle), findsOneWidget);

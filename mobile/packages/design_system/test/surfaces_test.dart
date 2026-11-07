@@ -217,11 +217,11 @@ void main() {
   });
 
   group('where glass is allowed', () {
-    // Glass is a see-through fill and blur, and both are easy to misuse: a
-    // see-through fill over text is unreadable, and a backdrop filter in every
-    // list row costs frames. So both live in one file (glass.dart), sized by a
-    // contrast test (glass_test.dart). This scans the source of the design
-    // system and the three apps so it cannot spread.
+    // Glass is a see-through fill, which is easy to misuse: over text it is
+    // unreadable. So fills live in one file (glass.dart), sized by a contrast
+    // test (glass_test.dart), and nothing is blurred while the app runs. This
+    // scans the source of the design system and the three apps so it cannot
+    // spread.
     const allowedTranslucency = {
       // Shadows are translucent by nature; `tint` blends to an opaque colour.
       'theme.dart',
@@ -250,13 +250,14 @@ void main() {
       }
     }
 
-    test('backdrop blur lives only in glass.dart', () {
+    test('nothing blurs what is behind it', () {
+      // A backdrop blur redrawn every frame of a scroll or a sheet's slide
+      // is what made them drop frames (5.28).
       final offenders = [
         for (final f in sources())
-          if (f.uri.pathSegments.last != 'glass.dart' &&
-              RegExp(
-                r'BackdropFilter|ImageFiltered',
-              ).hasMatch(f.readAsStringSync()))
+          if (RegExp(
+            r'BackdropFilter|ImageFiltered',
+          ).hasMatch(f.readAsStringSync()))
             f.path,
       ];
 
@@ -268,7 +269,7 @@ void main() {
       // (and nothing that runs per frame) may blur.
       final offenders = [
         for (final f in sources())
-          if (!{'glass.dart', 'grain.dart'}.contains(f.uri.pathSegments.last) &&
+          if (f.uri.pathSegments.last != 'grain.dart' &&
               RegExp(r'ImageFilter\.blur').hasMatch(f.readAsStringSync()))
             f.path,
       ];
@@ -278,8 +279,7 @@ void main() {
 
     test('nothing is blurred with a mask filter', () {
       // The page used to carry blurred colour washes; they were the most
-      // expensive thing on every route. The page is paper and grain only, and
-      // the one backdrop blur left is a frosted sheet's (glass.dart).
+      // expensive thing on every route. Its glows are plain gradients.
       final offenders = [
         for (final f in sources())
           if (RegExp(r'MaskFilter\.blur').hasMatch(f.readAsStringSync()))

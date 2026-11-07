@@ -187,25 +187,22 @@ class _Actions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    // Equal parts, the same as every other pair of buttons (and they stack at
+    // large text sizes).
+    return LpgActionRow.equal(
       children: [
-        Expanded(
-          child: LpgButton(
-            label: 'Call',
-            icon: LpgIcons.call,
-            variant: LpgButtonVariant.secondary,
-            onPressed: () => _call(context),
-          ),
+        LpgButton(
+          label: 'Call',
+          icon: LpgIcons.call,
+          variant: LpgButtonVariant.secondary,
+          onPressed: () => _call(context),
         ),
-        const SizedBox(width: LpgSpacing.sm),
-        Expanded(
-          child: LpgButton(
-            label: 'New order',
-            icon: LpgIcons.add,
-            onPressed: () => context.pushNamed(
-              'order_new',
-              queryParameters: {'customer': customer.id},
-            ),
+        LpgButton(
+          label: 'New order',
+          icon: LpgIcons.add,
+          onPressed: () => context.pushNamed(
+            'order_new',
+            queryParameters: {'customer': customer.id},
           ),
         ),
       ],

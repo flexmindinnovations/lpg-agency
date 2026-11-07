@@ -69,7 +69,7 @@ abstract final class LpgFeedback {
       context: context,
       isScrollControlled: isScrollControlled,
       useSafeArea: true,
-      // The glass below draws its own fill, shape and handle.
+      // The sheet below draws its own paper, shape and handle.
       backgroundColor: Colors.transparent,
       elevation: 0,
       showDragHandle: false,
