@@ -25,6 +25,7 @@
     }
   },
   "invoice": {
+    "title": "INVOICE",
     "billedTo": "Billed to",
     "order": "Order",
     "item": "Item",
@@ -35,6 +36,10 @@
     "gstin": "GSTIN: {gstin}",
     "orderNumber": "Order {number}",
     "downloadFailed": "Could not create the PDF.",
-    "download": "Download PDF"
+    "download": "Download PDF",
+    "share": "Share",
+    "saved": "Saved to Downloads as {file}",
+    "open": "Open",
+    "openFailed": "No app on this device can open PDFs."
   }
 }

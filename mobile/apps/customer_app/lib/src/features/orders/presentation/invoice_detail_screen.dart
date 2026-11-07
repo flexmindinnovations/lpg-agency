@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,28 +45,28 @@ class InvoiceDetailScreen extends ConsumerWidget {
           final sections = <Widget>[
             InvoicePaper(invoice: invoice, cylinderNames: cylinderNames),
             const SizedBox(height: LpgSpacing.lg),
-            LpgButton(
-              label: context.strings.invoice.download,
-              icon: LpgIcons.download,
-              variant: LpgButtonVariant.secondary,
-              expand: true,
-              onPressed: () async {
-                try {
-                  await shareInvoicePdf(
-                    invoice,
-                    cylinderNames: cylinderNames,
-                    s: context.strings,
-                  );
-                } catch (e) {
-                  if (context.mounted) {
-                    LpgFeedback.showToast(
-                      context,
-                      context.strings.invoice.downloadFailed,
-                      tone: LpgTone.danger,
-                    );
-                  }
-                }
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: LpgButton(
+                    label: context.strings.invoice.download,
+                    icon: LpgIcons.download,
+                    variant: LpgButtonVariant.secondary,
+                    expand: true,
+                    onPressed: () => _download(context, invoice, cylinderNames),
+                  ),
+                ),
+                const SizedBox(width: LpgSpacing.md),
+                Expanded(
+                  child: LpgButton(
+                    label: context.strings.invoice.share,
+                    icon: LpgIcons.share,
+                    variant: LpgButtonVariant.secondary,
+                    expand: true,
+                    onPressed: () => _share(context, invoice, cylinderNames),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: LpgSpacing.lg),
             PayOnlineSection(
@@ -98,5 +99,65 @@ class InvoiceDetailScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _download(
+    BuildContext context,
+    InvoiceResponse invoice,
+    Map<String, String> cylinderNames,
+  ) async {
+    final strings = context.strings;
+    try {
+      final saved = await downloadInvoicePdf(
+        invoice,
+        cylinderNames: cylinderNames,
+        s: strings,
+      );
+      if (!context.mounted) return;
+      if (saved == null) return; // the system save sheet handled it
+      LpgFeedback.showToast(
+        context,
+        strings.invoice.saved(file: saved.fileName),
+        tone: LpgTone.success,
+        actionLabel: strings.invoice.open,
+        onAction: () async {
+          final opened = await openInvoicePdf(saved);
+          if (!opened && context.mounted) {
+            LpgFeedback.showToast(
+              context,
+              strings.invoice.openFailed,
+              tone: LpgTone.danger,
+            );
+          }
+        },
+      );
+    } catch (_) {
+      if (context.mounted) {
+        LpgFeedback.showToast(
+          context,
+          strings.invoice.downloadFailed,
+          tone: LpgTone.danger,
+        );
+      }
+    }
+  }
+
+  Future<void> _share(
+    BuildContext context,
+    InvoiceResponse invoice,
+    Map<String, String> cylinderNames,
+  ) async {
+    final strings = context.strings;
+    try {
+      await shareInvoicePdf(invoice, cylinderNames: cylinderNames, s: strings);
+    } catch (_) {
+      if (context.mounted) {
+        LpgFeedback.showToast(
+          context,
+          strings.invoice.downloadFailed,
+          tone: LpgTone.danger,
+        );
+      }
+    }
   }
 }

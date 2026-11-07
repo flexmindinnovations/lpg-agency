@@ -93,6 +93,9 @@ class CustomerStrings$invoice$en {
 
 	// Translations
 
+	/// en: 'INVOICE'
+	String get title => 'INVOICE';
+
 	/// en: 'Billed to'
 	String get billedTo => 'Billed to';
 
@@ -125,6 +128,18 @@ class CustomerStrings$invoice$en {
 
 	/// en: 'Download PDF'
 	String get download => 'Download PDF';
+
+	/// en: 'Share'
+	String get share => 'Share';
+
+	/// en: 'Saved to Downloads as {file}'
+	String saved({required Object file}) => 'Saved to Downloads as ${file}';
+
+	/// en: 'Open'
+	String get open => 'Open';
+
+	/// en: 'No app on this device can open PDFs.'
+	String get openFailed => 'No app on this device can open PDFs.';
 }
 
 // Path: dashboard.hero
@@ -204,6 +219,7 @@ extension on CustomerStrings {
 			'orders.search.hint' => 'Search by order number, status or date',
 			'orders.search.clear' => 'Clear search',
 			'orders.search.noMatch' => 'No orders match your search.',
+			'invoice.title' => 'INVOICE',
 			'invoice.billedTo' => 'Billed to',
 			'invoice.order' => 'Order',
 			'invoice.item' => 'Item',
@@ -215,6 +231,10 @@ extension on CustomerStrings {
 			'invoice.orderNumber' => ({required Object number}) => 'Order ${number}',
 			'invoice.downloadFailed' => 'Could not create the PDF.',
 			'invoice.download' => 'Download PDF',
+			'invoice.share' => 'Share',
+			'invoice.saved' => ({required Object file}) => 'Saved to Downloads as ${file}',
+			'invoice.open' => 'Open',
+			'invoice.openFailed' => 'No app on this device can open PDFs.',
 			_ => null,
 		};
 	}
