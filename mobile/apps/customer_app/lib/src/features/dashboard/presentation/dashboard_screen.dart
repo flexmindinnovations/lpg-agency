@@ -246,43 +246,12 @@ class _ActiveOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.lpgColors;
-    return LpgCard(
-      variant: LpgCardVariant.tonal,
-      tone: LpgTone.warning,
+    return LpgActionCard(
+      icon: LpgIcons.truck,
+      title: context.strings.dashboard.liveOrder.title,
+      message: '${order.reference} is out for delivery',
+      actionLabel: context.strings.dashboard.liveOrder.action,
       onTap: () => context.push('/orders/${order.id}/track'),
-      semanticLabel: '${order.reference} is out for delivery. Track it live.',
-      padding: const EdgeInsets.all(LpgSpacing.md),
-      child: Row(
-        children: [
-          const LpgIconBox(icon: LpgIcons.truck, tone: LpgTone.warning),
-          const SizedBox(width: LpgSpacing.smd),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('On its way', style: context.lpgText.titleSmall),
-                const SizedBox(height: LpgSpacing.xs / 2),
-                Text(
-                  '${order.reference} is out for delivery',
-                  style: context.lpgText.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          Text(
-            'Track',
-            style: context.lpgText.labelLarge?.copyWith(
-              color: colors.textPrimary,
-            ),
-          ),
-          Icon(
-            LpgIcons.chevronRight,
-            size: LpgSizes.iconSm,
-            color: colors.textPrimary,
-          ),
-        ],
-      ),
     );
   }
 }

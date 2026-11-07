@@ -981,6 +981,31 @@ void main() {
     });
   });
 
+  group('LpgActionCard', () {
+    testWidgets('reads as one button and fires onTap', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        _wrap(
+          LpgActionCard(
+            icon: Icons.local_shipping,
+            title: 'On its way',
+            message: 'ORD000060 is out for delivery',
+            actionLabel: 'Track',
+            onTap: () => taps++,
+          ),
+        ),
+      );
+
+      expect(
+        find.bySemanticsLabel('On its way. ORD000060 is out for delivery'),
+        findsOneWidget,
+      );
+      expect(find.text('Track'), findsOneWidget);
+      await tester.tap(find.text('On its way'));
+      expect(taps, 1);
+    });
+  });
+
   group('LpgHeroStats', () {
     testWidgets('shows each figure with its label under a hero card', (
       tester,
