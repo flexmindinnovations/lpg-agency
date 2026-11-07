@@ -13,6 +13,7 @@ from lpg.application.accounting.payment_credentials import StoredPaymentCredenti
 from lpg.application.accounting.ports import (
     CashBook,
     CashBookCollection,
+    CashHandoverCollection,
     CashHandoverRegisterEntry,
     CashHandoverRepository,
     CreditNoteRepository,
@@ -511,8 +512,36 @@ class SqlAlchemyCashHandoverRepository(CashHandoverRepository):
                 )
             )
         }
+        route_ids = list({handovers[row.id].route_id for row in rows})
+        coll_rows = (
+            await self._session.execute(
+                text("""
+                    SELECT rs.route_id, o.id AS order_id, o.order_number,
+                           c.id AS customer_id, c.full_name, pod.amount_collected
+                    FROM delivery.route_stop rs
+                    JOIN orders.proof_of_delivery pod ON pod.order_id = rs.order_id
+                    JOIN orders."order" o ON o.id = rs.order_id
+                    JOIN customer.customer c ON c.id = o.customer_id
+                    WHERE rs.route_id = ANY(:route_ids) AND pod.payment_method = 'cash'
+                    ORDER BY rs.sequence_number
+                """),
+                {"route_ids": route_ids},
+            )
+        ).all()
+        by_route: dict[uuid.UUID, list[CashHandoverCollection]] = {}
+        for c in coll_rows:
+            by_route.setdefault(c.route_id, []).append(
+                CashHandoverCollection(
+                    order_id=c.order_id,
+                    order_number=c.order_number,
+                    customer_id=c.customer_id,
+                    customer_name=c.full_name,
+                    amount=Decimal(c.amount_collected),
+                )
+            )
         return [
             CashHandoverRegisterEntry(
+                collections=tuple(by_route.get(handovers[row.id].route_id, [])),
                 handover=handovers[row.id],
                 driver_name=row.driver_name,
                 vehicle_registration=row.registration_number,

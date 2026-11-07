@@ -1110,6 +1110,49 @@
         "title": "CashBookResponse",
         "type": "object"
       },
+      "CashHandoverCollectionResponse": {
+        "description": "A cash delivery on the route: lets the reviewer open the order and\nthe customer to confirm the cash.",
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
+          }
+        },
+        "required": [
+          "order_id",
+          "customer_id",
+          "customer_name",
+          "amount"
+        ],
+        "title": "CashHandoverCollectionResponse",
+        "type": "object"
+      },
       "CashHandoverRegisterEntryResponse": {
         "description": "One row of the accountant's cash-handover register (DA-33).",
         "properties": {
@@ -1121,6 +1164,14 @@
           "cash_stop_count": {
             "title": "Cash Stop Count",
             "type": "integer"
+          },
+          "collections": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CashHandoverCollectionResponse"
+            },
+            "title": "Collections",
+            "type": "array"
           },
           "declared_at": {
             "format": "date-time",

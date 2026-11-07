@@ -139,6 +139,18 @@ class UninvoicedOrderReader(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class CashHandoverCollection:
+    """One cash delivery behind a handover: the order, its customer and the
+    cash the driver collected on it."""
+
+    order_id: uuid.UUID
+    order_number: str | None
+    customer_id: uuid.UUID
+    customer_name: str
+    amount: Decimal
+
+
+@dataclass(frozen=True, slots=True)
 class CashHandoverRegisterEntry:
     """One row of the accountant's cash-handover register (DA-33)."""
 
@@ -149,6 +161,7 @@ class CashHandoverRegisterEntry:
     cash_stop_count: int
     review: CashHandoverReview | None
     reviewer_name: str | None
+    collections: tuple[CashHandoverCollection, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
