@@ -9,6 +9,7 @@ import '../../../i18n/admin_strings.dart';
 import '../../../providers.dart';
 import '../data/profile_provider.dart';
 import 'edit_profile_sheet.dart';
+import 'profile_avatar_button.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -53,9 +54,9 @@ class ProfileScreen extends ConsumerWidget {
                   LpgCard(
                     child: Row(
                       children: [
-                        LpgAvatar(
+                        ProfileAvatarButton(
                           name: profile.displayName,
-                          size: LpgSizes.avatarLg,
+                          imageUrl: profile.avatarUrl,
                         ),
                         const SizedBox(width: LpgSpacing.md),
                         Expanded(

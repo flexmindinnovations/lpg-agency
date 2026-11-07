@@ -13,6 +13,7 @@ audit entry - never with the password or its hash.
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -21,9 +22,8 @@ from lpg.application.common.errors import NotFoundError, ValidationError
 from lpg.domain.common.base import InvariantViolation
 
 if TYPE_CHECKING:
-    import uuid
-
     from lpg.application.audit.ports import AuditTrail
+    from lpg.application.common.ports import FileStorage
     from lpg.application.identity.ports import PasswordHasher, StaffUserRepository
     from lpg.domain.identity.user import IdentityUser
 
@@ -85,6 +85,123 @@ class UpdateMyProfileUseCase:
             before=dict(before),
             after=dict(after),
         )
+        return user
+
+
+#: A profile picture is shown small; anything bigger is a phone photo that
+#: should have been shrunk first (the app does), so the limit is modest.
+MAX_AVATAR_BYTES = 5 * 1024 * 1024
+
+#: content type -> (file extension, how to recognise the bytes). The bytes are
+#: checked as well as the declared type, so a renamed file is refused.
+_AVATAR_TYPES: dict[str, str] = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/heic": "heic",
+    "image/heif": "heif",
+}
+
+
+def _looks_like(content_type: str, data: bytes) -> bool:
+    if content_type == "image/jpeg":
+        return data[:3] == b"\xff\xd8\xff"
+    if content_type == "image/png":
+        return data[:8] == b"\x89PNG\r\n\x1a\n"
+    if content_type == "image/webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    return data[4:8] == b"ftyp"  # HEIC / HEIF
+
+
+@dataclass(frozen=True, slots=True)
+class SetMyAvatarCommand(Command):
+    user_id: uuid.UUID
+    data: bytes
+    content_type: str
+
+
+class SetMyAvatarUseCase:
+    """Replace the signed-in user's profile picture.
+
+    The image is stored under the user's own `tenant/{id}/avatars/` prefix with
+    a fresh name every time (so an old, cached link never shows a new picture
+    and a replaced one is really gone), the previous object is deleted, and the
+    change is audited without recording the picture itself.
+    """
+
+    def __init__(
+        self, repository: StaffUserRepository, file_storage: FileStorage, audit: AuditTrail
+    ) -> None:
+        self._repository = repository
+        self._file_storage = file_storage
+        self._audit = audit
+
+    async def execute(self, command: SetMyAvatarCommand) -> IdentityUser:
+        content_type = command.content_type.lower()
+        if content_type not in _AVATAR_TYPES:
+            msg = "Choose a JPEG, PNG, WebP or HEIC picture."
+            raise ValidationError(msg, errors={"file": [msg]})
+        if not command.data:
+            msg = "The picture is empty."
+            raise ValidationError(msg, errors={"file": [msg]})
+        if len(command.data) > MAX_AVATAR_BYTES:
+            msg = "The picture is too large. The limit is 5 MB."
+            raise ValidationError(msg, errors={"file": [msg]})
+        if not _looks_like(content_type, command.data):
+            msg = "That file is not a valid picture."
+            raise ValidationError(msg, errors={"file": [msg]})
+
+        user = await _me(self._repository, command.user_id)
+        previous = user.avatar_ref
+        extension = _AVATAR_TYPES[content_type]
+        key = f"tenant/{user.tenant_id}/avatars/{user.id}/{uuid.uuid4().hex}.{extension}"
+        await self._file_storage.upload(key, command.data, content_type=content_type)
+        try:
+            user.set_avatar(key)
+            await self._repository.save(user)
+        except Exception:
+            await self._file_storage.delete(key)
+            raise
+        await self._audit.record(
+            action="update",
+            entity_name=_AUDIT_ENTITY,
+            entity_id=str(user.id),
+            entity_display_name=user.display_name or user.email,
+            details={"change": "own_avatar", "avatar": "set"},
+        )
+        if previous:
+            await self._file_storage.delete(previous)
+        return user
+
+
+@dataclass(frozen=True, slots=True)
+class RemoveMyAvatarCommand(Command):
+    user_id: uuid.UUID
+
+
+class RemoveMyAvatarUseCase:
+    def __init__(
+        self, repository: StaffUserRepository, file_storage: FileStorage, audit: AuditTrail
+    ) -> None:
+        self._repository = repository
+        self._file_storage = file_storage
+        self._audit = audit
+
+    async def execute(self, command: RemoveMyAvatarCommand) -> IdentityUser:
+        user = await _me(self._repository, command.user_id)
+        previous = user.avatar_ref
+        if previous is None:
+            return user
+        user.clear_avatar()
+        await self._repository.save(user)
+        await self._audit.record(
+            action="update",
+            entity_name=_AUDIT_ENTITY,
+            entity_id=str(user.id),
+            entity_display_name=user.display_name or user.email,
+            details={"change": "own_avatar", "avatar": "removed"},
+        )
+        await self._file_storage.delete(previous)
         return user
 
 

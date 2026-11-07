@@ -784,6 +784,20 @@
         "title": "BatchMoveCylinderCustodyResponse",
         "type": "object"
       },
+      "Body_set_my_avatar_api_v1_auth_me_avatar_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_set_my_avatar_api_v1_auth_me_avatar_post",
+        "type": "object"
+      },
       "Body_upload_document_attachment_api_v1_documents_attachments_post": {
         "properties": {
           "file": {
@@ -6430,6 +6444,17 @@
       "MyProfileResponse": {
         "description": "`GET`/`PATCH /auth/me/profile` (DA-30).",
         "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "contact_phone": {
             "anyOf": [
               {
@@ -15834,6 +15859,67 @@
           }
         },
         "summary": "The current authenticated principal",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/me/avatar": {
+      "delete": {
+        "operationId": "remove_my_avatar_api_v1_auth_me_avatar_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Remove your own profile picture",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "post": {
+        "description": "Multipart `file`: a JPEG, PNG, WebP or HEIC picture of at most 5 MB. Replaces the previous picture. 422 when the file is not a valid picture.",
+        "operationId": "set_my_avatar_api_v1_auth_me_avatar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_set_my_avatar_api_v1_auth_me_avatar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set your own profile picture",
         "tags": [
           "Authentication"
         ]

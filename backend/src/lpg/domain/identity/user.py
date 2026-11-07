@@ -74,6 +74,8 @@ VALID_ROLES = frozenset(
 
 
 _MAX_DISPLAY_NAME = 120
+#: Matches the `identity_user.avatar_ref` column.
+_MAX_AVATAR_REF = 300
 #: Loose on purpose: a contact number is free text people read, not a key.
 _CONTACT_PHONE = re.compile(r"^\+?[0-9][0-9 \-]{5,18}[0-9]$")
 
@@ -89,6 +91,7 @@ class IdentityUser(AggregateRoot):
     """
 
     __slots__ = (
+        "_avatar_ref",
         "_branch_id",
         "_contact_phone",
         "_display_name",
@@ -118,10 +121,12 @@ class IdentityUser(AggregateRoot):
         version: int = 1,
         display_name: str | None = None,
         contact_phone: str | None = None,
+        avatar_ref: str | None = None,
     ) -> None:
         super().__init__(user_id, version=version)
         self._display_name = display_name
         self._contact_phone = contact_phone
+        self._avatar_ref = avatar_ref
         self._tenant_id = tenant_id
         self._branch_id = branch_id
         self._email = email
@@ -182,6 +187,28 @@ class IdentityUser(AggregateRoot):
             raise InvariantViolation(msg, user_id=str(self.id))
         self._display_name = name or None
         self._contact_phone = phone or None
+
+    @property
+    def avatar_ref(self) -> str | None:
+        """The storage key of the profile picture (never a URL), or `None`."""
+        return self._avatar_ref
+
+    def set_avatar(self, ref: str) -> None:
+        """Point the profile picture at an object under the user's own agency.
+
+        The key must sit under `tenant/{tenant_id}/`, so a picture can never
+        reference another agency's storage, whatever a client sends.
+        """
+        if self._tenant_id is None or not ref.startswith(f"tenant/{self._tenant_id}/"):
+            msg = "A profile picture must be stored under your own agency."
+            raise InvariantViolation(msg, user_id=str(self.id))
+        if len(ref) > _MAX_AVATAR_REF or ".." in ref.split("/"):
+            msg = "That picture reference is not valid."
+            raise InvariantViolation(msg, user_id=str(self.id))
+        self._avatar_ref = ref
+
+    def clear_avatar(self) -> None:
+        self._avatar_ref = None
 
     @property
     def failed_login_count(self) -> int:

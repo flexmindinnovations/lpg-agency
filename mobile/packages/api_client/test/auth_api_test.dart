@@ -114,6 +114,103 @@ void main() {
       },
     );
 
+    test('myProfile carries the picture link when there is one', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
+          'user_id': 'u1',
+          'role': 'agency_admin',
+          'avatar_url': 'https://files.test/me.png?sig=1',
+        }, 200),
+      );
+
+      final result = await AuthApi(client.dio).myProfile();
+
+      expect(
+        result.when(onSuccess: (p) => p.avatarUrl, onFailure: (_) => null),
+        'https://files.test/me.png?sig=1',
+      );
+    });
+
+    test('setMyAvatar sends the picture as a multipart file', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      String? method;
+      String? path;
+      Object? body;
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        method = options.method;
+        path = options.path;
+        body = options.data;
+        return jsonResponse({
+          'user_id': 'u1',
+          'role': 'agency_admin',
+          'avatar_url': 'https://files.test/me.png?sig=2',
+        }, 200);
+      });
+
+      final result = await AuthApi(client.dio).setMyAvatar(
+        bytes: [1, 2, 3],
+        filename: 'me.png',
+        contentType: 'image/png',
+      );
+
+      expect((method, path), ('POST', '/api/v1/auth/me/avatar'));
+      final file = (body as FormData).files.single;
+      expect(file.key, 'file');
+      expect(file.value.filename, 'me.png');
+      expect(file.value.contentType.toString(), 'image/png');
+      expect(file.value.length, 3);
+      expect(
+        result.when(onSuccess: (p) => p.avatarUrl, onFailure: (_) => null),
+        'https://files.test/me.png?sig=2',
+      );
+    });
+
+    test('setMyAvatar reports why a picture was refused', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
+          'error_code': 'VALIDATION_ERROR',
+          'detail': 'That file is not a valid picture.',
+        }, 422),
+      );
+
+      final result = await AuthApi(
+        client.dio,
+      ).setMyAvatar(bytes: [1], filename: 'x.jpg', contentType: 'image/jpeg');
+
+      expect(
+        result.when(
+          onSuccess: (_) => null,
+          onFailure: (failure) => failure.message,
+        ),
+        'That file is not a valid picture.',
+      );
+    });
+
+    test('removeMyAvatar sends a DELETE and returns the profile', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      String? method;
+      String? path;
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        method = options.method;
+        path = options.path;
+        return jsonResponse({
+          'user_id': 'u1',
+          'role': 'agency_admin',
+          'avatar_url': null,
+        }, 200);
+      });
+
+      final result = await AuthApi(client.dio).removeMyAvatar();
+
+      expect((method, path), ('DELETE', '/api/v1/auth/me/avatar'));
+      expect(
+        result.when(onSuccess: (p) => p.avatarUrl, onFailure: (_) => 'failed'),
+        isNull,
+      );
+    });
+
     test('login maps a 200 into a Success(TokenPair)', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
       client.dio.httpClientAdapter = FakeHttpClientAdapter(

@@ -25,7 +25,7 @@ import uuid
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 
 from lpg.api.v1.dependencies.admin import get_audit_trail, get_staff_user_repository
 from lpg.api.v1.dependencies.device import device_context_from, get_device_session_binder
@@ -47,6 +47,7 @@ from lpg.api.v1.dependencies.identity import (
     require_rate_limit,
 )
 from lpg.api.v1.dependencies.license import get_license_status_checker
+from lpg.api.v1.dependencies.order import get_file_storage
 from lpg.api.v1.dependencies.tenant import get_tenant_status_checker
 from lpg.api.v1.schemas.identity import (
     ChangeMyPasswordRequest,
@@ -64,13 +65,19 @@ from lpg.api.v1.schemas.identity import (
 )
 from lpg.application.audit.ports import AuditTrail
 from lpg.application.common.errors import RefreshTokenInvalidError
+from lpg.application.common.ports import FileStorage
 from lpg.application.identity.login import LoginCommand, LoginUseCase
 from lpg.application.identity.logout import LogoutCommand, LogoutUseCase
 from lpg.application.identity.my_profile import (
+    MAX_AVATAR_BYTES,
     ChangeMyPasswordCommand,
     ChangeMyPasswordUseCase,
     GetMyProfileQuery,
     GetMyProfileUseCase,
+    RemoveMyAvatarCommand,
+    RemoveMyAvatarUseCase,
+    SetMyAvatarCommand,
+    SetMyAvatarUseCase,
     UpdateMyProfileCommand,
     UpdateMyProfileUseCase,
 )
@@ -435,13 +442,14 @@ def _own_user_id(principal: AuthenticatedPrincipal) -> uuid.UUID:
     return principal.user_id
 
 
-def _profile_response(user: IdentityUser) -> MyProfileResponse:
+async def _profile_response(user: IdentityUser, file_storage: FileStorage) -> MyProfileResponse:
     return MyProfileResponse(
         user_id=str(user.id),
         email=user.email,
         role=user.role,
         display_name=user.display_name,
         contact_phone=user.contact_phone,
+        avatar_url=await file_storage.url(user.avatar_ref) if user.avatar_ref else None,
     )
 
 
@@ -449,11 +457,12 @@ def _profile_response(user: IdentityUser) -> MyProfileResponse:
 async def get_my_profile(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
 ) -> MyProfileResponse:
     user = await GetMyProfileUseCase(repository).execute(
         GetMyProfileQuery(user_id=_own_user_id(principal))
     )
-    return _profile_response(user)
+    return await _profile_response(user, file_storage)
 
 
 @router.patch(
@@ -464,6 +473,7 @@ async def update_my_profile(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
     audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
 ) -> MyProfileResponse:
     user = await UpdateMyProfileUseCase(repository, audit).execute(
         UpdateMyProfileCommand(
@@ -472,7 +482,48 @@ async def update_my_profile(
             contact_phone=body.contact_phone,
         )
     )
-    return _profile_response(user)
+    return await _profile_response(user, file_storage)
+
+
+@router.post(
+    "/me/avatar",
+    response_model=MyProfileResponse,
+    summary="Set your own profile picture",
+    description="Multipart `file`: a JPEG, PNG, WebP or HEIC picture of at most 5 MB. "
+    "Replaces the previous picture. 422 when the file is not a valid picture.",
+)
+async def set_my_avatar(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+    file: Annotated[UploadFile, File()],
+) -> MyProfileResponse:
+    # One byte over the limit is enough to tell the use case it is too large.
+    data = await file.read(MAX_AVATAR_BYTES + 1)
+    user = await SetMyAvatarUseCase(repository, file_storage, audit).execute(
+        SetMyAvatarCommand(
+            user_id=_own_user_id(principal),
+            data=data,
+            content_type=file.content_type or "",
+        )
+    )
+    return await _profile_response(user, file_storage)
+
+
+@router.delete(
+    "/me/avatar", response_model=MyProfileResponse, summary="Remove your own profile picture"
+)
+async def remove_my_avatar(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> MyProfileResponse:
+    user = await RemoveMyAvatarUseCase(repository, file_storage, audit).execute(
+        RemoveMyAvatarCommand(user_id=_own_user_id(principal))
+    )
+    return await _profile_response(user, file_storage)
 
 
 @router.post(

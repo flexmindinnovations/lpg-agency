@@ -1,5 +1,6 @@
 import 'package:core/core.dart';
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 
 import 'failure_mapper.dart';
 import 'models/models.dart';
@@ -96,6 +97,43 @@ final class AuthApi {
       final response = await _dio.patch<Map<String, dynamic>>(
         '/api/v1/auth/me/profile',
         data: {'display_name': displayName, 'contact_phone': contactPhone},
+      );
+      return Success(MyProfile.fromJson(response.data!));
+    } on DioException catch (error) {
+      return FailureResult(mapDioError(error));
+    }
+  }
+
+  /// Sets the signed-in staff member's own profile picture, replacing the
+  /// old one. The server takes a JPEG, PNG, WebP or HEIC picture of at most
+  /// 5 MB and checks the bytes match [contentType].
+  Future<Result<MyProfile>> setMyAvatar({
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/auth/me/avatar',
+        data: FormData.fromMap({
+          'file': MultipartFile.fromBytes(
+            bytes,
+            filename: filename,
+            contentType: MediaType.parse(contentType),
+          ),
+        }),
+      );
+      return Success(MyProfile.fromJson(response.data!));
+    } on DioException catch (error) {
+      return FailureResult(mapDioError(error));
+    }
+  }
+
+  /// Removes the signed-in staff member's own profile picture.
+  Future<Result<MyProfile>> removeMyAvatar() async {
+    try {
+      final response = await _dio.delete<Map<String, dynamic>>(
+        '/api/v1/auth/me/avatar',
       );
       return Success(MyProfile.fromJson(response.data!));
     } on DioException catch (error) {
