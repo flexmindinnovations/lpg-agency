@@ -42,7 +42,7 @@ class LpgGlassLook {
   final double barAlpha;
 
   /// What each would like to be if contrast allowed it.
-  static const cardTarget = 0.0;
+  static const cardTarget = 0.7;
   static const barTarget = 0.4;
   static const sheetTarget = 0.78;
 
@@ -65,8 +65,8 @@ class LpgGlassLook {
 
   /// What text on a card, field or chip keeps. They sit on the page, so they
   /// are held to what the page itself is: as readable as the page under them.
-  /// That is why they are fully transparent when the page allows it (it does
-  /// in every theme), and show the paper's grain.
+  /// The fill is [cardTarget] opaque (the paper's grain shows through softly)
+  /// or more if the page behind it needs it.
   static const cardContrast = LpgBackdropLook.minTextContrast;
 
   /// What a bar's text and icons keep (WCAG AA for normal text).

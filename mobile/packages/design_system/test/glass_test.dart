@@ -30,9 +30,13 @@ void main() {
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
         final look = LpgGlassLook.of(LpgTheme.colorsFor(v));
 
-        // A card, field or chip is practically see-through: the paper and its
-        // grain are what shows, because the page already keeps text at AA.
-        expect(look.cardAlpha, lessThan(0.05), reason: '$v card');
+        // A card, field or chip is 70% opaque: the paper's grain shows
+        // through softly, and text stays readable on it.
+        expect(
+          look.cardAlpha,
+          inInclusiveRange(LpgGlassLook.cardTarget, 0.95),
+          reason: '$v card',
+        );
         expect(
           look.sheetAlpha,
           inInclusiveRange(LpgGlassLook.sheetTarget, 1.0),

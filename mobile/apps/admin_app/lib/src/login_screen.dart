@@ -174,8 +174,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final colors = context.lpgColors;
     final text = context.lpgText;
 
+    // No background of its own: the paper page is drawn under every route.
     return Scaffold(
-      backgroundColor: colors.canvas,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: LpgSpacing.page,
