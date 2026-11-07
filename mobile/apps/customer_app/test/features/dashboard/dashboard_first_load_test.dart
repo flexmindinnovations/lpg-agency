@@ -9,6 +9,7 @@ import 'package:customer_app/src/features/dashboard/data/notifications_provider.
 import 'package:customer_app/src/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:customer_app/src/features/orders/data/orders_provider.dart';
 import 'package:customer_app/src/features/profile/data/profile_provider.dart';
+import 'package:customer_app/src/i18n/customer_strings.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,7 +57,11 @@ Future<void> _pump(
         profileProvider.overrideWith((ref) => null),
         unreadNotificationCountProvider.overrideWith((ref) => 0),
       ],
-      child: MaterialApp(theme: LpgTheme.light, home: const DashboardScreen()),
+      child: MaterialApp(
+        theme: LpgTheme.light,
+        localizationsDelegates: customerLocalizationsDelegates,
+        home: const DashboardScreen(),
+      ),
     ),
   );
 }
@@ -176,6 +181,7 @@ void main() {
         ],
         child: MaterialApp(
           theme: LpgTheme.light,
+          localizationsDelegates: customerLocalizationsDelegates,
           home: const DashboardScreen(),
         ),
       ),
