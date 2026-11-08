@@ -219,7 +219,25 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
           </div>
         }
 
-        <main id="shell-main-content" class="shell__main" tabindex="-1">
+        <div
+          class="shell__ptr"
+          aria-hidden="true"
+          [class.shell__ptr--ready]="pullReady()"
+          [class.shell__ptr--loading]="pullLoading()"
+          [style.transform]="'translateY(' + (pullDistance() - 44) + 'px)'"
+          [style.opacity]="pullDistance() > 0 || pullLoading() ? 1 : 0"
+        >
+          <span class="shell__ptr-spinner"></span>
+        </div>
+        <main
+          id="shell-main-content"
+          class="shell__main"
+          tabindex="-1"
+          (touchstart)="onPullStart($event)"
+          (touchmove)="onPullMove($event)"
+          (touchend)="onPullEnd()"
+          (touchcancel)="onPullCancel()"
+        >
           <ng-content />
         </main>
       </div>
@@ -670,6 +688,47 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         align-items: center;
       }
 
+      .shell__ptr {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+        transition: opacity 120ms ease;
+      }
+
+      .shell__ptr-spinner {
+        inline-size: 32px;
+        block-size: 32px;
+        border-radius: 50%;
+        border: 3px solid var(--color-border-default);
+        border-block-start-color: var(--color-action-primary);
+        background: var(--color-surface-page);
+        box-shadow: var(--elevation-2);
+      }
+
+      .shell__ptr--ready .shell__ptr-spinner {
+        border-color: var(--color-action-primary);
+      }
+
+      .shell__ptr--loading .shell__ptr-spinner {
+        animation: shell-ptr-spin 0.8s linear infinite;
+      }
+
+      @keyframes shell-ptr-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shell__ptr--loading .shell__ptr-spinner {
+          animation: none;
+        }
+      }
+
       .shell__main {
         position: relative;
         flex: 1;
@@ -822,6 +881,59 @@ export class AppShellComponent {
   readonly navOpen = signal(false);
   /** The icon-only rail: collapsed, and never in the phone menu (which shows labels). */
   protected readonly rail = computed(() => !this.isPhone() && this.collapsed());
+
+  // ---- Pull to refresh (touch) ----
+  // The shell owns scrolling (window overflow is hidden), so the browser's
+  // native pull-to-refresh never fires. Pulling down on the page content while
+  // it is scrolled to the top reloads the page instead.
+  private static readonly PULL_THRESHOLD = 56;
+  private pullStartY: number | null = null;
+  private pullStartX = 0;
+  protected readonly pullDistance = signal(0);
+  protected readonly pullLoading = signal(false);
+  protected readonly pullReady = computed(
+    () => this.pullDistance() >= AppShellComponent.PULL_THRESHOLD,
+  );
+
+  protected onPullStart(event: TouchEvent): void {
+    this.pullStartY = null;
+    const main = event.currentTarget as HTMLElement;
+    const target = event.target as HTMLElement | null;
+    if (this.pullLoading() || event.touches.length !== 1 || main.scrollTop > 0) return;
+    if (target?.closest('.p-dialog, .p-drawer, .p-select-overlay, input, textarea, select')) return;
+    this.pullStartY = event.touches[0].clientY;
+    this.pullStartX = event.touches[0].clientX;
+  }
+
+  protected onPullMove(event: TouchEvent): void {
+    if (this.pullStartY === null) return;
+    const touch = event.touches[0];
+    const dy = touch.clientY - this.pullStartY;
+    const dx = touch.clientX - this.pullStartX;
+    if (dy <= 0 || Math.abs(dx) > dy) {
+      this.onPullCancel();
+      return;
+    }
+    // Resist: the indicator trails the finger.
+    this.pullDistance.set(Math.min(dy * 0.5, 120));
+  }
+
+  protected onPullEnd(): void {
+    const refresh = this.pullStartY !== null && this.pullReady();
+    this.pullStartY = null;
+    if (!refresh) {
+      this.pullDistance.set(0);
+      return;
+    }
+    this.pullLoading.set(true);
+    this.pullDistance.set(AppShellComponent.PULL_THRESHOLD / 2);
+    setTimeout(() => location.reload(), 150);
+  }
+
+  protected onPullCancel(): void {
+    this.pullStartY = null;
+    this.pullDistance.set(0);
+  }
 
   readonly signOut = output<void>();
   readonly notificationToggle = output<void>();
