@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../api_result.dart';
+import '../../../i18n/admin_strings.dart';
 import '../../../shared/admin_app_bar.dart';
 import '../../../shared/order_row.dart';
 import '../data/orders_provider.dart';
@@ -215,6 +216,17 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       appBar: AdminAppBar(
         title: 'Orders',
         actions: [
+          // On a tablet the floating button would sit over the order beside
+          // the list, so "New order" is an app bar action there.
+          if (twoPane)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
+              child: FilledButton.icon(
+                onPressed: () => context.goNamed('order_new'),
+                icon: const Icon(LpgIcons.add),
+                label: Text(context.strings.nav.newOrder),
+              ),
+            ),
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(LpgIcons.sync),
@@ -222,11 +234,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.goNamed('order_new'),
-        icon: const Icon(LpgIcons.add),
-        label: const Text('New order'),
-      ),
+      floatingActionButton: twoPane
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => context.goNamed('order_new'),
+              icon: const Icon(LpgIcons.add),
+              label: const Text('New order'),
+            ),
       body: twoPane
           ? Row(
               children: [

@@ -1,5 +1,6 @@
 import 'package:admin_app/src/auth_provider.dart';
 import 'package:admin_app/src/device_provider.dart';
+import 'package:admin_app/src/i18n/admin_strings.dart';
 import 'package:admin_app/src/router.dart';
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
@@ -45,6 +46,7 @@ class _Host extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
     theme: LpgTheme.light,
+    localizationsDelegates: adminLocalizationsDelegates,
     routerConfig: ref.watch(routerProvider),
   );
 }

@@ -20,6 +20,8 @@ class CashHandoverReviewScreen extends ConsumerStatefulWidget {
     this.varianceReason,
     this.upiExpected,
     this.collections = const [],
+    this.embedded = false,
+    this.onDone,
   });
 
   final String cashHandoverId;
@@ -39,6 +41,11 @@ class CashHandoverReviewScreen extends ConsumerStatefulWidget {
 
   /// The cash deliveries on the route; customer and order open their details.
   final List<CashHandoverCollection> collections;
+
+  /// Shown in the right-hand pane of a tablet: no back button, and
+  /// [onDone] runs after a review instead of leaving the screen.
+  final bool embedded;
+  final VoidCallback? onDone;
 
   @override
   ConsumerState<CashHandoverReviewScreen> createState() =>
@@ -93,7 +100,11 @@ class _CashHandoverReviewScreenState
           'Cash handover review submitted ($outcome)',
         );
         ref.invalidate(pendingCashHandoversProvider);
-        context.pop();
+        if (widget.onDone != null) {
+          widget.onDone!();
+        } else {
+          context.pop();
+        }
       },
       onFailure: (failure) {
         setState(() {
@@ -111,7 +122,10 @@ class _CashHandoverReviewScreenState
     final text = context.lpgText;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reconcile Cash Handover')),
+      appBar: AppBar(
+        title: const Text('Reconcile Cash Handover'),
+        automaticallyImplyLeading: !widget.embedded,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: LpgSpacing.page,

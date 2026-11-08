@@ -32,6 +32,7 @@ import 'features/orders/presentation/order_list_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/search/presentation/search_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
+import 'features/shell/presentation/tablet_nav.dart';
 import 'features/pricing/presentation/pricing_screen.dart';
 import 'features/stock/presentation/stock_screen.dart';
 import 'login_screen.dart';
@@ -41,9 +42,15 @@ import 'splash_screen.dart';
 /// are pushed on this navigator so the bottom bar hides while they are open.
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Phone-width, centred column for full-screen pages on tablets.
+/// Phone-width, centred column for full-screen pages on tablets, with the
+/// tablet rail beside it. A no-op on phones.
 Widget _capped(BuildContext context, Widget child) =>
-    LpgBreakpoints.isWide(context) ? LpgContentWidth(child: child) : child;
+    LpgBreakpoints.isWide(context)
+    ? AdminTabletFrame(child: LpgContentWidth(child: child))
+    : child;
+
+/// The tablet rail beside a screen that lays itself out for the full width.
+Widget _framed(Widget child) => AdminTabletFrame(child: child);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authController = ref.watch(authControllerProvider);
@@ -281,7 +288,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/customers',
         name: 'customers',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const CustomersScreen(),
+        builder: (context, state) => _framed(const CustomersScreen()),
         routes: [
           GoRoute(
             path: 'new',
@@ -305,10 +312,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/complaints',
         name: 'complaints',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => ComplaintsScreen(
-          key: ValueKey(state.uri.query),
-          customerId: state.uri.queryParameters['customer'],
-          initialStatus: state.uri.queryParameters['status'],
+        builder: (context, state) => _framed(
+          ComplaintsScreen(
+            key: ValueKey(state.uri.query),
+            customerId: state.uri.queryParameters['customer'],
+            initialStatus: state.uri.queryParameters['status'],
+          ),
         ),
         routes: [
           GoRoute(
@@ -327,10 +336,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/invoices',
         name: 'invoices',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => InvoicesScreen(
-          key: ValueKey(state.uri.query),
-          customerId: state.uri.queryParameters['customer'],
-          initialStatus: state.uri.queryParameters['status'],
+        builder: (context, state) => _framed(
+          InvoicesScreen(
+            key: ValueKey(state.uri.query),
+            customerId: state.uri.queryParameters['customer'],
+            initialStatus: state.uri.queryParameters['status'],
+          ),
         ),
         routes: [
           GoRoute(
