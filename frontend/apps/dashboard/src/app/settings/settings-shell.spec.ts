@@ -60,14 +60,12 @@ describe('SettingsShell', () => {
       html,
       badge: html.querySelector('.settings__badge')?.textContent?.trim() ?? null,
       labels: Array.from(html.querySelectorAll('p-tab')).map((a) => a.textContent?.trim()),
-      dividers: html.querySelectorAll('.settings__divider').length,
     };
   }
 
-  it('offers the Account and Agency groups to an agency admin, divided once', async () => {
-    const { labels, dividers } = await open('/settings/account', ADMIN_PERMISSIONS);
+  it('offers the Account and Agency sections to an agency admin', async () => {
+    const { labels } = await open('/settings/account', ADMIN_PERMISSIONS);
 
-    expect(dividers).toBe(1);
     expect(labels).toEqual([
       'My Profile',
       'Agency',
@@ -82,9 +80,8 @@ describe('SettingsShell', () => {
   });
 
   it('shows only the Account section to a role with no agency permissions', async () => {
-    const { labels, dividers } = await open('/settings/account', []);
+    const { labels } = await open('/settings/account', []);
 
-    expect(dividers).toBe(0);
     expect(labels).toEqual(['My Profile']);
   });
 

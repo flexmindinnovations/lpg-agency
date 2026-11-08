@@ -32,10 +32,7 @@ import { visibleSettingsGroups } from './settings-sections';
         [showNavigators]="true"
       >
         <p-tablist>
-          @for (group of groups(); track group.label; let first = $first) {
-            @if (!first) {
-              <span class="settings__divider" role="separator" aria-hidden="true"></span>
-            }
+          @for (group of groups(); track group.label) {
             @for (section of group.sections; track section.route) {
               <p-tab class="settings__link" [value]="section.route">
                 <i [class]="section.icon" aria-hidden="true"></i>
@@ -77,8 +74,7 @@ import { visibleSettingsGroups } from './settings-sections';
       }
 
       /* The tab row is PrimeNG's own (scrolling, arrows, keyboard). Only the
-         frame is ours: no panel background, a hairline under the row, and a
-         divider between the Account and Agency groups. */
+         frame is ours: no panel background and a hairline under the row. */
       .settings__tabs {
         flex-shrink: 0;
       }
@@ -93,15 +89,6 @@ import { visibleSettingsGroups } from './settings-sections';
         gap: var(--spacing-sm);
         white-space: nowrap;
         font-size: var(--typography-body-small-font-size);
-      }
-
-      .settings__divider {
-        flex-shrink: 0;
-        align-self: stretch;
-        margin-block: var(--spacing-xs);
-        margin-inline: var(--spacing-sm);
-        inline-size: 1px;
-        background: var(--color-border-default);
       }
 
       .settings__badge {
