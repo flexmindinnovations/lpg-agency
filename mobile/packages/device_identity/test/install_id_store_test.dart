@@ -35,24 +35,20 @@ void main() {
       );
     });
 
-    test('round-trips the install ID and the name', () async {
+    test('round-trips the install ID', () async {
       await storage.writeInstallId('abc');
-      await storage.writeName('Ravi\'s phone');
 
       expect(await storage.readInstallId(), 'abc');
-      expect(await storage.readName(), 'Ravi\'s phone');
     });
 
-    test('keeps them under their own keys', () async {
+    test('keeps it under its own key, and stores no name', () async {
       await storage.writeInstallId('abc');
-      await storage.writeName('Van 2');
 
-      expect(store.keys, containsAll(['device.install_id', 'device.name']));
+      expect(store.keys, ['device.install_id']);
     });
 
     test('reads nothing before anything is saved', () async {
       expect(await storage.readInstallId(), isNull);
-      expect(await storage.readName(), isNull);
     });
   });
 }

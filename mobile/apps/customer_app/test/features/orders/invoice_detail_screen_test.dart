@@ -2,6 +2,8 @@ import 'package:api_client/api_client.dart';
 import 'package:customer_app/src/features/orders/data/cylinder_types_provider.dart';
 import 'package:customer_app/src/features/orders/data/invoices_provider.dart';
 import 'package:customer_app/src/features/orders/presentation/invoice_detail_screen.dart';
+import 'package:customer_app/src/features/orders/presentation/invoice_paper.dart';
+import 'package:customer_app/src/i18n/customer_strings.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +41,7 @@ InvoiceResponse _invoice({
 );
 
 Widget _screen({
+  ThemeData? theme,
   bool nullInvoice = false,
   Object? error,
   String number = '000042',
@@ -51,7 +54,8 @@ Widget _screen({
     cylinderTypesProvider.overrideWith((ref) async => const []),
   ],
   child: MaterialApp(
-    theme: LpgTheme.light,
+    theme: theme ?? LpgTheme.light,
+    localizationsDelegates: customerLocalizationsDelegates,
     home: const InvoiceDetailScreen(invoiceId: 'inv-abcd1234'),
   ),
 );
@@ -78,6 +82,35 @@ void main() {
         expect(find.text('INV-INV-2026-000011'), findsNothing);
       },
     );
+
+    testWidgets('the invoice sheet follows the active theme', (tester) async {
+      Color? sheetColor() {
+        final paper = find.descendant(
+          of: find.byType(InvoicePaper),
+          matching: find.byType(Container),
+        );
+        return ((tester.widget<Container>(paper.first).decoration!)
+                as BoxDecoration)
+            .color;
+      }
+
+      await pumpScreen(tester, _screen());
+      final light = sheetColor();
+      await pumpScreen(tester, _screen(theme: LpgTheme.dark));
+      final dark = sheetColor();
+
+      expect(light, isNot(dark));
+      expect(dark, isNot(Colors.white));
+    });
+
+    testWidgets('offers Download and Share as separate actions', (
+      tester,
+    ) async {
+      await pumpScreen(tester, _screen());
+
+      expect(find.text('Download PDF'), findsOneWidget);
+      expect(find.text('Share'), findsOneWidget);
+    });
 
     testWidgets('shows a not-found state when the invoice is null', (
       tester,

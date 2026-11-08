@@ -17,7 +17,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lpg.config.logging import get_logger
-from lpg.domain.license.linked_device import DeviceStatus, DeviceStatusChanged
+from lpg.domain.license.linked_device import (
+    DeviceIdentifierRebound,
+    DeviceStatus,
+    DeviceStatusChanged,
+)
 from lpg.infrastructure.license.device_access import RedisDeviceAccessReader
 from lpg.infrastructure.persistence.repositories.identity import SqlAlchemyRefreshTokenRepository
 from lpg.infrastructure.redis.cache import RedisCacheClient
@@ -66,4 +70,10 @@ def register_device_handlers(
             except Exception:
                 _logger.exception("device_realtime_publish_failed", device_id=str(event.device_id))
 
+    async def on_identifier_rebound(event: DomainEvent) -> None:
+        assert isinstance(event, DeviceIdentifierRebound)
+        # The cached record still holds the old install ID's hash.
+        await access.invalidate(event.tenant_id, event.device_id)
+
     dispatcher.register(DeviceStatusChanged, on_status_changed)
+    dispatcher.register(DeviceIdentifierRebound, on_identifier_rebound)

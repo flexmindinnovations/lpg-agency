@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:customer_app/src/features/orders/data/orders_provider.dart';
 import 'package:customer_app/src/features/orders/presentation/orders_screen.dart';
+import 'package:customer_app/src/i18n/customer_strings.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,7 +36,11 @@ Widget _screen({List<OrderResponse>? orders, Object? error}) => ProviderScope(
       return orders ?? const [];
     }),
   ],
-  child: MaterialApp(theme: LpgTheme.light, home: const OrdersScreen()),
+  child: MaterialApp(
+    theme: LpgTheme.light,
+    localizationsDelegates: customerLocalizationsDelegates,
+    home: const OrdersScreen(),
+  ),
 );
 
 void main() {
@@ -57,6 +62,21 @@ void main() {
       expect(find.text('Order ORD000042'), findsOneWidget);
       expect(find.textContaining('Confirmed'), findsOneWidget);
       expect(find.text('20 Aug'), findsOneWidget);
+    });
+
+    testWidgets('searching narrows the list and shows a no-match note', (
+      tester,
+    ) async {
+      await pumpScreen(tester, _screen(orders: [_order()]));
+
+      await tester.enterText(find.byType(TextField), 'zzz');
+      await tester.pump();
+      expect(find.text('Order ORD000042'), findsNothing);
+      expect(find.text('No orders match your search.'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '42');
+      await tester.pump();
+      expect(find.text('Order ORD000042'), findsOneWidget);
     });
 
     testWidgets('an out-for-delivery order offers a Track action', (

@@ -176,27 +176,42 @@ void main() {
 
   group('device control (ADR-071)', () {
     testWidgets(
-      'a phone that was never named is asked for a name before sign-in',
+      'a signed-in phone the agency has not seen is asked for a name once',
       (tester) async {
-        final device = await testDeviceControl(savedName: null);
-        final repository = _FakeAuthRepository(
-          restoreSessionResult: const FailureResult(
-            Failure(message: 'none', errorCode: 'NO_SESSION'),
-          ),
-        );
+        _usePhoneSize(tester);
+        final device = await testDeviceControl(needsName: true);
 
-        await tester.pumpWidget(_appWith(AuthController(repository), device));
+        await tester.pumpWidget(
+          _appWith(AuthController(_FakeAuthRepository()), device),
+        );
         await tester.pumpAndSettle();
 
         expect(find.text('Name this phone'), findsOneWidget);
-        expect(find.text('Driver Sign In'), findsNothing);
+        // The agency's generated name is offered, so Save keeps it.
+        expect(find.text('device_a1b2c3d4'), findsOneWidget);
 
         await tester.tap(find.text('Save name'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Driver Sign In'), findsOneWidget);
+        expect(find.text('Name this phone'), findsNothing);
+        expect(find.byType(LpgNavigationBar), findsOneWidget);
       },
     );
+
+    testWidgets('a phone the agency already knows is never asked for a name', (
+      tester,
+    ) async {
+      _usePhoneSize(tester);
+      final device = await testDeviceControl();
+
+      await tester.pumpWidget(
+        _appWith(AuthController(_FakeAuthRepository()), device),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Name this phone'), findsNothing);
+      expect(find.byType(LpgNavigationBar), findsOneWidget);
+    });
 
     testWidgets(
       'a signed-in phone that is waiting for approval sees the waiting screen',
@@ -210,7 +225,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Waiting for approval'), findsOneWidget);
-        expect(find.text('Van 2 phone'), findsOneWidget);
+        expect(find.text('Redmi 12'), findsOneWidget);
         expect(find.byType(LpgNavigationBar), findsNothing);
       },
     );

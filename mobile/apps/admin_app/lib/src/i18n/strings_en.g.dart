@@ -37,6 +37,8 @@ class AdminStrings with BaseTranslations<AdminLocale, AdminStrings> {
 	// Translations
 	late final AdminStrings$app$en app = AdminStrings$app$en.internal(_root);
 	late final AdminStrings$dashboard$en dashboard = AdminStrings$dashboard$en.internal(_root);
+	late final AdminStrings$nav$en nav = AdminStrings$nav$en.internal(_root);
+	late final AdminStrings$cashHandover$en cashHandover = AdminStrings$cashHandover$en.internal(_root);
 	late final AdminStrings$profile$en profile = AdminStrings$profile$en.internal(_root);
 }
 
@@ -60,6 +62,57 @@ class AdminStrings$dashboard$en {
 
 	// Translations
 	late final AdminStrings$dashboard$hero$en hero = AdminStrings$dashboard$hero$en.internal(_root);
+}
+
+// Path: nav
+class AdminStrings$nav$en {
+	AdminStrings$nav$en.internal(this._root);
+
+	final AdminStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Dashboard'
+	String get dashboard => 'Dashboard';
+
+	/// en: 'Orders'
+	String get orders => 'Orders';
+
+	/// en: 'Dispatch'
+	String get dispatch => 'Dispatch';
+
+	/// en: 'Customers'
+	String get customers => 'Customers';
+
+	/// en: 'Invoices'
+	String get invoices => 'Invoices';
+
+	/// en: 'Complaints'
+	String get complaints => 'Complaints';
+
+	/// en: 'Approvals'
+	String get approvals => 'Approvals';
+
+	/// en: 'More'
+	String get more => 'More';
+
+	/// en: 'New order'
+	String get newOrder => 'New order';
+
+	/// en: 'Select a handover to review it.'
+	String get selectHandover => 'Select a handover to review it.';
+}
+
+// Path: cashHandover
+class AdminStrings$cashHandover$en {
+	AdminStrings$cashHandover$en.internal(this._root);
+
+	final AdminStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Cash collected ({count: int})'
+	String collected({required int count}) => 'Cash collected (${count})';
 }
 
 // Path: profile
@@ -131,6 +184,17 @@ extension on AdminStrings {
 			'dashboard.hero.delivered' => 'Delivered',
 			'dashboard.hero.failed' => 'Failed',
 			'dashboard.hero.toApprove' => 'To approve',
+			'nav.dashboard' => 'Dashboard',
+			'nav.orders' => 'Orders',
+			'nav.dispatch' => 'Dispatch',
+			'nav.customers' => 'Customers',
+			'nav.invoices' => 'Invoices',
+			'nav.complaints' => 'Complaints',
+			'nav.approvals' => 'Approvals',
+			'nav.more' => 'More',
+			'nav.newOrder' => 'New order',
+			'nav.selectHandover' => 'Select a handover to review it.',
+			'cashHandover.collected' => ({required int count}) => 'Cash collected (${count})',
 			'profile.editTitle' => 'Edit profile',
 			'profile.updated' => 'Profile updated.',
 			'profile.contactPhone' => 'Contact phone',

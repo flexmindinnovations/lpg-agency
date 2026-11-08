@@ -46,7 +46,6 @@ DRIVER_ROLE = "driver"
 _CUSTOMER_ROLE = "customer"
 ADMIN_APP = "admin_app"
 DRIVER_APP = "driver_app"
-_DEFAULT_NAME = "Unnamed phone"
 
 
 def fingerprint(value: str) -> str:
@@ -86,6 +85,8 @@ class DeviceAccess:
     #: SHA-256 of the install ID the phone registered with.
     identifier_hash: str
     display_name: str
+    #: False while the name is the generated default and the app should ask once.
+    name_confirmed: bool = True
 
 
 def controlled_app_type(role: str, declared_app_type: str | None) -> str | None:
@@ -148,7 +149,7 @@ class DeviceSessionBinder:
                 tenant_id=tenant_id,
                 app_type=app_type,
                 device_identifier=fingerprint(context.install_id or ""),
-                display_name=(context.name or details.model or _DEFAULT_NAME),
+                display_name=context.name,
                 details=details,
                 hardware_ref=fingerprint(context.hardware_id) if context.hardware_id else None,
                 user_id=user.id,
@@ -226,6 +227,10 @@ class DeviceAccessGate:
         if mode.enforces and enforce_status:
             raise_for_status(access.status)
         return access
+
+    async def forget(self, tenant_id: uuid.UUID, device_id: uuid.UUID) -> None:
+        """Drop the cached record of one phone (its name just changed)."""
+        await self._access.invalidate(tenant_id, device_id)
 
     async def mode(self, tenant_id: uuid.UUID) -> DeviceControlMode:
         return await self._modes.get(tenant_id)

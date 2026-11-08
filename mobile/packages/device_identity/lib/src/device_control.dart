@@ -99,10 +99,6 @@ class DeviceControl extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _onSignedIn() async {
-    // A session that began before this version asked for a name keeps the
-    // model as its name rather than interrupting the user later.
-    if (identity.needsName) await identity.saveName(identity.suggestedName);
-    notifyListeners();
     await access.refresh();
   }
 
@@ -113,11 +109,18 @@ class DeviceControl extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Saves the name the user chose; the router then moves on to sign-in.
-  Future<void> saveName(String name) async {
-    await identity.saveName(name);
-    notifyListeners();
-  }
+  /// What to call this phone on screen: the agency's name for it, else the
+  /// phone's model.
+  String get phoneName =>
+      access.displayName ?? identity.details.model ?? 'This phone';
+
+  /// What the name field starts with: the agency's suggestion
+  /// (`device_<code>`), else the phone's model.
+  String get suggestedName => phoneName;
+
+  /// Sends the name the user chose. Returns `null` on success (the router then
+  /// moves on) or the sentence to show when the agency refused it.
+  Future<String?> saveName(String name) => access.setName(name.trim());
 
   /// Leaves the blocked screen so the user can try signing in again; the
   /// server refuses a phone that is still blocked.
@@ -128,8 +131,10 @@ class DeviceControl extends ChangeNotifier with WidgetsBindingObserver {
   String? redirect({required String location, required bool authenticated}) {
     final target = switch (access.access) {
       DeviceAccess.blocked => DeviceRoutes.blocked,
+      // A phone the agency has not seen is named first (once); a known phone,
+      // even one reinstalled, goes straight on.
+      _ when authenticated && access.needsName => DeviceRoutes.name,
       DeviceAccess.pending when authenticated => DeviceRoutes.waiting,
-      _ when !authenticated && identity.needsName => DeviceRoutes.name,
       _ => null,
     };
     if (target != null) return target == location ? null : target;

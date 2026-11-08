@@ -26,6 +26,8 @@ from lpg.application.common.tenant import RequestTenantContext
 from lpg.application.license.device_access import DeviceAccess
 from lpg.application.license.manage_devices import (
     DeviceRegistration,
+    NameOwnDeviceCommand,
+    NameOwnDeviceUseCase,
     RegisterDeviceCommand,
     RegisterDeviceUseCase,
 )
@@ -48,6 +50,7 @@ if TYPE_CHECKING:
     import uuid
 
     from lpg.application.common.ports import CacheClient
+    from lpg.domain.license.linked_device import LinkedDevice
     from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
     from lpg.infrastructure.persistence.database import Database
 
@@ -153,6 +156,7 @@ class RedisDeviceAccessReader:
                 status=DeviceStatus(row.status),
                 identifier_hash=row.device_identifier,
                 display_name=row.display_name,
+                name_confirmed=row.name_confirmed,
             )
         return None  # pragma: no cover - open_session yields once
 
@@ -169,6 +173,7 @@ def _encode(access: DeviceAccess | None) -> str:
             "status": access.status.value,
             "identifier_hash": access.identifier_hash,
             "display_name": access.display_name,
+            "name_confirmed": access.name_confirmed,
         }
     )
 
@@ -185,6 +190,7 @@ def _decode(raw: str) -> DeviceAccess | None:
         status=DeviceStatus(data["status"]),
         identifier_hash=data["identifier_hash"],
         display_name=data["display_name"],
+        name_confirmed=data.get("name_confirmed", True),
     )
 
 
@@ -216,6 +222,28 @@ class SqlAlchemyDeviceRegistrar:
                     SqlAlchemyLinkedDeviceRepository(uow),
                     SqlAlchemyAuditTrail(uow),
                     uow,
+                )
+                return await use_case.execute(command)
+        msg = "open_session yielded no session"  # pragma: no cover
+        raise RuntimeError(msg)  # pragma: no cover
+
+
+class SqlAlchemyDeviceNamer:
+    """Runs `NameOwnDeviceUseCase` in its own tenant-scoped transaction, so a
+    phone that is still waiting for approval can name itself."""
+
+    def __init__(self, database: Database, event_dispatcher: DomainEventDispatcher | None) -> None:
+        self._database = database
+        self._event_dispatcher = event_dispatcher
+
+    async def name(self, command: NameOwnDeviceCommand) -> LinkedDevice:
+        context = RequestTenantContext(tenant_id=command.tenant_id, user_id=command.user_id)
+        async for session in self._database.open_session(tenant_id=command.tenant_id):
+            async with SqlAlchemyUnitOfWork(
+                session, context, event_dispatcher=self._event_dispatcher
+            ) as uow:
+                use_case = NameOwnDeviceUseCase(
+                    SqlAlchemyLinkedDeviceRepository(uow), SqlAlchemyAuditTrail(uow), uow
                 )
                 return await use_case.execute(command)
         msg = "open_session yielded no session"  # pragma: no cover

@@ -99,7 +99,8 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
           </div>
 
           <!-- Navigation Groups -->
-          <ul class="shell__nav-groups">
+          <ul class="shell__nav-groups" (scroll)="placeIndicator(false)">
+            <li class="shell__nav-indicator" aria-hidden="true"></li>
             @for (group of navGroups(); track group.label ?? $index) {
               <li>
                 @if (group.label && !rail()) {
@@ -392,6 +393,8 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       /* ---- Navigation ---- */
 
       .shell__nav-groups {
+        position: relative;
+        isolation: isolate;
         list-style: none;
         margin: 0;
         padding: 0 var(--spacing-sm) var(--spacing-md);
@@ -452,7 +455,15 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         transition:
           background-color var(--motion-duration-small) var(--motion-easing-standard),
           color var(--motion-duration-small) var(--motion-easing-standard);
+        /* Above the sliding .shell__nav-indicator. */
+        z-index: 1;
         position: relative;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shell__nav-link {
+          transition: none;
+        }
       }
 
       .shell__nav-link i {
@@ -473,7 +484,7 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       }
 
       .shell__nav-link:hover {
-        background: var(--color-surface-overlay);
+        background-color: var(--color-surface-overlay);
         color: var(--color-text-primary);
       }
 
@@ -486,9 +497,47 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
          no heavy 700 weight. Text/icon stay on --color-highlight-color so
          this reads correctly in light + high-contrast too. */
       .shell__nav-link.is-active {
-        background: var(--color-highlight-background);
+        /* The fill itself is the .shell__nav-indicator behind the links, which
+           glides from the old item to the new one; the link only changes
+           text colour and weight. No left border. */
         color: var(--color-highlight-color);
         font-weight: 600;
+      }
+
+      .shell__nav-link.is-active:hover {
+        background-color: transparent;
+      }
+
+      .shell__nav-indicator {
+        position: absolute;
+        z-index: 0;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        inline-size: 0;
+        block-size: 0;
+        border-radius: var(--radius-md);
+        background: var(--color-highlight-background);
+        opacity: 0;
+        pointer-events: none;
+        list-style: none;
+      }
+
+      .shell__nav-indicator.is-visible {
+        opacity: 1;
+      }
+
+      .shell__nav-indicator.is-animated {
+        transition:
+          transform var(--motion-duration-medium) var(--motion-easing-emphasized),
+          block-size var(--motion-duration-medium) var(--motion-easing-emphasized),
+          inline-size var(--motion-duration-medium) var(--motion-easing-emphasized),
+          opacity var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shell__nav-indicator.is-animated {
+          transition: none;
+        }
       }
 
       .shell__nav-link.is-active i {
@@ -520,7 +569,8 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         flex-direction: column;
         flex: 1;
         min-inline-size: 0;
-        background: var(--color-surface-base);
+        /* Transparent: the page (body background + paper mist) shows through. */
+        background: transparent;
       }
 
       /* ---- Global Header ---- (solid chrome, same surface as the sidebar) */
@@ -787,6 +837,18 @@ export class AppShellComponent {
     effect(() => {
       if (!this.isPhone()) untracked(() => this.navOpen.set(false));
     });
+    // Re-measure the highlight when the rail/full sidebar, the phone menu or
+    // the nav itself changes (the sidebar's width animates, so measure again
+    // once it settles).
+    effect(() => {
+      this.rail();
+      this.navOpen();
+      this.navGroups();
+      untracked(() => {
+        this.placeIndicator(false);
+        setTimeout(() => this.placeIndicator(false), 350);
+      });
+    });
 
     this.router.events
       .pipe(
@@ -807,6 +869,7 @@ export class AppShellComponent {
 
         this.navOpen.set(false);
         this.revealActiveLink();
+        this.placeIndicator(true);
 
         if (breadcrumbs.length > 0) {
           this.breadcrumbService.setItems(breadcrumbs);
@@ -831,6 +894,36 @@ export class AppShellComponent {
     if (returnFocus) {
       this.host.nativeElement.querySelector<HTMLElement>('.shell__menu-button')?.focus();
     }
+  }
+
+  /**
+   * Moves the sliding highlight behind the active nav item. The first
+   * placement (and any re-measure after a layout change) jumps; only a real
+   * navigation animates, so the fill glides from the old item to the new one.
+   */
+  protected placeIndicator(animate: boolean): void {
+    if (typeof requestAnimationFrame !== 'function') return;
+    requestAnimationFrame(() => {
+      const root = this.host.nativeElement;
+      const container = root.querySelector<HTMLElement>('.shell__nav-groups');
+      const indicator = root.querySelector<HTMLElement>('.shell__nav-indicator');
+      const active = root.querySelector<HTMLElement>('.shell__nav-link.is-active');
+      if (!container || !indicator) return;
+      if (!active || active.offsetParent === null) {
+        indicator.classList.remove('is-visible');
+        return;
+      }
+      const c = container.getBoundingClientRect();
+      const a = active.getBoundingClientRect();
+      const x = a.left - c.left + container.scrollLeft;
+      const y = a.top - c.top + container.scrollTop;
+      const wasVisible = indicator.classList.contains('is-visible');
+      indicator.classList.toggle('is-animated', animate && wasVisible);
+      indicator.style.transform = `translate(${x}px, ${y}px)`;
+      indicator.style.inlineSize = `${a.width}px`;
+      indicator.style.blockSize = `${a.height}px`;
+      indicator.classList.add('is-visible');
+    });
   }
 
   /** Keep the current page's nav item scrolled into view in a long sidebar. */

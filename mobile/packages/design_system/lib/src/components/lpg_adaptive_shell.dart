@@ -69,7 +69,7 @@ class LpgAdaptiveShell extends StatelessWidget {
     return Scaffold(
       body: Row(
         children: [
-          _LpgNavigationRail(
+          LpgNavigationRail(
             destinations: destinations,
             selectedIndex: selectedIndex,
             onDestinationSelected: onDestinationSelected,
@@ -95,8 +95,11 @@ class LpgAdaptiveShell extends StatelessWidget {
   }
 }
 
-class _LpgNavigationRail extends StatelessWidget {
-  const _LpgNavigationRail({
+/// The tablet navigation rail the adaptive shell uses, public so an app can
+/// keep it beside screens that sit outside the shell.
+class LpgNavigationRail extends StatelessWidget {
+  const LpgNavigationRail({
+    super.key,
     required this.destinations,
     required this.selectedIndex,
     required this.onDestinationSelected,
@@ -114,6 +117,18 @@ class _LpgNavigationRail extends StatelessWidget {
         ? Badge(label: Text(count > 99 ? '99+' : '$count'), child: Icon(icon))
         : Icon(icon);
 
+    // A long rail scrolls on a short tablet screen instead of overflowing.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: IntrinsicHeight(child: _rail(colors, withBadge)),
+        ),
+      ),
+    );
+  }
+
+  Widget _rail(LpgColors colors, Widget Function(IconData, int) withBadge) {
     return NavigationRail(
       backgroundColor: colors.card,
       selectedIndex: selectedIndex,

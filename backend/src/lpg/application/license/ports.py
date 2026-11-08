@@ -14,7 +14,11 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from lpg.application.license.device_access import DeviceAccess
-    from lpg.application.license.manage_devices import DeviceRegistration, RegisterDeviceCommand
+    from lpg.application.license.manage_devices import (
+        DeviceRegistration,
+        NameOwnDeviceCommand,
+        RegisterDeviceCommand,
+    )
     from lpg.domain.license.device_control import DeviceControlMode
     from lpg.domain.license.license import (
         License,
@@ -57,6 +61,20 @@ class LinkedDeviceRepository(Protocol):
     async def get_by_identifier(
         self, tenant_id: uuid.UUID, app_type: str, device_identifier: str
     ) -> LinkedDevice | None: ...
+
+    async def get_by_hardware_ref(
+        self, tenant_id: uuid.UUID, app_type: str, hardware_ref: str
+    ) -> LinkedDevice | None:
+        """The phone with this hardware reference (removed ones included —
+        a removed phone that comes back is reopened, not duplicated)."""
+        ...
+
+    async def active_names(
+        self, tenant_id: uuid.UUID, *, excluding: uuid.UUID | None = None
+    ) -> set[str]:
+        """`name_key` of every device name in use in the agency (removed
+        devices do not hold their name)."""
+        ...
 
     async def list_for_tenant(
         self,
@@ -124,3 +142,12 @@ class DeviceRegistrar(Protocol):
     transaction and runs `RegisterDeviceUseCase` in it."""
 
     async def register(self, command: RegisterDeviceCommand) -> DeviceRegistration: ...
+
+
+@runtime_checkable
+class DeviceNamer(Protocol):
+    """Lets a phone name itself while it may still be waiting for approval
+    (the normal request path refuses such phones), so it opens its own
+    tenant-scoped transaction like `DeviceRegistrar`."""
+
+    async def name(self, command: NameOwnDeviceCommand) -> LinkedDevice: ...

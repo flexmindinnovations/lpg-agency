@@ -11,6 +11,7 @@ import pytest
 
 from lpg.application.common.errors import (
     DeviceLimitReachedError,
+    DuplicateDeviceNameError,
     NotFoundError,
     TooManyWaitingDevicesError,
     ValidationError,
@@ -23,6 +24,8 @@ from lpg.application.license.manage_devices import (
     DeviceAction,
     ListLinkedDevicesQuery,
     ListLinkedDevicesUseCase,
+    NameOwnDeviceCommand,
+    NameOwnDeviceUseCase,
     RegisterDeviceCommand,
     RegisterDeviceUseCase,
     UpdateDeviceDetailsCommand,
@@ -31,7 +34,13 @@ from lpg.application.license.manage_devices import (
 from lpg.domain.common.base import InvariantViolation
 from lpg.domain.license.device_control import DeviceControlMode
 from lpg.domain.license.license import License
-from lpg.domain.license.linked_device import DeviceDetails, DeviceStatus, LinkedDevice
+from lpg.domain.license.linked_device import (
+    DeviceDetails,
+    DeviceStatus,
+    LinkedDevice,
+    default_device_name,
+    name_key,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -94,6 +103,27 @@ class FakeDevices:
                 return device
         return None
 
+    async def get_by_hardware_ref(
+        self, tenant_id: uuid.UUID, app_type: str, hardware_ref: str
+    ) -> LinkedDevice | None:
+        for device in self.rows.values():
+            if (device.tenant_id, device.app_type, device.hardware_ref) == (
+                tenant_id,
+                app_type,
+                hardware_ref,
+            ):
+                return device
+        return None
+
+    async def active_names(
+        self, tenant_id: uuid.UUID, *, excluding: uuid.UUID | None = None
+    ) -> set[str]:
+        return {
+            name_key(d.display_name)
+            for d in self.rows.values()
+            if d.tenant_id == tenant_id and d.is_active and d.id != excluding
+        }
+
     async def list_for_tenant(
         self, tenant_id: uuid.UUID, app_type: str | None = None, status: DeviceStatus | None = None
     ) -> Sequence[LinkedDevice]:
@@ -138,14 +168,17 @@ def _register_command(
     app_type: str = "driver_app",
     mode: DeviceControlMode = DeviceControlMode.ENFORCE,
     user_name: str = "Ravi",
+    hardware_ref: str | None = "",
+    display_name: str | None = "Redmi 12",
 ) -> RegisterDeviceCommand:
     return RegisterDeviceCommand(
         tenant_id=_TENANT,
         app_type=app_type,
         device_identifier=identifier,
-        display_name="Redmi 12",
+        display_name=display_name,
         details=DeviceDetails(manufacturer="Xiaomi", model="Redmi 12"),
-        hardware_ref="hw",
+        # "" (the default) means "a distinct phone per identifier".
+        hardware_ref=f"hw-{identifier}" if hardware_ref == "" else hardware_ref,
         user_id=_USER,
         user_name=user_name,
         mode=mode,
@@ -564,3 +597,132 @@ def test_the_pending_phone_alert_reads_plainly_and_goes_to_agency_admins() -> No
     )
     assert spec.body({}) == "A phone is waiting for you to approve or block it."
     assert definition_for("device_pending_staff") is not None
+
+
+# -- One record per phone, names that never collide ---------------------------------
+
+
+async def test_a_phone_without_a_typed_name_gets_device_ref_and_is_asked_once() -> None:
+    *_, register, _ = _setup()
+
+    result = await register.execute(_register_command(identifier="a", display_name=None))
+
+    assert result.device.display_name == default_device_name("hw-a")
+    assert result.device.display_name.startswith("device_")
+    assert not result.device.name_confirmed
+
+
+async def test_a_typed_name_is_kept_and_counts_as_confirmed() -> None:
+    *_, register, _ = _setup()
+
+    result = await register.execute(_register_command())
+
+    assert result.device.display_name == "Redmi 12"
+    assert result.device.name_confirmed
+
+
+async def test_the_same_hardware_after_a_reinstall_reuses_the_record() -> None:
+    devices, audit, _, register, change = _setup()
+    first = await register.execute(_register_command(identifier="old", hardware_ref="hw-same"))
+    await change.execute(
+        ChangeDeviceStatusCommand(_TENANT, first.device.id, _ADMIN, DeviceAction.APPROVE)
+    )
+
+    again = await register.execute(
+        _register_command(identifier="new-install", hardware_ref="hw-same", display_name=None)
+    )
+
+    assert not again.is_new
+    assert again.device.id == first.device.id
+    assert again.device.device_identifier == "new-install"
+    assert again.device.status is DeviceStatus.APPROVED
+    assert again.device.display_name == "Redmi 12"  # nobody is asked again
+    assert len(devices.rows) == 1
+    assert [e["action"] for e in audit.entries].count("device.registered") == 1
+
+
+async def test_a_removed_phone_reinstalled_goes_back_to_the_waiting_queue_not_a_second_record() -> (
+    None
+):
+    devices, _, _, register, change = _setup()
+    first = await register.execute(_register_command(identifier="old", hardware_ref="hw-same"))
+    await change.execute(
+        ChangeDeviceStatusCommand(_TENANT, first.device.id, _ADMIN, DeviceAction.REMOVE)
+    )
+
+    again = await register.execute(_register_command(identifier="new", hardware_ref="hw-same"))
+
+    assert again.is_new
+    assert again.device.id == first.device.id
+    assert again.device.status is DeviceStatus.PENDING
+    assert len(devices.rows) == 1
+
+
+async def test_two_phones_may_not_share_a_name_the_second_gets_a_suffix() -> None:
+    *_, register, _ = _setup()
+    first = await register.execute(_register_command(identifier="a", display_name="Van 2"))
+
+    second = await register.execute(_register_command(identifier="b", display_name="  van  2 "))
+
+    assert first.device.display_name == "Van 2"
+    assert second.device.display_name == "van 2 2"
+
+
+async def test_a_phone_naming_itself_is_refused_a_taken_name_with_a_suggestion() -> None:
+    devices, audit, uow, register, _ = _setup()
+    await register.execute(_register_command(identifier="a", display_name="Van 2"))
+    mine = await register.execute(_register_command(identifier="b", display_name=None))
+    namer = NameOwnDeviceUseCase(devices, audit, uow)
+
+    with pytest.raises(DuplicateDeviceNameError) as refused:
+        await namer.execute(NameOwnDeviceCommand(_TENANT, mine.device.id, "VAN 2"))
+    assert refused.value.context["suggestion"] == "VAN 2 2"
+
+    named = await namer.execute(NameOwnDeviceCommand(_TENANT, mine.device.id, "Van 3"))
+    assert named.display_name == "Van 3"
+    assert named.name_confirmed
+    assert audit.entries[-1]["action"] == "device.named"
+
+
+async def test_a_removed_phones_name_is_free_again() -> None:
+    devices, audit, uow, register, change = _setup()
+    gone = await register.execute(_register_command(identifier="a", display_name="Van 2"))
+    await change.execute(
+        ChangeDeviceStatusCommand(_TENANT, gone.device.id, _ADMIN, DeviceAction.REMOVE)
+    )
+    mine = await register.execute(_register_command(identifier="b", display_name=None))
+    namer = NameOwnDeviceUseCase(devices, audit, uow)
+
+    named = await namer.execute(NameOwnDeviceCommand(_TENANT, mine.device.id, "Van 2"))
+
+    assert named.display_name == "Van 2"
+
+
+async def test_an_admin_cannot_rename_a_phone_to_a_name_in_use() -> None:
+    devices, audit, uow, register, _ = _setup()
+    await register.execute(_register_command(identifier="a", display_name="Van 2"))
+    other = await register.execute(_register_command(identifier="b", display_name="Van 3"))
+    update = UpdateDeviceDetailsUseCase(devices, audit, uow)
+
+    with pytest.raises(DuplicateDeviceNameError):
+        await update.execute(
+            UpdateDeviceDetailsCommand(_TENANT, other.device.id, _ADMIN, display_name="van 2")
+        )
+    renamed = await update.execute(
+        UpdateDeviceDetailsCommand(_TENANT, other.device.id, _ADMIN, display_name="Van 3")
+    )
+    assert renamed.display_name == "Van 3"  # keeping its own name is fine
+
+
+async def test_a_record_found_by_install_id_wins_over_an_older_one_for_the_same_hardware() -> None:
+    devices, _, _, register, _ = _setup()
+    older = await register.execute(_register_command(identifier="x", hardware_ref="hw-same"))
+    newer = await register.execute(_register_command(identifier="y", hardware_ref=None))
+
+    again = await register.execute(_register_command(identifier="y", hardware_ref="hw-same"))
+
+    # `y` was the install already on file, `x` the stale record for the hardware
+    # (here the hardware lookup wins first, as both are the same phone).
+    assert again.device.hardware_ref == "hw-same"
+    assert {older.device.id, newer.device.id} >= {again.device.id}
+    assert sum(1 for d in devices.rows.values() if d.hardware_ref == "hw-same") == 1

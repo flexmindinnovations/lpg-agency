@@ -289,6 +289,13 @@ class DuplicatePhoneError(ConflictError):
     title = "A customer with this phone number already exists."
 
 
+class DuplicateDeviceNameError(ConflictError):
+    """Another phone in this agency already has this name."""
+
+    error_code = "DUPLICATE_DEVICE_NAME"
+    title = "Another phone in this agency already has this name."
+
+
 class DuplicateConsumerNumberError(ConflictError):
     """This Consumer Number is already assigned to another customer (BR-22)."""
 

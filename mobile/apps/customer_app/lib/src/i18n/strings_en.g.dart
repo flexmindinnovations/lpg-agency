@@ -38,6 +38,8 @@ class CustomerStrings with BaseTranslations<CustomerLocale, CustomerStrings> {
 	late final CustomerStrings$app$en app = CustomerStrings$app$en.internal(_root);
 	late final CustomerStrings$dashboard$en dashboard = CustomerStrings$dashboard$en.internal(_root);
 	late final CustomerStrings$payments$en payments = CustomerStrings$payments$en.internal(_root);
+	late final CustomerStrings$orders$en orders = CustomerStrings$orders$en.internal(_root);
+	late final CustomerStrings$invoice$en invoice = CustomerStrings$invoice$en.internal(_root);
 }
 
 // Path: app
@@ -71,6 +73,73 @@ class CustomerStrings$payments$en {
 
 	// Translations
 	late final CustomerStrings$payments$onlineSection$en onlineSection = CustomerStrings$payments$onlineSection$en.internal(_root);
+}
+
+// Path: orders
+class CustomerStrings$orders$en {
+	CustomerStrings$orders$en.internal(this._root);
+
+	final CustomerStrings _root; // ignore: unused_field
+
+	// Translations
+	late final CustomerStrings$orders$search$en search = CustomerStrings$orders$search$en.internal(_root);
+}
+
+// Path: invoice
+class CustomerStrings$invoice$en {
+	CustomerStrings$invoice$en.internal(this._root);
+
+	final CustomerStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'INVOICE'
+	String get title => 'INVOICE';
+
+	/// en: 'Billed to'
+	String get billedTo => 'Billed to';
+
+	/// en: 'Order'
+	String get order => 'Order';
+
+	/// en: 'Item'
+	String get item => 'Item';
+
+	/// en: 'Amount'
+	String get amount => 'Amount';
+
+	/// en: 'Payments'
+	String get payments => 'Payments';
+
+	/// en: 'Issued {date}'
+	String issued({required Object date}) => 'Issued ${date}';
+
+	/// en: 'Status: {status}'
+	String status({required Object status}) => 'Status: ${status}';
+
+	/// en: 'GSTIN: {gstin}'
+	String gstin({required Object gstin}) => 'GSTIN: ${gstin}';
+
+	/// en: 'Order {number}'
+	String orderNumber({required Object number}) => 'Order ${number}';
+
+	/// en: 'Could not create the PDF.'
+	String get downloadFailed => 'Could not create the PDF.';
+
+	/// en: 'Download PDF'
+	String get download => 'Download PDF';
+
+	/// en: 'Share'
+	String get share => 'Share';
+
+	/// en: 'Saved to Downloads as {file}'
+	String saved({required Object file}) => 'Saved to Downloads as ${file}';
+
+	/// en: 'Open'
+	String get open => 'Open';
+
+	/// en: 'No app on this device can open PDFs.'
+	String get openFailed => 'No app on this device can open PDFs.';
 }
 
 // Path: dashboard.hero
@@ -115,6 +184,24 @@ class CustomerStrings$payments$onlineSection$en {
 	String get bankTransferTitle => 'Or pay by bank transfer';
 }
 
+// Path: orders.search
+class CustomerStrings$orders$search$en {
+	CustomerStrings$orders$search$en.internal(this._root);
+
+	final CustomerStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Search by order number, status or date'
+	String get hint => 'Search by order number, status or date';
+
+	/// en: 'Clear search'
+	String get clear => 'Clear search';
+
+	/// en: 'No orders match your search.'
+	String get noMatch => 'No orders match your search.';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -129,6 +216,25 @@ extension on CustomerStrings {
 			'dashboard.liveOrder.title' => 'On its way',
 			'dashboard.liveOrder.action' => 'Track',
 			'payments.onlineSection.bankTransferTitle' => 'Or pay by bank transfer',
+			'orders.search.hint' => 'Search by order number, status or date',
+			'orders.search.clear' => 'Clear search',
+			'orders.search.noMatch' => 'No orders match your search.',
+			'invoice.title' => 'INVOICE',
+			'invoice.billedTo' => 'Billed to',
+			'invoice.order' => 'Order',
+			'invoice.item' => 'Item',
+			'invoice.amount' => 'Amount',
+			'invoice.payments' => 'Payments',
+			'invoice.issued' => ({required Object date}) => 'Issued ${date}',
+			'invoice.status' => ({required Object status}) => 'Status: ${status}',
+			'invoice.gstin' => ({required Object gstin}) => 'GSTIN: ${gstin}',
+			'invoice.orderNumber' => ({required Object number}) => 'Order ${number}',
+			'invoice.downloadFailed' => 'Could not create the PDF.',
+			'invoice.download' => 'Download PDF',
+			'invoice.share' => 'Share',
+			'invoice.saved' => ({required Object file}) => 'Saved to Downloads as ${file}',
+			'invoice.open' => 'Open',
+			'invoice.openFailed' => 'No app on this device can open PDFs.',
 			_ => null,
 		};
 	}

@@ -156,6 +156,33 @@ class CashHandoverReviewResponse {
       );
 }
 
+/// A cash delivery behind a handover, so the reviewer can open the order and
+/// the customer to confirm the cash.
+class CashHandoverCollection {
+  const CashHandoverCollection({
+    required this.orderId,
+    this.orderNumber,
+    required this.customerId,
+    required this.customerName,
+    required this.amount,
+  });
+
+  final String orderId;
+  final String? orderNumber;
+  final String customerId;
+  final String customerName;
+  final double amount;
+
+  factory CashHandoverCollection.fromJson(Map<String, dynamic> json) =>
+      CashHandoverCollection(
+        orderId: json['order_id'] as String? ?? '',
+        orderNumber: json['order_number'] as String?,
+        customerId: json['customer_id'] as String? ?? '',
+        customerName: json['customer_name'] as String? ?? '',
+        amount: asDouble(json['amount']),
+      );
+}
+
 class CashHandoverRegisterEntryResponse {
   final String id;
   final String? handoverNumber;
@@ -175,6 +202,7 @@ class CashHandoverRegisterEntryResponse {
   final Map<int, int>? denominations;
   final String? varianceReason;
   final double? upiExpected;
+  final List<CashHandoverCollection> collections;
 
   CashHandoverRegisterEntryResponse({
     required this.id,
@@ -195,6 +223,7 @@ class CashHandoverRegisterEntryResponse {
     this.denominations,
     this.varianceReason,
     this.upiExpected,
+    this.collections = const [],
   });
 
   factory CashHandoverRegisterEntryResponse.fromJson(
@@ -221,6 +250,10 @@ class CashHandoverRegisterEntryResponse {
     denominations: parseDenominations(json['denominations']),
     varianceReason: json['variance_reason'] as String?,
     upiExpected: asDoubleOrNull(json['upi_expected']),
+    collections: [
+      for (final c in (json['collections'] as List<dynamic>? ?? const []))
+        CashHandoverCollection.fromJson(c as Map<String, dynamic>),
+    ],
     review: json['review'] != null
         ? CashHandoverReviewResponse.fromJson(
             json['review'] as Map<String, dynamic>,

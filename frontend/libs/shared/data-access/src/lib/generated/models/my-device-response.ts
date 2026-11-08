@@ -15,6 +15,11 @@ export interface MyDeviceResponse {
   display_name: (string | null);
 
   /**
+   * True when nobody has named this phone yet (it carries the generated device_<ref> name): the app asks the user once. False for a phone that is already registered in the agency.
+   */
+  needs_name?: boolean;
+
+  /**
    * This phone's state (pending, approved, blocked, removed), or null when the session is not under device control.
    */
   status: (string | null);

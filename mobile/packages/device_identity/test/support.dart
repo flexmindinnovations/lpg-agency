@@ -6,10 +6,9 @@ import 'package:dio/dio.dart';
 
 /// A [DeviceIdentityStorage] that keeps everything in memory.
 class MemoryStorage implements DeviceIdentityStorage {
-  MemoryStorage({this.installId, this.name});
+  MemoryStorage({this.installId});
 
   String? installId;
-  String? name;
   int installIdWrites = 0;
 
   @override
@@ -20,12 +19,6 @@ class MemoryStorage implements DeviceIdentityStorage {
     installIdWrites++;
     installId = value;
   }
-
-  @override
-  Future<String?> readName() async => name;
-
-  @override
-  Future<void> writeName(String value) async => name = value;
 }
 
 class FakeDetailsSource implements DeviceDetailsSource {

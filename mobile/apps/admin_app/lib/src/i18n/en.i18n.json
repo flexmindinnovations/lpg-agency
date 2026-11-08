@@ -9,6 +9,21 @@
       "toApprove": "To approve"
     }
   },
+  "nav": {
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "dispatch": "Dispatch",
+    "customers": "Customers",
+    "invoices": "Invoices",
+    "complaints": "Complaints",
+    "approvals": "Approvals",
+    "more": "More",
+    "newOrder": "New order",
+    "selectHandover": "Select a handover to review it."
+  },
+  "cashHandover": {
+    "collected": "Cash collected ({count: int})"
+  },
   "profile": {
     "editTitle": "Edit profile",
     "updated": "Profile updated.",

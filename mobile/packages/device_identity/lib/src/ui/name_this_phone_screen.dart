@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 
 import '../device_strings.dart';
 
-/// Asks the user to name the phone, once, before their first sign-in. The name
-/// is what the agency sees in its list ("Ravi's Redmi"), so a driver can be
-/// told apart from the next one. Also says why the agency is told about the
-/// phone at all.
+/// Asks the user to name the phone — only when the agency has not seen it
+/// before, right after the first sign-in. The field starts with the name the
+/// agency generated (`device_<code>`), so tapping Save keeps it. The name is
+/// what the agency sees in its list, so it must be one no other phone has; the
+/// agency says so (with a suggestion) if it is taken. Also says why the agency
+/// is told about the phone at all.
 class NameThisPhoneScreen extends StatefulWidget {
   const NameThisPhoneScreen({
     super.key,
@@ -17,11 +19,12 @@ class NameThisPhoneScreen extends StatefulWidget {
 
   final DeviceStrings strings;
 
-  /// What the field starts with (the phone's model).
+  /// What the field starts with (the agency's generated name).
   final String suggestedName;
 
-  /// Called with the trimmed name when the user continues.
-  final Future<void> Function(String name) onSubmit;
+  /// Called with the trimmed name when the user continues. Returns `null` when
+  /// the name was accepted, else the message to show under the field.
+  final Future<String?> Function(String name) onSubmit;
 
   @override
   State<NameThisPhoneScreen> createState() => _NameThisPhoneScreenState();
@@ -30,12 +33,16 @@ class NameThisPhoneScreen extends StatefulWidget {
 class _NameThisPhoneScreenState extends State<NameThisPhoneScreen> {
   late final TextEditingController _controller;
   bool _saving = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.suggestedName);
-    _controller.addListener(() => setState(() {}));
+    _controller.addListener(() {
+      if (_error != null) _error = null;
+      setState(() {});
+    });
   }
 
   @override
@@ -48,11 +55,20 @@ class _NameThisPhoneScreenState extends State<NameThisPhoneScreen> {
 
   Future<void> _submit() async {
     if (!_canContinue) return;
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    String? problem;
     try {
-      await widget.onSubmit(_controller.text.trim());
+      problem = await widget.onSubmit(_controller.text.trim());
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = problem;
+        });
+      }
     }
   }
 
@@ -88,6 +104,7 @@ class _NameThisPhoneScreenState extends State<NameThisPhoneScreen> {
                 textCapitalization: TextCapitalization.words,
                 maxLength: 60,
                 autofocus: true,
+                errorText: _error,
                 onSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: LpgSpacing.md),

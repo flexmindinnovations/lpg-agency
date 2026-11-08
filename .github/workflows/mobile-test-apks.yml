@@ -1,0 +1,49 @@
+name: Mobile test APKs
+
+# Builds debug-signed release-mode Android APKs for the Customer, Driver and Admin apps
+# against production, with the dev OTP banner enabled, for internal testing.
+# Run from Actions -> Mobile test APKs -> Run workflow. Download the APKs from
+# the run's artifacts. Not for the Play Store (see mobile-release.yml).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/project-thread-i46tz0']
+    paths: ['.github/workflows/mobile-test-apks.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: APK - ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [customer_app, driver_app, admin_app]
+    defaults:
+      run:
+        working-directory: mobile/apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+            --dart-define=API_BASE_URL=https://lpg.vitessetec.com \
+            --dart-define=SHOW_DEV_OTP=true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-release-apk
+          path: mobile/apps/${{ matrix.app }}/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14

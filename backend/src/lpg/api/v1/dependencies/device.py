@@ -25,7 +25,7 @@ from lpg.domain.license.linked_device import DeviceDetails
 
 if TYPE_CHECKING:
     from lpg.api.v1.schemas.identity import DeviceInfoRequest
-    from lpg.application.license.ports import DeviceControlModeReader
+    from lpg.application.license.ports import DeviceControlModeReader, DeviceNamer
 
 DEVICE_ID_HEADER = "X-Device-Id"
 APP_TYPE_HEADER = "X-App-Type"
@@ -86,6 +86,17 @@ def get_device_session_binder() -> DeviceSessionBinder:
     return DeviceSessionBinder(
         modes, SqlAlchemyDeviceRegistrar(state.database, state.event_dispatcher)
     )
+
+
+def get_device_namer() -> DeviceNamer:
+    from lpg.api.app import get_app_state
+    from lpg.infrastructure.license.device_access import SqlAlchemyDeviceNamer
+
+    state = get_app_state()
+    if state.database is None:
+        msg = "Database is not configured — the application lifespan has not run."
+        raise RuntimeError(msg)
+    return SqlAlchemyDeviceNamer(state.database, state.event_dispatcher)
 
 
 def get_device_access_gate() -> DeviceAccessGate:

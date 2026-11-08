@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Required for release builds to reach the API; debug/profile manifests
          add it on their own, the main one did not. -->
+    <!-- Saving the invoice PDF to Downloads: only Android 9 and below need it. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- image_picker's camera capture path (KYC document photos) -->
     <uses-permission android:name="android.permission.CAMERA"/>

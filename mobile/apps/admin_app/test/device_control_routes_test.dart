@@ -1,5 +1,6 @@
 import 'package:admin_app/src/auth_provider.dart';
 import 'package:admin_app/src/device_provider.dart';
+import 'package:admin_app/src/i18n/admin_strings.dart';
 import 'package:admin_app/src/router.dart';
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
@@ -45,6 +46,7 @@ class _Host extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
     theme: LpgTheme.light,
+    localizationsDelegates: adminLocalizationsDelegates,
     routerConfig: ref.watch(routerProvider),
   );
 }
@@ -70,7 +72,7 @@ void main() {
 
       expect(find.text('Waiting for approval'), findsOneWidget);
       expect(find.textContaining('Settings > Linked Devices'), findsOneWidget);
-      expect(find.text('Van 2 phone'), findsOneWidget);
+      expect(find.text('Redmi 12'), findsOneWidget);
     },
   );
 
@@ -88,15 +90,27 @@ void main() {
     expect(find.textContaining('Do not delete the app'), findsNothing);
   });
 
-  testWidgets('an unnamed phone is asked for a name before sign-in', (
+  testWidgets('a signed-in phone the agency has not seen is asked for a name', (
     tester,
   ) async {
-    final device = await testDeviceControl(savedName: null);
+    final device = await testDeviceControl(needsName: true);
 
-    await tester.pumpWidget(_app(device, signedIn: false));
+    await tester.pumpWidget(_app(device));
     await tester.pumpAndSettle();
 
     expect(find.text('Name this phone'), findsOneWidget);
+    expect(find.text('device_a1b2c3d4'), findsOneWidget);
     expect(find.text('Save name'), findsOneWidget);
+  });
+
+  testWidgets('a phone the agency already knows is not asked for a name', (
+    tester,
+  ) async {
+    final device = await testDeviceControl();
+
+    await tester.pumpWidget(_app(device));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Name this phone'), findsNothing);
   });
 }
