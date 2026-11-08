@@ -179,7 +179,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
             <p class="profile-form__error" role="alert">Passwords do not match.</p>
           }
           <div class="modal-actions profile-form__actions">
-            <button pButton type="submit" [disabled]="changingPassword()">
+            <button pButton type="submit" [disabled]="changingPassword() || passwordForm.invalid">
               {{ changingPassword() ? 'Updating…' : 'Update password' }}
             </button>
           </div>
