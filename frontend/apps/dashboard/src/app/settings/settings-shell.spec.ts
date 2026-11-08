@@ -92,7 +92,7 @@ describe('SettingsShell', () => {
     expect(current).toEqual(['License']);
   });
 
-  it('renders the active section beside the nav', async () => {
+  it('renders the active section below the tabs', async () => {
     const { html } = await open('/settings/license/devices', ADMIN_PERMISSIONS);
 
     expect(html.querySelector('.settings__content')?.textContent).toContain('section');
