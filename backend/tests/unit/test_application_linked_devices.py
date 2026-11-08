@@ -468,7 +468,7 @@ async def test_another_agencys_device_looks_like_it_does_not_exist() -> None:
 async def test_deleting_a_phone_removes_the_record_and_leaves_an_audit_entry() -> None:
     devices, audit, uow, _, _ = _setup()
     device = await _approved_device(devices, "gone")
-    delete = DeleteDeviceUseCase(devices, audit, uow)  # type: ignore[arg-type]
+    delete = DeleteDeviceUseCase(devices, audit, uow)
 
     await delete.execute(DeleteDeviceCommand(_TENANT, device.id, _ADMIN))
 
@@ -485,7 +485,7 @@ async def test_a_deleted_removed_phone_signing_in_again_is_a_brand_new_record() 
     devices, audit, uow, register, change = _setup()
     first = (await register.execute(_register_command(identifier="id-1"))).device
     await change.execute(ChangeDeviceStatusCommand(_TENANT, first.id, _ADMIN, DeviceAction.REMOVE))
-    await DeleteDeviceUseCase(devices, audit, uow).execute(  # type: ignore[arg-type]
+    await DeleteDeviceUseCase(devices, audit, uow).execute(
         DeleteDeviceCommand(_TENANT, first.id, _ADMIN)
     )
 
@@ -498,7 +498,7 @@ async def test_a_deleted_removed_phone_signing_in_again_is_a_brand_new_record() 
 async def test_another_agency_cannot_delete_a_phone_and_it_stays() -> None:
     devices, audit, uow, _, _ = _setup()
     foreign = await _approved_device(devices, "x")
-    delete = DeleteDeviceUseCase(devices, audit, uow)  # type: ignore[arg-type]
+    delete = DeleteDeviceUseCase(devices, audit, uow)
 
     with pytest.raises(NotFoundError):
         await delete.execute(DeleteDeviceCommand(_OTHER_TENANT, foreign.id, _ADMIN))
