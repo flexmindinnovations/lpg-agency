@@ -237,7 +237,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
                 Type it from the phone's box or settings. The apps cannot read it themselves, so
                 this is a note for your records, not a check.
               </p>
-              <div class="drawer__actions">
+              <div class="drawer__actions drawer__actions--end">
                 <button pButton type="submit" [disabled]="busy() || !nameDraft.trim()">
                   Save details
                 </button>
@@ -245,22 +245,27 @@ const DEVICE_CONTROL_KEY = 'device_control';
             </form>
           }
 
-          <h3 class="drawer__heading">History</h3>
-          @if (history().length === 0) {
-            <p class="drawer__hint">Nothing recorded yet.</p>
-          } @else {
-            <ol class="history">
-              @for (entry of history(); track entry.id) {
-                <li>
-                  <strong>{{ verb(entry.action) }}</strong>
-                  @if (entry.actor_name) {
-                    <span> by {{ entry.actor_name }}</span>
-                  }
-                  <span class="history__time">{{ time(entry.performed_at) }}</span>
-                </li>
-              }
-            </ol>
-          }
+          <!-- Collapsible, like "Technical identifiers" in the audit log. -->
+          <details class="drawer__section" open>
+            <summary class="drawer__summary">
+              <span class="drawer__heading">History</span>
+            </summary>
+            @if (history().length === 0) {
+              <p class="drawer__hint">Nothing recorded yet.</p>
+            } @else {
+              <ol class="history">
+                @for (entry of history(); track entry.id) {
+                  <li>
+                    <strong>{{ verb(entry.action) }}</strong>
+                    @if (entry.actor_name) {
+                      <span> by {{ entry.actor_name }}</span>
+                    }
+                    <span class="history__time">{{ time(entry.performed_at) }}</span>
+                  </li>
+                }
+              </ol>
+            }
+          </details>
         </div>
       }
     </p-drawer>
@@ -359,9 +364,28 @@ const DEVICE_CONTROL_KEY = 'device_control';
         gap: var(--spacing-xs);
       }
 
+      .drawer__actions--end {
+        justify-content: flex-end;
+      }
+
+      .drawer__section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+
+      .drawer__summary {
+        cursor: pointer;
+        padding-block: var(--spacing-xs);
+      }
+
+      /* Same small uppercase label as the audit log's section headings. */
       .drawer__heading {
-        margin: var(--spacing-sm) 0 0;
-        font-size: var(--typography-body-font-size);
+        font-size: var(--typography-caption-font-size);
+        font-weight: var(--typography-label-font-weight);
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .history {
@@ -655,6 +679,14 @@ export class LinkedDevicesPage implements OnInit {
       next: (updated) => {
         this.busy.set(false);
         this.notify.success(this.doneMessage(action, updated.display_name));
+        if (action === 'remove') {
+          // Nothing more to do with a removed phone: close its drawer.
+          this.drawerVisible = false;
+          this.selected.set(null);
+          this.reload();
+          this.pending.refresh();
+          return;
+        }
         this.afterChange(updated);
       },
       error: () => this.busy.set(false),

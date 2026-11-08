@@ -201,6 +201,25 @@ describe('LinkedDevicesPage', () => {
     expect(license[method]).toHaveBeenCalledWith('d1');
   });
 
+  it('closes the drawer once a phone is removed, but keeps it open after a block', () => {
+    const { page } = render();
+    page.open(device({ status: 'approved' }));
+
+    page.run('remove', device({ status: 'approved' }));
+    confirmations[0].accept?.();
+
+    expect(license['removeDevice']).toHaveBeenCalledWith('d1');
+    expect(page.selected()).toBeNull();
+    expect(page.drawerVisible).toBe(false);
+
+    page.open(device({ status: 'approved' }));
+    page.run('block', device({ status: 'approved' }));
+    confirmations[1].accept?.();
+
+    expect(page.selected()).not.toBeNull();
+    expect(page.drawerVisible).toBe(true);
+  });
+
   it('unblocks without asking', () => {
     const { page } = render();
 
