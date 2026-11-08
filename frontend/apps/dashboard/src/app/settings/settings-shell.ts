@@ -68,7 +68,7 @@ import { visibleSettingsGroups } from './settings-sections';
       .settings {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-md);
+        gap: var(--spacing-sm);
         block-size: 100%;
         min-block-size: 0;
       }
@@ -80,9 +80,9 @@ import { visibleSettingsGroups } from './settings-sections';
         /* Same right padding as the content below, so the row ends where the
            cards do instead of running to the window edge. */
         padding-inline-end: var(--spacing-xl);
-        /* Slimmer tabs than PrimeNG's default (0.875rem 1rem). */
-        --p-tabs-tab-padding: 0.5rem 0.4rem;
-        container-type: inline-size;
+        /* Slimmer tabs than PrimeNG's default (0.875rem 1rem): little space
+           above and below the labels. */
+        --p-tabs-tab-padding: 0.25rem 0.75rem;
         --p-tabs-tablist-background: transparent;
         --p-tabs-nav-button-background: transparent;
       }
@@ -106,17 +106,9 @@ import { visibleSettingsGroups } from './settings-sections';
       .settings__link {
         display: inline-flex;
         align-items: center;
-        gap: var(--spacing-xs);
+        gap: var(--spacing-sm);
         white-space: nowrap;
         font-size: var(--typography-body-small-font-size);
-      }
-
-      /* Keep every tab on screen without scrolling: below this width the icons
-         go and the labels alone fit. Narrower than that, the arrows remain. */
-      @container (max-width: 62rem) {
-        .settings__link > i:first-child {
-          display: none;
-        }
       }
 
       .settings__badge {
