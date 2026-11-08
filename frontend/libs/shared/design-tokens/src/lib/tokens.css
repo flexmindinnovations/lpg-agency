@@ -254,9 +254,12 @@ have always been hand-edited directly. Edit them here.
      content by body::before so see-through cards and chrome show it. */
   --paper-haze-image: url('/textures/paper-haze.png');
   --paper-haze-opacity: 0.1;
-  /* A veil in the page colour laid OVER that mist and under the content, so the
-     noise shows through the see-through cards more softly. 0% = no veil. */
-  --paper-veil: 55%;
+  /* A veil laid OVER that mist and under the content, so the noise shows through
+     more softly. In light mode it is a soft blue-grey, so the white section
+     cards stand out from the page; dark mode and high contrast use the plain
+     page colour. --paper-veil is its strength (0% = none). */
+  --paper-veil: 80%;
+  --paper-veil-color: #e9edf2;
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
@@ -329,7 +332,7 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
-  --component-card-background: color-mix(in srgb, #f9fafb 92%, transparent);
+  --component-card-background: color-mix(in srgb, #ffffff 96%, transparent);
   --component-card-border: #e5e7eb;
   --component-data-grid-border-color: #e5e7eb;
   --component-data-grid-header-background: #f9fafb;
@@ -415,6 +418,7 @@ have always been hand-edited directly. Edit them here.
   --paper-grain-opacity: 0.045;
   --paper-grain-invert: 1;
   --paper-haze-opacity: 0.07;
+  --paper-veil-color: var(--color-surface-base);
   /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
      text on it is only 3.2:1. #2864cc gives white text 5.7:1. */
   --component-button-primary-background: #2864cc;
@@ -481,6 +485,7 @@ have always been hand-edited directly. Edit them here.
   --surface-noise-image: none;
   --paper-grain-opacity: 0;
   --paper-haze-opacity: 0;
+  --paper-veil-color: var(--color-surface-base);
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
@@ -554,6 +559,7 @@ have always been hand-edited directly. Edit them here.
     --paper-grain-opacity: 0.045;
     --paper-grain-invert: 1;
     --paper-haze-opacity: 0.07;
+    --paper-veil-color: var(--color-surface-base);
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;

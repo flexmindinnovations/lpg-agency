@@ -137,7 +137,7 @@ html {
   );
 }
 
-/* The veil: a layer in the page colour between the mist (body::before) and the
+/* The veil: a layer in the page tint between the mist (body::before) and the
    content, so the noise showing through the see-through cards is softer. The
    two glows sit on top of it, so the page keeps its colour. Same stacking level
    as the mist, later in the tree, so it paints over it. */
@@ -159,8 +159,8 @@ html::after {
       transparent
     ),
     linear-gradient(
-      color-mix(in srgb, var(--color-surface-base) var(--paper-veil), transparent),
-      color-mix(in srgb, var(--color-surface-base) var(--paper-veil), transparent)
+      color-mix(in srgb, var(--paper-veil-color) var(--paper-veil), transparent),
+      color-mix(in srgb, var(--paper-veil-color) var(--paper-veil), transparent)
     );
 }
 
