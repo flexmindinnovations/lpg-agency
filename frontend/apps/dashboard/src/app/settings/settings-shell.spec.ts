@@ -16,6 +16,21 @@ const ADMIN_PERMISSIONS = [
 ];
 
 describe('SettingsShell', () => {
+  // jsdom has no ResizeObserver, which PrimeNG's scrolling tab list uses.
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe(): void {
+        // no-op
+      }
+      unobserve(): void {
+        // no-op
+      }
+      disconnect(): void {
+        // no-op
+      }
+    };
+  });
+
   async function open(url: string, permissions: string[], waiting = 0) {
     TestBed.configureTestingModule({
       providers: [
@@ -44,19 +59,15 @@ describe('SettingsShell', () => {
     return {
       html,
       badge: html.querySelector('.settings__badge')?.textContent?.trim() ?? null,
-      labels: Array.from(html.querySelectorAll('.settings__link')).map((a) =>
-        a.textContent?.trim(),
-      ),
-      groups: Array.from(html.querySelectorAll('.settings__group-label')).map((h) =>
-        h.textContent?.trim(),
-      ),
+      labels: Array.from(html.querySelectorAll('p-tab')).map((a) => a.textContent?.trim()),
+      dividers: html.querySelectorAll('.settings__divider').length,
     };
   }
 
-  it('offers the Account and Agency groups to an agency admin', async () => {
-    const { labels, groups } = await open('/settings/account', ADMIN_PERMISSIONS);
+  it('offers the Account and Agency groups to an agency admin, divided once', async () => {
+    const { labels, dividers } = await open('/settings/account', ADMIN_PERMISSIONS);
 
-    expect(groups).toEqual(['Account', 'Agency']);
+    expect(dividers).toBe(1);
     expect(labels).toEqual([
       'My Profile',
       'Agency',
@@ -71,9 +82,9 @@ describe('SettingsShell', () => {
   });
 
   it('shows only the Account section to a role with no agency permissions', async () => {
-    const { labels, groups } = await open('/settings/account', []);
+    const { labels, dividers } = await open('/settings/account', []);
 
-    expect(groups).toEqual(['Account']);
+    expect(dividers).toBe(0);
     expect(labels).toEqual(['My Profile']);
   });
 
@@ -83,13 +94,22 @@ describe('SettingsShell', () => {
     expect(labels).toEqual(['My Profile', 'Agency', 'License', 'Linked Devices']);
   });
 
-  it('marks the License link current on /settings/license but not Linked Devices', async () => {
+  it('selects the License tab on /settings/license but not Linked Devices', async () => {
     const { html } = await open('/settings/license', ADMIN_PERMISSIONS);
 
-    const current = Array.from(html.querySelectorAll('[aria-current="page"]')).map((a) =>
+    const selected = Array.from(html.querySelectorAll('p-tab[aria-selected="true"]')).map((a) =>
       a.textContent?.trim(),
     );
-    expect(current).toEqual(['License']);
+    expect(selected).toEqual(['License']);
+  });
+
+  it('selects Linked Devices, not License, on /settings/license/devices', async () => {
+    const { html } = await open('/settings/license/devices', ADMIN_PERMISSIONS);
+
+    const selected = Array.from(html.querySelectorAll('p-tab[aria-selected="true"]')).map((a) =>
+      a.textContent?.trim(),
+    );
+    expect(selected).toEqual(['Linked Devices']);
   });
 
   it('renders the active section below the tabs', async () => {

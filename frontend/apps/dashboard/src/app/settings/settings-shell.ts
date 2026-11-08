@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { Badge } from 'primeng/badge';
+import { Tab, TabList, Tabs } from 'primeng/tabs';
 import { AuthTokenStore, PendingDevicesStore } from '@lpg/shared/data-access';
 import { visibleSettingsGroups } from './settings-sections';
 
@@ -15,43 +18,41 @@ import { visibleSettingsGroups } from './settings-sections';
 @Component({
   selector: 'lpg-settings-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, Badge],
+  imports: [RouterOutlet, Badge, Tabs, TabList, Tab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="settings">
-      <nav class="settings__nav" aria-label="Settings sections">
-        @for (group of groups(); track group.label) {
-          <div class="settings__group">
-            <h2 class="settings__group-label">{{ group.label }}</h2>
-            <ul class="settings__list">
-              @for (section of group.sections; track section.route) {
-                <li>
-                  <a
-                    class="settings__link"
-                    [routerLink]="section.route"
-                    #link
-                    routerLinkActive="is-active"
-                    (isActiveChange)="onActiveChange($event, link)"
-                    ariaCurrentWhenActive="page"
-                    [routerLinkActiveOptions]="{ exact: section.exact ?? false }"
-                  >
-                    <i [class]="section.icon" aria-hidden="true"></i>
-                    <span>{{ section.label }}</span>
-                    @if (section.route === devicesRoute && pendingPhones() > 0) {
-                      <p-badge
-                        class="settings__badge"
-                        [value]="pendingPhones()"
-                        severity="danger"
-                        [attr.aria-label]="pendingPhones() + ' phones waiting for approval'"
-                      />
-                    }
-                  </a>
-                </li>
-              }
-            </ul>
-          </div>
-        }
-      </nav>
+      <!-- PrimeNG route-based tabs ("Tab Menu"): no panels, the section is the
+           router outlet below. The list scrolls and shows previous/next
+           arrows when the tabs are wider than the screen. -->
+      <p-tabs
+        class="settings__tabs"
+        [value]="activeRoute()"
+        (valueChange)="open($event)"
+        [showNavigators]="true"
+      >
+        <p-tablist>
+          @for (group of groups(); track group.label; let first = $first) {
+            @if (!first) {
+              <span class="settings__divider" role="separator" aria-hidden="true"></span>
+            }
+            @for (section of group.sections; track section.route) {
+              <p-tab class="settings__link" [value]="section.route">
+                <i [class]="section.icon" aria-hidden="true"></i>
+                <span>{{ section.label }}</span>
+                @if (section.route === devicesRoute && pendingPhones() > 0) {
+                  <p-badge
+                    class="settings__badge"
+                    [value]="pendingPhones()"
+                    severity="danger"
+                    [attr.aria-label]="pendingPhones() + ' phones waiting for approval'"
+                  />
+                }
+              </p-tab>
+            }
+          }
+        </p-tablist>
+      </p-tabs>
       <div class="settings__content">
         <router-outlet />
       </div>
@@ -75,85 +76,36 @@ import { visibleSettingsGroups } from './settings-sections';
         min-block-size: 0;
       }
 
-      /* One row of tabs above the section. Account and Agency stay separate
-         groups (a hairline divides them); the group captions remain for
-         assistive technology but are not drawn. A row too wide for the screen
-         scrolls sideways. */
-      .settings__nav {
-        display: flex;
-        flex-direction: row;
-        align-items: stretch;
-        flex-shrink: 0;
-        gap: var(--spacing-md);
-        overflow-x: auto;
-        border-block-end: 1px solid var(--color-border-default);
-      }
-
-      .settings__group {
-        display: flex;
-        flex-direction: row;
+      /* The tab row is PrimeNG's own (scrolling, arrows, keyboard). Only the
+         frame is ours: no panel background, a hairline under the row, and a
+         divider between the Account and Agency groups. */
+      .settings__tabs {
         flex-shrink: 0;
       }
 
-      .settings__group + .settings__group {
-        padding-inline-start: var(--spacing-md);
-        border-inline-start: 1px solid var(--color-border-default);
-      }
-
-      .settings__group-label {
-        position: absolute;
-        margin: 0;
-        padding: 0;
-        inline-size: 1px;
-        block-size: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
-      }
-
-      .settings__list {
-        display: flex;
-        flex-direction: row;
-        gap: var(--spacing-xs);
-        margin: 0;
-        padding: 0;
-        list-style: none;
+      .settings__tabs ::ng-deep .p-tablist-tab-list {
+        background: transparent;
       }
 
       .settings__link {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: var(--spacing-sm);
-        padding: 10px 12px;
-        margin-block-end: -1px;
-        border-block-end: 2px solid transparent;
-        color: var(--color-text-secondary);
-        text-decoration: none;
         white-space: nowrap;
         font-size: var(--typography-body-small-font-size);
-        transition:
-          border-color var(--motion-duration-small) var(--motion-easing-standard),
-          color var(--motion-duration-small) var(--motion-easing-standard);
       }
 
-      .settings__link:hover {
-        color: var(--color-text-primary);
-        border-block-end-color: var(--color-border-strong);
+      .settings__divider {
+        flex-shrink: 0;
+        align-self: stretch;
+        margin-block: var(--spacing-xs);
+        margin-inline: var(--spacing-sm);
+        inline-size: 1px;
+        background: var(--color-border-default);
       }
 
       .settings__badge {
         margin-inline-start: var(--spacing-xs);
-      }
-
-      .settings__link:focus-visible {
-        outline: 2px solid var(--color-border-focus);
-        outline-offset: -2px;
-      }
-
-      .settings__link.is-active {
-        color: var(--color-action-primary);
-        border-block-end-color: var(--color-action-primary);
-        font-weight: 600;
       }
 
       /* Settings sections sit flat on the page: drop the border and shadow of
@@ -195,26 +147,47 @@ import { visibleSettingsGroups } from './settings-sections';
 export class SettingsShell {
   private readonly tokenStore = inject(AuthTokenStore);
   private readonly pendingDevices = inject(PendingDevicesStore);
+  private readonly router = inject(Router);
 
   /** Phones waiting for approval — shown next to Linked Devices. */
   protected readonly pendingPhones = this.pendingDevices.count;
   protected readonly devicesRoute = '/settings/license/devices';
 
-  /**
-   * Keeps the current tab in view when the row scrolls sideways (narrow
-   * screens). Waits for the fonts and the next frame: the tabs change width as
-   * the web font loads, so measuring earlier would scroll to the wrong place.
-   */
-  protected onActiveChange(active: boolean, link: HTMLElement): void {
-    if (!active) return;
-    const reveal = () =>
-      requestAnimationFrame(() => link.scrollIntoView({ inline: 'nearest', block: 'nearest' }));
-    if (typeof document !== 'undefined' && document.fonts) void document.fonts.ready.then(reveal);
-    else reveal();
-  }
-
   protected readonly groups = computed(() => {
     const permissions = this.tokenStore.principal()?.permissions;
     return visibleSettingsGroups((code) => permissions?.has(code) ?? false);
   });
+
+  /** Re-evaluated after every navigation. */
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  /** The tab for the current URL, using each section's own `exact` rule. */
+  protected readonly activeRoute = computed(() => {
+    this.url();
+    return (
+      this.groups()
+        .flatMap((group) => group.sections)
+        .find((section) =>
+          this.router.isActive(section.route, {
+            paths: section.exact ? 'exact' : 'subset',
+            queryParams: 'ignored',
+            matrixParams: 'ignored',
+            fragment: 'ignored',
+          }),
+        )?.route ?? ''
+    );
+  });
+
+  /** A tab was chosen (click, Enter or Space): go to its section. */
+  protected open(route: string | number | undefined): void {
+    if (typeof route === 'string' && route !== this.activeRoute()) {
+      void this.router.navigateByUrl(route);
+    }
+  }
 }
