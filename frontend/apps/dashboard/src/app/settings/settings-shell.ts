@@ -77,12 +77,29 @@ import { visibleSettingsGroups } from './settings-sections';
          frame is ours: no panel background and a hairline under the row. */
       .settings__tabs {
         flex-shrink: 0;
+        /* Same right padding as the content below, so the row ends where the
+           cards do instead of running to the window edge. */
+        padding-inline-end: var(--spacing-xl);
         /* Slimmer tabs than PrimeNG's default (0.875rem 1rem). */
         --p-tabs-tab-padding: 0.5rem 0.75rem;
+        --p-tabs-tablist-background: transparent;
+        --p-tabs-nav-button-background: transparent;
+      }
+
+      /* See-through row with the same rounded corners as the cards. */
+      .settings__tabs ::ng-deep .p-tablist {
+        background: transparent;
+        border-radius: var(--radius-card);
+        overflow: hidden;
       }
 
       .settings__tabs ::ng-deep .p-tablist-tab-list {
         background: transparent;
+      }
+
+      /* The scroll arrows sit over tab labels, so they keep a soft backing. */
+      .settings__tabs ::ng-deep .p-tablist-nav-button {
+        background: color-mix(in srgb, var(--paper-veil-color) 85%, transparent);
       }
 
       .settings__link {
