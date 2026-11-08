@@ -97,31 +97,25 @@ body {
    Strength and the light/dark flip come from the --paper-grain-* tokens;
    high contrast and print turn it off.
    ======================================================================== */
-/* The mist layer sits UNDER the content (z-index -1 inside body's own stacking
-   context), so the see-through cards and chrome show the paper through them,
-   as on mobile. */
+/* Both paper layers sit UNDER the content (z-index -1 inside body's own
+   stacking context) so text stays crisp. body::before is the sharp grain;
+   body::after is the frosted-glass veil on top of it: the page surface colour
+   at --paper-frost-opacity (60%), shaped by the soft haze tile so the grain
+   reads blurred, as on mobile. Two fixed layers, no backdrop-filter. */
 body {
   isolation: isolate;
 }
 
-body::before {
+body::before,
+body::after {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: var(--paper-haze-image);
-  background-size: 256px 256px;
-  opacity: var(--paper-haze-opacity);
-  filter: invert(var(--paper-grain-invert));
 }
 
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 2147483000;
-  pointer-events: none;
+body::before {
   background-image: var(--paper-grain-image), var(--paper-grain-image);
   background-size:
     128px 128px,
@@ -131,6 +125,15 @@ body::after {
     37px 91px;
   opacity: var(--paper-grain-opacity);
   filter: invert(var(--paper-grain-invert));
+}
+
+body::after {
+  background-color: var(--color-surface-base);
+  -webkit-mask-image: var(--paper-haze-image);
+  mask-image: var(--paper-haze-image);
+  -webkit-mask-size: 256px 256px;
+  mask-size: 256px 256px;
+  opacity: var(--paper-frost-opacity);
 }
 
 @media print {
