@@ -10,6 +10,7 @@ import pytest
 from lpg.domain.common.base import InvariantViolation
 from lpg.domain.license.device_control import DeviceControlMode
 from lpg.domain.license.linked_device import (
+    DeviceDeleted,
     DeviceDetails,
     DevicePendingApproval,
     DeviceStatus,
@@ -170,6 +171,24 @@ def test_any_phone_in_use_can_be_removed(status: DeviceStatus) -> None:
     assert device.status is DeviceStatus.REMOVED
     assert device.is_active is False
     assert device.revoked_at is not None
+
+
+@pytest.mark.parametrize("status", list(DeviceStatus))
+def test_a_phone_in_any_state_can_be_deleted_and_says_so(status: DeviceStatus) -> None:
+    device = _device() if status is DeviceStatus.PENDING else _device(DeviceStatus.APPROVED)
+    if status is DeviceStatus.BLOCKED:
+        device.block(by=_ADMIN, at=datetime.now(UTC))
+    if status is DeviceStatus.REMOVED:
+        device.remove(by=_ADMIN, at=datetime.now(UTC))
+    device.clear_events()
+
+    device.delete()
+
+    (event,) = device.events
+    assert isinstance(event, DeviceDeleted)
+    assert event.device_id == device.id
+    assert event.tenant_id == _TENANT
+    assert event.user_id == device.last_user_id
 
 
 def test_a_removed_phone_cannot_be_changed_until_it_asks_again() -> None:

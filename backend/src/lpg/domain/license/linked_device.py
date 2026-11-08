@@ -101,6 +101,17 @@ class DeviceIdentifierRebound(DomainEvent):
     tenant_id: uuid.UUID
 
 
+@dataclass(frozen=True, slots=True)
+class DeviceDeleted(DomainEvent):
+    """An admin deleted a phone's record for good. Drives cache invalidation
+    and tells a running app to re-check (it will find itself unknown)."""
+
+    device_id: uuid.UUID
+    tenant_id: uuid.UUID
+    #: The person last signed in on the phone — who must be told.
+    user_id: uuid.UUID | None
+
+
 def default_device_name(reference: str) -> str:
     """`device_<ref>`: the name a phone gets when nobody typed one. `reference`
     is the start of the stored hardware (or install) hash, never the plain
@@ -337,6 +348,14 @@ class LinkedDevice(AggregateRoot):
         self._require(self._status is not DeviceStatus.REMOVED, "This device is already removed.")
         self._revoked_at = at
         self._move(DeviceStatus.REMOVED, by=by, at=at)
+
+    def delete(self) -> None:
+        """Mark the record as about to be deleted for good (the repository
+        removes the row). Allowed in any state: an admin may delete a phone
+        that was never approved, one that is blocked, or one in use."""
+        self.record_event(
+            DeviceDeleted(device_id=self.id, tenant_id=self._tenant_id, user_id=self._last_user_id)
+        )
 
     def rename(self, display_name: str) -> None:
         cleaned = _clean(display_name, MAX_DISPLAY_NAME_LENGTH)

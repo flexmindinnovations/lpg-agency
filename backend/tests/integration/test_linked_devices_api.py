@@ -95,6 +95,35 @@ class TestAdminActions:
             history.json()[0]["actor_name"] is not None or history.json()[0]["actor_name"] is None
         )
 
+    async def test_deleting_a_phone_removes_the_row_and_keeps_an_audit_entry(
+        self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
+    ) -> None:
+        agency = await seed_agency(admin_engine, hasher)
+        device_id = await seed_device(admin_engine, agency.tenant_id, status="approved")
+        headers = await login_headers(client, agency.admin_email)
+        base = f"/api/v1/admin/license/devices/{device_id}"
+
+        deleted = await client.delete(base, headers=headers)
+
+        assert deleted.status_code == 204, deleted.text
+        assert (await client.get("/api/v1/admin/license/devices", headers=headers)).json() == []
+        everything = await client.get(
+            "/api/v1/admin/license/devices?status=removed", headers=headers
+        )
+        assert everything.json() == []
+        assert (await client.delete(base, headers=headers)).status_code == 404
+        async with admin_engine.connect() as conn:
+            audited = (
+                await conn.execute(
+                    text(
+                        "SELECT count(*) FROM audit.audit_log "
+                        "WHERE entity_id = :i AND action = 'device.deleted'"
+                    ),
+                    {"i": str(device_id)},
+                )
+            ).scalar_one()
+        assert audited == 1
+
     async def test_an_invalid_move_is_a_conflict_not_a_server_error(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
@@ -164,6 +193,7 @@ class TestAccessControl:
             ("post", f"/api/v1/admin/license/devices/{device_id}/unblock"),
             ("post", f"/api/v1/admin/license/devices/{device_id}/remove"),
             ("patch", f"/api/v1/admin/license/devices/{device_id}"),
+            ("delete", f"/api/v1/admin/license/devices/{device_id}"),
         ):
             response = await client.request(
                 method, path, headers=headers, json={} if method == "patch" else None
@@ -200,6 +230,10 @@ class TestTenantIsolation:
             json={"display_name": "mine"},
         )
         assert patched.status_code == 404
+        deleted = await client.delete(
+            f"/api/v1/admin/license/devices/{device_a}", headers=headers_b
+        )
+        assert deleted.status_code == 404
         history = await client.get(
             f"/api/v1/admin/license/devices/{device_a}/history", headers=headers_b
         )
@@ -239,6 +273,11 @@ class TestTenantIsolation:
                 {"i": str(device_a)},
             )
             assert updated.rowcount == 0  # type: ignore[attr-defined]
+            removed = await session.execute(
+                text("DELETE FROM platform.linked_device WHERE id = :i"),
+                {"i": str(device_a)},
+            )
+            assert removed.rowcount == 0  # type: ignore[attr-defined]
             with pytest.raises(Exception, match="row-level security"):
                 await session.execute(
                     text(

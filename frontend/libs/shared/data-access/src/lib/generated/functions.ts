@@ -93,6 +93,8 @@ export type { ListLinkedDevicesApiV1AdminLicenseDevicesGet$Params as ListLinkedD
 export { listLinkedDevicesApiV1AdminLicenseDevicesGet as listLinkedDevicesApiV1AdminLicenseDevicesGet } from './fn/linked-devices/list-linked-devices-api-v-1-admin-license-devices-get';
 export type { CountPendingDevicesApiV1AdminLicenseDevicesPendingCountGet$Params as CountPendingDevicesApiV1AdminLicenseDevicesPendingCountGet$Params } from './fn/linked-devices/count-pending-devices-api-v-1-admin-license-devices-pending-count-get';
 export { countPendingDevicesApiV1AdminLicenseDevicesPendingCountGet as countPendingDevicesApiV1AdminLicenseDevicesPendingCountGet } from './fn/linked-devices/count-pending-devices-api-v-1-admin-license-devices-pending-count-get';
+export type { DeleteDeviceApiV1AdminLicenseDevicesDeviceIdDelete$Params as DeleteDeviceApiV1AdminLicenseDevicesDeviceIdDelete$Params } from './fn/linked-devices/delete-device-api-v-1-admin-license-devices-device-id-delete';
+export { deleteDeviceApiV1AdminLicenseDevicesDeviceIdDelete as deleteDeviceApiV1AdminLicenseDevicesDeviceIdDelete } from './fn/linked-devices/delete-device-api-v-1-admin-license-devices-device-id-delete';
 export type { UpdateDeviceApiV1AdminLicenseDevicesDeviceIdPatch$Params as UpdateDeviceApiV1AdminLicenseDevicesDeviceIdPatch$Params } from './fn/linked-devices/update-device-api-v-1-admin-license-devices-device-id-patch';
 export { updateDeviceApiV1AdminLicenseDevicesDeviceIdPatch as updateDeviceApiV1AdminLicenseDevicesDeviceIdPatch } from './fn/linked-devices/update-device-api-v-1-admin-license-devices-device-id-patch';
 export type { ApproveDeviceApiV1AdminLicenseDevicesDeviceIdApprovePost$Params as ApproveDeviceApiV1AdminLicenseDevicesDeviceIdApprovePost$Params } from './fn/linked-devices/approve-device-api-v-1-admin-license-devices-device-id-approve-post';
@@ -113,6 +115,10 @@ export type { LogoutApiV1AuthLogoutPost$Params as LogoutApiV1AuthLogoutPost$Para
 export { logoutApiV1AuthLogoutPost as logoutApiV1AuthLogoutPost } from './fn/authentication/logout-api-v-1-auth-logout-post';
 export type { MeApiV1AuthMeGet$Params as MeApiV1AuthMeGet$Params } from './fn/authentication/me-api-v-1-auth-me-get';
 export { meApiV1AuthMeGet as meApiV1AuthMeGet } from './fn/authentication/me-api-v-1-auth-me-get';
+export type { SetMyAvatarApiV1AuthMeAvatarPost$Params as SetMyAvatarApiV1AuthMeAvatarPost$Params } from './fn/authentication/set-my-avatar-api-v-1-auth-me-avatar-post';
+export { setMyAvatarApiV1AuthMeAvatarPost as setMyAvatarApiV1AuthMeAvatarPost } from './fn/authentication/set-my-avatar-api-v-1-auth-me-avatar-post';
+export type { RemoveMyAvatarApiV1AuthMeAvatarDelete$Params as RemoveMyAvatarApiV1AuthMeAvatarDelete$Params } from './fn/authentication/remove-my-avatar-api-v-1-auth-me-avatar-delete';
+export { removeMyAvatarApiV1AuthMeAvatarDelete as removeMyAvatarApiV1AuthMeAvatarDelete } from './fn/authentication/remove-my-avatar-api-v-1-auth-me-avatar-delete';
 export type { ChangeMyPasswordApiV1AuthMePasswordPost$Params as ChangeMyPasswordApiV1AuthMePasswordPost$Params } from './fn/authentication/change-my-password-api-v-1-auth-me-password-post';
 export { changeMyPasswordApiV1AuthMePasswordPost as changeMyPasswordApiV1AuthMePasswordPost } from './fn/authentication/change-my-password-api-v-1-auth-me-password-post';
 export type { GetMyProfileApiV1AuthMeProfileGet$Params as GetMyProfileApiV1AuthMeProfileGet$Params } from './fn/authentication/get-my-profile-api-v-1-auth-me-profile-get';
@@ -279,6 +285,8 @@ export type { GetDashboardSummaryApiV1DashboardSummaryGet$Params as GetDashboard
 export { getDashboardSummaryApiV1DashboardSummaryGet as getDashboardSummaryApiV1DashboardSummaryGet } from './fn/dashboard/get-dashboard-summary-api-v-1-dashboard-summary-get';
 export type { GetMyDeviceApiV1DevicesMeGet$Params as GetMyDeviceApiV1DevicesMeGet$Params } from './fn/device-session/get-my-device-api-v-1-devices-me-get';
 export { getMyDeviceApiV1DevicesMeGet as getMyDeviceApiV1DevicesMeGet } from './fn/device-session/get-my-device-api-v-1-devices-me-get';
+export type { NameMyDeviceApiV1DevicesMeNamePut$Params as NameMyDeviceApiV1DevicesMeNamePut$Params } from './fn/device-session/name-my-device-api-v-1-devices-me-name-put';
+export { nameMyDeviceApiV1DevicesMeNamePut as nameMyDeviceApiV1DevicesMeNamePut } from './fn/device-session/name-my-device-api-v-1-devices-me-name-put';
 export type { UploadDocumentAttachmentApiV1DocumentsAttachmentsPost$Params as UploadDocumentAttachmentApiV1DocumentsAttachmentsPost$Params } from './fn/documents/upload-document-attachment-api-v-1-documents-attachments-post';
 export { uploadDocumentAttachmentApiV1DocumentsAttachmentsPost as uploadDocumentAttachmentApiV1DocumentsAttachmentsPost } from './fn/documents/upload-document-attachment-api-v-1-documents-attachments-post';
 export type { RecognizeDocumentApiV1DocumentsRecognizePost$Params as RecognizeDocumentApiV1DocumentsRecognizePost$Params } from './fn/documents/recognize-document-api-v-1-documents-recognize-post';
@@ -459,6 +467,8 @@ export type { SendOrderReminderApiV1OrdersOrderIdRemindersPost$Params as SendOrd
 export { sendOrderReminderApiV1OrdersOrderIdRemindersPost as sendOrderReminderApiV1OrdersOrderIdRemindersPost } from './fn/orders/send-order-reminder-api-v-1-orders-order-id-reminders-post';
 export type { RescheduleOrderApiV1OrdersOrderIdReschedulePost$Params as RescheduleOrderApiV1OrdersOrderIdReschedulePost$Params } from './fn/orders/reschedule-order-api-v-1-orders-order-id-reschedule-post';
 export { rescheduleOrderApiV1OrdersOrderIdReschedulePost as rescheduleOrderApiV1OrdersOrderIdReschedulePost } from './fn/orders/reschedule-order-api-v-1-orders-order-id-reschedule-post';
+export type { GetOrderSettlementApiV1OrdersOrderIdSettlementGet$Params as GetOrderSettlementApiV1OrdersOrderIdSettlementGet$Params } from './fn/orders/get-order-settlement-api-v-1-orders-order-id-settlement-get';
+export { getOrderSettlementApiV1OrdersOrderIdSettlementGet as getOrderSettlementApiV1OrdersOrderIdSettlementGet } from './fn/orders/get-order-settlement-api-v-1-orders-order-id-settlement-get';
 export type { GetOrderTrackingApiV1OrdersOrderIdTrackingGet$Params as GetOrderTrackingApiV1OrdersOrderIdTrackingGet$Params } from './fn/orders/get-order-tracking-api-v-1-orders-order-id-tracking-get';
 export { getOrderTrackingApiV1OrdersOrderIdTrackingGet as getOrderTrackingApiV1OrdersOrderIdTrackingGet } from './fn/orders/get-order-tracking-api-v-1-orders-order-id-tracking-get';
 export type { GetPaymentProfileApiV1PaymentProfileGet$Params as GetPaymentProfileApiV1PaymentProfileGet$Params } from './fn/payment-profile/get-payment-profile-api-v-1-payment-profile-get';

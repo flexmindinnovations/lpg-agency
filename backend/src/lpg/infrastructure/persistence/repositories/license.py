@@ -339,6 +339,15 @@ class SqlAlchemyLinkedDeviceRepository:
         # written in order and the unique index never sees both at once.
         await self._uow.session.flush()
 
+    async def delete(self, device: LinkedDevice) -> None:
+        row = await self._uow.session.get(LinkedDeviceModel, device.id)
+        if row is None:
+            msg = f"Cannot delete device {device.id} — no matching row was loaded."
+            raise LookupError(msg)
+
+        await self._uow.session.delete(row)
+        await self._uow.session.flush()
+
     @staticmethod
     def _to_domain(row: LinkedDeviceModel) -> LinkedDevice:
         return LinkedDevice(

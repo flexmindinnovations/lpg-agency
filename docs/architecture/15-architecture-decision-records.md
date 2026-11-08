@@ -1763,6 +1763,26 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 - **Database unique index on names** - rejected: would fail the migration on existing data and turn a race into a 500; the use cases suggest a free name instead.
 - **Asking for the name before sign-in** - impossible to skip for a known phone, because the agency is not known until the user signs in.
 
+## ADR-073: Test APKs Share One Signing Key; An Agency Admin Can Delete a Linked Device
+
+**Status:** Accepted (2026-11-08, owner request). Builds on ADR-071 and ADR-072.
+
+**Context:** Reinstalling the Admin or Driver app on the same phone asked for the phone's name again and added a row to Linked Devices. The server already keeps one record per phone (ADR-072), matched by the hashed Android ID, so the ID itself was changing. Android scopes `ANDROID_ID` by app signing key, user and device. The "Mobile test APKs" workflow built APKs signed with the debug key, and a fresh CI runner creates a new debug key on every run, so each install from a new run looked like a new phone. The production list matched this: each duplicate followed a workflow run, with a different hardware reference.
+
+**Decision:**
+- **One shared signing key for test builds.** `mobile/signing/internal-test.keystore` (public password, documented in `mobile/signing/README.md`) signs release-mode APKs of the Customer, Driver and Admin apps whenever no real release key (`android/key.properties`) exists. CI and local builds therefore agree. Play releases still use the upload key and are unchanged. Moving an installed test app from the old debug key to this one needs a one-time uninstall.
+- **Delete a linked device.** `DELETE /admin/license/devices/{id}` (`license:manage_tenant`) removes the record for good, in any state. A refresh token's device reference cascades, so its sessions end. The audit trail keeps a `device.deleted` entry with the name, app and last state. After commit, `DeviceDeleted` clears the cached access record and tells the signed-in app to re-check. A phone that signs in again is a new record. The application role needs `DELETE` on `platform.linked_device`, granted by migration `b3e6d1f8a427`; row-level security still confines it to the caller's agency. The dashboard shows a Delete button on each table row, after a confirmation.
+
+**Consequences:**
+- A phone keeps its identity across test builds and reinstalls, so no repeat naming prompt and no new row.
+- The test key is public: anyone with it can sign an app that installs over an internal test build. It must never be used for a store upload or an app customers install.
+- Deleting is permanent and cannot be undone; history remains in the audit log only. "Remove" stays for the softer case where the record should be kept.
+
+**Alternatives Considered:**
+- **Key held as a GitHub secret** - safer, but local builds would not share it, and forgetting to set it would silently bring the problem back.
+- **Match phones by something other than the Android ID** (serial, IMEI) - not readable by normal apps (ADR-072).
+- **Soft-delete only** - the point is to stop rows piling up.
+
 ## Deferred Decisions
 
 Decisions deliberately left open, each with a defined trigger point:

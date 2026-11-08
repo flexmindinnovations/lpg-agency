@@ -30,6 +30,7 @@ import {
   DrawerA11yDirective,
   HeaderTitlePortalDirective,
   PageHeaderComponent,
+  RowActionCell,
   StatusChipCell,
   ToggleGroupComponent,
   formatTimestamp,
@@ -494,6 +495,19 @@ export class LinkedDevicesPage implements OnInit {
       sortable: true,
       valueFormatter: (value) => formatTimestamp(value),
     },
+    {
+      field: 'id',
+      header: 'Actions',
+      width: 90,
+      minWidth: 90,
+      cellRenderer: RowActionCell,
+      cellRendererParams: {
+        icon: 'pi pi-trash',
+        severity: 'danger',
+        label: (row: LinkedDeviceResponse) => `Delete ${row.display_name}`,
+        onAction: (row: LinkedDeviceResponse) => this.confirmDelete(row),
+      },
+    },
   ];
 
   ngOnInit(): void {
@@ -656,6 +670,35 @@ export class LinkedDevicesPage implements OnInit {
         this.busy.set(false);
         this.notify.success(this.doneMessage(action, updated.display_name));
         this.afterChange(updated);
+      },
+      error: () => this.busy.set(false),
+    });
+  }
+
+  /** Deleting is for good, so it always asks — whatever state the phone is in. */
+  protected confirmDelete(device: LinkedDeviceResponse): void {
+    this.confirmation.confirm({
+      header: 'Delete this phone?',
+      message: `"${device.display_name}" will be deleted for good and signed out. The history stays in your audit log. If the phone signs in again, it is listed as a new phone.`,
+      acceptLabel: 'Delete',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.deleteDevice(device),
+    });
+  }
+
+  private deleteDevice(device: LinkedDeviceResponse): void {
+    this.busy.set(true);
+    this.licenseService.deleteDevice(device.id).subscribe({
+      next: () => {
+        this.busy.set(false);
+        if (this.selected()?.id === device.id) {
+          this.drawerVisible = false;
+          this.selected.set(null);
+        }
+        this.notify.success(`${device.display_name} deleted.`);
+        this.reload();
+        this.pending.refresh();
       },
       error: () => this.busy.set(false),
     });

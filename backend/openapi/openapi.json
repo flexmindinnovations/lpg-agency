@@ -14550,6 +14550,40 @@
       }
     },
     "/api/v1/admin/license/devices/{device_id}": {
+      "delete": {
+        "operationId": "delete_device_api_v1_admin_license_devices__device_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a phone's record for good",
+        "tags": [
+          "Linked devices"
+        ]
+      },
       "patch": {
         "operationId": "update_device_api_v1_admin_license_devices__device_id__patch",
         "parameters": [
