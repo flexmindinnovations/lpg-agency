@@ -38,12 +38,12 @@ class FleetScreen extends ConsumerWidget {
             ),
             floatingActionButton: ListenableBuilder(
               listenable: tabs,
-              builder: (context, _) => FloatingActionButton.extended(
+              builder: (context, _) => LpgFab.extended(
                 onPressed: () => context.pushNamed(
                   tabs.index == 0 ? 'fleet_driver_new' : 'fleet_vehicle_new',
                 ),
-                icon: const Icon(LpgIcons.add),
-                label: Text(tabs.index == 0 ? 'Add driver' : 'Add van'),
+                icon: LpgIcons.add,
+                label: tabs.index == 0 ? 'Add driver' : 'Add van',
               ),
             ),
             body: const TabBarView(children: [_DriversTab(), _VehiclesTab()]),

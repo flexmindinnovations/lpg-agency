@@ -7,6 +7,13 @@ second time after it was already rotated is the theft signal
 either way (`RefreshTokenInvalidError`) — a client cannot distinguish
 "never valid" from "valid but reused," and shouldn't be able to.
 
+**Grace window.** A phone that is closed or loses its connection right as the
+server rotates the token never receives the new one, and its next start would
+look like theft and end every session. So a token rotated no more than
+`reuse_grace` ago (`Settings.refresh_token_reuse_grace_seconds`) is treated as
+a retry and gets a fresh pair; after that, reuse is theft as before. Zero turns
+the allowance off.
+
 **No `UnitOfWork`** — same reasoning as `login.py`'s module docstring. A
 presented refresh token is, by definition, evaluated before any tenant
 context can be resolved from it.
@@ -15,6 +22,7 @@ context can be resolved from it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command
@@ -28,8 +36,6 @@ from lpg.application.identity.tokens import TokenPair, issue_tokens
 from lpg.domain.license.license import LicenseLifecycleState
 
 if TYPE_CHECKING:
-    from datetime import timedelta
-
     from lpg.application.identity.ports import (
         IdentityUserRepository,
         JwtSigner,
@@ -62,7 +68,9 @@ class RefreshTokenUseCase:
         *,
         refresh_token_ttl: timedelta,
         device_binder: DeviceSessionBinder | None = None,
+        reuse_grace: timedelta = timedelta(0),
     ) -> None:
+        self._reuse_grace = reuse_grace
         self._device_binder = device_binder
         self._refresh_token_repository = refresh_token_repository
         self._user_repository = user_repository
@@ -81,14 +89,21 @@ class RefreshTokenUseCase:
             msg = "Session expired or invalid. Please log in again."
             raise RefreshTokenInvalidError(msg)
 
+        retried = False
         if token.rotated_at is not None:
-            # Reuse of an already-rotated token — treat as theft, revoke the
-            # whole session, not just this one token.
-            await self._refresh_token_repository.revoke_all_for_user(token.user_id)
-            msg = "Session expired or invalid. Please log in again."
-            raise RefreshTokenInvalidError(msg)
+            if token.is_within_rotation_grace(self._reuse_grace):
+                # Rotated moments ago: the response with the new token was most
+                # likely lost (app closed, connection dropped), so this is a
+                # retry. Issue a fresh pair; the token stays rotated.
+                retried = True
+            else:
+                # Reuse of an already-rotated token — treat as theft, revoke
+                # the whole session, not just this one token.
+                await self._refresh_token_repository.revoke_all_for_user(token.user_id)
+                msg = "Session expired or invalid. Please log in again."
+                raise RefreshTokenInvalidError(msg)
 
-        if not token.is_usable():
+        if not retried and not token.is_usable():
             msg = "Session expired or invalid. Please log in again."
             raise RefreshTokenInvalidError(msg)
 
@@ -129,7 +144,8 @@ class RefreshTokenUseCase:
             refresh_token_ttl=self._refresh_token_ttl,
             device=binding,
         )
-        token.rotate(new_pair.refresh_token_id)
-        await self._refresh_token_repository.save(token)
+        if not retried:
+            token.rotate(new_pair.refresh_token_id)
+            await self._refresh_token_repository.save(token)
 
         return new_pair

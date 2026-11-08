@@ -8,5 +8,10 @@
       "remaining": "Remaining",
       "failed": "Failed"
     }
+  },
+  "stop": {
+    "failedSheet": {
+      "title": "Why did the delivery fail?"
+    }
   }
 }

@@ -54,11 +54,33 @@ class AuthController extends ChangeNotifier {
   final AuthRepository _repository;
   Timer? _restoreRetry;
   var _restoreAttempts = 0;
+  var _restoreWaiting = false;
+  var _restoreInFlight = false;
   var _disposed = false;
   AuthSessionState _state = const AuthSessionState.unknown();
   final Completer<void> _settled = Completer<void>();
 
   AuthSessionState get state => _state;
+
+  /// True while the person is held on the splash because the start-up restore
+  /// could not reach the server. The splash shows an offline message while
+  /// this is set; it clears when the restore is decided either way.
+  bool get restoreWaiting =>
+      _restoreWaiting && _state.status == AuthStatus.unknown;
+
+  /// True while a restore attempt is under way after the first one failed
+  /// (the Retry button shows that it is working).
+  bool get restoreRetrying => restoreWaiting && _restoreInFlight;
+
+  /// Tries the start-up restore now instead of waiting out the retry delay:
+  /// the Retry button on the splash. Does nothing once the session is decided
+  /// or while an attempt is already running.
+  Future<void> retryRestoreNow() async {
+    if (_disposed || _state.status != AuthStatus.unknown) return;
+    if (_restoreInFlight) return;
+    _restoreRetry?.cancel();
+    await _restoreOnStartup();
+  }
 
   /// Completes once the start-up restore has decided the session either way
   /// (signed in or signed out), and stays complete. Wired into
@@ -139,11 +161,20 @@ class AuthController extends ChangeNotifier {
   /// is up) the stored session is still good, so the state stays `unknown`
   /// (the splash) and the restore is tried again until it can be decided.
   Future<void> _restoreOnStartup() async {
-    final result = await _repository.restoreSession();
+    _restoreInFlight = true;
+    if (_restoreWaiting) notifyListeners(); // the Retry button shows "Trying"
+    final Result<Principal> result;
+    try {
+      result = await _repository.restoreSession();
+    } finally {
+      _restoreInFlight = false;
+    }
     if (_disposed || _state.status != AuthStatus.unknown) return;
     switch (result) {
       case FailureResult(:final failure) when isTransientError(failure):
+        _restoreWaiting = true;
         _scheduleRestoreRetry();
+        notifyListeners();
       default:
         _apply(result);
     }

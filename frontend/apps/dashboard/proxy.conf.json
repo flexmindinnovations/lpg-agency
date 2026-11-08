@@ -1,0 +1,10 @@
+{
+  "/api": {
+    "target": "https://lpg.vitessetec.com",
+    "secure": true,
+    "changeOrigin": true,
+    "ws": true,
+    "cookieDomainRewrite": { "*": "" },
+    "logLevel": "warn"
+  }
+}

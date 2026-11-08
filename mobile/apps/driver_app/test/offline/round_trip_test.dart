@@ -90,7 +90,7 @@ void main() {
     expect(harness.media.keys, hasLength(2)); // POD media held locally
 
     // Let the fire-and-forget syncNow() from enqueue exhaust itself offline.
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await harness.coordinator.whenIdle();
 
     // The optimistic local state a pending-aware read would surface.
     expect(
@@ -112,7 +112,7 @@ void main() {
     // --- Back online: the queue drains ---
     backend.offline = false;
     await harness.coordinator.syncNow(ignoreBackoff: true);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await harness.coordinator.whenIdle();
 
     expect(backend.calls, [
       '/api/v1/orders/order-1/depart',

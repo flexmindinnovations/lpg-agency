@@ -12,6 +12,7 @@ import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
 import 'package:driver_app/src/features/delivery/presentation/failed_delivery_sheet.dart';
 import 'package:driver_app/src/features/delivery/presentation/stop_detail_screen.dart';
 import 'package:driver_app/src/features/delivery/presentation/widgets/stop_map_card.dart';
+import 'package:driver_app/src/i18n/driver_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -126,6 +127,7 @@ Widget _host(ProviderContainer container) => UncontrolledProviderScope(
   container: container,
   child: MaterialApp(
     theme: LpgTheme.light,
+    localizationsDelegates: driverLocalizationsDelegates,
     home: const StopDetailScreen(orderId: 'abcdef01aaaabbbb'),
   ),
 );

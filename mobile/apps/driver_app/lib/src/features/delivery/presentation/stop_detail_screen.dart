@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../i18n/driver_strings.dart';
 import '../../../offline/delivery_mutations.dart';
 import '../../../offline/pending_sync.dart';
 import '../data/active_route_provider.dart';
@@ -162,12 +163,11 @@ class StopDetailScreen extends ConsumerWidget {
     String id,
   ) async {
     final choice =
-        await showModalBottomSheet<
+        await LpgFeedback.showSheet<
           ({String reason, String? action, String? note})
         >(
-          context: context,
-          showDragHandle: true,
-          isScrollControlled: true,
+          context,
+          title: context.strings.stop.failedSheet.title,
           builder: (_) => const FailedDeliverySheet(),
         );
     if (choice == null || !context.mounted) return;

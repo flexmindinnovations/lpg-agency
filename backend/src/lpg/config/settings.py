@@ -243,6 +243,9 @@ class Settings(BaseSettings):
     jwt_issuer: str = "lpg-agency-platform"
     jwt_access_token_ttl_seconds: int = Field(default=900, gt=0)  # 15 minutes, §1
     refresh_token_ttl_days: int = Field(default=30, gt=0)
+    # How long after a refresh token is rotated the same token is still
+    # answered with a fresh pair (a lost response, not theft). 0 turns it off.
+    refresh_token_reuse_grace_seconds: int = Field(default=120, ge=0, le=900)
 
     # Argon2id cost parameters (`08-security-architecture.md` §1). Defaults
     # follow OWASP's current baseline recommendation for Argon2id (m=19 MiB,

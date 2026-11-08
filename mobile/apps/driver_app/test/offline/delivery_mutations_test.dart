@@ -102,7 +102,9 @@ void main() {
 
   tearDown(() async {
     coordinator.stop();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    // The sync pass started by a queued op must finish before the database
+    // closes, however slow the machine is.
+    await coordinator.whenIdle();
     await db.close();
   });
 

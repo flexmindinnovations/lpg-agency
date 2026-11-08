@@ -97,7 +97,7 @@ void main() {
       addTearDown(controller.dispose);
 
       await controller.start('route-1');
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await _until(() => adapter.paths.isNotEmpty);
 
       expect(adapter.paths, ['/api/v1/routes/route-1/location']);
       expect(controller.state.status, LocationSharingStatus.sharing);
@@ -122,7 +122,9 @@ void main() {
         final sub = controller.states.listen((s) => seen.add(s.status));
 
         await controller.start('route-1');
-        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await _until(
+          () => controller.state.message?.contains('no longer active') ?? false,
+        );
         await sub.cancel();
 
         expect(controller.state.status, LocationSharingStatus.off);
@@ -131,6 +133,16 @@ void main() {
       },
     );
   });
+}
+
+/// Waits for [done] by its own result, not for a fixed time: a slow machine
+/// takes longer, a fast one does not wait. Fails after ten seconds.
+Future<void> _until(bool Function() done) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 10));
+  while (!done()) {
+    if (DateTime.now().isAfter(deadline)) fail('the condition never held');
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
 }
 
 Dio _dio(HttpClientAdapter adapter) =>

@@ -40,11 +40,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           const SizedBox(width: LpgSpacing.sm),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: LpgFab.extended(
         heroTag: 'new-order',
         onPressed: () => context.push('/orders/new'),
-        icon: const Icon(LpgIcons.add),
-        label: const Text('New order'),
+        icon: LpgIcons.add,
+        label: 'New order',
       ),
       body: ordersAsync.when(
         loading: () => const LpgSkeletonList(),

@@ -212,6 +212,48 @@ class TestRefreshTokenRotate:
             token.rotate(uuid.uuid4())
 
 
+class TestRefreshTokenRotationGrace:
+    grace = timedelta(seconds=120)
+
+    def test_a_token_rotated_a_moment_ago_is_within_grace(self) -> None:
+        token = _make_refresh_token()
+        token.rotate(uuid.uuid4())
+
+        assert token.is_within_rotation_grace(self.grace)
+
+    def test_a_token_rotated_long_ago_is_not(self) -> None:
+        now = datetime.now(UTC)
+        token = _make_refresh_token(
+            rotated_at=now - timedelta(minutes=10), replaced_by_id=uuid.uuid4()
+        )
+
+        assert not token.is_within_rotation_grace(self.grace)
+
+    def test_a_token_never_rotated_is_not_in_grace(self) -> None:
+        assert not _make_refresh_token().is_within_rotation_grace(self.grace)
+
+    def test_a_zero_grace_turns_it_off(self) -> None:
+        token = _make_refresh_token(
+            rotated_at=datetime.now(UTC) - timedelta(seconds=1), replaced_by_id=uuid.uuid4()
+        )
+
+        assert not token.is_within_rotation_grace(timedelta(0))
+
+    def test_a_revoked_or_expired_token_is_never_in_grace(self) -> None:
+        now = datetime.now(UTC)
+        revoked = _make_refresh_token(rotated_at=now, replaced_by_id=uuid.uuid4())
+        revoked.revoke()
+        expired = _make_refresh_token(
+            issued_at=now - timedelta(days=31),
+            expires_at=now - timedelta(days=1),
+            rotated_at=now,
+            replaced_by_id=uuid.uuid4(),
+        )
+
+        assert not revoked.is_within_rotation_grace(self.grace)
+        assert not expired.is_within_rotation_grace(self.grace)
+
+
 class TestRefreshTokenRevoke:
     def test_marks_revoked(self) -> None:
         token = _make_refresh_token()
