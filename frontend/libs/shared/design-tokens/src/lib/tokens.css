@@ -247,14 +247,13 @@ have always been hand-edited directly. Edit them here.
      "largest grain that keeps secondary text >= 4.55:1" idea: light 0.14,
      dark 0.09 with the specks inverted to light. 0 in high contrast. */
   --paper-grain-image: url('/textures/paper-grain.png');
-  --paper-grain-opacity: 0.14;
+  --paper-grain-opacity: 0.22;
+  --paper-grain-blur: 0.8px;
   --paper-grain-invert: 0;
   /* The grain softened once into mist (mobile LpgGrain.haze), laid UNDER the
      content by body::before so see-through cards and chrome show it. */
   --paper-haze-image: url('/textures/paper-haze.png');
   --paper-haze-opacity: 0.1;
-  /* Frosted-glass veil over the grain (body::after). */
-  --paper-frost-opacity: 0.35;
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
@@ -289,10 +288,9 @@ have always been hand-edited directly. Edit them here.
   --color-text-secondary: #4b5563;
   --color-text-disabled: #9ca3af;
   --color-text-inverse: #f9fafb;
-  --color-surface-page: #ffffff;
-  --color-surface-base: color-mix(in srgb, #ffffff 40%, transparent);
-  --color-surface-raised: color-mix(in srgb, #f9fafb 35%, transparent);
-  --color-surface-overlay: color-mix(in srgb, #f3f4f6 45%, transparent);
+  --color-surface-base: #ffffff;
+  --color-surface-raised: #f9fafb;
+  --color-surface-overlay: #f3f4f6;
   --color-border-default: #e5e7eb;
   --color-border-strong: #d1d5db;
   --color-border-focus: #162b66;
@@ -320,11 +318,11 @@ have always been hand-edited directly. Edit them here.
   --surface-mica: color-mix(in srgb, var(--color-surface-raised) 78%, transparent);
   --surface-mica-border: var(--color-border-default);
   --surface-mica-shadow: none;
-  --surface-acrylic: color-mix(in srgb, var(--color-surface-page) 82%, transparent);
+  --surface-acrylic: var(--color-surface-base);
   --surface-acrylic-blur: none;
   --surface-acrylic-border: var(--color-border-default);
   --surface-acrylic-shadow: var(--elevation-3);
-  --surface-atmosphere: var(--color-surface-page);
+  --surface-atmosphere: var(--color-surface-base);
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
@@ -369,10 +367,9 @@ have always been hand-edited directly. Edit them here.
   --color-text-secondary: #7d8b99;
   --color-text-disabled: #526273;
   --color-text-inverse: #0b1118;
-  --color-surface-page: #0b1118;
-  --color-surface-base: color-mix(in srgb, #0b1118 40%, transparent);
-  --color-surface-raised: color-mix(in srgb, #101720 35%, transparent);
-  --color-surface-overlay: color-mix(in srgb, #17212c 45%, transparent);
+  --color-surface-base: #0b1118;
+  --color-surface-raised: #101720;
+  --color-surface-overlay: #17212c;
   --color-border-default: rgba(255,255,255,0.07);
   --color-border-strong: rgba(255,255,255,0.14);
   --color-border-focus: #4f8df7;
@@ -406,13 +403,13 @@ have always been hand-edited directly. Edit them here.
   --surface-mica: color-mix(in srgb, var(--color-surface-raised) 78%, transparent);
   --surface-mica-border: var(--color-border-default);
   --surface-mica-shadow: none;
-  --surface-acrylic: color-mix(in srgb, var(--color-surface-page) 82%, transparent);
+  --surface-acrylic: var(--color-surface-overlay);
   --surface-acrylic-blur: none;
   --surface-acrylic-border: var(--color-border-strong);
   --surface-acrylic-shadow: var(--elevation-3);
-  --surface-atmosphere: var(--color-surface-page);
+  --surface-atmosphere: var(--color-surface-base);
   --surface-noise-opacity: 0;
-  --paper-grain-opacity: 0.09;
+  --paper-grain-opacity: 0.14;
   --paper-grain-invert: 1;
   --paper-haze-opacity: 0.07;
   /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
@@ -447,7 +444,6 @@ have always been hand-edited directly. Edit them here.
   --color-text-secondary: #000000;
   --color-text-disabled: #374151;
   --color-text-inverse: #ffffff;
-  --color-surface-page: #ffffff;
   --color-surface-base: #ffffff;
   --color-surface-raised: #ffffff;
   --color-surface-overlay: #ffffff;
@@ -482,7 +478,6 @@ have always been hand-edited directly. Edit them here.
   --surface-noise-image: none;
   --paper-grain-opacity: 0;
   --paper-haze-opacity: 0;
-  --paper-frost-opacity: 0;
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
@@ -521,10 +516,9 @@ have always been hand-edited directly. Edit them here.
     --color-text-secondary: #7d8b99;
     --color-text-disabled: #526273;
     --color-text-inverse: #0b1118;
-    --color-surface-page: #0b1118;
-    --color-surface-base: color-mix(in srgb, #0b1118 40%, transparent);
-    --color-surface-raised: color-mix(in srgb, #101720 35%, transparent);
-    --color-surface-overlay: color-mix(in srgb, #17212c 45%, transparent);
+    --color-surface-base: #0b1118;
+    --color-surface-raised: #101720;
+    --color-surface-overlay: #17212c;
     --color-border-default: rgba(255,255,255,0.07);
     --color-border-strong: rgba(255,255,255,0.14);
     --color-border-focus: #4f8df7;
@@ -548,13 +542,13 @@ have always been hand-edited directly. Edit them here.
     --surface-mica: color-mix(in srgb, var(--color-surface-raised) 78%, transparent);
     --surface-mica-border: var(--color-border-default);
     --surface-mica-shadow: none;
-    --surface-acrylic: color-mix(in srgb, var(--color-surface-page) 82%, transparent);
+    --surface-acrylic: var(--color-surface-overlay);
     --surface-acrylic-blur: none;
     --surface-acrylic-border: var(--color-border-strong);
     --surface-acrylic-shadow: var(--elevation-3);
-    --surface-atmosphere: var(--color-surface-page);
+    --surface-atmosphere: var(--color-surface-base);
     --surface-noise-opacity: 0;
-    --paper-grain-opacity: 0.09;
+    --paper-grain-opacity: 0.14;
     --paper-grain-invert: 1;
     --paper-haze-opacity: 0.07;
     --component-button-primary-background: #2864cc;
