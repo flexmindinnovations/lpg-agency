@@ -1,6 +1,7 @@
 name: Mobile test APKs
 
-# Builds debug-signed release-mode Android APKs for the Customer, Driver and Admin apps
+# Builds release-mode Android APKs, signed with the shared internal-test key
+# (mobile/signing/README.md, so a phone keeps its identity across builds), for the Customer, Driver and Admin apps
 # against production, with the dev OTP banner enabled, for internal testing.
 # Run from Actions -> Mobile test APKs -> Run workflow. Download the APKs from
 # the run's artifacts. Not for the Play Store (see mobile-release.yml).

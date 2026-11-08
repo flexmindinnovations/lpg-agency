@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from lpg.config.logging import get_logger
 from lpg.domain.license.linked_device import (
+    DeviceDeleted,
     DeviceIdentifierRebound,
     DeviceStatus,
     DeviceStatusChanged,
@@ -75,5 +76,20 @@ def register_device_handlers(
         # The cached record still holds the old install ID's hash.
         await access.invalidate(event.tenant_id, event.device_id)
 
+    async def on_deleted(event: DomainEvent) -> None:
+        assert isinstance(event, DeviceDeleted)
+        # The record is gone (its refresh tokens went with it): drop the cached
+        # copy and tell the signed-in app, which will find itself unknown.
+        await access.invalidate(event.tenant_id, event.device_id)
+        if event.user_id is not None:
+            try:
+                await publisher.publish(
+                    f"tenant:{event.tenant_id}:user:{event.user_id}",
+                    {"type": "device.status_changed", "status": DeviceStatus.REMOVED.value},
+                )
+            except Exception:
+                _logger.exception("device_realtime_publish_failed", device_id=str(event.device_id))
+
     dispatcher.register(DeviceStatusChanged, on_status_changed)
     dispatcher.register(DeviceIdentifierRebound, on_identifier_rebound)
+    dispatcher.register(DeviceDeleted, on_deleted)

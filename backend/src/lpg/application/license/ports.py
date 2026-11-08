@@ -98,6 +98,11 @@ class LinkedDeviceRepository(Protocol):
 
     async def save(self, device: LinkedDevice) -> None: ...
 
+    async def delete(self, device: LinkedDevice) -> None:
+        """Remove the record for good. The phone's refresh tokens go with it
+        (they reference it with `ON DELETE CASCADE`); its audit history stays."""
+        ...
+
 
 @runtime_checkable
 class LicenseStatusChecker(Protocol):

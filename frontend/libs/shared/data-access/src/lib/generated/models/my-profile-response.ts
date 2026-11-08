@@ -6,6 +6,7 @@
  * `GET`/`PATCH /auth/me/profile` (DA-30).
  */
 export interface MyProfileResponse {
+  avatar_url?: (string | null);
   contact_phone: (string | null);
   display_name: (string | null);
   email: (string | null);

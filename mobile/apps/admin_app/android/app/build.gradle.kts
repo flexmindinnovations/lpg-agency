@@ -6,6 +6,11 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Shared internal-test key (mobile/signing/README.md): keeps a phone's Android ID
+// the same across builds, so reinstalling does not register it as a new device.
+val internalTestKeystore = rootProject.file("../../../signing/internal-test.keystore")
+val hasInternalTestKeystore = internalTestKeystore.exists()
+
 android {
     namespace = "com.lpgagency.admin_app"
     compileSdk = 37
@@ -25,9 +30,21 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasInternalTestKeystore) {
+            create("internalTest") {
+                storeFile = internalTestKeystore
+                storePassword = "lpg-internal-test"
+                keyAlias = "lpg-internal-test"
+                keyPassword = "lpg-internal-test"
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig =
+                signingConfigs.getByName(if (hasInternalTestKeystore) "internalTest" else "debug")
         }
     }
 }

@@ -14,7 +14,8 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
+from fastapi import status as http_status
 
 from lpg.api.v1.dependencies.admin import get_audit_log_repository, get_audit_trail
 from lpg.api.v1.dependencies.identity import require_permission
@@ -34,6 +35,8 @@ from lpg.application.license.manage_devices import (
     ChangeDeviceStatusUseCase,
     CountPendingDevicesQuery,
     CountPendingDevicesUseCase,
+    DeleteDeviceCommand,
+    DeleteDeviceUseCase,
     DeviceAction,
     GetDeviceHistoryQuery,
     GetDeviceHistoryUseCase,
@@ -236,3 +239,24 @@ async def update_device(
         )
     )
     return _device_response(device)
+
+
+@router.delete(
+    "/{device_id}",
+    status_code=http_status.HTTP_204_NO_CONTENT,
+    summary="Delete a phone's record for good",
+)
+async def delete_device(
+    device_id: uuid.UUID,
+    principal: _ManageDevices,
+    repository: Annotated[LinkedDeviceRepository, Depends(get_linked_device_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> Response:
+    use_case = DeleteDeviceUseCase(repository, audit, unit_of_work)
+    await use_case.execute(
+        DeleteDeviceCommand(
+            tenant_id=principal.tenant_id, device_id=device_id, actor_id=principal.user_id
+        )
+    )
+    return Response(status_code=http_status.HTTP_204_NO_CONTENT)
