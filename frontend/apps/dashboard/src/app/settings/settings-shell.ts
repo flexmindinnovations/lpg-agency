@@ -77,6 +77,8 @@ import { visibleSettingsGroups } from './settings-sections';
          frame is ours: no panel background and a hairline under the row. */
       .settings__tabs {
         flex-shrink: 0;
+        /* Slimmer tabs than PrimeNG's default (0.875rem 1rem). */
+        --p-tabs-tab-padding: 0.5rem 0.75rem;
       }
 
       .settings__tabs ::ng-deep .p-tablist-tab-list {
