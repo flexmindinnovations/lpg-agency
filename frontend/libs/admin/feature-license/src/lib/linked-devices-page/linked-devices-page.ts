@@ -105,11 +105,14 @@ const DEVICE_CONTROL_KEY = 'device_control';
       </lpg-section-card>
 
       <div class="filters">
-        <lpg-toggle-group
+        <p-select
           [options]="tabOptions()"
-          [value]="tab()"
-          (valueChange)="chooseTab($event)"
+          [ngModel]="tab()"
+          (ngModelChange)="chooseTab($event)"
+          optionLabel="label"
+          optionValue="value"
           ariaLabel="Show phones by state"
+          fluid
         />
         <p-select
           [options]="appOptions"
@@ -118,6 +121,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
           optionLabel="label"
           optionValue="value"
           ariaLabel="Filter by app"
+          fluid
         />
       </div>
 
@@ -279,11 +283,19 @@ const DEVICE_CONTROL_KEY = 'device_control';
         max-inline-size: 60ch;
       }
 
+      /* Two dropdowns side by side on one line (state, then app); they stack on
+         a narrow screen. */
       .filters {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 14rem));
         gap: var(--spacing-md);
         align-items: center;
+      }
+
+      @media (max-width: 480px) {
+        .filters {
+          grid-template-columns: minmax(0, 1fr);
+        }
       }
 
       .grid-section {
@@ -380,7 +392,7 @@ export class LinkedDevicesPage implements OnInit {
   protected noteDraft = '';
 
   protected readonly tabOptions = computed(() => [
-    { label: 'All', value: 'all' as const, icon: 'pi pi-list' },
+    { label: 'All states', value: 'all' as const, icon: 'pi pi-list' },
     {
       label: this.pendingCount() > 0 ? `Waiting (${this.pendingCount()})` : 'Waiting',
       value: 'pending' as const,
