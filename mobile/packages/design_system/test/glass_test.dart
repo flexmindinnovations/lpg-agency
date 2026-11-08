@@ -171,10 +171,9 @@ void main() {
         for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
           await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
 
-          // The paper under the blurred picture (it shows until the picture
-          // arrives) and its grain over the picture: two layers of the page's
-          // own painter.
-          expect(_paperIn(LpgGlass), findsNWidgets(2), reason: '$v');
+          // Without a screen picture the sheet is a solid fill: only the
+          // paper's grain over it, no full page painted underneath.
+          expect(_paperIn(LpgGlass), findsOneWidget, reason: '$v');
           expect(
             tester
                 .widgetList<LpgBackdrop>(_paperIn(LpgGlass))
@@ -360,7 +359,7 @@ void main() {
         await open(tester, v);
 
         expect(find.byType(BackdropFilter), findsNothing);
-        expect(_paperIn(LpgGlass), findsNWidgets(2));
+        expect(_paperIn(LpgGlass), findsOneWidget);
         expect(find.text('Deliver order'), findsOneWidget);
         expect(find.text('Body'), findsOneWidget);
         expect(find.byType(LpgSheetHandle), findsOneWidget);

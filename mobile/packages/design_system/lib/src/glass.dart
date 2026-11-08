@@ -239,9 +239,12 @@ class LpgGlass extends StatelessWidget {
     }
     return ClipRRect(
       borderRadius: shape,
-      child: LpgBackdrop(
-        child: _FrostedSheet(backdrop: backdrop, child: content),
-      ),
+      // A solid sheet hides the page paper, so it is not painted under it.
+      child: backdrop == null
+          ? _FrostedSheet(backdrop: backdrop, child: content)
+          : LpgBackdrop(
+              child: _FrostedSheet(backdrop: backdrop, child: content),
+            ),
     );
   }
 }
@@ -299,8 +302,16 @@ class _FrostedSheetState extends State<_FrostedSheet> {
             ),
           ),
         ),
+        // Without a screen picture behind it the sheet cannot be see-through
+        // (the tint was sized for a blurred screen), so it is solid.
         Positioned.fill(
-          child: IgnorePointer(child: ColoredBox(color: colors.sheetGlass)),
+          child: IgnorePointer(
+            child: ColoredBox(
+              color: image == null && widget.backdrop == null
+                  ? colors.sheet
+                  : colors.sheetGlass,
+            ),
+          ),
         ),
         // The paper's grain over the blurred screen and the tint, under the
         // content, so a sheet carries the same texture as the page.
