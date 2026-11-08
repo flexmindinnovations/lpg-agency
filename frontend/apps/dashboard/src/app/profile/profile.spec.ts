@@ -109,6 +109,27 @@ describe('Profile', () => {
     expect(notify.success).toHaveBeenCalledWith('Your password was updated.');
   });
 
+  it('keeps Update password disabled until the password form is valid', () => {
+    const fixture = render({ email: 'a@example.com', role: 'manager' });
+    const button = () =>
+      Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
+          'button[type="submit"]',
+        ),
+      ).find((b) => b.textContent?.includes('Update password'));
+
+    expect(button()?.disabled).toBe(true);
+
+    fixture.componentInstance['passwordForm'].setValue({
+      currentPassword: 'old',
+      newPassword: 'a brand new passphrase',
+      confirmPassword: 'a brand new passphrase',
+    });
+    fixture.detectChanges();
+
+    expect(button()?.disabled).toBe(false);
+  });
+
   it('does not submit a too-short new password', () => {
     const fixture = render({ email: 'a@example.com', role: 'manager' });
     const component = fixture.componentInstance;
