@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../glass.dart';
-import '../glass_snapshot.dart';
 import '../icons.dart';
 import '../layout.dart';
 import '../surface.dart';
@@ -66,9 +65,9 @@ abstract final class LpgFeedback {
     bool isScrollControlled = true,
   }) async {
     const top = BorderRadius.vertical(top: Radius.circular(LpgRadius.xxl));
-    // The blurred screen behind the sheet, taken once now, before the sheet
-    // covers it; the sheet fades it in when it is ready.
-    final backdrop = LpgGlassSnapshot.capture(context);
+    // No picture of the screen is taken for the sheet: photographing and
+    // blurring the whole screen while the sheet slides up made it drop
+    // frames. The sheet is a solid frosted fill instead (see LpgGlass).
     final result = await showModalBottomSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,
@@ -82,7 +81,6 @@ abstract final class LpgFeedback {
       builder: (sheetContext) => LpgGlass(
         level: LpgSurfaceLevel.sheet,
         radius: top,
-        backdrop: backdrop,
         child: Padding(
           padding: EdgeInsets.only(
             left: LpgSpacing.mdl,
@@ -135,7 +133,6 @@ abstract final class LpgFeedback {
         ),
       ),
     );
-    (await backdrop)?.dispose();
     return result;
   }
 
