@@ -123,6 +123,7 @@ class _CashHandoverReviewScreenState
                 const SizedBox(height: LpgSpacing.md),
               ],
               LpgCard(
+                variant: LpgCardVariant.plain,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -206,6 +207,7 @@ class _CashHandoverReviewScreenState
                   when notes.isNotEmpty) ...[
                 const SizedBox(height: LpgSpacing.md),
                 LpgCard(
+                  variant: LpgCardVariant.plain,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -240,6 +242,7 @@ class _CashHandoverReviewScreenState
               if (widget.collections.isNotEmpty) ...[
                 const SizedBox(height: LpgSpacing.md),
                 LpgCard(
+                  variant: LpgCardVariant.plain,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -270,8 +273,9 @@ class _CashHandoverReviewScreenState
                                       label:
                                           c.orderNumber ??
                                           'Order ${c.orderId.substring(0, 8)}',
-                                      onTap: () =>
-                                          context.push('/orders/${c.orderId}'),
+                                      onTap: () => context.push(
+                                        '/order-view/${c.orderId}',
+                                      ),
                                     ),
                                   ],
                                 ),
