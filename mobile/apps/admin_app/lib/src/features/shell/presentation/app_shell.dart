@@ -9,6 +9,7 @@ import '../../dashboard/data/dashboard_providers.dart';
 import '../../dispatch/data/dispatch_provider.dart';
 import '../../notifications/data/notifications_provider.dart';
 import '../../orders/data/orders_provider.dart';
+import 'tablet_nav.dart';
 
 /// The always-mounted shell: four tabs (Home, Orders, Dispatch, More; Alerts
 /// and Search live in each screen's app bar). It listens to the
@@ -96,6 +97,27 @@ class AppShell extends ConsumerWidget {
 
     final pendingApprovals =
         ref.watch(pendingCashHandoversProvider).value?.length ?? 0;
+
+    // Tablets get the longer rail (see tablet_nav.dart); phones keep the four
+    // bottom tabs exactly as they were.
+    if (LpgBreakpoints.isWide(context)) {
+      return LpgAdaptiveShell(
+        fullWidthIndexes: const {0, 1, 2},
+        body: navigationShell,
+        selectedIndex: tabletDestinations.indexWhere(
+          (d) => d.branch == navigationShell.currentIndex,
+        ),
+        onDestinationSelected: (i) {
+          final branch = tabletDestinations[i].branch;
+          if (branch == null) {
+            context.go(tabletDestinations[i].path);
+          } else {
+            _onTap(branch);
+          }
+        },
+        destinations: tabletNavDestinations(context, pendingApprovals),
+      );
+    }
 
     return LpgAdaptiveShell(
       fullWidthIndexes: const {0, 1, 2},
