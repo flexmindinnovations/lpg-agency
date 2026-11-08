@@ -15,6 +15,7 @@
  */
 export interface ProofOfDeliverySubmission {
   amount_collected: (number | string);
+  balance_on_account?: boolean;
   dac_code?: (string | null);
   gps_lat: (number | string);
   gps_lng: (number | string);

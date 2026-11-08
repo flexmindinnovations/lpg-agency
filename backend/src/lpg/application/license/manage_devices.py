@@ -401,6 +401,45 @@ class ChangeDeviceStatusUseCase:
 
 
 @dataclass(frozen=True, slots=True)
+class DeleteDeviceCommand(Command):
+    tenant_id: uuid.UUID
+    device_id: uuid.UUID
+    actor_id: uuid.UUID | None
+
+
+class DeleteDeviceUseCase:
+    """Delete one phone's record for good, whatever its state.
+
+    Its sessions end with it, and a phone that signs in again afterwards is
+    treated as new. The audit trail keeps what was deleted (name, app, state).
+    """
+
+    def __init__(
+        self,
+        device_repository: LinkedDeviceRepository,
+        audit: AuditTrail,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._device_repository = device_repository
+        self._audit = audit
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: DeleteDeviceCommand) -> None:
+        device = await _load_device(self._device_repository, command.tenant_id, command.device_id)
+        device.delete()
+        await self._audit.record(
+            action=f"{_AUDIT_ACTION_PREFIX}deleted",
+            entity_name=AUDIT_ENTITY_NAME,
+            entity_id=str(device.id),
+            entity_display_name=device.display_name,
+            details={"app_type": device.app_type},
+            before={"status": device.status.value, "display_name": device.display_name},
+        )
+        await self._device_repository.delete(device)
+        await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
 class UpdateDeviceDetailsCommand(Command):
     tenant_id: uuid.UUID
     device_id: uuid.UUID
