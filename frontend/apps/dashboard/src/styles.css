@@ -18,7 +18,6 @@
  */
 @theme inline {
   --color-surface-base: var(--color-surface-base);
-  --color-surface-page: var(--color-surface-page);
   --color-surface-raised: var(--color-surface-raised);
   --color-surface-overlay: var(--color-surface-overlay);
   --color-text-primary: var(--color-text-primary);
@@ -98,25 +97,17 @@ body {
    Strength and the light/dark flip come from the --paper-grain-* tokens;
    high contrast and print turn it off.
    ======================================================================== */
-/* Both paper layers sit UNDER the content (z-index -1 inside body's own
-   stacking context) so text stays crisp. body::before is the sharp grain;
-   body::after is the frosted-glass veil on top of it: the page surface colour
-   at --paper-frost-opacity, shaped by the soft haze tile so the grain
-   reads blurred, as on mobile. Two fixed layers, no backdrop-filter. */
-body {
-  isolation: isolate;
-}
-
-body::before,
+/* One fixed, click-through layer above the whole window (cards, tables,
+   drawers, dialogs, menus, sidebar, header) carrying the paper grain, softened
+   with a light blur so it reads as frosted paper rather than sharp noise, as
+   on mobile. Surfaces stay opaque and text stays crisp (the layer is faint).
+   Static content in a single layer, so the blur is composited once. */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 2147483000;
   pointer-events: none;
-}
-
-body::before {
   background-image: var(--paper-grain-image), var(--paper-grain-image);
   background-size:
     128px 128px,
@@ -125,35 +116,18 @@ body::before {
     0 0,
     37px 91px;
   opacity: var(--paper-grain-opacity);
-  filter: invert(var(--paper-grain-invert));
-}
-
-body::after {
-  background-color: var(--color-surface-page);
-  -webkit-mask-image: var(--paper-haze-image);
-  mask-image: var(--paper-haze-image);
-  -webkit-mask-size: 256px 256px;
-  mask-size: 256px 256px;
-  opacity: var(--paper-frost-opacity);
+  filter: blur(var(--paper-grain-blur)) invert(var(--paper-grain-invert));
 }
 
 @media print {
-  body::before,
   body::after {
     display: none;
   }
 }
 
-/* The app shell owns scrolling (sidebar and page content scroll separately);
-   with it mounted the window must never scroll or the header/sidebar move
-   with it. Pages without the shell (sign-in, licence) still scroll normally. */
-html:has(.shell__sidebar-wrapper),
-html:has(.shell__sidebar-wrapper) body {
-  overflow: hidden;
-}
 
 body {
-  background-color: var(--color-surface-page);
+  background-color: var(--color-surface-base);
   color: var(--color-text-primary);
   font-family:
     'Inter',
