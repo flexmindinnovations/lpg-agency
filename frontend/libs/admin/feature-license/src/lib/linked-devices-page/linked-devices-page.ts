@@ -13,6 +13,7 @@ import { Drawer } from 'primeng/drawer';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import {
   AdminTenantConfigurationService,
   LicenseService,
@@ -29,7 +30,6 @@ import {
   DrawerA11yDirective,
   HeaderTitlePortalDirective,
   PageHeaderComponent,
-  SectionCardComponent,
   StatusChipCell,
   ToggleGroupComponent,
   formatTimestamp,
@@ -69,7 +69,6 @@ const DEVICE_CONTROL_KEY = 'device_control';
     HeaderTitlePortalDirective,
     PageHeaderComponent,
     DataGridComponent,
-    SectionCardComponent,
     DetailListComponent,
     DetailItemComponent,
     DrawerA11yDirective,
@@ -79,6 +78,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
     Select,
     ToggleGroupComponent,
     Tag,
+    TooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -92,37 +92,45 @@ const DEVICE_CONTROL_KEY = 'device_control';
         </ng-template>
       </div>
 
-      <lpg-section-card class="control">
-        <h2 class="section-title" id="device-control-title">Who can use the apps</h2>
-        <lpg-toggle-group
-          [options]="modeOptions"
-          [value]="mode()"
-          (valueChange)="chooseMode($event)"
-          [disabled]="savingMode()"
-          ariaLabel="Who can use the apps"
-        />
-        <p class="control__help" aria-live="polite">{{ modeHelp() }}</p>
-      </lpg-section-card>
-
-      <div class="filters">
-        <p-select
-          [options]="tabOptions()"
-          [ngModel]="tab()"
-          (ngModelChange)="chooseTab($event)"
-          optionLabel="label"
-          optionValue="value"
-          ariaLabel="Show phones by state"
-          fluid
-        />
-        <p-select
-          [options]="appOptions"
-          [ngModel]="appFilter()"
-          (ngModelChange)="chooseApp($event)"
-          optionLabel="label"
-          optionValue="value"
-          ariaLabel="Filter by app"
-          fluid
-        />
+      <!-- One line: who can use the apps, then the two list filters. The
+           explanation of the chosen mode is in the info tooltip and is
+           announced to screen readers when it changes. -->
+      <div class="toolbar">
+        <div class="toolbar__mode">
+          <span class="toolbar__label" id="device-control-title">Who can use the apps</span>
+          <lpg-toggle-group
+            [options]="modeOptions"
+            [value]="mode()"
+            (valueChange)="chooseMode($event)"
+            [disabled]="savingMode()"
+            ariaLabel="Who can use the apps"
+          />
+          <i
+            class="pi pi-info-circle toolbar__info"
+            [pTooltip]="modeHelp()"
+            tooltipPosition="bottom"
+            aria-hidden="true"
+          ></i>
+          <span class="sr-only" aria-live="polite">{{ modeHelp() }}</span>
+        </div>
+        <div class="toolbar__filters">
+          <p-select
+            [options]="tabOptions()"
+            [ngModel]="tab()"
+            (ngModelChange)="chooseTab($event)"
+            optionLabel="label"
+            optionValue="value"
+            ariaLabel="Show phones by state"
+          />
+          <p-select
+            [options]="appOptions"
+            [ngModel]="appFilter()"
+            (ngModelChange)="chooseApp($event)"
+            optionLabel="label"
+            optionValue="value"
+            ariaLabel="Filter by app"
+          />
+        </div>
       </div>
 
       <section class="grid-section">
@@ -271,31 +279,38 @@ const DEVICE_CONTROL_KEY = 'device_control';
         block-size: 100%;
       }
 
-      .section-title {
-        margin: 0 0 var(--spacing-sm);
-        font-size: var(--typography-body-font-size);
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-sm) var(--spacing-lg);
+      }
+
+      .toolbar__mode,
+      .toolbar__filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--spacing-sm);
+      }
+
+      .toolbar__label {
         font-weight: var(--typography-label-font-weight);
       }
 
-      .control__help {
-        margin: var(--spacing-sm) 0 0;
+      .sr-only {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .toolbar__info {
         color: var(--color-text-secondary);
-        max-inline-size: 60ch;
-      }
-
-      /* Two dropdowns side by side on one line (state, then app); they stack on
-         a narrow screen. */
-      .filters {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 14rem));
-        gap: var(--spacing-md);
-        align-items: center;
-      }
-
-      @media (max-width: 480px) {
-        .filters {
-          grid-template-columns: minmax(0, 1fr);
-        }
+        cursor: help;
       }
 
       .grid-section {
