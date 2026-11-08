@@ -254,6 +254,9 @@ have always been hand-edited directly. Edit them here.
      content by body::before so see-through cards and chrome show it. */
   --paper-haze-image: url('/textures/paper-haze.png');
   --paper-haze-opacity: 0.1;
+  /* A veil in the page colour laid OVER that mist and under the content, so the
+     noise shows through the see-through cards more softly. 0% = no veil. */
+  --paper-veil: 55%;
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label

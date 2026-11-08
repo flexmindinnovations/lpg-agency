@@ -131,10 +131,22 @@ body::after {
    blurred at run time. The strength is the mobile one (7% light, 12% dark;
    dark is --paper-grain-invert: 1) and switches off with the grain in high
    contrast (--paper-haze-opacity: 0). */
-body {
+html {
   --page-wash: calc(
     (7% + 5% * var(--paper-grain-invert)) * min(1, var(--paper-haze-opacity) * 100)
   );
+}
+
+/* The veil: a layer in the page colour between the mist (body::before) and the
+   content, so the noise showing through the see-through cards is softer. The
+   two glows sit on top of it, so the page keeps its colour. Same stacking level
+   as the mist, later in the tree, so it paints over it. */
+html::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     radial-gradient(
       circle min(110vw, 110vh) at 0 0,
@@ -145,8 +157,11 @@ body {
       circle min(90vw, 90vh) at 100% 100%,
       color-mix(in srgb, var(--primitive-color-flame-orange-500) var(--page-wash), transparent),
       transparent
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--color-surface-base) var(--paper-veil), transparent),
+      color-mix(in srgb, var(--color-surface-base) var(--paper-veil), transparent)
     );
-  background-attachment: fixed;
 }
 
 body::before {
