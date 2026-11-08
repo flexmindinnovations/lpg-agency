@@ -81,7 +81,8 @@ import { visibleSettingsGroups } from './settings-sections';
            cards do instead of running to the window edge. */
         padding-inline-end: var(--spacing-xl);
         /* Slimmer tabs than PrimeNG's default (0.875rem 1rem). */
-        --p-tabs-tab-padding: 0.5rem 0.75rem;
+        --p-tabs-tab-padding: 0.5rem 0.4rem;
+        container-type: inline-size;
         --p-tabs-tablist-background: transparent;
         --p-tabs-nav-button-background: transparent;
       }
@@ -105,9 +106,17 @@ import { visibleSettingsGroups } from './settings-sections';
       .settings__link {
         display: inline-flex;
         align-items: center;
-        gap: var(--spacing-sm);
+        gap: var(--spacing-xs);
         white-space: nowrap;
         font-size: var(--typography-body-small-font-size);
+      }
+
+      /* Keep every tab on screen without scrolling: below this width the icons
+         go and the labels alone fit. Narrower than that, the arrows remain. */
+      @container (max-width: 62rem) {
+        .settings__link > i:first-child {
+          display: none;
+        }
       }
 
       .settings__badge {

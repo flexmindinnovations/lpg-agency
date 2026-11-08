@@ -1045,6 +1045,12 @@ p-confirmpopup {
     color var(--motion-duration-small) var(--motion-easing-standard) !important;
 }
 
+/* `rounded` buttons (the notification bell, row icon buttons) are round; the
+   rule above would otherwise give them the same corners as a text button. */
+.p-button.p-button-rounded {
+  border-radius: var(--radius-full) !important;
+}
+
 /* One control height for every button that stands next to inputs: a page
    action, a toolbar button, a form or dialog footer button. Buttons inside a
    grid row or a date picker keep their compact size. */

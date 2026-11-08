@@ -12,4 +12,8 @@
   block-size: 1.25rem;
   padding-inline: var(--spacing-xs);
   line-height: 1.25rem;
+  /* Page buttons are lifted above the paper grain (z-index in styles.css), so
+     the count chip needs to sit one step higher or the button, and its hover
+     fill, paints over it. */
+  z-index: calc(var(--z-paper-grain, 900) + 2);
 }
