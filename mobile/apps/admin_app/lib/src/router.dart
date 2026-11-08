@@ -259,6 +259,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => _capped(context, const CashBookScreen()),
       ),
+      // An order opened from outside the Orders tab (e.g. the cash handover
+      // review) sits on the root navigator, like /customers/:id. Pushing
+      // /orders/:id would build it inside the shell, under the current screen.
+      GoRoute(
+        path: '/order-view/:orderId',
+        name: 'order_view',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => _capped(
+          context,
+          OrderDetailScreen(orderId: state.pathParameters['orderId']!),
+        ),
+      ),
       GoRoute(
         path: '/profile',
         name: 'profile',

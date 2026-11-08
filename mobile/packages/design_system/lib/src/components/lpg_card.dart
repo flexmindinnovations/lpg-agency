@@ -14,6 +14,10 @@ enum LpgCardVariant {
   /// A tinted fill in the card's [LpgCard.tone], no border — for
   /// callouts and selected states.
   tonal,
+
+  /// The card fill with no border, for screens where the hairline looks
+  /// heavy (dark mode). High contrast still draws its border.
+  plain,
 }
 
 /// The container every screen groups content in.
@@ -58,7 +62,8 @@ class LpgCard extends StatelessWidget {
     final BorderSide side;
     if (hc) {
       side = BorderSide(color: colors.borderStrong, width: 2);
-    } else if (variant == LpgCardVariant.tonal) {
+    } else if (variant == LpgCardVariant.tonal ||
+        variant == LpgCardVariant.plain) {
       side = BorderSide.none;
     } else {
       side = BorderSide(color: colors.outline);
