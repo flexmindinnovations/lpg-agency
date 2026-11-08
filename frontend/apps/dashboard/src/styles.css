@@ -125,7 +125,6 @@ body::after {
   }
 }
 
-
 body {
   background-color: var(--color-surface-base);
   color: var(--color-text-primary);
