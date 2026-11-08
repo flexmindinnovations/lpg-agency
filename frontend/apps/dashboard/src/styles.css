@@ -80,6 +80,11 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* Under --z-index-dropdown (1000) and every overlay layer above it. */
+  --z-paper-grain: 900;
+}
+
 html,
 body {
   block-size: 100%;
@@ -106,17 +111,102 @@ body::after {
   content: '';
   position: fixed;
   inset: 0;
-  z-index: 2147483000;
+  z-index: var(--z-paper-grain);
   pointer-events: none;
   background-image: var(--paper-grain-image), var(--paper-grain-image);
   background-size:
-    128px 128px,
-    384px 384px;
+    256px 256px,
+    768px 768px;
   background-position:
     0 0,
     37px 91px;
   opacity: var(--paper-grain-opacity);
   filter: blur(var(--paper-grain-blur)) invert(var(--paper-grain-invert));
+}
+
+/* The page behind the see-through cards (ported from the mobile LpgBackdrop):
+   two soft glows of the brand colours, blue top-left and orange bottom-right,
+   plus the grain softened into mist. Without them the see-through cards sit on a flat
+   colour and just look washed out. Plain gradients on a fixed layer, nothing
+   blurred at run time. The strength is the mobile one (7% light, 12% dark;
+   dark is --paper-grain-invert: 1) and switches off with the grain in high
+   contrast (--paper-haze-opacity: 0). */
+body {
+  --page-wash: calc(
+    (7% + 5% * var(--paper-grain-invert)) * min(1, var(--paper-haze-opacity) * 100)
+  );
+  background-image:
+    radial-gradient(
+      circle min(110vw, 110vh) at 0 0,
+      color-mix(in srgb, var(--color-action-primary) var(--page-wash), transparent),
+      transparent
+    ),
+    radial-gradient(
+      circle min(90vw, 90vh) at 100% 100%,
+      color-mix(in srgb, var(--primitive-color-flame-orange-500) var(--page-wash), transparent),
+      transparent
+    );
+  background-attachment: fixed;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--paper-haze-image);
+  background-size: 256px 256px;
+  opacity: var(--paper-haze-opacity);
+  filter: invert(var(--paper-grain-invert));
+}
+
+/* Overlays (drawers, dialogs, menus, popovers, select panels) sit above the
+   page grain layer, so each carries its own: the same tile and tokens, laid
+   over the panel and under its buttons. */
+:is(
+  .p-drawer,
+  .p-dialog,
+  .p-popover,
+  .p-menu,
+  .p-tieredmenu,
+  .p-contextmenu,
+  .p-select-overlay,
+  .p-multiselect-overlay,
+  .p-datepicker-panel,
+  .p-autocomplete-overlay
+)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-paper-grain);
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: var(--paper-grain-image), var(--paper-grain-image);
+  background-size:
+    256px 256px,
+    768px 768px;
+  background-position:
+    0 0,
+    37px 91px;
+  opacity: var(--paper-grain-opacity);
+  filter: blur(var(--paper-grain-blur)) invert(var(--paper-grain-invert));
+}
+
+@media print {
+  :is(.p-drawer, .p-dialog, .p-popover, .p-menu, .p-tieredmenu, .p-contextmenu)::after {
+    display: none;
+  }
+}
+
+/* Buttons stay solid: lift them one step above the grain layer so the paper
+   texture never frosts a call to action. Both sit BELOW the dropdown, drawer,
+   modal, toast and tooltip layers (--z-index-dropdown and up), so a drawer or
+   dialog is never overlaid by a page button or the header's notification
+   bell. The cost is that those overlays themselves carry no grain. A button
+   held inside some other stacking context keeps the grain. */
+.p-button {
+  z-index: calc(var(--z-paper-grain) + 1);
 }
 
 @media print {
