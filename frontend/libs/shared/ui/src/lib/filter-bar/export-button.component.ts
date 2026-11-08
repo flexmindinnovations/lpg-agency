@@ -16,7 +16,7 @@ import { Tooltip } from 'primeng/tooltip';
     <button
       pButton
       type="button"
-      severity="secondary"
+      severity="primary"
       [outlined]="true"
       class="lpg-export-button"
       [pTooltip]="label()"
@@ -33,11 +33,21 @@ import { Tooltip } from 'primeng/tooltip';
       :host {
         display: inline-flex;
       }
+      /* Brand-coloured with a faint tint, so the download control reads as an
+         action next to the grey filters. This is the one place every list's
+         export button is styled. */
       .lpg-export-button {
         inline-size: var(--component-control-height);
         block-size: var(--component-control-height);
         padding: 0;
         justify-content: center;
+        color: var(--color-action-primary);
+        border-color: color-mix(in srgb, var(--color-action-primary) 55%, transparent);
+        background: color-mix(in srgb, var(--color-action-primary) 8%, transparent);
+      }
+      .lpg-export-button:not(:disabled):hover {
+        background: color-mix(in srgb, var(--color-action-primary) 16%, transparent);
+        border-color: var(--color-action-primary);
       }
     `,
   ],

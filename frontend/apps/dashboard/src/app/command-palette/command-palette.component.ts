@@ -204,8 +204,16 @@ export function fuzzyScore(text: string, q: string): number {
         font-size: var(--typography-secondary-font-size);
       }
 
+      /* The highlight is a dark fill in both themes, so the row's text, icon
+         and hint all switch to the highlight text colour. */
       .cmdk__item.is-active {
         background: var(--color-highlight-background);
+        color: var(--color-highlight-color);
+      }
+
+      .cmdk__item.is-active i,
+      .cmdk__item.is-active .cmdk__sub {
+        color: inherit;
       }
 
       .cmdk__item i {

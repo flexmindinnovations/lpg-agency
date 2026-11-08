@@ -247,13 +247,19 @@ have always been hand-edited directly. Edit them here.
      "largest grain that keeps secondary text >= 4.55:1" idea: light 0.14,
      dark 0.09 with the specks inverted to light. 0 in high contrast. */
   --paper-grain-image: url('/textures/paper-grain.png');
-  --paper-grain-opacity: 0.22;
-  --paper-grain-blur: 0.8px;
+  --paper-grain-opacity: 0.075;
+  --paper-grain-blur: 0px;
   --paper-grain-invert: 0;
   /* The grain softened once into mist (mobile LpgGrain.haze), laid UNDER the
      content by body::before so see-through cards and chrome show it. */
   --paper-haze-image: url('/textures/paper-haze.png');
   --paper-haze-opacity: 0.1;
+  /* A veil laid OVER that mist and under the content, so the noise shows through
+     more softly. In light mode it is a soft blue-grey, so the white section
+     cards stand out from the page; dark mode and high contrast use the plain
+     page colour. --paper-veil is its strength (0% = none). */
+  --paper-veil: 80%;
+  --paper-veil-color: #e9edf2;
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
@@ -315,7 +321,7 @@ have always been hand-edited directly. Edit them here.
      plain solid surfaces: `mica` = persistent chrome (sidebar/header),
      `acrylic` = transient overlays (dialogs/drawers/popovers/selects/toasts).
      Kept as named aliases so consumers don't churn. */
-  --surface-mica: color-mix(in srgb, var(--color-surface-raised) 78%, transparent);
+  --surface-mica: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
   --surface-mica-border: var(--color-border-default);
   --surface-mica-shadow: none;
   --surface-acrylic: var(--color-surface-base);
@@ -326,7 +332,7 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
-  --component-card-background: color-mix(in srgb, #f9fafb 72%, transparent);
+  --component-card-background: color-mix(in srgb, #ffffff 96%, transparent);
   --component-card-border: #e5e7eb;
   --component-data-grid-border-color: #e5e7eb;
   --component-data-grid-header-background: #f9fafb;
@@ -400,7 +406,7 @@ have always been hand-edited directly. Edit them here.
   --elevation-3: 0 8px 24px rgba(0,0,0,0.45);
   --elevation-4: 0 12px 32px rgba(0,0,0,0.5);
   /* Solid surfaces, no translucency or blur (see the :root note). */
-  --surface-mica: color-mix(in srgb, var(--color-surface-raised) 78%, transparent);
+  --surface-mica: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
   --surface-mica-border: var(--color-border-default);
   --surface-mica-shadow: none;
   --surface-acrylic: var(--color-surface-overlay);
@@ -409,15 +415,16 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-shadow: var(--elevation-3);
   --surface-atmosphere: var(--color-surface-base);
   --surface-noise-opacity: 0;
-  --paper-grain-opacity: 0.14;
+  --paper-grain-opacity: 0.045;
   --paper-grain-invert: 1;
   --paper-haze-opacity: 0.07;
+  --paper-veil-color: var(--color-surface-base);
   /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
      text on it is only 3.2:1. #2864cc gives white text 5.7:1. */
   --component-button-primary-background: #2864cc;
   --component-button-primary-background-hover: #1f4fa8;
   --component-button-primary-text: #ffffff;
-  --component-card-background: color-mix(in srgb, #101720 72%, transparent);
+  --component-card-background: color-mix(in srgb, #101720 92%, transparent);
   --component-card-border: rgba(255,255,255,0.07);
   --component-data-grid-border-color: rgba(255,255,255,0.07);
   --component-data-grid-header-background: #101720;
@@ -478,6 +485,7 @@ have always been hand-edited directly. Edit them here.
   --surface-noise-image: none;
   --paper-grain-opacity: 0;
   --paper-haze-opacity: 0;
+  --paper-veil-color: var(--color-surface-base);
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
@@ -539,7 +547,7 @@ have always been hand-edited directly. Edit them here.
     --elevation-2: 0 2px 8px rgba(0,0,0,0.4);
     --elevation-3: 0 8px 24px rgba(0,0,0,0.45);
     --elevation-4: 0 12px 32px rgba(0,0,0,0.5);
-    --surface-mica: color-mix(in srgb, var(--color-surface-raised) 78%, transparent);
+    --surface-mica: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
     --surface-mica-border: var(--color-border-default);
     --surface-mica-shadow: none;
     --surface-acrylic: var(--color-surface-overlay);
@@ -548,13 +556,14 @@ have always been hand-edited directly. Edit them here.
     --surface-acrylic-shadow: var(--elevation-3);
     --surface-atmosphere: var(--color-surface-base);
     --surface-noise-opacity: 0;
-    --paper-grain-opacity: 0.14;
+    --paper-grain-opacity: 0.045;
     --paper-grain-invert: 1;
     --paper-haze-opacity: 0.07;
+    --paper-veil-color: var(--color-surface-base);
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
-    --component-card-background: color-mix(in srgb, #101720 72%, transparent);
+    --component-card-background: color-mix(in srgb, #101720 92%, transparent);
     --component-card-border: rgba(255,255,255,0.07);
     --component-data-grid-border-color: rgba(255,255,255,0.07);
     --component-data-grid-header-background: #101720;
