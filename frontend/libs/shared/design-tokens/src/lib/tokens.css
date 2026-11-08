@@ -253,6 +253,8 @@ have always been hand-edited directly. Edit them here.
      content by body::before so see-through cards and chrome show it. */
   --paper-haze-image: url('/textures/paper-haze.png');
   --paper-haze-opacity: 0.1;
+  /* Frosted-glass veil over the grain (body::after), 60% like mobile. */
+  --paper-frost-opacity: 0.6;
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
@@ -477,6 +479,7 @@ have always been hand-edited directly. Edit them here.
   --surface-noise-image: none;
   --paper-grain-opacity: 0;
   --paper-haze-opacity: 0;
+  --paper-frost-opacity: 0;
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
