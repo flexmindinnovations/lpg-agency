@@ -10,14 +10,17 @@ plugins {
 }
 
 // Release signing. Reads android/key.properties (git-ignored) when present;
-// see mobile/RELEASE.md. Without it, release builds fall back to the debug key
-// so `flutter run --release` keeps working locally - such a build cannot be
-// uploaded to the Play Store.
+// see mobile/RELEASE.md. Without it, release builds fall back to the shared
+// internal-test key (mobile/signing/README.md), then the debug key - such a
+// build cannot be uploaded to the Play Store.
 val keystoreProperties = Properties().apply {
     val file = rootProject.file("key.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
 val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
+// Shared internal-test key, used when there is no real release key.
+val internalTestKeystore = rootProject.file("../../../signing/internal-test.keystore")
+val hasInternalTestKeystore = internalTestKeystore.exists()
 
 android {
     namespace = "com.lpgagency.customer_app"
@@ -52,11 +55,30 @@ android {
                 keyPassword = keystoreProperties.getProperty("keyPassword")
             }
         }
+        // Shared key for internal test APKs (mobile/signing/README.md): keeps a
+        // phone's Android ID the same across builds, so reinstalling does not
+        // register it as a new device.
+        if (hasInternalTestKeystore) {
+            create("internalTest") {
+                storeFile = internalTestKeystore
+                storePassword = "lpg-internal-test"
+                keyAlias = "lpg-internal-test"
+                keyPassword = "lpg-internal-test"
+            }
+        }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName(if (hasReleaseKeystore) "release" else "debug")
+            signingConfig = signingConfigs.getByName(
+                if (hasReleaseKeystore) {
+                    "release"
+                } else if (hasInternalTestKeystore) {
+                    "internalTest"
+                } else {
+                    "debug"
+                },
+            )
         }
     }
 }

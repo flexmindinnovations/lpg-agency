@@ -7,6 +7,7 @@ import { getLicenseStatusApiV1AdminLicenseStatusGet } from './generated/fn/admin
 import { approveDeviceApiV1AdminLicenseDevicesDeviceIdApprovePost } from './generated/fn/linked-devices/approve-device-api-v-1-admin-license-devices-device-id-approve-post';
 import { blockDeviceApiV1AdminLicenseDevicesDeviceIdBlockPost } from './generated/fn/linked-devices/block-device-api-v-1-admin-license-devices-device-id-block-post';
 import { countPendingDevicesApiV1AdminLicenseDevicesPendingCountGet } from './generated/fn/linked-devices/count-pending-devices-api-v-1-admin-license-devices-pending-count-get';
+import { deleteDeviceApiV1AdminLicenseDevicesDeviceIdDelete } from './generated/fn/linked-devices/delete-device-api-v-1-admin-license-devices-device-id-delete';
 import { getDeviceHistoryApiV1AdminLicenseDevicesDeviceIdHistoryGet } from './generated/fn/linked-devices/get-device-history-api-v-1-admin-license-devices-device-id-history-get';
 import { listLinkedDevicesApiV1AdminLicenseDevicesGet } from './generated/fn/linked-devices/list-linked-devices-api-v-1-admin-license-devices-get';
 import { removeDeviceApiV1AdminLicenseDevicesDeviceIdRemovePost } from './generated/fn/linked-devices/remove-device-api-v-1-admin-license-devices-device-id-remove-post';
@@ -110,6 +111,13 @@ export class LicenseService {
     return removeDeviceApiV1AdminLicenseDevicesDeviceIdRemovePost(this.http, this.config.rootUrl, {
       device_id: deviceId,
     }).pipe(map((response) => response.body));
+  }
+
+  /** Deletes the phone's record for good (it signs in as a new phone next time). */
+  deleteDevice(deviceId: string): Observable<void> {
+    return deleteDeviceApiV1AdminLicenseDevicesDeviceIdDelete(this.http, this.config.rootUrl, {
+      device_id: deviceId,
+    }).pipe(map(() => undefined));
   }
 
   /** Only the fields given change; an empty `assetNote` clears the note. */

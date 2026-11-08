@@ -64,6 +64,7 @@ describe('LinkedDevicesPage', () => {
       unblockDevice: jest.fn().mockReturnValue(of(device({ status: 'approved' }))),
       removeDevice: jest.fn().mockReturnValue(of(device({ status: 'removed' }))),
       updateDevice: jest.fn().mockReturnValue(of(device({ display_name: 'Van 2' }))),
+      deleteDevice: jest.fn().mockReturnValue(of(undefined)),
     };
     config = {
       getEffectiveConfiguration: jest
@@ -199,6 +200,44 @@ describe('LinkedDevicesPage', () => {
     expect(confirmations).toHaveLength(1);
     confirmations[0].accept?.();
     expect(license[method]).toHaveBeenCalledWith('d1');
+  });
+
+  it('asks before deleting a phone, whatever its state, and deletes only on yes', () => {
+    const { page } = render();
+
+    page.confirmDelete(device({ status: 'removed' }));
+
+    expect(license['deleteDevice']).not.toHaveBeenCalled();
+    expect(confirmations).toHaveLength(1);
+    expect(confirmations[0].message).toContain('for good');
+    confirmations[0].reject?.();
+    expect(license['deleteDevice']).not.toHaveBeenCalled();
+    confirmations[0].accept?.();
+    expect(license['deleteDevice']).toHaveBeenCalledWith('d1');
+  });
+
+  it('refreshes the list and the sidebar count after a delete and closes its open drawer', () => {
+    const { page } = render();
+    page.open(device());
+    license['listDevices'].mockClear();
+
+    page.confirmDelete(device());
+    confirmations[0].accept?.();
+
+    expect(notify.success).toHaveBeenCalledWith("Ravi's phone deleted.");
+    expect(license['listDevices']).toHaveBeenCalled();
+    expect(pending.refresh).toHaveBeenCalledTimes(2);
+    expect(page.selected()).toBeNull();
+    expect(page.drawerVisible).toBe(false);
+  });
+
+  it('offers a Delete button for every row of the table', () => {
+    const { page } = render();
+    const actions = page.columns.find((c: { header: string }) => c.header === 'Actions');
+
+    expect(actions.cellRendererParams.label(device())).toBe("Delete Ravi's phone");
+    actions.cellRendererParams.onAction(device());
+    expect(confirmations).toHaveLength(1);
   });
 
   it('unblocks without asking', () => {

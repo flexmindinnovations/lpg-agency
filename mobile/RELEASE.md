@@ -67,8 +67,9 @@ keyPassword=...
 flutter build appbundle --release --dart-define-from-file=dart_defines.local.json
 ```
 
-Without `key.properties` a release build is signed with the debug key, which
-the Play Console rejects.
+Without `key.properties` a release build is signed with the shared internal-test
+key (`mobile/signing/`, public password), which the Play Console rejects. Test
+APKs from CI use the same key, so a phone keeps its identity across builds.
 
 ### 4. Upload
 

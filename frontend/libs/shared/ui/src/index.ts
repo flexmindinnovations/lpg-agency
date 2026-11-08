@@ -17,6 +17,7 @@ export * from './lib/format/format';
 export * from './lib/format/markdown.pipe';
 export * from './lib/activity-cells/activity-cells';
 export * from './lib/status-chip-cell/status-chip-cell';
+export * from './lib/row-action-cell/row-action-cell';
 export * from './lib/preview-dialog/preview-dialog';
 export * from './lib/compliance-documents-panel/compliance-documents-panel';
 export * from './lib/directives/has-permission.directive';
