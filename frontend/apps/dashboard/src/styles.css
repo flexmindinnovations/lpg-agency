@@ -1045,6 +1045,34 @@ p-confirmpopup {
     color var(--motion-duration-small) var(--motion-easing-standard) !important;
 }
 
+/* A disabled switch must still read as on or off ("Always on" in-app
+   notifications). PrimeNG's own disabled colours are an almost-white track
+   with a grey handle, which looks like an empty pill in light mode and
+   vanishes in dark. On = the brand colour, muted, with a white handle;
+   off = a visible neutral track. Built from theme tokens, so both themes
+   follow. */
+.p-toggleswitch.p-disabled {
+  --p-toggleswitch-disabled-background: color-mix(
+    in srgb,
+    var(--color-text-secondary) 30%,
+    var(--color-surface-base)
+  );
+  --p-toggleswitch-handle-disabled-background: color-mix(
+    in srgb,
+    var(--color-text-secondary) 75%,
+    var(--color-surface-base)
+  );
+}
+
+.p-toggleswitch.p-disabled.p-toggleswitch-checked {
+  --p-toggleswitch-disabled-background: color-mix(
+    in srgb,
+    var(--color-action-primary) 55%,
+    var(--color-surface-base)
+  );
+  --p-toggleswitch-handle-disabled-background: #ffffff;
+}
+
 /* `rounded` buttons (the notification bell, row icon buttons) are round; the
    rule above would otherwise give them the same corners as a text button. */
 .p-button.p-button-rounded {
