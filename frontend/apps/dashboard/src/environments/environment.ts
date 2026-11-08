@@ -23,5 +23,16 @@ import type { Environment } from './environment.model';
  */
 export const environment: Environment = {
   production: false,
-  apiUrl: 'http://localhost:8000',
+  // Local development talks to the production droplet (owner's choice,
+  // 2026-11-08): `nx serve` reads and writes REAL production data.
+  //
+  // `apiUrl` is empty (same origin, exactly like production) and the dev
+  // server forwards `/api` to https://lpg.vitessetec.com
+  // (`apps/dashboard/proxy.conf.json`). Calling the droplet directly from
+  // http://localhost:4200 would be blocked by its CORS allow-list, which holds
+  // only its own origin.
+  //
+  // To use a local backend (`uv run uvicorn lpg.api.app:app --reload`) set
+  // this to 'http://localhost:8000' and the proxy is not needed.
+  apiUrl: '',
 };
