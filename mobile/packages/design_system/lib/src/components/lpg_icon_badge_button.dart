@@ -31,11 +31,23 @@ class LpgIconBadgeButton extends StatelessWidget {
       child: IconButton(
         tooltip: tooltip,
         onPressed: onPressed,
-        icon: Badge(
-          isLabelVisible: count > 0,
-          backgroundColor: colors.statusDanger,
-          label: Text(count > 99 ? '99+' : '$count'),
-          child: Icon(icon),
+        // The count pill is pinned to the icon's trailing edge (not placed by
+        // its leading edge, as Badge does with a child), so a wide label like
+        // "99+" grows inward and never runs off the screen edge.
+        icon: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(icon),
+            if (count > 0)
+              PositionedDirectional(
+                top: -4,
+                end: -6,
+                child: Badge(
+                  backgroundColor: colors.statusDanger,
+                  label: Text(count > 99 ? '99+' : '$count'),
+                ),
+              ),
+          ],
         ),
       ),
     );
