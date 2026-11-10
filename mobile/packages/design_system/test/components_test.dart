@@ -489,8 +489,12 @@ void main() {
       ),
     );
     final right = tester.getRect(find.text('99+')).right;
-    expect(right, lessThanOrEqualTo(tester.view.physicalSize.width /
-        tester.view.devicePixelRatio));
+    expect(
+      right,
+      lessThanOrEqualTo(
+        tester.view.physicalSize.width / tester.view.devicePixelRatio,
+      ),
+    );
   });
 
   test('LpgAvatar.initialsOf takes first and last initials', () {

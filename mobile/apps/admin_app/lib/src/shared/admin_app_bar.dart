@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../features/notifications/data/notifications_provider.dart';
 
+const _alertsLabel = 'Alerts';
+
 /// The app bar every top-level screen shares: the screen title, a search
 /// shortcut and the alerts bell with its unread count. Screens add their own
 /// [actions] before the two fixed ones.
@@ -60,7 +62,7 @@ class AdminAppBar extends ConsumerWidget implements PreferredSizeWidget {
             padding: const EdgeInsets.only(right: LpgSpacing.xs),
             child: LpgIconBadgeButton(
               icon: LpgIcons.notifications,
-              tooltip: 'Alerts',
+              tooltip: _alertsLabel,
               count: unread,
               onPressed: () => context.pushNamed('alerts'),
             ),
