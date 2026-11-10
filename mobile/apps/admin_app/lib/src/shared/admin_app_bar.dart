@@ -58,14 +58,10 @@ class AdminAppBar extends ConsumerWidget implements PreferredSizeWidget {
         if (showAlerts)
           Padding(
             padding: const EdgeInsets.only(right: LpgSpacing.xs),
-            child: IconButton(
-              tooltip: unread > 0 ? 'Alerts, $unread unread' : 'Alerts',
-              icon: unread > 0
-                  ? Badge(
-                      label: Text(unread > 99 ? '99+' : '$unread'),
-                      child: const Icon(LpgIcons.notifications),
-                    )
-                  : const Icon(LpgIcons.notifications),
+            child: LpgIconBadgeButton(
+              icon: LpgIcons.notifications,
+              tooltip: 'Alerts',
+              count: unread,
               onPressed: () => context.pushNamed('alerts'),
             ),
           ),

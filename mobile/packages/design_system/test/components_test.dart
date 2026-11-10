@@ -474,6 +474,25 @@ void main() {
     expect(find.bySemanticsLabel('Notifications, 3 unread'), findsOneWidget);
   });
 
+  testWidgets('LpgIconBadgeButton keeps a 99+ badge on screen', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        Align(
+          alignment: Alignment.topRight,
+          child: LpgIconBadgeButton(
+            icon: LpgIcons.notifications,
+            tooltip: 'Alerts',
+            count: 150,
+            onPressed: () {},
+          ),
+        ),
+      ),
+    );
+    final right = tester.getRect(find.text('99+')).right;
+    expect(right, lessThanOrEqualTo(tester.view.physicalSize.width /
+        tester.view.devicePixelRatio));
+  });
+
   test('LpgAvatar.initialsOf takes first and last initials', () {
     expect(LpgAvatar.initialsOf('Asha Rao'), 'AR');
     expect(LpgAvatar.initialsOf('  asha  '), 'A');

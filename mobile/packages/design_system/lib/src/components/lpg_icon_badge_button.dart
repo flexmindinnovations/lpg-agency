@@ -34,6 +34,10 @@ class LpgIconBadgeButton extends StatelessWidget {
         icon: Badge(
           isLabelVisible: count > 0,
           backgroundColor: colors.statusDanger,
+          // Anchor the badge's trailing edge to the icon (not its leading
+          // edge) so wide labels like "99+" grow inward and stay on screen.
+          alignment: AlignmentDirectional.topEnd,
+          offset: const Offset(4, -4),
           label: Text(count > 99 ? '99+' : '$count'),
           child: Icon(icon),
         ),
