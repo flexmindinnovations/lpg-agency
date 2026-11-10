@@ -121,14 +121,19 @@ import { visibleSettingsGroups } from './settings-sections';
          The scrollbar sits flush at the extreme right edge (right: 0). */
       .settings__content {
         min-inline-size: 0;
-        inline-size: 100%;
+        inline-size: calc(100% + var(--spacing-sm));
         block-size: 100%;
         min-block-size: 0;
         overflow-y: auto;
         padding-inline-end: var(--spacing-xl);
-        /* Room for the 1px outline PrimeNG draws around p-message banners; the
-           scroll container otherwise clips it along the top edge. */
-        padding-block-start: var(--spacing-xs);
+        /* Room for outlines: the 1px border PrimeNG draws around p-message
+           banners and the global focus ring (2px + 4px offset = 6px reach),
+           which this scroll container otherwise clips on the top and left.
+           The negative margins cancel the padding so nothing shifts. */
+        padding-block-start: var(--spacing-sm);
+        margin-block-start: calc(-1 * var(--spacing-sm));
+        padding-inline-start: var(--spacing-sm);
+        margin-inline-start: calc(-1 * var(--spacing-sm));
         padding-block-end: var(--spacing-xl);
         --card-border: none;
         --card-shadow: none;
