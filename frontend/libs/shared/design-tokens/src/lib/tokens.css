@@ -248,6 +248,13 @@ have always been hand-edited directly. Edit them here.
      dark 0.09 with the specks inverted to light. 0 in high contrast. */
   --paper-grain-image: url('/textures/paper-grain.png');
   --paper-grain-opacity: 0.04;
+  /* The grain tile is drawn small, so each speck reads as a fine glass dot
+     rather than a paper fibre (the tile itself is 256px). Two scales so the
+     pattern never reads as a repeat. */
+  --paper-grain-size: 112px;
+  --paper-grain-size-2: 336px;
+  /* Frosted sheen over the page colour (Mica/acrylic-like); 0 = none. */
+  --frost-sheen: 34%;
   --paper-grain-blur: 0px;
   --paper-grain-invert: 0;
   /* The grain softened once into mist (mobile LpgGrain.haze), laid UNDER the
@@ -431,6 +438,7 @@ have always been hand-edited directly. Edit them here.
   --surface-atmosphere: var(--color-surface-base);
   --surface-noise-opacity: 0;
   --paper-grain-opacity: 0.028;
+  --frost-sheen: 4%;
   --paper-grain-invert: 1;
   --paper-haze-opacity: 0.045;
   --paper-veil-color: var(--color-surface-base);
@@ -506,6 +514,7 @@ have always been hand-edited directly. Edit them here.
   --surface-atmosphere: none;
   --surface-noise-image: none;
   --paper-grain-opacity: 0;
+  --frost-sheen: 0%;
   --paper-haze-opacity: 0;
   --paper-veil-color: var(--color-surface-base);
   --glass-tint: var(--color-surface-base);
@@ -586,6 +595,7 @@ have always been hand-edited directly. Edit them here.
     --surface-atmosphere: var(--color-surface-base);
     --surface-noise-opacity: 0;
     --paper-grain-opacity: 0.028;
+    --frost-sheen: 4%;
     --paper-grain-invert: 1;
     --paper-haze-opacity: 0.045;
     --paper-veil-color: var(--color-surface-base);
