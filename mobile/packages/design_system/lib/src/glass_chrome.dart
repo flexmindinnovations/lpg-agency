@@ -97,13 +97,22 @@ class LpgGlassChrome extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.lpgColors;
     if (colors.isHighContrast) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: fill,
-          borderRadius: radius,
-          border: border,
-        ),
-        child: child,
+      return Stack(
+        fit: StackFit.passthrough,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: fill,
+                  borderRadius: radius,
+                  border: border,
+                ),
+              ),
+            ),
+          ),
+          child,
+        ],
       );
     }
     final tokens = LpgGlassTokens.of(colors);
@@ -116,13 +125,26 @@ class LpgGlassChrome extends StatelessWidget {
               ? alpha
               : (alpha > tokens.fallbackAlpha ? alpha : tokens.fallbackAlpha),
         );
-        final surface = DecoratedBox(
-          decoration: BoxDecoration(
-            color: tint,
-            borderRadius: radius,
-            border: border,
-          ),
-          child: content,
+        // The tint is a sibling layer under the content, not an ancestor
+        // decoration: Material widgets inside (ListTile, InkWell) paint on the
+        // nearest Material and an ancestor DecoratedBox with a colour would
+        // hide their ink.
+        final surface = Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: tint,
+                    borderRadius: radius,
+                    border: border,
+                  ),
+                ),
+              ),
+            ),
+            content!,
+          ],
         );
         return RepaintBoundary(
           child: ClipRRect(
