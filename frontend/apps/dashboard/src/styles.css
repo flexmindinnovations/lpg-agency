@@ -1502,6 +1502,64 @@ p-confirmpopup {
   }
 }
 
+/* Lines and outlines on glass. The default hairline colours were chosen for a
+   solid white page and nearly vanish on a frosted panel, so inside a panel
+   dividers, outlined buttons, inputs and close buttons use stronger edge
+   tokens (about 3:1 for edges that mark a control). */
+:is(
+  .p-drawer,
+  .p-dialog,
+  .p-popover,
+  .p-menu,
+  .p-tieredmenu,
+  .p-contextmenu,
+  .p-select-overlay,
+  .p-multiselect-overlay,
+  .p-datepicker-panel,
+  .p-autocomplete-overlay
+) {
+  --color-border-default: var(--glass-divider);
+  --color-border-strong: var(--glass-edge);
+}
+
+:is(
+    .p-drawer,
+    .p-dialog,
+    .p-popover,
+    .p-menu,
+    .p-tieredmenu,
+    .p-contextmenu,
+    .p-select-overlay,
+    .p-multiselect-overlay,
+    .p-datepicker-panel,
+    .p-autocomplete-overlay
+  )
+  .p-button-outlined {
+  border-color: var(--glass-edge) !important;
+}
+
+:is(
+    .p-drawer,
+    .p-dialog,
+    .p-popover,
+    .p-menu,
+    .p-tieredmenu,
+    .p-contextmenu,
+    .p-select-overlay,
+    .p-multiselect-overlay,
+    .p-datepicker-panel,
+    .p-autocomplete-overlay
+  )
+  .p-button-outlined.p-button-danger {
+  border-color: var(--glass-danger) !important;
+  color: var(--glass-danger) !important;
+}
+
+:is(.p-drawer-close-button, .p-dialog-close-button) {
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--glass-edge) !important;
+}
+
 /* One surface for everything inside a panel: tabs, their panels and lists sit
    on the panel's own frosted surface instead of painting a second background
    (white tabs inside a frosted drawer). */

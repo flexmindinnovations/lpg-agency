@@ -278,6 +278,9 @@ have always been hand-edited directly. Edit them here.
   --glass-tint-overlay: color-mix(in srgb, var(--color-surface-raised) 72%, transparent);
   --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
   --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-divider: #7a8394;
+  --glass-edge: #5b6575;
+  --glass-danger: #b91c1c;
   --glass-blur: 16px;
   --glass-saturate: 120%;
   --glass-grain-opacity: 0.065;
@@ -446,6 +449,9 @@ have always been hand-edited directly. Edit them here.
   --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 86%, transparent);
   --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
   --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-divider: rgba(255,255,255,0.26);
+  --glass-edge: rgba(255,255,255,0.5);
+  --glass-danger: #ff8a8a;
   --glass-saturate: 140%;
   --glass-grain-opacity: 0.08;
   --glass-grain-blend: soft-light;
@@ -521,6 +527,9 @@ have always been hand-edited directly. Edit them here.
   --glass-tint-overlay: var(--color-surface-base);
   --glass-fallback-tint: var(--color-surface-base);
   --glass-border: #000000;
+  --glass-divider: #000000;
+  --glass-edge: #000000;
+  --glass-danger: #b91c1c;
   --glass-blur: 0px;
   --glass-saturate: 100%;
   --glass-grain-opacity: 0;
@@ -603,6 +612,9 @@ have always been hand-edited directly. Edit them here.
     --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 86%, transparent);
     --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
     --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-divider: rgba(255,255,255,0.26);
+    --glass-edge: rgba(255,255,255,0.5);
+    --glass-danger: #ff8a8a;
     --glass-saturate: 140%;
     --glass-grain-opacity: 0.08;
     --glass-grain-blend: soft-light;
