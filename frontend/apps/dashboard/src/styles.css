@@ -1376,14 +1376,39 @@ p-confirmpopup {
    - Tint, border and grain are in CSS from the first paint (no JS-applied
      styles), and they follow the theme through the --glass-* tokens.
    ======================================================================== */
-:is(.glass, .p-drawer, .p-dialog, .p-toast-message) {
+:is(
+  .glass,
+  .p-drawer,
+  .p-dialog,
+  .p-toast-message,
+  .p-popover,
+  .p-menu,
+  .p-tieredmenu,
+  .p-contextmenu,
+  .p-select-overlay,
+  .p-multiselect-overlay,
+  .p-datepicker-panel,
+  .p-autocomplete-overlay
+) {
   --glass-surface: var(--glass-tint);
   background: var(--glass-fallback-tint) !important;
   border-color: var(--glass-border) !important;
   isolation: isolate;
 }
 
-:is(.p-drawer, .p-dialog, .p-toast-message) {
+:is(
+  .p-drawer,
+  .p-dialog,
+  .p-toast-message,
+  .p-popover,
+  .p-menu,
+  .p-tieredmenu,
+  .p-contextmenu,
+  .p-select-overlay,
+  .p-multiselect-overlay,
+  .p-datepicker-panel,
+  .p-autocomplete-overlay
+) {
   --glass-surface: var(--glass-tint-overlay);
 }
 
@@ -1412,7 +1437,20 @@ p-confirmpopup {
 }
 
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  :is(.glass, .p-drawer, .p-dialog, .p-toast-message) {
+  :is(
+    .glass,
+    .p-drawer,
+    .p-dialog,
+    .p-toast-message,
+    .p-popover,
+    .p-menu,
+    .p-tieredmenu,
+    .p-contextmenu,
+    .p-select-overlay,
+    .p-multiselect-overlay,
+    .p-datepicker-panel,
+    .p-autocomplete-overlay
+  ) {
     background: var(--glass-surface) !important;
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -1420,7 +1458,20 @@ p-confirmpopup {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  :is(.glass, .p-drawer, .p-dialog, .p-toast-message) {
+  :is(
+    .glass,
+    .p-drawer,
+    .p-dialog,
+    .p-toast-message,
+    .p-popover,
+    .p-menu,
+    .p-tieredmenu,
+    .p-contextmenu,
+    .p-select-overlay,
+    .p-multiselect-overlay,
+    .p-datepicker-panel,
+    .p-autocomplete-overlay
+  ) {
     background: var(--glass-fallback-tint) !important;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -1428,7 +1479,20 @@ p-confirmpopup {
 }
 
 @media print {
-  :is(.glass, .p-drawer, .p-dialog, .p-toast-message) {
+  :is(
+    .glass,
+    .p-drawer,
+    .p-dialog,
+    .p-toast-message,
+    .p-popover,
+    .p-menu,
+    .p-tieredmenu,
+    .p-contextmenu,
+    .p-select-overlay,
+    .p-multiselect-overlay,
+    .p-datepicker-panel,
+    .p-autocomplete-overlay
+  ) {
     background: var(--color-surface-base) !important;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -1436,6 +1500,13 @@ p-confirmpopup {
   :is(.p-toast-message, .glass--grain)::after {
     display: none;
   }
+}
+
+/* One surface for everything inside a panel: tabs, their panels and lists sit
+   on the panel's own frosted surface instead of painting a second background
+   (white tabs inside a frosted drawer). */
+:is(.p-tabs, .p-tablist, .p-tablist-content, .p-tablist-tab-list, .p-tabpanels, .p-tabpanel) {
+  background: transparent !important;
 }
 
 /* Floating panels — the profile menu / any popover, and select dropdowns.

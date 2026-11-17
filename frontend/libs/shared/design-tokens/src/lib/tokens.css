@@ -247,12 +247,12 @@ have always been hand-edited directly. Edit them here.
      "largest grain that keeps secondary text >= 4.55:1" idea: light 0.14,
      dark 0.09 with the specks inverted to light. 0 in high contrast. */
   --paper-grain-image: url('/textures/paper-grain.png');
-  --paper-grain-opacity: 0.04;
+  --paper-grain-opacity: 0.075;
   /* The grain tile is drawn small, so each speck reads as a fine glass dot
      rather than a paper fibre (the tile itself is 256px). Two scales so the
      pattern never reads as a repeat. */
-  --paper-grain-size: 56px;
-  --paper-grain-size-2: 168px;
+  --paper-grain-size: 96px;
+  --paper-grain-size-2: 288px;
   /* Frosted sheen over the page colour (Mica/acrylic-like); 0 = none. */
   --frost-sheen: 34%;
   --paper-grain-blur: 0px;
@@ -437,7 +437,7 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-shadow: var(--elevation-3);
   --surface-atmosphere: var(--color-surface-base);
   --surface-noise-opacity: 0;
-  --paper-grain-opacity: 0.028;
+  --paper-grain-opacity: 0.055;
   --frost-sheen: 4%;
   --paper-grain-invert: 1;
   --paper-haze-opacity: 0.045;
@@ -594,7 +594,7 @@ have always been hand-edited directly. Edit them here.
     --surface-acrylic-shadow: var(--elevation-3);
     --surface-atmosphere: var(--color-surface-base);
     --surface-noise-opacity: 0;
-    --paper-grain-opacity: 0.028;
+    --paper-grain-opacity: 0.055;
     --frost-sheen: 4%;
     --paper-grain-invert: 1;
     --paper-haze-opacity: 0.045;
