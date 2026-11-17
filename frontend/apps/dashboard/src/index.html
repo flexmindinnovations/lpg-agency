@@ -18,8 +18,189 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Boot loader: plain inline CSS so it paints before any bundle loads.
+         It lives INSIDE <lpg-root>, so Angular removes it when the app renders.
+         Colours mirror the theme tokens (page base + brand blue/orange). */
+      .boot {
+        --boot-bg: #e9edf2;
+        --boot-fg: #111827;
+        --boot-muted: #4b5563;
+        --boot-track: rgba(17, 24, 39, 0.1);
+        --boot-brand: #162b66;
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 20px;
+        background:
+          radial-gradient(circle min(110vw, 110vh) at 0 0, rgba(22, 43, 102, 0.09), transparent),
+          radial-gradient(
+            circle min(90vw, 90vh) at 100% 100%,
+            rgba(232, 89, 12, 0.08),
+            transparent
+          ),
+          var(--boot-bg);
+        color: var(--boot-fg);
+        font:
+          500 14px/1.4 Inter,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        text-align: center;
+      }
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme='light']):not([data-theme='high-contrast']) .boot {
+          --boot-bg: #0b1118;
+          --boot-fg: #e2e7ec;
+          --boot-muted: #7d8b99;
+          --boot-track: rgba(255, 255, 255, 0.12);
+          --boot-brand: #4f8df7;
+        }
+      }
+      html[data-theme='dark'] .boot {
+        --boot-bg: #0b1118;
+        --boot-fg: #e2e7ec;
+        --boot-muted: #7d8b99;
+        --boot-track: rgba(255, 255, 255, 0.12);
+        --boot-brand: #4f8df7;
+      }
+      html[data-theme='high-contrast'] .boot {
+        --boot-bg: #ffffff;
+        --boot-fg: #000000;
+        --boot-muted: #000000;
+        --boot-track: #000000;
+        --boot-brand: #0000ee;
+        background: #ffffff;
+      }
+      .boot__mark {
+        position: relative;
+        display: grid;
+        place-items: center;
+        inline-size: 72px;
+        block-size: 72px;
+      }
+      .boot__mark::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid var(--boot-brand);
+        opacity: 0.35;
+        animation: boot-ring 1.8s ease-out infinite;
+      }
+      .boot__flame {
+        inline-size: 40px;
+        block-size: 40px;
+        animation: boot-float 2.4s ease-in-out infinite;
+      }
+      .boot__name {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      .boot__hint {
+        margin: 2px 0 0;
+        color: var(--boot-muted);
+        font-size: 13px;
+      }
+      .boot__bar {
+        position: relative;
+        overflow: hidden;
+        inline-size: 160px;
+        block-size: 3px;
+        border-radius: 3px;
+        background: var(--boot-track);
+      }
+      .boot__bar::after {
+        content: '';
+        position: absolute;
+        inset-block: 0;
+        inline-size: 40%;
+        border-radius: 3px;
+        background: var(--boot-brand);
+        animation: boot-slide 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      @keyframes boot-ring {
+        0% {
+          transform: scale(0.75);
+          opacity: 0.5;
+        }
+        100% {
+          transform: scale(1.25);
+          opacity: 0;
+        }
+      }
+      @keyframes boot-float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-4px);
+        }
+      }
+      @keyframes boot-slide {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(250%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot__mark::before,
+        .boot__flame,
+        .boot__bar::after {
+          animation: none;
+        }
+        .boot__bar::after {
+          inline-size: 100%;
+          opacity: 0.5;
+        }
+      }
+    </style>
+    <script>
+      // Same stored choice the app's theme service reads, applied before first
+      // paint so the loader matches the theme (no light flash in dark mode).
+      try {
+        var t = localStorage.getItem('lpg.theme');
+        // 'system' leaves it to prefers-color-scheme; no stored choice defaults
+        // to dark, as the theme service does.
+        if (t !== 'system') {
+          document.documentElement.setAttribute(
+            'data-theme',
+            t === 'light' || t === 'high-contrast' ? t : 'dark',
+          );
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
-    <lpg-root></lpg-root>
+    <lpg-root>
+      <div class="boot" role="status" aria-live="polite" aria-label="Loading LPG Agency">
+        <div class="boot__mark" aria-hidden="true">
+          <svg class="boot__flame" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M12 2.5c.4 3.1-1.4 4.9-3.2 6.9C7.1 11.2 6 13 6 15.2 6 18.4 8.7 21 12 21s6-2.6 6-5.8c0-2.2-1-3.7-2.3-5.2-.4 1.2-1 1.9-1.9 2.3.5-3.6-.3-6.9-1.8-9.9Z"
+              fill="#e8590c"
+            />
+            <path
+              d="M12 21c-1.7 0-3-1.3-3-3 0-1.6 1.1-2.4 1.9-3.4.4-.5.8-1.1.9-1.9 1.9 1.4 3.2 3 3.2 5.3 0 1.7-1.3 3-3 3Z"
+              fill="#ffb26b"
+            />
+          </svg>
+        </div>
+        <div>
+          <p class="boot__name">LPG Agency</p>
+          <p class="boot__hint">Loading your dashboard…</p>
+        </div>
+        <div class="boot__bar" aria-hidden="true"></div>
+      </div>
+    </lpg-root>
   </body>
 </html>
