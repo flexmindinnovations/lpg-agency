@@ -1551,13 +1551,14 @@ p-confirmpopup {
     .p-autocomplete-overlay
   )
   .p-button-outlined.p-button-danger {
-  border-color: var(--glass-danger) !important;
+  border-color: color-mix(in srgb, var(--glass-danger) 55%, transparent) !important;
   color: var(--glass-danger) !important;
 }
 
 :is(.p-drawer-close-button, .p-dialog-close-button) {
   color: var(--color-text-primary) !important;
-  border: 1px solid var(--glass-edge) !important;
+  border: 1px solid var(--glass-divider) !important;
+  background: color-mix(in srgb, var(--color-text-primary) 5%, transparent) !important;
 }
 
 /* One surface for everything inside a panel: tabs, their panels and lists sit
