@@ -147,6 +147,16 @@ void main() {
   });
 
   group('LpgGlass', () {
+    // The app default is no live blur (it dropped frames); these tests cover
+    // the blur path, so they turn it on.
+    setUp(() => LpgGlassPolicy.blur.value = true);
+    tearDown(() => LpgGlassPolicy.blur.value = false);
+
+    test('live blur is off by default', () {
+      LpgGlassPolicy.blur.value = false;
+      expect(LpgGlassPolicy.blur.value, isFalse);
+    });
+
     testWidgets('a card-level glass is not blurred, in light and dark', (
       tester,
     ) async {
@@ -200,7 +210,6 @@ void main() {
       tester,
     ) async {
       LpgGlassPolicy.blur.value = false;
-      addTearDown(() => LpgGlassPolicy.blur.value = true);
       for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
         await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
 
@@ -215,13 +224,7 @@ void main() {
             .map((b) => (b.decoration as BoxDecoration).color)
             .whereType<Color>()
             .first;
-        expect(
-          fill.a,
-          greaterThanOrEqualTo(
-            LpgGlassTokens.of(LpgTheme.colorsFor(v)).fallbackAlpha,
-          ),
-          reason: '$v: fallback is nearly solid',
-        );
+        expect(fill.a, 1.0, reason: '$v: the surface is solid');
         expect(find.byType(CustomPaint), findsWidgets, reason: '$v: grain');
       }
     });
@@ -396,10 +399,12 @@ void main() {
     }
 
     for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
-      testWidgets('is frosted glass in ${v.name}', (tester) async {
+      testWidgets('is one solid surface, no live blur, in ${v.name}', (
+        tester,
+      ) async {
         await open(tester, v);
 
-        expect(find.byType(BackdropFilter), findsOneWidget);
+        expect(find.byType(BackdropFilter), findsNothing);
         expect(find.text('Deliver order'), findsOneWidget);
         expect(find.text('Body'), findsOneWidget);
         expect(find.byType(LpgSheetHandle), findsOneWidget);

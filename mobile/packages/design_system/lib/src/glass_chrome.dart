@@ -34,14 +34,14 @@ class LpgGlassTokens {
   static const light = LpgGlassTokens(
     blurSigma: 16,
     grainOpacity: 0.065,
-    grainBlend: BlendMode.softLight,
+    grainBlend: BlendMode.srcOver,
     fallbackAlpha: 0.92,
   );
 
   static const dark = LpgGlassTokens(
     blurSigma: 16,
     grainOpacity: 0.08,
-    grainBlend: BlendMode.softLight,
+    grainBlend: BlendMode.srcOver,
     fallbackAlpha: 0.92,
   );
 
@@ -62,7 +62,12 @@ class LpgGlassTokens {
 /// can switch it off, and every glass surface then shows its solid fallback
 /// tint with the same grain, with no re-mount. Never animated.
 abstract final class LpgGlassPolicy {
-  static final ValueNotifier<bool> blur = ValueNotifier(true);
+  ///
+  /// Off by default: a live blur of the whole screen behind a sheet or the bar
+  /// is re-run by the GPU on every frame of a sheet's slide and of a scroll,
+  /// which dropped frames on mid-range phones and showed colour bands. With it
+  /// off the bar and sheets are one solid surface with the grain.
+  static final ValueNotifier<bool> blur = ValueNotifier(false);
 }
 
 /// Frosted chrome: the backdrop blurred by the compositor, then a tint, then
@@ -121,9 +126,9 @@ class LpgGlassChrome extends StatelessWidget {
       child: _Grain(tokens: tokens, child: child),
       builder: (context, blurOn, content) {
         final tint = fill.withValues(
-          alpha: blurOn
-              ? alpha
-              : (alpha > tokens.fallbackAlpha ? alpha : tokens.fallbackAlpha),
+          // Solid when blur is off: nothing of the scrim or the page behind
+          // shows through, so the bar and a sheet are the same colour.
+          alpha: blurOn ? alpha : 1,
         );
         // The tint is a sibling layer under the content, not an ancestor
         // decoration: Material widgets inside (ListTile, InkWell) paint on the
