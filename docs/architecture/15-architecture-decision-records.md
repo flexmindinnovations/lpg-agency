@@ -1783,6 +1783,24 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 - **Match phones by something other than the Android ID** (serial, IMEI) - not readable by normal apps (ADR-072).
 - **Soft-delete only** - the point is to stop rows piling up.
 
+## ADR-074: Frosted Glass on Chrome Only, Blurred Live by the Compositor
+
+**Status:** Accepted (2026-11-17, owner request). Narrows the earlier "no backdrop blur" rules (web Phase 29 pull-back; mobile sheet change that removed the per-open screen capture).
+
+**Context:** Backdrop blur was removed twice for flicker on open (web) and dropped frames (mobile screen capture while a sheet slid up, blur on every card). The owner wants the One UI / iOS frosted look back, on top of the paper grain.
+
+**Decision:**
+- **Chrome only:** web header, sidebar, dialogs, drawers, toasts; mobile navigation bar and sheets. Never cards, rows, cells or fields.
+- **GPU/compositor blur only** (`backdrop-filter`, Flutter `BackdropFilter`): no bitmap capture, no JS or CPU blur. One filter per surface, clipped, in its own layer (`isolation: isolate` on web, `RepaintBoundary` on mobile). Blur radius is never animated or transitioned.
+- **Tokens** (`--glass-*`, `LpgGlassTokens`) sit beside the existing theme tokens, no new theme mechanism. Light/dark: blur 16, grain 0.065/0.08, tint from the surface tokens (bars 60/55%, overlays 88/94% because they sit over arbitrary content).
+- **Grain** is the existing tile, never generated at run time. On web the page's fixed grain layer already covers header and sidebar, so only surfaces above it carry their own.
+- **Fallback** (no support, reduced transparency, print, high contrast, or mobile `LpgGlassPolicy.blur` off): nearly solid tint plus the same grain.
+- **Contrast:** header/sidebar sit over the page only (>= 6.9:1 secondary text light, 5.3:1 dark). Overlays are tinted so secondary text stays >= 4.5:1 over realistic backdrops; the dark overlay reaches 4.3:1 only over a mid-grey/white backdrop because the existing dark secondary text colour is itself only 5.4:1 on the page.
+
+**Consequences:** Live blur costs raster time on low-end phones and was a prior jank source; it is limited to a few small surfaces and has one switch (`LpgGlassPolicy.blur`). Mobile has no saturation boost (no backdrop colour filter in Flutter). Device performance is unmeasured at merge time.
+
+**Alternatives Considered:** a pre-blurred snapshot (what mobile did; drops frames on open); blur on cards (too many layers); runtime noise (cost, flicker).
+
 ## Deferred Decisions
 
 Decisions deliberately left open, each with a defined trigger point:

@@ -166,22 +166,23 @@ void main() {
     });
 
     testWidgets(
-      'a sheet-level glass is frosted with no border, not blurred live',
+      'a sheet-level glass is blurred once by the compositor, tinted and grained, with no border',
       (tester) async {
         for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
           await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
 
-          // Without a screen picture the sheet is a solid fill: only the
-          // paper's grain over it, no full page painted underneath.
-          expect(_paperIn(LpgGlass), findsOneWidget, reason: '$v');
+          // One backdrop filter, clipped and in its own repaint boundary; no
+          // whole page painted under the sheet.
+          expect(find.byType(BackdropFilter), findsOneWidget, reason: '$v');
+          expect(_paperIn(LpgGlass), findsNothing, reason: '$v');
           expect(
-            tester
-                .widgetList<LpgBackdrop>(_paperIn(LpgGlass))
-                .where((b) => b.overlay),
-            hasLength(1),
-            reason: '$v: grain over the glass',
+            find.descendant(
+              of: find.byType(LpgGlass),
+              matching: find.byType(RepaintBoundary),
+            ),
+            findsWidgets,
+            reason: '$v',
           );
-          expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
           final borders = tester
               .widgetList<DecoratedBox>(
                 find.descendant(
@@ -194,6 +195,48 @@ void main() {
         }
       },
     );
+
+    testWidgets('falls back to the solid tint, same grain, when blur is off', (
+      tester,
+    ) async {
+      LpgGlassPolicy.blur.value = false;
+      addTearDown(() => LpgGlassPolicy.blur.value = true);
+      for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
+        await _pump(tester, v, const LpgGlass(child: SizedBox(width: 80)));
+
+        expect(find.byType(BackdropFilter), findsNothing, reason: '$v');
+        final fill = tester
+            .widgetList<DecoratedBox>(
+              find.descendant(
+                of: find.byType(LpgGlass),
+                matching: find.byType(DecoratedBox),
+              ),
+            )
+            .map((b) => (b.decoration as BoxDecoration).color)
+            .whereType<Color>()
+            .first;
+        expect(
+          fill.a,
+          greaterThanOrEqualTo(
+            LpgGlassTokens.of(LpgTheme.colorsFor(v)).fallbackAlpha,
+          ),
+          reason: '$v: fallback is nearly solid',
+        );
+        expect(find.byType(CustomPaint), findsWidgets, reason: '$v: grain');
+      }
+    });
+
+    test('glass tokens differ per theme and stay in the grain budget', () {
+      final light = LpgGlassTokens.of(
+        LpgTheme.colorsFor(LpgThemeVariant.light),
+      );
+      final dark = LpgGlassTokens.of(LpgTheme.colorsFor(LpgThemeVariant.dark));
+
+      expect(light.blurSigma, 16);
+      expect(dark.blurSigma, 16);
+      expect(light.grainOpacity, inInclusiveRange(0.05, 0.08));
+      expect(dark.grainOpacity, inInclusiveRange(0.06, 0.10));
+    });
 
     testWidgets('is a solid surface, with no paper, in high contrast', (
       tester,
@@ -353,13 +396,10 @@ void main() {
     }
 
     for (final v in [LpgThemeVariant.light, LpgThemeVariant.dark]) {
-      testWidgets('is frosted, with no live blur, in ${v.name}', (
-        tester,
-      ) async {
+      testWidgets('is frosted glass in ${v.name}', (tester) async {
         await open(tester, v);
 
-        expect(find.byType(BackdropFilter), findsNothing);
-        expect(_paperIn(LpgGlass), findsOneWidget);
+        expect(find.byType(BackdropFilter), findsOneWidget);
         expect(find.text('Deliver order'), findsOneWidget);
         expect(find.text('Body'), findsOneWidget);
         expect(find.byType(LpgSheetHandle), findsOneWidget);
