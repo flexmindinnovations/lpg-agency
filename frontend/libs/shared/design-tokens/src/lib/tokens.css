@@ -251,8 +251,8 @@ have always been hand-edited directly. Edit them here.
   /* The grain tile is drawn small, so each speck reads as a fine glass dot
      rather than a paper fibre (the tile itself is 256px). Two scales so the
      pattern never reads as a repeat. */
-  --paper-grain-size: 112px;
-  --paper-grain-size-2: 336px;
+  --paper-grain-size: 56px;
+  --paper-grain-size-2: 168px;
   /* Frosted sheen over the page colour (Mica/acrylic-like); 0 = none. */
   --frost-sheen: 34%;
   --paper-grain-blur: 0px;
