@@ -234,6 +234,8 @@ void main() {
       'lpg_backdrop.dart',
       // The one place glass fills are made (glass_test.dart sizes them).
       'glass.dart',
+      // Glass chrome's tint from the contrast-sized alpha (glass_test.dart).
+      'glass_chrome.dart',
     };
 
     Iterable<File> sources() sync* {
@@ -273,14 +275,17 @@ void main() {
       expect(offenders, isEmpty);
     });
 
-    test('nothing blurs what is behind it', () {
-      // A backdrop blur redrawn every frame of a scroll or a sheet's slide
-      // is what made them drop frames (5.28).
+    test('only glass chrome blurs what is behind it', () {
+      // A backdrop blur per card or list row, redrawn every frame of a
+      // scroll, is what made lists drop frames (5.28). Live blur is allowed
+      // for chrome only (the navigation bar, sheets), and only through
+      // `LpgGlassChrome`: one clipped, repaint-bounded filter per surface.
       final offenders = [
         for (final f in sources())
-          if (RegExp(
-            r'BackdropFilter|ImageFiltered',
-          ).hasMatch(f.readAsStringSync()))
+          if (f.uri.pathSegments.last != 'glass_chrome.dart' &&
+              RegExp(
+                r'BackdropFilter|ImageFiltered',
+              ).hasMatch(f.readAsStringSync()))
             f.path,
       ];
 
@@ -296,6 +301,7 @@ void main() {
           if (!{
                 'grain.dart',
                 'glass_snapshot.dart',
+                'glass_chrome.dart',
               }.contains(f.uri.pathSegments.last) &&
               RegExp(r'ImageFilter\.blur').hasMatch(f.readAsStringSync()))
             f.path,

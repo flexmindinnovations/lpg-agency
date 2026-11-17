@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../glass.dart';
+import '../glass_chrome.dart';
 import '../haptics.dart';
 import '../layout.dart';
 import '../motion.dart';
@@ -110,17 +111,16 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
     final labelStyle = (context.lpgText.labelLarge ?? const TextStyle())
         .copyWith(fontWeight: FontWeight.w700);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        // See-through, like a card: the page shows softly through the bar.
-        color: colors.barGlass,
-        border: Border(
-          top: BorderSide(
-            color: colors.isHighContrast
-                ? colors.borderStrong
-                : colors.borderDefault,
-            width: colors.isHighContrast ? 2 : 1,
-          ),
+    return LpgGlassChrome(
+      // Frosted: the page blurred under a contrast-safe tint and the grain.
+      fill: colors.card,
+      alpha: LpgGlassLook.of(colors).barAlpha,
+      border: Border(
+        top: BorderSide(
+          color: colors.isHighContrast
+              ? colors.borderStrong
+              : colors.borderDefault,
+          width: colors.isHighContrast ? 2 : 1,
         ),
       ),
       // The bar's height is fixed, so cap the system font scale inside it

@@ -73,7 +73,7 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       }
       <div
         id="shell-sidebar"
-        class="shell__sidebar-wrapper"
+        class="shell__sidebar-wrapper glass"
         [attr.inert]="isPhone() && !navOpen() ? '' : null"
       >
         <nav class="shell__sidebar" aria-label="Main navigation">
@@ -179,7 +179,7 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       </div>
 
       <div class="shell__content">
-        <header class="shell__header">
+        <header class="shell__header glass">
           <button
             type="button"
             class="shell__menu-button"
@@ -272,8 +272,7 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         flex-direction: column;
         inline-size: var(--component-app-shell-sidebar-width);
         flex-shrink: 0;
-        background: var(--surface-mica);
-        border-inline-end: var(--border-width) solid var(--surface-mica-border);
+        border-inline-end: var(--border-width) solid var(--glass-border);
         transition: inline-size var(--motion-duration-medium) var(--motion-easing-emphasized);
         z-index: 10;
       }
@@ -580,8 +579,9 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         justify-content: flex-end;
         min-block-size: 64px;
         padding: var(--spacing-xs) var(--spacing-xl);
-        border-block-end: var(--border-width) solid var(--surface-mica-border);
-        background: var(--surface-mica);
+        border-block-end: var(--border-width) solid var(--glass-border);
+        /* Glass (tint + blur) comes from the global .glass utility. */
+        transform: translateZ(0);
         flex-shrink: 0;
         gap: var(--spacing-md);
       }

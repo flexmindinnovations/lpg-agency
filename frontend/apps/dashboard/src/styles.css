@@ -1338,6 +1338,86 @@ p-confirmpopup {
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
+/* ========================================================================
+   GLASS (frosted chrome)
+
+   Header, sidebar, dialogs, drawers and toasts only; never cards, rows or
+   table cells. Layer order, bottom to top: page paper (body::before + page
+   colour), glass (tint + backdrop blur), grain, content.
+   - The grain is the one paper tile. Chrome that sits UNDER the global fixed
+     grain layer (header, sidebar) already gets it, unblurred, from
+     body::after, so it carries no second copy. Surfaces ABOVE that layer
+     (dialogs, drawers: existing ::after rule above; toasts: below; and any
+     .glass--grain element) carry their own, with the glass tokens.
+   - The base rule is the fallback (a nearly solid tint), so before support
+     is known, without backdrop-filter, or when the user asks for less
+     transparency, nothing is ever see-through without a blur. Blur is only
+     ever set here, never transitioned or animated; surfaces fade with opacity.
+   - Tint, border and grain are in CSS from the first paint (no JS-applied
+     styles), and they follow the theme through the --glass-* tokens.
+   ======================================================================== */
+:is(.glass, .p-drawer, .p-dialog, .p-toast-message) {
+  --glass-surface: var(--glass-tint);
+  background: var(--glass-fallback-tint) !important;
+  border-color: var(--glass-border) !important;
+  isolation: isolate;
+}
+
+:is(.p-drawer, .p-dialog, .p-toast-message) {
+  --glass-surface: var(--glass-tint-overlay);
+}
+
+.p-toast-message,
+.glass--grain {
+  position: relative;
+}
+
+:is(.p-toast-message, .glass--grain)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: var(--paper-grain-image), var(--paper-grain-image);
+  background-size:
+    256px 256px,
+    768px 768px;
+  background-position:
+    0 0,
+    37px 91px;
+  opacity: var(--glass-grain-opacity);
+  mix-blend-mode: var(--glass-grain-blend);
+  filter: invert(var(--paper-grain-invert));
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :is(.glass, .p-drawer, .p-dialog, .p-toast-message) {
+    background: var(--glass-surface) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :is(.glass, .p-drawer, .p-dialog, .p-toast-message) {
+    background: var(--glass-fallback-tint) !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media print {
+  :is(.glass, .p-drawer, .p-dialog, .p-toast-message) {
+    background: var(--color-surface-base) !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  :is(.p-toast-message, .glass--grain)::after {
+    display: none;
+  }
+}
+
 /* Floating panels — the profile menu / any popover, and select dropdowns.
    The preset supplies the solid background + border via overlay.popover /
    overlay.select; this just adds the shadow. */

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'components/lpg_backdrop.dart';
+import 'glass_chrome.dart';
 import 'glass_snapshot.dart';
 import 'layout.dart';
 import 'surface.dart';
@@ -237,14 +238,26 @@ class LpgGlass extends StatelessWidget {
         ),
       );
     }
+    if (backdrop == null) {
+      // Live frosted glass: the screen behind the sheet, blurred by the
+      // compositor (the blur radius never animates, the sheet only moves),
+      // under the contrast-safe tint and the paper's grain. With blur off
+      // (see LpgGlassPolicy) it is the same tint, more opaque, with the same
+      // grain.
+      return LpgGlassChrome(
+        fill: colors.sheet,
+        alpha: LpgGlassLook.of(colors).sheetAlpha,
+        radius: shape,
+        child: content,
+      );
+    }
     return ClipRRect(
       borderRadius: shape,
-      // A solid sheet hides the page paper, so it is not painted under it.
-      child: backdrop == null
-          ? _FrostedSheet(backdrop: backdrop, child: content)
-          : LpgBackdrop(
-              child: _FrostedSheet(backdrop: backdrop, child: content),
-            ),
+      // The snapshot path: the picture is a screen, so the page's paper sits
+      // under it.
+      child: LpgBackdrop(
+        child: _FrostedSheet(backdrop: backdrop, child: content),
+      ),
     );
   }
 }

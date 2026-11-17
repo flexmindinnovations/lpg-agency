@@ -260,6 +260,21 @@ have always been hand-edited directly. Edit them here.
      page colour. --paper-veil is its strength (0% = none). */
   --paper-veil: 80%;
   --paper-veil-color: #e9edf2;
+  /* ---- Glass (frosted chrome: header, sidebar, dialogs, drawers, toasts) ----
+     Tints come from the surface tokens (same colour, added alpha) so glass
+     matches the palette in both themes. Used by the .glass utility and the
+     overlay rules in the dashboard styles.css; the paper grain itself is the
+     shared tile above. -tint-overlay is more opaque: a dialog or drawer sits
+     over arbitrary page content, so its text needs the worst case (a black
+     word blurred behind it) to stay >= 4.5:1. */
+  --glass-tint: color-mix(in srgb, var(--color-surface-raised) 60%, transparent);
+  --glass-tint-overlay: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+  --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-blur: 16px;
+  --glass-saturate: 120%;
+  --glass-grain-opacity: 0.065;
+  --glass-grain-blend: soft-light;
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
@@ -419,6 +434,13 @@ have always been hand-edited directly. Edit them here.
   --paper-grain-invert: 1;
   --paper-haze-opacity: 0.07;
   --paper-veil-color: var(--color-surface-base);
+  --glass-tint: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
+  --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 94%, transparent);
+  --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-saturate: 140%;
+  --glass-grain-opacity: 0.08;
+  --glass-grain-blend: soft-light;
   /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
      text on it is only 3.2:1. #2864cc gives white text 5.7:1. */
   --component-button-primary-background: #2864cc;
@@ -486,6 +508,13 @@ have always been hand-edited directly. Edit them here.
   --paper-grain-opacity: 0;
   --paper-haze-opacity: 0;
   --paper-veil-color: var(--color-surface-base);
+  --glass-tint: var(--color-surface-base);
+  --glass-tint-overlay: var(--color-surface-base);
+  --glass-fallback-tint: var(--color-surface-base);
+  --glass-border: #000000;
+  --glass-blur: 0px;
+  --glass-saturate: 100%;
+  --glass-grain-opacity: 0;
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
@@ -560,6 +589,13 @@ have always been hand-edited directly. Edit them here.
     --paper-grain-invert: 1;
     --paper-haze-opacity: 0.07;
     --paper-veil-color: var(--color-surface-base);
+    --glass-tint: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
+    --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 94%, transparent);
+    --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-saturate: 140%;
+    --glass-grain-opacity: 0.08;
+    --glass-grain-blend: soft-light;
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
