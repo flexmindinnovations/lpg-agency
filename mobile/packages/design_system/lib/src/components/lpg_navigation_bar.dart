@@ -113,7 +113,7 @@ class _LpgNavigationBarState extends State<LpgNavigationBar>
 
     return LpgGlassChrome(
       // Frosted: the page blurred under a contrast-safe tint and the grain.
-      fill: colors.card,
+      fill: colors.sheet,
       alpha: LpgGlassLook.of(colors).barAlpha,
       border: Border(
         top: BorderSide(
