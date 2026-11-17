@@ -1319,6 +1319,19 @@ p-confirmpopup {
   font-size: var(--typography-body-small-font-size) !important;
 }
 
+/* The status icon stays beside the FIRST line when the text wraps (top-left),
+   instead of floating in the middle of a tall banner. */
+.p-message .p-message-content,
+.p-toast-message .p-toast-message-content {
+  align-items: flex-start !important;
+}
+
+.p-message .p-message-icon,
+.p-toast-message .p-toast-message-icon {
+  flex-shrink: 0;
+  margin-block-start: 0.125rem;
+}
+
 /* Toast refinements. Toasts sit bottom-right (set once on <p-toast> in the
    shells, so no page can place one differently). The <p-toast> host IS the
    fixed container (PrimeNG puts .p-toast on the host), so it must never be
