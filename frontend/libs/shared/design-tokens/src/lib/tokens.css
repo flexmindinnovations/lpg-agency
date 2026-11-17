@@ -247,12 +247,12 @@ have always been hand-edited directly. Edit them here.
      "largest grain that keeps secondary text >= 4.55:1" idea: light 0.14,
      dark 0.09 with the specks inverted to light. 0 in high contrast. */
   --paper-grain-image: url('/textures/paper-grain.png');
-  --paper-grain-opacity: 0.075;
+  --paper-grain-opacity: 0.05;
   /* The grain tile is drawn small, so each speck reads as a fine glass dot
      rather than a paper fibre (the tile itself is 256px). Two scales so the
      pattern never reads as a repeat. */
-  --paper-grain-size: 96px;
-  --paper-grain-size-2: 288px;
+  --paper-grain-size: 72px;
+  --paper-grain-size-2: 216px;
   /* Frosted sheen over the page colour (Mica/acrylic-like); 0 = none. */
   --frost-sheen: 34%;
   --paper-grain-blur: 0px;
@@ -278,8 +278,8 @@ have always been hand-edited directly. Edit them here.
   --glass-tint-overlay: color-mix(in srgb, var(--color-surface-raised) 72%, transparent);
   --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
   --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-divider: #7a8394;
-  --glass-edge: #5b6575;
+  --glass-divider: rgba(15, 23, 42, 0.1);
+  --glass-edge: rgba(15, 23, 42, 0.2);
   --glass-danger: #b91c1c;
   --glass-blur: 16px;
   --glass-saturate: 120%;
@@ -440,7 +440,7 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-shadow: var(--elevation-3);
   --surface-atmosphere: var(--color-surface-base);
   --surface-noise-opacity: 0;
-  --paper-grain-opacity: 0.055;
+  --paper-grain-opacity: 0.04;
   --frost-sheen: 4%;
   --paper-grain-invert: 1;
   --paper-haze-opacity: 0.045;
@@ -449,8 +449,8 @@ have always been hand-edited directly. Edit them here.
   --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 86%, transparent);
   --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-divider: rgba(255,255,255,0.26);
-  --glass-edge: rgba(255,255,255,0.5);
+  --glass-divider: rgba(255, 255, 255, 0.09);
+  --glass-edge: rgba(255, 255, 255, 0.18);
   --glass-danger: #ff8a8a;
   --glass-saturate: 140%;
   --glass-grain-opacity: 0.08;
@@ -603,7 +603,7 @@ have always been hand-edited directly. Edit them here.
     --surface-acrylic-shadow: var(--elevation-3);
     --surface-atmosphere: var(--color-surface-base);
     --surface-noise-opacity: 0;
-    --paper-grain-opacity: 0.055;
+    --paper-grain-opacity: 0.04;
     --frost-sheen: 4%;
     --paper-grain-invert: 1;
     --paper-haze-opacity: 0.045;
@@ -612,8 +612,8 @@ have always been hand-edited directly. Edit them here.
     --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 86%, transparent);
     --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
     --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-divider: rgba(255,255,255,0.26);
-    --glass-edge: rgba(255,255,255,0.5);
+    --glass-divider: rgba(255, 255, 255, 0.09);
+    --glass-edge: rgba(255, 255, 255, 0.18);
     --glass-danger: #ff8a8a;
     --glass-saturate: 140%;
     --glass-grain-opacity: 0.08;
