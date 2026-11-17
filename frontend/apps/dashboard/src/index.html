@@ -20,7 +20,8 @@
     />
     <style>
       /* Boot loader: plain inline CSS so it paints before any bundle loads.
-         It lives INSIDE <lpg-root>, so Angular removes it when the app renders.
+         It sits beside <lpg-root> and main.ts fades it out once the app has
+         rendered its first route and is idle (and it has shown for a moment).
          Colours mirror the theme tokens (page base + brand blue/orange). */
       .boot {
         --boot-bg: #e9edf2;
@@ -30,6 +31,8 @@
         --boot-brand: #162b66;
         position: fixed;
         inset: 0;
+        z-index: 2147483000;
+        transition: opacity 0.3s ease;
         display: grid;
         place-content: center;
         justify-items: center;
@@ -75,6 +78,10 @@
         --boot-track: #000000;
         --boot-brand: #0000ee;
         background: #ffffff;
+      }
+      .boot--leaving {
+        opacity: 0;
+        pointer-events: none;
       }
       .boot__mark {
         position: relative;
@@ -153,6 +160,9 @@
         }
       }
       @media (prefers-reduced-motion: reduce) {
+        .boot {
+          transition: none;
+        }
         .boot__mark::before,
         .boot__flame,
         .boot__bar::after {
@@ -181,26 +191,25 @@
     </script>
   </head>
   <body>
-    <lpg-root>
-      <div class="boot" role="status" aria-live="polite" aria-label="Loading LPG Agency">
-        <div class="boot__mark" aria-hidden="true">
-          <svg class="boot__flame" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2.5c.4 3.1-1.4 4.9-3.2 6.9C7.1 11.2 6 13 6 15.2 6 18.4 8.7 21 12 21s6-2.6 6-5.8c0-2.2-1-3.7-2.3-5.2-.4 1.2-1 1.9-1.9 2.3.5-3.6-.3-6.9-1.8-9.9Z"
-              fill="#e8590c"
-            />
-            <path
-              d="M12 21c-1.7 0-3-1.3-3-3 0-1.6 1.1-2.4 1.9-3.4.4-.5.8-1.1.9-1.9 1.9 1.4 3.2 3 3.2 5.3 0 1.7-1.3 3-3 3Z"
-              fill="#ffb26b"
-            />
-          </svg>
-        </div>
-        <div>
-          <p class="boot__name">LPG Agency</p>
-          <p class="boot__hint">Loading your dashboard…</p>
-        </div>
-        <div class="boot__bar" aria-hidden="true"></div>
+    <lpg-root></lpg-root>
+    <div class="boot" role="status" aria-live="polite" aria-label="Loading LPG Agency">
+      <div class="boot__mark" aria-hidden="true">
+        <svg class="boot__flame" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 2.5c.4 3.1-1.4 4.9-3.2 6.9C7.1 11.2 6 13 6 15.2 6 18.4 8.7 21 12 21s6-2.6 6-5.8c0-2.2-1-3.7-2.3-5.2-.4 1.2-1 1.9-1.9 2.3.5-3.6-.3-6.9-1.8-9.9Z"
+            fill="#e8590c"
+          />
+          <path
+            d="M12 21c-1.7 0-3-1.3-3-3 0-1.6 1.1-2.4 1.9-3.4.4-.5.8-1.1.9-1.9 1.9 1.4 3.2 3 3.2 5.3 0 1.7-1.3 3-3 3Z"
+            fill="#ffb26b"
+          />
+        </svg>
       </div>
-    </lpg-root>
+      <div>
+        <p class="boot__name">LPG Agency</p>
+        <p class="boot__hint">Loading your dashboard…</p>
+      </div>
+      <div class="boot__bar" aria-hidden="true"></div>
+    </div>
   </body>
 </html>
