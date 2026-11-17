@@ -247,13 +247,13 @@ have always been hand-edited directly. Edit them here.
      "largest grain that keeps secondary text >= 4.55:1" idea: light 0.14,
      dark 0.09 with the specks inverted to light. 0 in high contrast. */
   --paper-grain-image: url('/textures/paper-grain.png');
-  --paper-grain-opacity: 0.075;
+  --paper-grain-opacity: 0.04;
   --paper-grain-blur: 0px;
   --paper-grain-invert: 0;
   /* The grain softened once into mist (mobile LpgGrain.haze), laid UNDER the
      content by body::before so see-through cards and chrome show it. */
   --paper-haze-image: url('/textures/paper-haze.png');
-  --paper-haze-opacity: 0.1;
+  --paper-haze-opacity: 0.06;
   /* A veil laid OVER that mist and under the content, so the noise shows through
      more softly. In light mode it is a soft blue-grey, so the white section
      cards stand out from the page; dark mode and high contrast use the plain
@@ -430,9 +430,9 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-shadow: var(--elevation-3);
   --surface-atmosphere: var(--color-surface-base);
   --surface-noise-opacity: 0;
-  --paper-grain-opacity: 0.045;
+  --paper-grain-opacity: 0.028;
   --paper-grain-invert: 1;
-  --paper-haze-opacity: 0.07;
+  --paper-haze-opacity: 0.045;
   --paper-veil-color: var(--color-surface-base);
   --glass-tint: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
   --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 86%, transparent);
@@ -585,9 +585,9 @@ have always been hand-edited directly. Edit them here.
     --surface-acrylic-shadow: var(--elevation-3);
     --surface-atmosphere: var(--color-surface-base);
     --surface-noise-opacity: 0;
-    --paper-grain-opacity: 0.045;
+    --paper-grain-opacity: 0.028;
     --paper-grain-invert: 1;
-    --paper-haze-opacity: 0.07;
+    --paper-haze-opacity: 0.045;
     --paper-veil-color: var(--color-surface-base);
     --glass-tint: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
     --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 86%, transparent);

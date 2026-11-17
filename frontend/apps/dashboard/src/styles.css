@@ -128,12 +128,12 @@ body::after {
    two soft glows of the brand colours, blue top-left and orange bottom-right,
    plus the grain softened into mist. Without them the see-through cards sit on a flat
    colour and just look washed out. Plain gradients on a fixed layer, nothing
-   blurred at run time. The strength is the mobile one (7% light, 12% dark;
+   blurred at run time. The strength is now stronger than the mobile one (13% light, 20% dark, so the grain reads less;
    dark is --paper-grain-invert: 1) and switches off with the grain in high
    contrast (--paper-haze-opacity: 0). */
 html {
   --page-wash: calc(
-    (7% + 5% * var(--paper-grain-invert)) * min(1, var(--paper-haze-opacity) * 100)
+    (13% + 7% * var(--paper-grain-invert)) * min(1, var(--paper-haze-opacity) * 100)
   );
 }
 
