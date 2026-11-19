@@ -138,7 +138,6 @@ const DEVICE_CONTROL_KEY = 'device_control';
           [rows]="devices()"
           [columns]="columns"
           [loading]="loading()"
-          [pageSize]="15"
           ariaLabel="Linked devices"
           emptyTitle="No phones here"
           [emptyMessage]="emptyMessage()"
