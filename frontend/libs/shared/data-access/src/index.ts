@@ -36,6 +36,7 @@ export * from './lib/tdt-rating.service';
 export * from './lib/cylinder-unit.service';
 export * from './lib/inventory.service';
 export * from './lib/dashboard.service';
+export * from './lib/reporting.service';
 export * from './lib/order.service';
 export * from './lib/cylinder-ledger.service';
 export * from './lib/ai-assistant.service';

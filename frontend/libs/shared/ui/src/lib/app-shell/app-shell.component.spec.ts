@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, type Routes } from '@angular/router';
 import { BreakpointObserver, type BreakpointState } from '@angular/cdk/layout';
 import { of } from 'rxjs';
 import { AppShellComponent } from './app-shell.component';
@@ -9,7 +9,11 @@ const navGroups: readonly NavGroup[] = [
   { label: 'Overview', items: [{ label: 'Dashboard', icon: 'pi pi-home', route: '/' }] },
 ];
 
-function render(width: 'phone' | 'tablet' | 'desktop') {
+function render(
+  width: 'phone' | 'tablet' | 'desktop',
+  routes: Routes = [],
+  groups: readonly NavGroup[] = navGroups,
+) {
   const matches = (query: string) =>
     query.includes('767')
       ? width === 'phone'
@@ -18,7 +22,7 @@ function render(width: 'phone' | 'tablet' | 'desktop') {
         : false;
   TestBed.configureTestingModule({
     providers: [
-      provideRouter([]),
+      provideRouter(routes),
       {
         provide: BreakpointObserver,
         useValue: {
@@ -29,7 +33,7 @@ function render(width: 'phone' | 'tablet' | 'desktop') {
     ],
   });
   const fixture = TestBed.createComponent(AppShellComponent);
-  fixture.componentRef.setInput('navGroups', navGroups);
+  fixture.componentRef.setInput('navGroups', groups);
   fixture.detectChanges();
   return { fixture, el: fixture.nativeElement as HTMLElement };
 }
@@ -70,5 +74,32 @@ describe('AppShellComponent', () => {
     const { el } = render('desktop');
     expect(el.querySelector('.shell')?.classList).not.toContain('shell--collapsed');
     expect(el.querySelector('.shell__nav-label')?.textContent).toContain('Dashboard');
+  });
+
+  it('lights the clicked item at once, while its page is still loading, and not a second one', () => {
+    const groups: readonly NavGroup[] = [
+      {
+        items: [
+          { label: 'Home', icon: 'pi pi-home', route: '/home', exact: true },
+          { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders' },
+        ],
+      },
+    ];
+    const never = new Promise<never>(() => undefined);
+    const { fixture, el } = render(
+      'desktop',
+      [
+        { path: 'home', children: [] },
+        { path: 'orders', loadComponent: () => never },
+      ],
+      groups,
+    );
+    const links = () => [...el.querySelectorAll<HTMLAnchorElement>('.shell__nav-link')];
+
+    links()[1].click();
+    fixture.detectChanges();
+
+    expect(links().map((link) => link.classList.contains('is-active'))).toEqual([false, true]);
+    expect(links()[1].getAttribute('aria-current')).toBe('page');
   });
 });

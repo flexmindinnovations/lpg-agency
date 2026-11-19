@@ -91,7 +91,7 @@
   transition:
     background-color 200ms ease,
     border-color 200ms ease;
-  background-color: var(--color-surface-base);
+  background-color: var(--surface-inset);
 }
 
 .notification-item--unread {

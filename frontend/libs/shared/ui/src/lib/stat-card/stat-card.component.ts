@@ -66,6 +66,7 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
       @if (trendPoints().length > 1 && !loading()) {
         <svg
           class="stat-card__spark"
+          [class.stat-card__spark--draw]="animateTrend()"
           viewBox="0 0 100 32"
           preserveAspectRatio="none"
           aria-hidden="true"
@@ -81,7 +82,11 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
         display: block;
       }
 
+      /* Fills its grid cell, so tiles in a row are the same height whether or
+         not they have a delta or a trend line. */
       .stat-card {
+        block-size: 100%;
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
@@ -207,6 +212,22 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
         overflow: visible;
       }
 
+      /* The line draws in from the left once, when the tile first shows data. */
+      @media (prefers-reduced-motion: no-preference) {
+        .stat-card__spark--draw {
+          animation: stat-spark-draw 900ms var(--motion-easing-emphasized) both;
+        }
+      }
+
+      @keyframes stat-spark-draw {
+        from {
+          clip-path: inset(-4px 100% -4px 0);
+        }
+        to {
+          clip-path: inset(-4px -4px -4px 0);
+        }
+      }
+
       .stat-card__spark polyline {
         fill: none;
         stroke: var(--color-action-primary);
@@ -237,6 +258,9 @@ export class StatCardComponent {
   /** Values for the mini trend line, oldest → newest. */
   readonly trend = input<readonly number[]>([]);
   readonly loading = input<boolean>(false);
+  /** Whether the trend line draws itself in. Off when the card is only being
+   *  shown again, so a return visit does not replay it. */
+  readonly animateTrend = input<boolean>(true);
 
   protected readonly trendPoints = computed(() => this.trend().filter((n) => Number.isFinite(n)));
 

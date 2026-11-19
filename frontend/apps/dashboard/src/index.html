@@ -82,26 +82,61 @@
         opacity: 0;
         pointer-events: none;
       }
+      /* A gas burner lighting: a spark, a blue crown, then the flame grows and
+         keeps flickering. Each part is its own layer animated with transform
+         and opacity only, so the browser runs it off the main thread and it
+         stays smooth while the app bundle is still parsing. Every layer's
+         resting style is the lit burner, so reduced motion shows that. */
       .boot__mark {
         position: relative;
-        display: grid;
-        place-items: center;
-        inline-size: 72px;
-        block-size: 72px;
+        inline-size: 96px;
+        block-size: 96px;
       }
       .boot__mark::before {
         content: '';
         position: absolute;
-        inset: 0;
+        inset: -10px;
         border-radius: 50%;
-        border: 2px solid var(--boot-brand);
-        opacity: 0.35;
-        animation: boot-ring 1.8s ease-out infinite;
+        background: radial-gradient(circle, rgba(255, 140, 40, 0.38), transparent 68%);
+        will-change: opacity;
+        animation:
+          boot-fade-in 1s ease-out 0.6s both,
+          boot-breathe 2.6s ease-in-out 1.6s infinite alternate;
       }
-      .boot__flame {
-        inline-size: 40px;
-        block-size: 40px;
-        animation: boot-float 2.4s ease-in-out infinite;
+      .boot__layer {
+        position: absolute;
+        inset: 0;
+        inline-size: 96px;
+        block-size: 96px;
+        overflow: visible;
+        /* The burner head sits at 70/96 of the height: flames grow from there. */
+        transform-origin: 50% 73%;
+        will-change: transform, opacity;
+      }
+      .boot__burner {
+        fill: var(--boot-fg);
+        opacity: 0.78;
+      }
+      .boot__spark {
+        opacity: 0;
+        transform-origin: 30% 68%;
+        stroke: #ffc233;
+        stroke-width: 2;
+        stroke-linecap: round;
+        animation: boot-spark 0.7s linear both;
+      }
+      .boot__crown {
+        animation: boot-crown 0.5s ease-out 0.35s both;
+      }
+      .boot__ignite {
+        animation: boot-ignite 1s cubic-bezier(0.2, 0.8, 0.3, 1) 0.55s both;
+      }
+      .boot__flicker {
+        animation: boot-flicker 1.4s ease-in-out infinite alternate;
+      }
+      .boot__flicker--inner {
+        animation-duration: 1.05s;
+        animation-delay: -0.5s;
       }
       .boot__name {
         margin: 0;
@@ -131,23 +166,75 @@
         background: var(--boot-brand);
         animation: boot-slide 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
       }
-      @keyframes boot-ring {
+      @keyframes boot-ignite {
         0% {
-          transform: scale(0.75);
-          opacity: 0.5;
+          transform: scale(0.1, 0);
+          opacity: 0;
+        }
+        40% {
+          transform: scale(0.6, 0.5);
+          opacity: 1;
+        }
+        75% {
+          transform: scale(1.08, 1.1);
         }
         100% {
-          transform: scale(1.25);
+          transform: scale(1, 1);
+          opacity: 1;
+        }
+      }
+      @keyframes boot-flicker {
+        from {
+          transform: scale(1, 1) skewX(0deg);
+        }
+        to {
+          transform: scale(0.975, 1.035) skewX(0.8deg);
+        }
+      }
+      @keyframes boot-crown {
+        from {
+          opacity: 0;
+          transform: scaleY(0.2);
+        }
+        to {
+          opacity: 1;
+          transform: scaleY(1);
+        }
+      }
+      @keyframes boot-spark {
+        0% {
+          opacity: 0;
+          transform: scale(0.5);
+        }
+        25% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        45% {
+          opacity: 0;
+        }
+        60% {
+          opacity: 1;
+          transform: scale(1.15);
+        }
+        100% {
           opacity: 0;
         }
       }
-      @keyframes boot-float {
-        0%,
-        100% {
-          transform: translateY(0);
+      @keyframes boot-fade-in {
+        from {
+          opacity: 0;
         }
-        50% {
-          transform: translateY(-4px);
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes boot-breathe {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0.75;
         }
       }
       @keyframes boot-slide {
@@ -163,9 +250,15 @@
           transition: none;
         }
         .boot__mark::before,
-        .boot__flame,
+        .boot__ignite,
+        .boot__flicker,
+        .boot__crown,
+        .boot__spark,
         .boot__bar::after {
           animation: none;
+        }
+        .boot__layer {
+          will-change: auto;
         }
         .boot__bar::after {
           inline-size: 100%;
@@ -204,16 +297,40 @@
     <lpg-root></lpg-root>
     <div class="boot" role="status" aria-live="polite" aria-label="Loading LPG Agency">
       <div class="boot__mark" aria-hidden="true">
-        <svg class="boot__flame" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 2.5c.4 3.1-1.4 4.9-3.2 6.9C7.1 11.2 6 13 6 15.2 6 18.4 8.7 21 12 21s6-2.6 6-5.8c0-2.2-1-3.7-2.3-5.2-.4 1.2-1 1.9-1.9 2.3.5-3.6-.3-6.9-1.8-9.9Z"
-            fill="#e8590c"
-          />
-          <path
-            d="M12 21c-1.7 0-3-1.3-3-3 0-1.6 1.1-2.4 1.9-3.4.4-.5.8-1.1.9-1.9 1.9 1.4 3.2 3 3.2 5.3 0 1.7-1.3 3-3 3Z"
-            fill="#ffb26b"
-          />
+        <svg class="boot__layer" viewBox="0 0 96 96" fill="none">
+          <rect class="boot__burner" x="28" y="70" width="40" height="7" rx="3.5" />
+          <rect class="boot__burner" x="42" y="77" width="12" height="8" />
+          <rect class="boot__burner" x="33" y="85" width="30" height="4" rx="2" />
         </svg>
+        <svg class="boot__layer boot__spark" viewBox="0 0 96 96" fill="none">
+          <path d="M30 66 24 59M30 66 31 57M30 66 22 67" />
+        </svg>
+        <svg class="boot__layer boot__crown" viewBox="0 0 96 96" fill="#55b9ee">
+          <path d="M33 70c-1.6-2.2-1.6-4.2 0-6.4 1.6 2.2 1.6 4.2 0 6.4Z" />
+          <path d="M40.5 70c-1.6-2.6-1.6-5 0-7.6 1.6 2.6 1.6 5 0 7.6Z" />
+          <path d="M48 70c-1.8-2.8-1.8-5.4 0-8.2 1.8 2.8 1.8 5.4 0 8.2Z" />
+          <path d="M55.5 70c-1.6-2.6-1.6-5 0-7.6 1.6 2.6 1.6 5 0 7.6Z" />
+          <path d="M63 70c-1.6-2.2-1.6-4.2 0-6.4 1.6 2.2 1.6 4.2 0 6.4Z" />
+        </svg>
+        <div class="boot__layer boot__ignite">
+          <svg class="boot__layer boot__flicker" viewBox="0 0 96 96" fill="none">
+            <path
+              d="M48 12C50 27 65 35 65 52c0 10-7 18-17 18S31 62 31 52c0-8 5-14 9-20 1 6 3 8 6 9-1-10-1-19 2-29Z"
+              fill="#e8590c"
+            />
+          </svg>
+          <svg
+            class="boot__layer boot__flicker boot__flicker--inner"
+            viewBox="0 0 96 96"
+            fill="none"
+          >
+            <path
+              d="M48 32c1 10 10 14 10 26 0 7-4 12-10 12s-10-5-10-12c0-6 4-9 6-13 1 3 2 4 4 4-1-5-1-10 0-17Z"
+              fill="#ffb347"
+            />
+            <path d="M48 53c4 4 6 8 6 12 0 3-2.7 5-6 5s-6-2-6-5c0-4 2-8 6-12Z" fill="#55b9ee" />
+          </svg>
+        </div>
       </div>
       <div>
         <p class="boot__name">LPG Agency</p>

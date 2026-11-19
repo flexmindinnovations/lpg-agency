@@ -16,7 +16,9 @@ import {
   Router,
   RouterLink,
   RouterLinkActive,
+  NavigationCancel,
   NavigationEnd,
+  NavigationError,
   ActivatedRoute,
 } from '@angular/router';
 import { Badge } from 'primeng/badge';
@@ -118,14 +120,13 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
                     <li>
                       <a
                         [routerLink]="item.route"
-                        routerLinkActive="is-active"
+                        routerLinkActive=""
                         #rla="routerLinkActive"
-                        [attr.aria-current]="
-                          rla.isActive || isAliasActive(item, router.url) ? 'page' : null
-                        "
+                        [attr.aria-current]="isNavActive(item, rla.isActive) ? 'page' : null"
                         [routerLinkActiveOptions]="{ exact: !!item.exact }"
                         class="shell__nav-link"
-                        [class.is-active]="rla.isActive || isAliasActive(item, router.url)"
+                        [class.is-active]="isNavActive(item, rla.isActive)"
+                        (click)="onNavClick($event, item)"
                         pTooltip="{{ rail() ? item.label : '' }}"
                         tooltipPosition="right"
                         [attr.aria-label]="rail() ? item.label : null"
@@ -977,6 +978,9 @@ export class AppShellComponent {
   );
   /** Whether the phone menu is open. Ignored at tablet/desktop widths. */
   readonly navOpen = signal(false);
+  /** The item just clicked, lit at once while the router is still loading its
+   *  page (a lazy chunk, guards). Cleared when the navigation settles. */
+  private readonly pendingRoute = signal<string | null>(null);
   /** The icon-only rail: collapsed, and never in the phone menu (which shows labels). */
   protected readonly rail = computed(() => !this.isPhone() && this.collapsed());
 
@@ -1021,10 +1025,21 @@ export class AppShellComponent {
 
     this.router.events
       .pipe(
-        filter((event) => event instanceof NavigationEnd),
+        filter(
+          (event) =>
+            event instanceof NavigationEnd ||
+            event instanceof NavigationCancel ||
+            event instanceof NavigationError,
+        ),
         takeUntilDestroyed(),
       )
-      .subscribe(() => {
+      .subscribe((event) => {
+        // Whatever happened, the router now says which page is open.
+        this.pendingRoute.set(null);
+        if (!(event instanceof NavigationEnd)) {
+          this.placeIndicator(true);
+          return;
+        }
         let route = this.activatedRoute.root;
         let breadcrumbs: MenuItem[] = [];
 
@@ -1116,6 +1131,20 @@ export class AppShellComponent {
         active.scrollIntoView?.({ block: 'nearest' });
       }
     });
+  }
+
+  /** Lights the clicked item immediately, before the page has finished loading. */
+  protected onNavClick(event: MouseEvent, item: NavItem): void {
+    const plain = event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+    if (!plain || event.defaultPrevented) return;
+    this.pendingRoute.set(item.route);
+    this.placeIndicator(true);
+  }
+
+  protected isNavActive(item: NavItem, routerActive: boolean): boolean {
+    const pending = this.pendingRoute();
+    if (pending !== null) return pending === item.route;
+    return routerActive || this.isAliasActive(item, this.router.url);
   }
 
   protected isAliasActive(item: NavItem, currentUrl: string): boolean {

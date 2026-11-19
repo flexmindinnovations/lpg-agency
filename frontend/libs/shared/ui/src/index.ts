@@ -8,6 +8,8 @@ export * from './lib/detail-list/detail-list.component';
 export * from './lib/detail-list/detail-item.component';
 export * from './lib/branch-link/branch-link.component';
 export * from './lib/stat-card/stat-card.component';
+export * from './lib/charts/chart-card.component';
+export * from './lib/charts/chart-theme.service';
 export * from './lib/star-rating/star-rating.component';
 export * from './lib/upi-apps/upi-apps.component';
 export * from './lib/live-indicator/live-indicator.component';

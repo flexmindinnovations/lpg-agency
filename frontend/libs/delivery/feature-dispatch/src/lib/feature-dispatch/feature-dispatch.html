@@ -111,7 +111,15 @@
           </div>
           <div class="atlassian-col__cards">
             @for (order of unassignedOrders(); track order.id) {
-            <div class="jira-card jira-card--waiting">
+            <div
+              class="jira-card jira-card--waiting"
+              (click)="openNewTrip(order)"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Plan trip for order ' + (order.order_number ?? shortId(order.id))"
+              (keydown.enter)="openNewTrip(order)"
+              (keydown.space)="openNewTrip(order); $event.preventDefault()"
+            >
               <div class="jira-card__header">
                 <span class="jira-card__key" [title]="order.id">
                   <i class="pi pi-tag jira-card__key-icon" aria-hidden="true"></i>
@@ -141,15 +149,10 @@
                   @if (order.payable_amount ?? order.total_amount) { ₹{{ order.payable_amount ??
                   order.total_amount }} }
                 </span>
-                <button
-                  type="button"
-                  class="jira-card__action-hint jira-card__plan-action"
-                  (click)="openNewTrip(order)"
-                  aria-label="Plan trip for order"
-                >
+                <span class="jira-card__action-hint">
                   <span>Plan Trip</span>
                   <i class="pi pi-arrow-right" aria-hidden="true"></i>
-                </button>
+                </span>
               </div>
             </div>
             } @empty {
@@ -187,7 +190,7 @@
               tabindex="0"
               role="button"
               (keydown.enter)="openRouteDetail(route)"
-              (keydown.space)="openRouteDetail(route)"
+              (keydown.space)="openRouteDetail(route); $event.preventDefault()"
             >
               <div class="jira-card__header">
                 <span class="jira-card__date">

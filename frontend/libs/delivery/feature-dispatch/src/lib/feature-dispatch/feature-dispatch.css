@@ -325,6 +325,12 @@
   outline: none;
 }
 
+/* The whole card is the button, so it carries the keyboard focus ring. */
+.jira-card:focus-visible {
+  outline: var(--component-focus-ring-width, 2px) solid var(--component-focus-ring-color);
+  outline-offset: 2px;
+}
+
 /* Base Card Elements Typography & Spacing */
 .jira-card__header {
   display: flex;
@@ -422,29 +428,8 @@
   transition: transform var(--motion-duration-fast, 150ms) ease;
 }
 
-.jira-card:hover .jira-card__action-hint i,
-.jira-card__action-hint:hover i {
+.jira-card:hover .jira-card__action-hint i {
   transform: translateX(3px);
-}
-
-.jira-card__plan-action {
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: inherit;
-  font-family: inherit;
-  line-height: 1;
-}
-
-.jira-card__plan-action:hover {
-  text-decoration: underline;
-}
-
-.jira-card__plan-action:focus-visible {
-  outline: 2px solid var(--color-focus-ring, var(--color-primary));
-  outline-offset: 2px;
-  border-radius: var(--radius-xs, 2px);
 }
 
 /* Card Status Chips (card color only) */
@@ -676,7 +661,7 @@
   padding: var(--spacing-xs) var(--spacing-sm);
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-base);
+  background: var(--surface-inset);
   font-size: var(--typography-secondary-font-size);
 }
 
