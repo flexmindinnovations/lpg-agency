@@ -21,6 +21,9 @@
 - Charts keep a per-session record (`ChartEntranceRegistry`): the draw-in entrance plays once per chart; on a return visit the chart appears already drawn and only changed values animate. A refresh with identical numbers is skipped. KPI sparklines and the attention rows follow the same rule.
 - Not cached yet: the setup checklist still asks `/admin/setup-progress` on each visit.
 
+## Follow-up: drawers (2026-11-19)
+- Drawers have no backdrop blur and use a near-solid tint (`--glass-drawer-tint`, 97%). Measured on the notification list and the invoice drawer: about 7.7 ms per scrolled frame without the blur against 12 ms with it, and the blur was barely visible on the old 72% tint. Dialogs and menus keep the blur (they do not scroll long content).
+- Inside `.p-drawer` the three page-surface colours are remapped to faint translucent washes (`--surface-inset`, `--surface-inset-strong`), so cards, rows and callouts no longer paint opaque white slabs; high contrast maps them back to solid. PrimeNG form fields stay solid (checked on Raise Complaint).
 ## Verified
 - Jest: 101 tests in the dashboard app (new: model maths, chart option builders including tooltip escaping and reduced motion) and 104 in `shared-ui` (new: chart card states and table toggle). Lint and production build pass for `dashboard`, `shared-ui`, `shared-data-access`.
 - In the dev server with sample responses (production has almost no data today): all 8 charts draw in light and dark; table toggle shows the same numbers; 375 px wide has no horizontal scroll; one chart's bad payload no longer breaks the rest.

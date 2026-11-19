@@ -1476,6 +1476,33 @@ p-confirmpopup {
   }
 }
 
+/* Drawers scroll long content. A backdrop blur behind a panel that scrolls is
+   redone on every frame (measured: about 50% more time per frame), which made
+   every drawer's scrolling lag, and on the 72% overlay tint it was barely
+   visible. Drawers use a near-solid tint with no blur. */
+.p-drawer {
+  --glass-surface: var(--glass-drawer-tint);
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .p-drawer {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Inside a drawer, anything that would paint the page's own surface colour
+   (a card, a row, a callout) would be an opaque slab on frosted glass. Those
+   three surface colours become faint translucent washes here, once, so every
+   current and future drawer gets it. PrimeNG form fields are unaffected: the
+   theme preset resolves their colours at the root, so inputs stay solid.
+   The high-contrast theme maps the washes back to solid colours. */
+.p-drawer {
+  --color-surface-base: var(--surface-inset);
+  --color-surface-raised: var(--surface-inset);
+  --color-surface-overlay: var(--surface-inset-strong);
+}
+
 @media (prefers-reduced-transparency: reduce) {
   :is(
     .glass,

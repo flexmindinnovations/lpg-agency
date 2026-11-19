@@ -291,6 +291,10 @@ have always been hand-edited directly. Edit them here.
      opaque page colour, which looks like a white slab on frosted glass.
      Follows the theme because it is made from the text colour. */
   --surface-inset: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
+  --surface-inset-strong: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+  /* A drawer with no blur: nearly solid, so the page behind it does not ghost
+     through the text. */
+  --glass-drawer-tint: color-mix(in srgb, var(--color-surface-raised) 97%, transparent);
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
@@ -544,6 +548,7 @@ have always been hand-edited directly. Edit them here.
   --glass-saturate: 100%;
   --glass-grain-opacity: 0;
   --surface-inset: var(--color-surface-base);
+  --surface-inset-strong: var(--color-surface-overlay);
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
