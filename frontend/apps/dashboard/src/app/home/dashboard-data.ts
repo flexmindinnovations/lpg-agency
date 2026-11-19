@@ -1,8 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { type Observable, debounceTime, map } from 'rxjs';
 import {
+  AuthService,
   CashHandoverService,
   CustomerService,
   DashboardService,
@@ -28,6 +28,11 @@ const KPI_HISTORY_DAYS = 14;
 
 export type WidgetStatus = 'loading' | 'ready' | 'error' | 'forbidden';
 
+/** How long the figures that move with today's orders and trips are trusted. */
+const OPERATIONAL_STALE_MS = 30_000;
+/** How long the slower figures (stock, sales history, ratings) are trusted. */
+const REFERENCE_STALE_MS = 120_000;
+
 /**
  * One widget's data: it keeps the last good value across refreshes, so a
  * refetch swaps numbers in place instead of flashing back to a skeleton, and
@@ -39,17 +44,26 @@ export class WidgetData<T> {
   /** Hidden entirely when the caller is not allowed to see it. */
   readonly visible = computed(() => this.status() !== 'forbidden');
   private latest = 0;
+  private inFlight = false;
+
+  /** Nothing to show and nothing on its way: worth asking the API again. */
+  get needsLoad(): boolean {
+    return this.data() === null && this.status() !== 'forbidden' && !this.inFlight;
+  }
 
   load(source: Observable<T>): void {
     const ticket = ++this.latest;
+    this.inFlight = true;
     source.subscribe({
       next: (value) => {
         if (ticket !== this.latest) return;
+        this.inFlight = false;
         this.data.set(value);
         this.status.set('ready');
       },
       error: (error: unknown) => {
         if (ticket !== this.latest) return;
+        this.inFlight = false;
         if (error instanceof HttpErrorResponse && error.status === 403) {
           this.status.set('forbidden');
         } else {
@@ -58,14 +72,27 @@ export class WidgetData<T> {
       },
     });
   }
+
+  /** Forget everything, and ignore any answer still on its way. */
+  reset(): void {
+    this.latest++;
+    this.inFlight = false;
+    this.data.set(null);
+    this.status.set('loading');
+  }
 }
 
 /**
  * Every call the Home dashboard makes, one `WidgetData` each, so a slow or
- * failing endpoint only affects its own widget. Provided by the Home page,
- * so it lives and dies with it.
+ * failing endpoint only affects its own widget.
+ *
+ * It lives for the whole session, so coming back to Home shows what was
+ * fetched last time at once and only asks the API again when that is stale
+ * (see `connect`). The cache belongs to one signed-in user: it is cleared the
+ * moment someone else (or another agency) is signed in, and when the day
+ * changes.
  */
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class DashboardData {
   private readonly dashboard = inject(DashboardService);
   private readonly reporting = inject(ReportingService);
@@ -74,8 +101,22 @@ export class DashboardData {
   private readonly customers = inject(CustomerService);
   private readonly tdt = inject(TdtRatingService);
   private readonly socket = inject(WebSocketService);
+  private readonly auth = inject(AuthService);
 
-  readonly today = istDate();
+  private day = istDate();
+  private owner = '';
+  private visits = 0;
+  private operationalAt = 0;
+  private referenceAt = 0;
+
+  /** The business day (IST) the figures are for. */
+  get today(): string {
+    return this.day;
+  }
+
+  /** True when Home has already been shown to this user, so entrance
+   *  animations (which say "this just arrived") should not play again. */
+  isRevisit = false;
 
   readonly operations = new WidgetData<OperationsSnapshotResponse>();
   readonly summary = new WidgetData<DashboardSummaryResponse>();
@@ -86,26 +127,72 @@ export class DashboardData {
   readonly rating = new WidgetData<TdtQuarterlyRatingResponse>();
   readonly refills = new WidgetData<RefillDueCustomerResponse[]>();
 
-  constructor() {
-    this.loadAll();
+  private readonly operationalWidgets = [this.operations, this.drivers, this.cash];
+  private readonly referenceWidgets = [
+    this.summary,
+    this.sales,
+    this.reorder,
+    this.rating,
+    this.refills,
+  ];
+
+  /**
+   * Called when Home opens. Shows the cache, refreshes in the background only
+   * what is stale, and keeps today's figures live until the returned function
+   * is called (when Home closes).
+   */
+  connect(): () => void {
+    const principal = this.auth.principal();
+    const owner = principal
+      ? `${principal.tenantId ?? ''}|${principal.userId}|${principal.branchId ?? ''}`
+      : '';
+    if (owner !== this.owner || istDate() !== this.day) this.reset(owner);
+
+    this.isRevisit = this.visits++ > 0;
+
+    const now = Date.now();
+    if (
+      now - this.operationalAt > OPERATIONAL_STALE_MS ||
+      this.anyNeedsLoad(this.operationalWidgets)
+    ) {
+      this.refreshOperational();
+    }
+    if (now - this.referenceAt > REFERENCE_STALE_MS || this.anyNeedsLoad(this.referenceWidgets)) {
+      this.refreshReference();
+    }
 
     // Orders and trips change through the day: refresh what they feed, after a
     // quiet second so a burst (a whole trip delivered) is one refetch.
     this.socket.subscribeTo('dashboard');
     this.socket.subscribeTo('orders');
-    this.socket
+    const live = this.socket
       .changes$('dashboard.metrics_stale', 'order.status_changed')
-      .pipe(debounceTime(1000), takeUntilDestroyed())
+      .pipe(debounceTime(1000))
       .subscribe(() => this.refreshOperational());
+    return () => live.unsubscribe();
   }
 
-  private loadAll(): void {
-    this.refreshOperational();
+  /** The figures that move with today's orders and trips. */
+  refreshOperational(): void {
+    this.operationalAt = Date.now();
+    this.operations.load(this.dashboard.getOperations());
+    this.drivers.load(
+      this.reporting.driverPerformance({
+        startDate: addDays(this.day, -(KPI_HISTORY_DAYS - 1)),
+        endDate: this.day,
+      }),
+    );
+    this.cash.load(this.cashService.cashInHand());
+  }
+
+  /** Stock, sales history, ratings, refills: slower-moving. */
+  private refreshReference(): void {
+    this.referenceAt = Date.now();
     this.summary.load(this.dashboard.getSummary());
     this.sales.load(
       this.reporting.dailySales({
-        startDate: addDays(this.today, -(TREND_DAYS * 2 - 1)),
-        endDate: this.today,
+        startDate: addDays(this.day, -(TREND_DAYS * 2 - 1)),
+        endDate: this.day,
       }),
     );
     this.reorder.load(this.inventory.listReorderSignals());
@@ -113,15 +200,16 @@ export class DashboardData {
     this.refills.load(this.customers.listRefillDue(14).pipe(map((response) => response.items)));
   }
 
-  /** The figures that move with today's orders and trips. */
-  refreshOperational(): void {
-    this.operations.load(this.dashboard.getOperations());
-    this.drivers.load(
-      this.reporting.driverPerformance({
-        startDate: addDays(this.today, -(KPI_HISTORY_DAYS - 1)),
-        endDate: this.today,
-      }),
-    );
-    this.cash.load(this.cashService.cashInHand());
+  private anyNeedsLoad(widgets: readonly WidgetData<unknown>[]): boolean {
+    return widgets.some((widget) => widget.needsLoad);
+  }
+
+  private reset(owner: string): void {
+    this.owner = owner;
+    this.day = istDate();
+    this.visits = 0;
+    this.operationalAt = 0;
+    this.referenceAt = 0;
+    [...this.operationalWidgets, ...this.referenceWidgets].forEach((widget) => widget.reset());
   }
 }

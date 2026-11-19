@@ -66,6 +66,7 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
       @if (trendPoints().length > 1 && !loading()) {
         <svg
           class="stat-card__spark"
+          [class.stat-card__spark--draw]="animateTrend()"
           viewBox="0 0 100 32"
           preserveAspectRatio="none"
           aria-hidden="true"
@@ -213,7 +214,7 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
 
       /* The line draws in from the left once, when the tile first shows data. */
       @media (prefers-reduced-motion: no-preference) {
-        .stat-card__spark {
+        .stat-card__spark--draw {
           animation: stat-spark-draw 900ms var(--motion-easing-emphasized) both;
         }
       }
@@ -257,6 +258,9 @@ export class StatCardComponent {
   /** Values for the mini trend line, oldest → newest. */
   readonly trend = input<readonly number[]>([]);
   readonly loading = input<boolean>(false);
+  /** Whether the trend line draws itself in. Off when the card is only being
+   *  shown again, so a return visit does not replay it. */
+  readonly animateTrend = input<boolean>(true);
 
   protected readonly trendPoints = computed(() => this.trend().filter((n) => Number.isFinite(n)));
 

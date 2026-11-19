@@ -15,6 +15,12 @@
 - Card help text uses PrimeNG `pTooltip` (not native `title`) on the subtitle and the "View as table" button.
 - The setup checklist shows only while at least one step is incomplete (decided from the steps, not the server's `complete` flag). Recent activity shows 4 entries.
 
+## Follow-up: revisits (2026-11-19)
+- `DashboardData` is now a session-long root service, not per-visit. Coming back to Home shows the cached figures at once; today's figures are refetched only when older than 30 s, the slower ones (stock, sales history, rating, refills) when older than 2 min, plus any widget that never loaded. The websocket refresh runs only while Home is open.
+- The cache is cleared when another user, agency or branch signs in, and when the IST day changes (no figures leak between users).
+- Charts keep a per-session record (`ChartEntranceRegistry`): the draw-in entrance plays once per chart; on a return visit the chart appears already drawn and only changed values animate. A refresh with identical numbers is skipped. KPI sparklines and the attention rows follow the same rule.
+- Not cached yet: the setup checklist still asks `/admin/setup-progress` on each visit.
+
 ## Verified
 - Jest: 101 tests in the dashboard app (new: model maths, chart option builders including tooltip escaping and reduced motion) and 104 in `shared-ui` (new: chart card states and table toggle). Lint and production build pass for `dashboard`, `shared-ui`, `shared-data-access`.
 - In the dev server with sample responses (production has almost no data today): all 8 charts draw in light and dark; table toggle shows the same numbers; 375 px wide has no horizontal scroll; one chart's bad payload no longer breaks the rest.

@@ -1,5 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   EmptyStateComponent,
@@ -70,7 +70,6 @@ function pending(widget: WidgetData<unknown>): boolean {
     SetupChecklist,
     HomeCharts,
   ],
-  providers: [DashboardData],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
@@ -87,7 +86,11 @@ function pending(widget: WidgetData<unknown>): boolean {
           @if (attention().length > 0) {
             <ul class="attention__list">
               @for (item of attention(); track item.key; let i = $index) {
-                <li class="attention__row" [style.--row-index]="i">
+                <li
+                  class="attention__row"
+                  [class.attention__row--enter]="!data.isRevisit"
+                  [style.--row-index]="i"
+                >
                   <a class="attention__link" [routerLink]="item.route">
                     <i
                       class="attention__icon attention__icon--{{ item.severity }} {{
@@ -139,6 +142,7 @@ function pending(widget: WidgetData<unknown>): boolean {
             [deltaDirection]="kpi.delta?.direction ?? null"
             [caption]="kpi.delta ? 'vs same day last week' : ''"
             [trend]="kpi.trend ?? []"
+            [animateTrend]="!data.isRevisit"
           />
         }
       </section>
@@ -193,7 +197,8 @@ function pending(widget: WidgetData<unknown>): boolean {
         gap: var(--spacing-xs) var(--spacing-lg);
       }
 
-      .attention__row {
+      /* Rows slide in the first time Home is shown, not on every visit. */
+      .attention__row--enter {
         animation: attention-in var(--motion-duration-medium) var(--motion-easing-emphasized) both;
         animation-delay: calc(var(--row-index, 0) * 45ms);
       }
@@ -206,7 +211,7 @@ function pending(widget: WidgetData<unknown>): boolean {
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .attention__row {
+        .attention__row--enter {
           animation: none;
         }
       }
@@ -288,6 +293,12 @@ function pending(widget: WidgetData<unknown>): boolean {
 export class Home {
   protected readonly data = inject(DashboardData);
   protected readonly icon = SEVERITY_ICON;
+
+  constructor() {
+    // Show what was fetched last time, refresh only what is stale, and keep
+    // today's figures live while Home is open.
+    inject(DestroyRef).onDestroy(this.data.connect());
+  }
 
   protected readonly attention = computed(() => {
     const ops = this.data.operations.data();

@@ -13,7 +13,6 @@ import {
   formatTimestamp,
   HasPermissionDirective,
   SectionCardComponent,
-  SkeletonComponent,
   toSentenceCase,
 } from '@lpg/shared/ui';
 import { ChartComponent } from '@lpg/shared/ui/charts';
@@ -75,7 +74,6 @@ const CHART_HEIGHT = 280;
     EmptyStateComponent,
     HasPermissionDirective,
     SectionCardComponent,
-    SkeletonComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -92,10 +90,15 @@ const CHART_HEIGHT = 280;
         emptyDescription="Orders show here as they are booked."
       >
         @if (pipeline(); as spec) {
-          @defer (on idle) {
-            <lpg-chart [option]="spec.option" [label]="spec.label" (markClick)="go('/orders')" />
+          @defer (on immediate) {
+            <lpg-chart
+              key="home.pipeline"
+              [option]="spec.option"
+              [label]="spec.label"
+              (markClick)="go('/orders')"
+            />
           } @placeholder {
-            <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+            <div [style.block-size.px]="chartHeight"></div>
           }
         }
       </lpg-chart-card>
@@ -112,14 +115,15 @@ const CHART_HEIGHT = 280;
           emptyDescription="Drivers appear here once a trip is dispatched."
         >
           @if (drivers(); as spec) {
-            @defer (on idle) {
+            @defer (on immediate) {
               <lpg-chart
+                key="home.drivers"
                 [option]="spec.option"
                 [label]="spec.label"
                 (markClick)="go('/dispatch')"
               />
             } @placeholder {
-              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+              <div [style.block-size.px]="chartHeight"></div>
             }
           }
         </lpg-chart-card>
@@ -138,10 +142,10 @@ const CHART_HEIGHT = 280;
           emptyDescription="Revenue appears here once invoices are issued."
         >
           @if (revenue(); as spec) {
-            @defer (on idle) {
-              <lpg-chart [option]="spec.option" [label]="spec.label" />
+            @defer (on immediate) {
+              <lpg-chart key="home.revenue" [option]="spec.option" [label]="spec.label" />
             } @placeholder {
-              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+              <div [style.block-size.px]="chartHeight"></div>
             }
           }
         </lpg-chart-card>
@@ -159,14 +163,15 @@ const CHART_HEIGHT = 280;
           emptyDescription="Cash collected on routes shows here until it is handed over."
         >
           @if (cash(); as spec) {
-            @defer (on idle) {
+            @defer (on immediate) {
               <lpg-chart
+                key="home.cash"
                 [option]="spec.option"
                 [label]="spec.label"
                 (markClick)="go('/cash-handovers')"
               />
             } @placeholder {
-              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+              <div [style.block-size.px]="chartHeight"></div>
             }
           }
         </lpg-chart-card>
@@ -184,14 +189,15 @@ const CHART_HEIGHT = 280;
           emptyDescription="Cylinder movements appear here once stock is received."
         >
           @if (stock(); as spec) {
-            @defer (on idle) {
+            @defer (on immediate) {
               <lpg-chart
+                key="home.stock"
                 [option]="spec.option"
                 [label]="spec.label"
                 (markClick)="go('/inventory')"
               />
             } @placeholder {
-              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+              <div [style.block-size.px]="chartHeight"></div>
             }
           }
         </lpg-chart-card>
@@ -208,14 +214,15 @@ const CHART_HEIGHT = 280;
             emptyDescription="Locations show here when stock falls to the point you set."
           >
             @if (reorder(); as spec) {
-              @defer (on idle) {
+              @defer (on immediate) {
                 <lpg-chart
+                  key="home.reorder"
                   [option]="spec.option"
                   [label]="spec.label"
                   (markClick)="go('/inventory')"
                 />
               } @placeholder {
-                <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+                <div [style.block-size.px]="chartHeight"></div>
               }
             }
           </lpg-chart-card>
@@ -234,14 +241,15 @@ const CHART_HEIGHT = 280;
           emptyDescription="The projection builds up as orders are delivered."
         >
           @if (rating(); as spec) {
-            @defer (on idle) {
+            @defer (on immediate) {
               <lpg-chart
+                key="home.rating"
                 [option]="spec.option"
                 [label]="spec.label"
                 (markClick)="go('/reports/tdt-rating')"
               />
             } @placeholder {
-              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+              <div [style.block-size.px]="chartHeight"></div>
             }
           }
         </lpg-chart-card>
@@ -261,14 +269,15 @@ const CHART_HEIGHT = 280;
             emptyDescription="Predicted dates are refreshed nightly from delivery history."
           >
             @if (refills(); as spec) {
-              @defer (on idle) {
+              @defer (on immediate) {
                 <lpg-chart
+                  key="home.refills"
                   [option]="spec.option"
                   [label]="spec.label"
                   (markClick)="go('/customers')"
                 />
               } @placeholder {
-                <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+                <div [style.block-size.px]="chartHeight"></div>
               }
             }
           </lpg-chart-card>
