@@ -5,6 +5,18 @@ import { NEVER, of } from 'rxjs';
 import { AdminTenantService, AuthService } from '@lpg/shared/data-access';
 import { SetupChecklist } from './setup-checklist';
 
+const ALL_DONE = {
+  branch: true,
+  warehouse: true,
+  cylinder_types: true,
+  prices: true,
+  gst: true,
+  payments: true,
+  staff: true,
+  drivers: true,
+  vehicles: true,
+};
+
 describe('SetupChecklist', () => {
   afterEach(() => localStorage.clear());
 
@@ -15,7 +27,7 @@ describe('SetupChecklist', () => {
           ? NEVER
           : of({
               complete,
-              steps: { branch: true, warehouse: true, cylinder_types: false, prices: false },
+              steps: complete ? ALL_DONE : { ...ALL_DONE, cylinder_types: false, prices: false },
             }),
       ),
     };
@@ -37,8 +49,8 @@ describe('SetupChecklist', () => {
   it('lists the steps with links and ticks the finished ones', () => {
     const { html } = render(['tenant:configure']);
 
-    expect(html.textContent).toContain('2 of 9 done');
-    expect(html.querySelectorAll('.setup__item--done')).toHaveLength(2);
+    expect(html.textContent).toContain('7 of 9 done');
+    expect(html.querySelectorAll('.setup__item--done')).toHaveLength(7);
     const link = html.querySelector('a[href="/admin/cylinder-types"]');
     expect(link?.textContent).toContain('Add cylinder types');
     expect(html.querySelector('a[href="/settings/payments"]')?.textContent).toContain(
@@ -53,7 +65,13 @@ describe('SetupChecklist', () => {
     expect(html.textContent?.trim()).toBe('');
   });
 
-  it('hides itself once setup is complete', () => {
+  it('shows while any single step is still to do', () => {
+    const { html } = render(['tenant:configure']);
+
+    expect(html.textContent).toContain('Finish setting up your agency');
+  });
+
+  it('hides itself once every step is done', () => {
     const { html } = render(['tenant:configure'], true);
 
     expect(html.textContent?.trim()).toBe('');

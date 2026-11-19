@@ -9,6 +9,12 @@
 - New `ReportingService` in data-access (sales, driver performance). `echarts` 6.1 added.
 - Each widget loads and fails on its own; refreshes swap data in place (no skeleton flicker); heights are reserved.
 
+## Follow-up (2026-11-19): layout pass
+- Order on Home is now: setup checklist, charts, "Needs attention", KPI tiles. Chart cards show at once; each chart loads into its card with `@defer` (ECharts is still lazy).
+- All chart cards are one height (280 px, `grid-auto-rows: 1fr`); KPI tiles are one height too.
+- Card help text uses PrimeNG `pTooltip` (not native `title`) on the subtitle and the "View as table" button.
+- The setup checklist shows only while at least one step is incomplete (decided from the steps, not the server's `complete` flag). Recent activity shows 4 entries.
+
 ## Verified
 - Jest: 101 tests in the dashboard app (new: model maths, chart option builders including tooltip escaping and reduced motion) and 104 in `shared-ui` (new: chart card states and table toggle). Lint and production build pass for `dashboard`, `shared-ui`, `shared-data-access`.
 - In the dev server with sample responses (production has almost no data today): all 8 charts draw in light and dark; table toggle shows the same numbers; 375 px wide has no horizontal scroll; one chart's bad payload no longer breaks the rest.

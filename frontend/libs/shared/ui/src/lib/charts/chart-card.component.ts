@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TooltipModule } from 'primeng/tooltip';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
 import { SectionCardComponent } from '../section-card/section-card.component';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
@@ -26,7 +27,13 @@ export interface ChartTable {
 @Component({
   selector: 'lpg-chart-card',
   standalone: true,
-  imports: [SectionCardComponent, SkeletonComponent, EmptyStateComponent, RouterLink],
+  imports: [
+    SectionCardComponent,
+    SkeletonComponent,
+    EmptyStateComponent,
+    RouterLink,
+    TooltipModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lpg-section-card [heading]="heading()" [hasHeaderActions]="canShowTable() || !!link()">
@@ -42,14 +49,17 @@ export interface ChartTable {
           type="button"
           class="chart-card__icon-button"
           [attr.aria-label]="showTable() ? 'View as chart' : 'View as table'"
-          [attr.title]="showTable() ? 'View as chart' : 'View as table'"
+          [pTooltip]="showTable() ? 'View as chart' : 'View as table'"
+          tooltipPosition="left"
           (click)="showTable.set(!showTable())"
         >
           <i class="pi" [class.pi-table]="!showTable()" [class.pi-chart-bar]="showTable()"></i>
         </button>
       }
       @if (subtitle()) {
-        <p class="chart-card__subtitle">{{ subtitle() }}</p>
+        <p class="chart-card__subtitle" [pTooltip]="subtitle()" tooltipPosition="bottom">
+          {{ subtitle() }}
+        </p>
       }
       <div class="chart-card__body" [style.min-block-size.px]="height()">
         @switch (state()) {
@@ -113,6 +123,7 @@ export interface ChartTable {
       :host {
         display: block;
         min-inline-size: 0;
+        block-size: 100%;
       }
 
       lpg-section-card {
@@ -123,6 +134,11 @@ export interface ChartTable {
         margin: calc(-1 * var(--spacing-xs)) 0 0;
         font-size: var(--typography-caption-font-size);
         color: var(--color-text-secondary);
+        /* One line in every card, so all cards are the same height. The full
+           text is in the tooltip. */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .chart-card__toggle {

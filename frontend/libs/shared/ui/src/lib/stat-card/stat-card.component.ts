@@ -81,7 +81,11 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
         display: block;
       }
 
+      /* Fills its grid cell, so tiles in a row are the same height whether or
+         not they have a delta or a trend line. */
       .stat-card {
+        block-size: 100%;
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);

@@ -56,7 +56,8 @@ function saveHeight(height: number | null): void {
 /**
  * First-time setup checklist on Home (DA-32). Only an admin who can
  * configure the agency (`tenant:configure`) sees it — and only that role
- * calls `/admin/setup-progress`. It disappears once every step is done.
+ * calls `/admin/setup-progress`. It shows only while a step is still to do
+ * and disappears once every step is done.
  */
 @Component({
   selector: 'lpg-setup-checklist',
@@ -165,9 +166,12 @@ export class SetupChecklist {
   /** Room to hold for the card until the setup progress arrives (0 = none). */
   protected readonly reservedHeight = signal(0);
   private readonly progress = signal<Readonly<Record<string, boolean>> | null>(null);
-  private readonly complete = signal(true);
 
-  protected readonly visible = computed(() => this.progress() !== null && !this.complete());
+  /** Shown only while at least one step is still to do. */
+  protected readonly visible = computed(() => {
+    const progress = this.progress();
+    return progress !== null && STEPS.some((step) => !progress[step.key]);
+  });
   protected readonly doneCount = computed(
     () => STEPS.filter((step) => this.progress()?.[step.key]).length,
   );
@@ -189,10 +193,9 @@ export class SetupChecklist {
     this.tenantService.getSetupProgress().subscribe({
       next: (response) => {
         this.progress.set(response.steps);
-        this.complete.set(response.complete);
         this.reservedHeight.set(0);
         // Finished setting up: nothing to reserve on later loads.
-        if (response.complete) saveHeight(null);
+        if (STEPS.every((step) => response.steps[step.key])) saveHeight(null);
       },
       // The checklist is a convenience — Home works without it.
       error: () => {

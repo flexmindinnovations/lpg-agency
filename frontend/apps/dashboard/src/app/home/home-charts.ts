@@ -4,20 +4,19 @@ import {
   ActivityListComponent,
   type ActivityItem,
   type ActivityStatusTone,
+  ChartCardComponent,
+  type ChartCardState,
+  type ChartTheme,
+  ChartThemeService,
   EmptyStateComponent,
   formatEntityName,
   formatTimestamp,
   HasPermissionDirective,
   SectionCardComponent,
+  SkeletonComponent,
   toSentenceCase,
 } from '@lpg/shared/ui';
-import {
-  ChartCardComponent,
-  type ChartCardState,
-  ChartComponent,
-  type ChartTheme,
-  ChartThemeService,
-} from '@lpg/shared/ui/charts';
+import { ChartComponent } from '@lpg/shared/ui/charts';
 import {
   type ChartSpec,
   cashChart,
@@ -59,9 +58,12 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
   delete: 'danger',
 };
 
+/** Every chart card is this tall, so the grid reads as one even board. */
+const CHART_HEIGHT = 280;
+
 /**
- * The charts of the Home dashboard. Loaded with `@defer`, so ECharts stays out
- * of the initial bundle and the KPI tiles and attention list paint first.
+ * The charts of the Home dashboard. The cards show at once; each chart loads
+ * into its card with `@defer`, so ECharts stays out of the initial bundle.
  */
 @Component({
   selector: 'lpg-home-charts',
@@ -73,6 +75,7 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
     EmptyStateComponent,
     HasPermissionDirective,
     SectionCardComponent,
+    SkeletonComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -84,12 +87,16 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
         [state]="state(data.operations, pipeline())"
         [table]="pipeline()?.table ?? null"
         [link]="{ label: 'Orders', route: '/orders' }"
-        [height]="280"
+        [height]="chartHeight"
         emptyTitle="No orders yet today"
         emptyDescription="Orders show here as they are booked."
       >
         @if (pipeline(); as spec) {
-          <lpg-chart [option]="spec.option" [label]="spec.label" (markClick)="go('/orders')" />
+          @defer (on idle) {
+            <lpg-chart [option]="spec.option" [label]="spec.label" (markClick)="go('/orders')" />
+          } @placeholder {
+            <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+          }
         }
       </lpg-chart-card>
 
@@ -100,12 +107,20 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
           [state]="state(data.drivers, drivers())"
           [table]="drivers()?.table ?? null"
           [link]="{ label: 'Dispatch', route: '/dispatch' }"
-          [height]="280"
+          [height]="chartHeight"
           emptyTitle="No trips today"
           emptyDescription="Drivers appear here once a trip is dispatched."
         >
           @if (drivers(); as spec) {
-            <lpg-chart [option]="spec.option" [label]="spec.label" (markClick)="go('/dispatch')" />
+            @defer (on idle) {
+              <lpg-chart
+                [option]="spec.option"
+                [label]="spec.label"
+                (markClick)="go('/dispatch')"
+              />
+            } @placeholder {
+              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+            }
           }
         </lpg-chart-card>
       }
@@ -118,12 +133,16 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
           [state]="state(data.sales, revenue())"
           [table]="revenue()?.table ?? null"
           [link]="{ label: 'Invoices', route: '/invoices' }"
-          [height]="300"
+          [height]="chartHeight"
           emptyTitle="No invoices in this period"
           emptyDescription="Revenue appears here once invoices are issued."
         >
           @if (revenue(); as spec) {
-            <lpg-chart [option]="spec.option" [label]="spec.label" />
+            @defer (on idle) {
+              <lpg-chart [option]="spec.option" [label]="spec.label" />
+            } @placeholder {
+              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+            }
           }
         </lpg-chart-card>
       }
@@ -135,16 +154,20 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
           [state]="state(data.cash, cash())"
           [table]="cash()?.table ?? null"
           [link]="{ label: 'Handovers', route: '/cash-handovers' }"
-          [height]="300"
+          [height]="chartHeight"
           emptyTitle="No cash with drivers"
           emptyDescription="Cash collected on routes shows here until it is handed over."
         >
           @if (cash(); as spec) {
-            <lpg-chart
-              [option]="spec.option"
-              [label]="spec.label"
-              (markClick)="go('/cash-handovers')"
-            />
+            @defer (on idle) {
+              <lpg-chart
+                [option]="spec.option"
+                [label]="spec.label"
+                (markClick)="go('/cash-handovers')"
+              />
+            } @placeholder {
+              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+            }
           }
         </lpg-chart-card>
       }
@@ -156,12 +179,20 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
           [state]="state(data.summary, stock())"
           [table]="stock()?.table ?? null"
           [link]="{ label: 'Inventory', route: '/inventory' }"
-          [height]="260"
+          [height]="chartHeight"
           emptyTitle="No stock recorded yet"
           emptyDescription="Cylinder movements appear here once stock is received."
         >
           @if (stock(); as spec) {
-            <lpg-chart [option]="spec.option" [label]="spec.label" (markClick)="go('/inventory')" />
+            @defer (on idle) {
+              <lpg-chart
+                [option]="spec.option"
+                [label]="spec.label"
+                (markClick)="go('/inventory')"
+              />
+            } @placeholder {
+              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+            }
           }
         </lpg-chart-card>
 
@@ -172,16 +203,20 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
             [state]="state(data.reorder, reorder())"
             [table]="reorder()?.table ?? null"
             [link]="{ label: 'Inventory', route: '/inventory' }"
-            [height]="260"
+            [height]="chartHeight"
             emptyTitle="Every location is above its reorder point"
             emptyDescription="Locations show here when stock falls to the point you set."
           >
             @if (reorder(); as spec) {
-              <lpg-chart
-                [option]="spec.option"
-                [label]="spec.label"
-                (markClick)="go('/inventory')"
-              />
+              @defer (on idle) {
+                <lpg-chart
+                  [option]="spec.option"
+                  [label]="spec.label"
+                  (markClick)="go('/inventory')"
+                />
+              } @placeholder {
+                <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+              }
             }
           </lpg-chart-card>
         }
@@ -194,16 +229,20 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
           [state]="state(data.rating, rating())"
           [table]="rating()?.table ?? null"
           [link]="{ label: 'Report', route: '/reports/tdt-rating' }"
-          [height]="260"
+          [height]="chartHeight"
           emptyTitle="No deliveries this quarter yet"
           emptyDescription="The projection builds up as orders are delivered."
         >
           @if (rating(); as spec) {
-            <lpg-chart
-              [option]="spec.option"
-              [label]="spec.label"
-              (markClick)="go('/reports/tdt-rating')"
-            />
+            @defer (on idle) {
+              <lpg-chart
+                [option]="spec.option"
+                [label]="spec.label"
+                (markClick)="go('/reports/tdt-rating')"
+              />
+            } @placeholder {
+              <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+            }
           }
         </lpg-chart-card>
       }
@@ -217,16 +256,20 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
             [state]="state(data.refills, refills())"
             [table]="refills()?.table ?? null"
             [link]="{ label: 'Customers', route: '/customers' }"
-            [height]="260"
+            [height]="chartHeight"
             emptyTitle="No refills due"
             emptyDescription="Predicted dates are refreshed nightly from delivery history."
           >
             @if (refills(); as spec) {
-              <lpg-chart
-                [option]="spec.option"
-                [label]="spec.label"
-                (markClick)="go('/customers')"
-              />
+              @defer (on idle) {
+                <lpg-chart
+                  [option]="spec.option"
+                  [label]="spec.label"
+                  (markClick)="go('/customers')"
+                />
+              } @placeholder {
+                <lpg-skeleton variant="block" [height]="chartHeight + 'px'" />
+              }
             }
           </lpg-chart-card>
         }
@@ -260,6 +303,11 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
         grid-column: span 12;
       }
 
+      /* Cards in a row are the same height. */
+      .charts {
+        grid-auto-rows: 1fr;
+      }
+
       /* Two widgets per row from tablet width, a wide and a narrow one. */
       @media (min-width: 900px) {
         .charts > * {
@@ -285,6 +333,7 @@ const ACTION_TONE: Record<string, ActivityStatusTone> = {
 })
 export class HomeCharts {
   protected readonly data = inject(DashboardData);
+  protected readonly chartHeight = CHART_HEIGHT;
   private readonly theme = inject(ChartThemeService).theme;
   private readonly router = inject(Router);
 
@@ -345,7 +394,7 @@ export class HomeCharts {
 
   /** The latest audit entries: a lighter view than the full audit log. */
   protected readonly activity = computed<ActivityItem[]>(() =>
-    (this.data.summary.data()?.recent_activity ?? []).slice(0, 6).map((entry) => ({
+    (this.data.summary.data()?.recent_activity ?? []).slice(0, 4).map((entry) => ({
       time: formatTimestamp(entry.performed_at),
       icon: ACTION_ICON[entry.action] ?? 'pi pi-circle',
       title: entry.entity_display_name

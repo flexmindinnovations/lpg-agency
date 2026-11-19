@@ -52,8 +52,8 @@ function pending(widget: WidgetData<unknown>): boolean {
 
 /**
  * Home: what needs attention now, how today compares with a normal day, then
- * the charts. The attention list and KPI tiles use no chart library, so they
- * paint immediately; the charts are deferred (see `HomeCharts`).
+ * the charts. Charts come first, straight under the setup card; each chart
+ * loads into its already-sized card (see `HomeCharts`).
  */
 @Component({
   selector: 'lpg-home',
@@ -79,6 +79,8 @@ function pending(widget: WidgetData<unknown>): boolean {
       </ng-template>
 
       <lpg-setup-checklist />
+
+      <lpg-home-charts />
 
       <lpg-section-card heading="Needs attention">
         <div class="attention" [style.min-block-size.px]="attentionHeight()">
@@ -140,14 +142,6 @@ function pending(widget: WidgetData<unknown>): boolean {
           />
         }
       </section>
-
-      @defer (on idle; prefetch on idle) {
-        <lpg-home-charts />
-      } @placeholder {
-        <div class="dashboard__placeholder" aria-hidden="true">
-          <lpg-skeleton variant="block" height="320px" />
-        </div>
-      }
     </div>
   `,
   styles: [
@@ -172,6 +166,7 @@ function pending(widget: WidgetData<unknown>): boolean {
       .dashboard__kpis {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-auto-rows: 1fr;
         gap: var(--spacing-lg);
       }
 
@@ -185,10 +180,6 @@ function pending(widget: WidgetData<unknown>): boolean {
         .dashboard__kpis {
           grid-template-columns: repeat(6, minmax(0, 1fr));
         }
-      }
-
-      .dashboard__placeholder {
-        min-block-size: 640px;
       }
 
       /* ---- Needs attention ---- */

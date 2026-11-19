@@ -1,4 +1,4 @@
-import type { ChartTheme } from '@lpg/shared/ui/charts';
+import type { ChartTheme } from '@lpg/shared/ui';
 import {
   cashChart,
   driversChart,

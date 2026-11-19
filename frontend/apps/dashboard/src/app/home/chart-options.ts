@@ -1,6 +1,5 @@
 import type { EChartsCoreOption } from 'echarts/core';
-import type { ChartTable, ChartTheme } from '@lpg/shared/ui/charts';
-import { formatCurrencyInr } from '@lpg/shared/ui';
+import { type ChartTable, type ChartTheme, formatCurrencyInr } from '@lpg/shared/ui';
 import { shortDate } from './dashboard-dates';
 import {
   compactInr,
