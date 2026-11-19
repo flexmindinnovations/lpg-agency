@@ -539,7 +539,10 @@ export class DataGridComponent<TRow = unknown> {
     // Client-side pagination — `pageSize()` of 0 turns it off.
     pagination: this.pageSize() > 0,
     paginationPageSize: this.pageSize() || 10,
-    paginationPageSizeSelector: [10, 25, 50, 100],
+    // The initial size must be one of the options or the dropdown renders blank.
+    paginationPageSizeSelector: [...new Set([this.pageSize() || 10, 10, 25, 50, 100])].sort(
+      (a, b) => a - b,
+    ),
     quickFilterText: this.searchQuery(),
     overlayNoRowsTemplate: this.getEmptyOverlayTemplate(),
   }));
