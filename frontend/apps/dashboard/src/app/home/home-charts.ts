@@ -293,40 +293,21 @@ const CHART_HEIGHT = 280;
         display: block;
       }
 
+      /* Cards wrap and grow to fill each row, so the board has no gaps however
+         many widgets the role can see. A wide card asks for twice the room. */
       .charts {
-        display: grid;
-        grid-template-columns: repeat(12, minmax(0, 1fr));
+        display: flex;
+        flex-wrap: wrap;
         gap: var(--spacing-lg);
       }
 
       .charts > * {
-        grid-column: span 12;
+        flex: 1 1 340px;
+        min-inline-size: 0;
       }
 
-      /* Cards in a row are the same height. */
-      .charts {
-        grid-auto-rows: 1fr;
-      }
-
-      /* Two widgets per row from tablet width, a wide and a narrow one. */
-      @media (min-width: 900px) {
-        .charts > * {
-          grid-column: span 6;
-        }
-
-        .charts > .charts__wide {
-          grid-column: span 12;
-        }
-      }
-
-      @media (min-width: 1280px) {
-        .charts > * {
-          grid-column: span 4;
-        }
-
-        .charts > .charts__wide {
-          grid-column: span 8;
-        }
+      .charts > .charts__wide {
+        flex: 2 1 560px;
       }
     `,
   ],
