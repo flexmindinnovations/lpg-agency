@@ -82,13 +82,13 @@
         opacity: 0;
         pointer-events: none;
       }
-      /* A gas burner lighting: a spark, a blue crown, then the flame grows,
-         flickers, and the cycle starts again (4s). Every layer's resting style
-         is the fully lit burner, so reduced motion simply shows that. */
+      /* A gas burner lighting: a spark, a blue crown, then the flame grows and
+         keeps flickering. Each part is its own layer animated with transform
+         and opacity only, so the browser runs it off the main thread and it
+         stays smooth while the app bundle is still parsing. Every layer's
+         resting style is the lit burner, so reduced motion shows that. */
       .boot__mark {
         position: relative;
-        display: grid;
-        place-items: center;
         inline-size: 96px;
         block-size: 96px;
       }
@@ -98,43 +98,45 @@
         inset: -10px;
         border-radius: 50%;
         background: radial-gradient(circle, rgba(255, 140, 40, 0.38), transparent 68%);
-        animation: boot-glow 4s ease-in-out infinite;
+        will-change: opacity;
+        animation:
+          boot-fade-in 1s ease-out 0.6s both,
+          boot-breathe 2.6s ease-in-out 1.6s infinite alternate;
       }
-      .boot__fire {
-        position: relative;
+      .boot__layer {
+        position: absolute;
+        inset: 0;
         inline-size: 96px;
         block-size: 96px;
         overflow: visible;
-      }
-      .boot__fire g,
-      .boot__fire path {
-        transform-box: fill-box;
-        transform-origin: 50% 100%;
+        /* The burner head sits at 70/96 of the height: flames grow from there. */
+        transform-origin: 50% 73%;
+        will-change: transform, opacity;
       }
       .boot__burner {
         fill: var(--boot-fg);
         opacity: 0.78;
       }
-      .boot__ignite {
-        animation: boot-ignite 4s cubic-bezier(0.3, 0.7, 0.3, 1) infinite;
-      }
-      .boot__flicker {
-        animation: boot-flicker 0.9s ease-in-out infinite alternate;
-      }
-      .boot__flicker--inner {
-        animation-duration: 0.65s;
-        animation-delay: -0.3s;
-      }
-      .boot__crown {
-        animation: boot-crown 4s ease-out infinite;
-      }
-      .boot__fire .boot__spark {
-        transform-origin: 90% 90%;
+      .boot__spark {
         opacity: 0;
+        transform-origin: 30% 68%;
         stroke: #ffc233;
         stroke-width: 2;
         stroke-linecap: round;
-        animation: boot-spark 4s linear infinite;
+        animation: boot-spark 0.7s linear both;
+      }
+      .boot__crown {
+        animation: boot-crown 0.5s ease-out 0.35s both;
+      }
+      .boot__ignite {
+        animation: boot-ignite 1s cubic-bezier(0.2, 0.8, 0.3, 1) 0.55s both;
+      }
+      .boot__flicker {
+        animation: boot-flicker 1.4s ease-in-out infinite alternate;
+      }
+      .boot__flicker--inner {
+        animation-duration: 1.05s;
+        animation-delay: -0.5s;
       }
       .boot__name {
         margin: 0;
@@ -165,91 +167,74 @@
         animation: boot-slide 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
       }
       @keyframes boot-ignite {
-        0%,
-        12% {
+        0% {
           transform: scale(0.1, 0);
           opacity: 0;
         }
-        20% {
-          transform: scale(0.55, 0.45);
+        40% {
+          transform: scale(0.6, 0.5);
           opacity: 1;
         }
-        30% {
-          transform: scale(1.1, 1.12);
+        75% {
+          transform: scale(1.08, 1.1);
         }
-        38%,
-        86% {
+        100% {
           transform: scale(1, 1);
           opacity: 1;
         }
-        94% {
-          transform: scale(0.45, 0.2);
-          opacity: 0.7;
-        }
-        100% {
-          transform: scale(0.1, 0);
-          opacity: 0;
-        }
       }
       @keyframes boot-flicker {
-        0% {
+        from {
           transform: scale(1, 1) skewX(0deg);
         }
-        50% {
-          transform: scale(0.96, 1.05) skewX(1.5deg);
-        }
-        100% {
-          transform: scale(1.03, 0.97) skewX(-1.5deg);
+        to {
+          transform: scale(0.975, 1.035) skewX(0.8deg);
         }
       }
       @keyframes boot-crown {
-        0%,
-        6% {
+        from {
           opacity: 0;
           transform: scaleY(0.2);
         }
-        12%,
-        90% {
+        to {
           opacity: 1;
           transform: scaleY(1);
         }
-        98%,
-        100% {
-          opacity: 0;
-          transform: scaleY(0.2);
-        }
       }
       @keyframes boot-spark {
-        0%,
-        2% {
+        0% {
           opacity: 0;
-          transform: scale(0.4);
+          transform: scale(0.5);
         }
-        4% {
+        25% {
           opacity: 1;
           transform: scale(1);
         }
-        7% {
+        45% {
           opacity: 0;
         }
-        9% {
+        60% {
           opacity: 1;
           transform: scale(1.15);
         }
-        13%,
         100% {
           opacity: 0;
         }
       }
-      @keyframes boot-glow {
-        0%,
-        12%,
-        100% {
+      @keyframes boot-fade-in {
+        from {
           opacity: 0;
         }
-        32%,
-        86% {
+        to {
           opacity: 1;
+        }
+      }
+      @keyframes boot-breathe {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0.75;
         }
       }
       @keyframes boot-slide {
@@ -271,6 +256,9 @@
         .boot__spark,
         .boot__bar::after {
           animation: none;
+        }
+        .boot__layer {
+          will-change: auto;
         }
         .boot__bar::after {
           inline-size: 100%;
@@ -309,40 +297,40 @@
     <lpg-root></lpg-root>
     <div class="boot" role="status" aria-live="polite" aria-label="Loading LPG Agency">
       <div class="boot__mark" aria-hidden="true">
-        <svg class="boot__fire" viewBox="0 0 96 96" fill="none">
-          <!-- The burner: head, neck and foot. -->
+        <svg class="boot__layer" viewBox="0 0 96 96" fill="none">
           <rect class="boot__burner" x="28" y="70" width="40" height="7" rx="3.5" />
           <rect class="boot__burner" x="42" y="77" width="12" height="8" />
           <rect class="boot__burner" x="33" y="85" width="30" height="4" rx="2" />
-          <!-- The spark that lights it. -->
-          <g class="boot__spark">
-            <path d="M30 66 24 59M30 66 31 57M30 66 22 67" />
-          </g>
-          <!-- The blue crown of small gas flames along the burner head. -->
-          <g class="boot__crown" fill="#55b9ee">
-            <path d="M33 70c-1.6-2.2-1.6-4.2 0-6.4 1.6 2.2 1.6 4.2 0 6.4Z" />
-            <path d="M40.5 70c-1.6-2.6-1.6-5 0-7.6 1.6 2.6 1.6 5 0 7.6Z" />
-            <path d="M48 70c-1.8-2.8-1.8-5.4 0-8.2 1.8 2.8 1.8 5.4 0 8.2Z" />
-            <path d="M55.5 70c-1.6-2.6-1.6-5 0-7.6 1.6 2.6 1.6 5 0 7.6Z" />
-            <path d="M63 70c-1.6-2.2-1.6-4.2 0-6.4 1.6 2.2 1.6 4.2 0 6.4Z" />
-          </g>
-          <!-- The flame: grows from the burner, then flickers. -->
-          <g class="boot__ignite">
-            <g class="boot__flicker">
-              <path
-                d="M48 12C50 27 65 35 65 52c0 10-7 18-17 18S31 62 31 52c0-8 5-14 9-20 1 6 3 8 6 9-1-10-1-19 2-29Z"
-                fill="#e8590c"
-              />
-            </g>
-            <g class="boot__flicker boot__flicker--inner">
-              <path
-                d="M48 32c1 10 10 14 10 26 0 7-4 12-10 12s-10-5-10-12c0-6 4-9 6-13 1 3 2 4 4 4-1-5-1-10 0-17Z"
-                fill="#ffb347"
-              />
-              <path d="M48 53c4 4 6 8 6 12 0 3-2.7 5-6 5s-6-2-6-5c0-4 2-8 6-12Z" fill="#55b9ee" />
-            </g>
-          </g>
         </svg>
+        <svg class="boot__layer boot__spark" viewBox="0 0 96 96" fill="none">
+          <path d="M30 66 24 59M30 66 31 57M30 66 22 67" />
+        </svg>
+        <svg class="boot__layer boot__crown" viewBox="0 0 96 96" fill="#55b9ee">
+          <path d="M33 70c-1.6-2.2-1.6-4.2 0-6.4 1.6 2.2 1.6 4.2 0 6.4Z" />
+          <path d="M40.5 70c-1.6-2.6-1.6-5 0-7.6 1.6 2.6 1.6 5 0 7.6Z" />
+          <path d="M48 70c-1.8-2.8-1.8-5.4 0-8.2 1.8 2.8 1.8 5.4 0 8.2Z" />
+          <path d="M55.5 70c-1.6-2.6-1.6-5 0-7.6 1.6 2.6 1.6 5 0 7.6Z" />
+          <path d="M63 70c-1.6-2.2-1.6-4.2 0-6.4 1.6 2.2 1.6 4.2 0 6.4Z" />
+        </svg>
+        <div class="boot__layer boot__ignite">
+          <svg class="boot__layer boot__flicker" viewBox="0 0 96 96" fill="none">
+            <path
+              d="M48 12C50 27 65 35 65 52c0 10-7 18-17 18S31 62 31 52c0-8 5-14 9-20 1 6 3 8 6 9-1-10-1-19 2-29Z"
+              fill="#e8590c"
+            />
+          </svg>
+          <svg
+            class="boot__layer boot__flicker boot__flicker--inner"
+            viewBox="0 0 96 96"
+            fill="none"
+          >
+            <path
+              d="M48 32c1 10 10 14 10 26 0 7-4 12-10 12s-10-5-10-12c0-6 4-9 6-13 1 3 2 4 4 4-1-5-1-10 0-17Z"
+              fill="#ffb347"
+            />
+            <path d="M48 53c4 4 6 8 6 12 0 3-2.7 5-6 5s-6-2-6-5c0-4 2-8 6-12Z" fill="#55b9ee" />
+          </svg>
+        </div>
       </div>
       <div>
         <p class="boot__name">LPG Agency</p>
