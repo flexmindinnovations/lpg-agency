@@ -82,26 +82,59 @@
         opacity: 0;
         pointer-events: none;
       }
+      /* A gas burner lighting: a spark, a blue crown, then the flame grows,
+         flickers, and the cycle starts again (4s). Every layer's resting style
+         is the fully lit burner, so reduced motion simply shows that. */
       .boot__mark {
         position: relative;
         display: grid;
         place-items: center;
-        inline-size: 72px;
-        block-size: 72px;
+        inline-size: 96px;
+        block-size: 96px;
       }
       .boot__mark::before {
         content: '';
         position: absolute;
-        inset: 0;
+        inset: -10px;
         border-radius: 50%;
-        border: 2px solid var(--boot-brand);
-        opacity: 0.35;
-        animation: boot-ring 1.8s ease-out infinite;
+        background: radial-gradient(circle, rgba(255, 140, 40, 0.38), transparent 68%);
+        animation: boot-glow 4s ease-in-out infinite;
       }
-      .boot__flame {
-        inline-size: 40px;
-        block-size: 40px;
-        animation: boot-float 2.4s ease-in-out infinite;
+      .boot__fire {
+        position: relative;
+        inline-size: 96px;
+        block-size: 96px;
+        overflow: visible;
+      }
+      .boot__fire g,
+      .boot__fire path {
+        transform-box: fill-box;
+        transform-origin: 50% 100%;
+      }
+      .boot__burner {
+        fill: var(--boot-fg);
+        opacity: 0.78;
+      }
+      .boot__ignite {
+        animation: boot-ignite 4s cubic-bezier(0.3, 0.7, 0.3, 1) infinite;
+      }
+      .boot__flicker {
+        animation: boot-flicker 0.9s ease-in-out infinite alternate;
+      }
+      .boot__flicker--inner {
+        animation-duration: 0.65s;
+        animation-delay: -0.3s;
+      }
+      .boot__crown {
+        animation: boot-crown 4s ease-out infinite;
+      }
+      .boot__fire .boot__spark {
+        transform-origin: 90% 90%;
+        opacity: 0;
+        stroke: #ffc233;
+        stroke-width: 2;
+        stroke-linecap: round;
+        animation: boot-spark 4s linear infinite;
       }
       .boot__name {
         margin: 0;
@@ -131,23 +164,92 @@
         background: var(--boot-brand);
         animation: boot-slide 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
       }
-      @keyframes boot-ring {
-        0% {
-          transform: scale(0.75);
-          opacity: 0.5;
+      @keyframes boot-ignite {
+        0%,
+        12% {
+          transform: scale(0.1, 0);
+          opacity: 0;
+        }
+        20% {
+          transform: scale(0.55, 0.45);
+          opacity: 1;
+        }
+        30% {
+          transform: scale(1.1, 1.12);
+        }
+        38%,
+        86% {
+          transform: scale(1, 1);
+          opacity: 1;
+        }
+        94% {
+          transform: scale(0.45, 0.2);
+          opacity: 0.7;
         }
         100% {
-          transform: scale(1.25);
+          transform: scale(0.1, 0);
           opacity: 0;
         }
       }
-      @keyframes boot-float {
-        0%,
-        100% {
-          transform: translateY(0);
+      @keyframes boot-flicker {
+        0% {
+          transform: scale(1, 1) skewX(0deg);
         }
         50% {
-          transform: translateY(-4px);
+          transform: scale(0.96, 1.05) skewX(1.5deg);
+        }
+        100% {
+          transform: scale(1.03, 0.97) skewX(-1.5deg);
+        }
+      }
+      @keyframes boot-crown {
+        0%,
+        6% {
+          opacity: 0;
+          transform: scaleY(0.2);
+        }
+        12%,
+        90% {
+          opacity: 1;
+          transform: scaleY(1);
+        }
+        98%,
+        100% {
+          opacity: 0;
+          transform: scaleY(0.2);
+        }
+      }
+      @keyframes boot-spark {
+        0%,
+        2% {
+          opacity: 0;
+          transform: scale(0.4);
+        }
+        4% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        7% {
+          opacity: 0;
+        }
+        9% {
+          opacity: 1;
+          transform: scale(1.15);
+        }
+        13%,
+        100% {
+          opacity: 0;
+        }
+      }
+      @keyframes boot-glow {
+        0%,
+        12%,
+        100% {
+          opacity: 0;
+        }
+        32%,
+        86% {
+          opacity: 1;
         }
       }
       @keyframes boot-slide {
@@ -163,7 +265,10 @@
           transition: none;
         }
         .boot__mark::before,
-        .boot__flame,
+        .boot__ignite,
+        .boot__flicker,
+        .boot__crown,
+        .boot__spark,
         .boot__bar::after {
           animation: none;
         }
@@ -204,15 +309,39 @@
     <lpg-root></lpg-root>
     <div class="boot" role="status" aria-live="polite" aria-label="Loading LPG Agency">
       <div class="boot__mark" aria-hidden="true">
-        <svg class="boot__flame" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 2.5c.4 3.1-1.4 4.9-3.2 6.9C7.1 11.2 6 13 6 15.2 6 18.4 8.7 21 12 21s6-2.6 6-5.8c0-2.2-1-3.7-2.3-5.2-.4 1.2-1 1.9-1.9 2.3.5-3.6-.3-6.9-1.8-9.9Z"
-            fill="#e8590c"
-          />
-          <path
-            d="M12 21c-1.7 0-3-1.3-3-3 0-1.6 1.1-2.4 1.9-3.4.4-.5.8-1.1.9-1.9 1.9 1.4 3.2 3 3.2 5.3 0 1.7-1.3 3-3 3Z"
-            fill="#ffb26b"
-          />
+        <svg class="boot__fire" viewBox="0 0 96 96" fill="none">
+          <!-- The burner: head, neck and foot. -->
+          <rect class="boot__burner" x="28" y="70" width="40" height="7" rx="3.5" />
+          <rect class="boot__burner" x="42" y="77" width="12" height="8" />
+          <rect class="boot__burner" x="33" y="85" width="30" height="4" rx="2" />
+          <!-- The spark that lights it. -->
+          <g class="boot__spark">
+            <path d="M30 66 24 59M30 66 31 57M30 66 22 67" />
+          </g>
+          <!-- The blue crown of small gas flames along the burner head. -->
+          <g class="boot__crown" fill="#55b9ee">
+            <path d="M33 70c-1.6-2.2-1.6-4.2 0-6.4 1.6 2.2 1.6 4.2 0 6.4Z" />
+            <path d="M40.5 70c-1.6-2.6-1.6-5 0-7.6 1.6 2.6 1.6 5 0 7.6Z" />
+            <path d="M48 70c-1.8-2.8-1.8-5.4 0-8.2 1.8 2.8 1.8 5.4 0 8.2Z" />
+            <path d="M55.5 70c-1.6-2.6-1.6-5 0-7.6 1.6 2.6 1.6 5 0 7.6Z" />
+            <path d="M63 70c-1.6-2.2-1.6-4.2 0-6.4 1.6 2.2 1.6 4.2 0 6.4Z" />
+          </g>
+          <!-- The flame: grows from the burner, then flickers. -->
+          <g class="boot__ignite">
+            <g class="boot__flicker">
+              <path
+                d="M48 12C50 27 65 35 65 52c0 10-7 18-17 18S31 62 31 52c0-8 5-14 9-20 1 6 3 8 6 9-1-10-1-19 2-29Z"
+                fill="#e8590c"
+              />
+            </g>
+            <g class="boot__flicker boot__flicker--inner">
+              <path
+                d="M48 32c1 10 10 14 10 26 0 7-4 12-10 12s-10-5-10-12c0-6 4-9 6-13 1 3 2 4 4 4-1-5-1-10 0-17Z"
+                fill="#ffb347"
+              />
+              <path d="M48 53c4 4 6 8 6 12 0 3-2.7 5-6 5s-6-2-6-5c0-4 2-8 6-12Z" fill="#55b9ee" />
+            </g>
+          </g>
         </svg>
       </div>
       <div>
