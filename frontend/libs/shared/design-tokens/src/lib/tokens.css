@@ -285,6 +285,12 @@ have always been hand-edited directly. Edit them here.
   --glass-saturate: 120%;
   --glass-grain-opacity: 0.065;
   --glass-grain-blend: soft-light;
+  /* A row or card sitting inside glass (a drawer's line items, a list of
+     history entries): a faint wash of the text colour, so it reads as a
+     slightly different surface and the glass still shows through. Never an
+     opaque page colour, which looks like a white slab on frosted glass.
+     Follows the theme because it is made from the text colour. */
+  --surface-inset: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
@@ -537,6 +543,7 @@ have always been hand-edited directly. Edit them here.
   --glass-blur: 0px;
   --glass-saturate: 100%;
   --glass-grain-opacity: 0;
+  --surface-inset: var(--color-surface-base);
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
