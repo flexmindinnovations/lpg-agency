@@ -77,6 +77,7 @@
     "ag-grid-community": "^36.1.0",
     "chart.js": "^4.5.1",
     "dompurify": "^3.4.17",
+    "echarts": "^6.1.0",
     "marked": "^18.0.12",
     "primeicons": "^8.0.0",
     "primeng": "^22.0.0",

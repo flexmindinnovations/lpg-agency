@@ -1,127 +1,76 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  PLATFORM_ID,
-  inject,
-  signal,
-  OnDestroy,
-  ElementRef,
-} from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { ChartModule } from 'primeng/chart';
-import { catchError, debounceTime, of } from 'rxjs';
-import {
-  ActivityListComponent,
-  type ActivityItem,
-  type ActivityStatusTone,
   EmptyStateComponent,
-  formatEntityName,
-  formatTimestamp,
+  formatCurrencyInr,
   HasPermissionDirective,
   PageHeaderComponent,
   SectionCardComponent,
   SkeletonComponent,
   StatCardComponent,
   type StatTone,
-  formatCurrencyInr,
-  toSentenceCase,
 } from '@lpg/shared/ui';
-import { formatDisplayDate } from '@lpg/shared/util';
+import { addDays } from './dashboard-dates';
+import { DashboardData, type WidgetData } from './dashboard-data';
 import {
-  CustomerService,
-  DashboardService,
-  type CylinderTypePriceCardResponse,
-  type DashboardActivityEntryResponse,
-  DashboardSummaryResponse,
-  type OperationsSnapshotResponse,
-  type RefillDueCustomerResponse,
-  WebSocketService,
-} from '@lpg/shared/data-access';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+  attentionItems,
+  compactInr,
+  deliveredByDay,
+  percentChange,
+  revenueByDay,
+  series,
+  type AttentionSeverity,
+  type Delta,
+} from './dashboard-model';
+import { HomeCharts } from './home-charts';
 import { SetupChecklist } from './setup-checklist/setup-checklist';
 
-interface KpiData {
-  title: string;
+interface Kpi {
+  key: string;
+  label: string;
   value: string;
   icon: string;
   tone: StatTone;
-  permission?: string;
-  /** The module this metric summarises — makes the card a real link there. */
   route: string;
+  permission?: string;
+  loading: boolean;
+  delta?: Delta | null;
+  trend?: readonly number[];
 }
 
-const ACTION_ICON: Record<string, string> = {
-  create: 'pi pi-plus-circle',
-  update: 'pi pi-pencil',
-  delete: 'pi pi-trash',
+const SEVERITY_ICON: Record<AttentionSeverity, string> = {
+  critical: 'pi pi-exclamation-circle',
+  warning: 'pi pi-exclamation-triangle',
+  info: 'pi pi-info-circle',
 };
 
-const ACTION_LABEL: Record<string, string> = {
-  create: 'Created',
-  update: 'Changed',
-  delete: 'Deleted',
-};
-
-const ACTION_TONE: Record<string, ActivityStatusTone> = {
-  create: 'success',
-  update: 'info',
-  delete: 'danger',
-};
-
-interface InventoryStatusCard {
-  status: string;
-  label: string;
-  quantity: number;
+/** Whether a widget has nothing to show yet (first load, no value kept). */
+function pending(widget: WidgetData<unknown>): boolean {
+  return widget.data() === null && widget.status() === 'loading';
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  filled: 'Filled',
-  empty: 'Empty',
-  damaged: 'Damaged',
-  leakage: 'Leakage',
-  quarantine: 'Quarantine',
-  repair: 'Repair',
-  scrap: 'Scrap',
-};
-
-function statusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? toSentenceCase(status);
-}
-
-/** "Fleet status: 4 available, 1 in maintenance." — a chart's numbers as text. */
-function chartSummary(
-  title: string,
-  counts: Readonly<Record<string, number>> | undefined,
-  noun: string,
-): string {
-  const entries = Object.entries(counts ?? {});
-  if (entries.length === 0) return `${title}: no ${noun} yet.`;
-  const parts = entries.map(([status, count]) => `${count} ${statusLabel(status).toLowerCase()}`);
-  return `${title}: ${parts.join(', ')}.`;
-}
-
-function tile(title: string, value: number, icon: string, tone: StatTone, route: string): KpiData {
-  return { title, value: value.toLocaleString('en-IN'), icon, tone, route };
-}
-
+/**
+ * Home: what needs attention now, how today compares with a normal day, then
+ * the charts. The attention list and KPI tiles use no chart library, so they
+ * paint immediately; the charts are deferred (see `HomeCharts`).
+ */
 @Component({
   selector: 'lpg-home',
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
-    ChartModule,
+    RouterLink,
     HasPermissionDirective,
     PageHeaderComponent,
     SectionCardComponent,
     StatCardComponent,
-    ActivityListComponent,
     EmptyStateComponent,
     SkeletonComponent,
     SetupChecklist,
+    HomeCharts,
   ],
+  providers: [DashboardData],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
@@ -130,142 +79,75 @@ function tile(title: string, value: number, icon: string, tone: StatTone, route:
       </ng-template>
 
       <lpg-setup-checklist />
-      <!-- Today's operations (DO-28) — what the day's work looks like. -->
-      @if (operationsKpis().length > 0) {
-        <section class="dashboard__ops" aria-labelledby="ops-heading">
-          <h2 id="ops-heading" class="dashboard__section-title">Today's operations</h2>
-          <div class="dashboard__kpis">
-            @for (kpi of operationsKpis(); track kpi.title) {
-              <lpg-stat-card
-                [label]="kpi.title"
-                [value]="kpi.value"
-                [icon]="kpi.icon"
-                [tone]="kpi.tone"
-                [loading]="loading()"
-                [route]="kpi.route"
-              />
-            }
-          </div>
-        </section>
-      }
 
-      <!-- KPI Section — each card links to the module it summarises. -->
-      <section class="dashboard__kpis">
-        @for (kpi of kpis(); track kpi.title) {
+      <lpg-section-card heading="Needs attention">
+        <div class="attention" [style.min-block-size.px]="attentionHeight()">
+          @if (attention().length > 0) {
+            <ul class="attention__list">
+              @for (item of attention(); track item.key; let i = $index) {
+                <li class="attention__row" [style.--row-index]="i">
+                  <a class="attention__link" [routerLink]="item.route">
+                    <i
+                      class="attention__icon attention__icon--{{ item.severity }} {{
+                        icon[item.severity]
+                      }}"
+                      aria-hidden="true"
+                    ></i>
+                    <span class="attention__count">{{ item.count.toLocaleString('en-IN') }}</span>
+                    <span class="attention__text">
+                      {{ item.text }}
+                      @if (item.detail) {
+                        <span class="attention__detail">{{ item.detail }}</span>
+                      }
+                    </span>
+                    <i class="pi pi-arrow-right attention__go" aria-hidden="true"></i>
+                  </a>
+                </li>
+              }
+            </ul>
+          } @else if (data.operations.status() === 'loading') {
+            <lpg-skeleton variant="text" [lines]="3" />
+          } @else if (data.operations.status() === 'error') {
+            <lpg-empty-state
+              tone="error"
+              title="Today's figures could not be loaded"
+              description="They will retry automatically. The rest of the page is unaffected."
+            />
+          } @else {
+            <lpg-empty-state
+              icon="pi pi-check-circle"
+              title="Nothing needs you right now"
+              description="Failed deliveries, approvals, low stock and held invoices show here when they come up."
+            />
+          }
+        </div>
+      </lpg-section-card>
+
+      <section class="dashboard__kpis" aria-label="Key figures">
+        @for (kpi of kpis(); track kpi.key) {
           <lpg-stat-card
             *lpgHasPermission="kpi.permission"
-            [label]="kpi.title"
+            [label]="kpi.label"
             [value]="kpi.value"
             [icon]="kpi.icon"
             [tone]="kpi.tone"
-            [loading]="loading()"
             [route]="kpi.route"
+            [loading]="kpi.loading"
+            [delta]="kpi.delta?.text ?? ''"
+            [deltaDirection]="kpi.delta?.direction ?? null"
+            [caption]="kpi.delta ? 'vs same day last week' : ''"
+            [trend]="kpi.trend ?? []"
           />
         }
       </section>
 
-      <!-- Charts Section -->
-      <section class="dashboard__charts">
-        <lpg-section-card *lpgHasPermission="'vehicles:read'" heading="Fleet Status">
-          <div class="chart-container">
-            @if (isBrowser) {
-              <p-chart
-                type="bar"
-                [data]="vehicleStatusChartData()"
-                [options]="barChartOptions()"
-                [ariaLabel]="vehicleChartSummary()"
-              ></p-chart>
-            }
-          </div>
-        </lpg-section-card>
-        <lpg-section-card
-          *lpgHasPermission="'inventory:read'"
-          heading="Cylinder Inventory (All Locations)"
-        >
-          <div class="chart-container">
-            @if (isBrowser) {
-              <p-chart
-                type="doughnut"
-                [data]="inventoryChartData()"
-                [options]="doughnutChartOptions()"
-                [ariaLabel]="inventoryChartSummary()"
-              ></p-chart>
-            }
-          </div>
-        </lpg-section-card>
-      </section>
-
-      <!-- Inventory Detail Cards -->
-      <lpg-section-card *lpgHasPermission="'inventory:read'" heading="Inventory by Status">
-        @if (inventoryCards().length > 0) {
-          <div class="mini-cards">
-            @for (card of inventoryCards(); track card.status) {
-              <div class="mini-card">
-                <span class="mini-card__label">{{ card.label }}</span>
-                <span class="mini-card__value">{{ card.quantity.toLocaleString('en-IN') }}</span>
-              </div>
-            }
-          </div>
-        } @else if (!loading()) {
-          <lpg-empty-state
-            title="No inventory activity yet"
-            description="Cylinder movements will appear here once stock is recorded."
-          />
-        }
-      </lpg-section-card>
-
-      <!-- Price Cards -->
-      <lpg-section-card *lpgHasPermission="'tenant:configure'" heading="Cylinder Prices">
-        @if (priceCards().length > 0) {
-          <div class="mini-cards">
-            @for (card of priceCards(); track card.cylinder_type_id) {
-              <div class="mini-card">
-                <span class="mini-card__label"
-                  >{{ card.name }} · {{ customerTypeLabel(card.customer_type) }} price</span
-                >
-                <span class="mini-card__value">
-                  {{ card.price ? formatCurrencyInr(card.price) : 'No price set' }}
-                </span>
-              </div>
-            }
-          </div>
-        } @else if (!loading()) {
-          <lpg-empty-state
-            title="No cylinder types configured yet"
-            description="Add cylinder types and a price list to see pricing here."
-          />
-        }
-      </lpg-section-card>
-
-      <!-- Refills Due Soon — AI Operational Intelligence Horizon 1 Stage 2.
-           A heuristic prediction (ai.prediction, model refill_heuristic_v1),
-           not a guarantee. -->
-      <lpg-section-card *lpgHasPermission="'customers:read'" heading="Refills Due This Week">
-        @if (refillsDueItems().length > 0) {
-          <lpg-activity-list [items]="refillsDueItems()" />
-        } @else if (refillsDueLoading()) {
-          <lpg-skeleton variant="text" [lines]="4" />
-        } @else {
-          <lpg-empty-state
-            title="No refills due this week"
-            description="Predicted refill dates are refreshed nightly from delivery history."
-          />
-        }
-      </lpg-section-card>
-
-      <!-- Recent Activity -->
-      <lpg-section-card *lpgHasPermission="'audit:read'" heading="Recent Activity">
-        @if (activityItems().length > 0) {
-          <lpg-activity-list [items]="activityItems()" />
-        } @else if (loading()) {
-          <lpg-skeleton variant="text" [lines]="4" />
-        } @else {
-          <lpg-empty-state
-            title="No recent activity"
-            description="Actions across the platform will show up here."
-          />
-        }
-      </lpg-section-card>
+      @defer (on idle; prefetch on idle) {
+        <lpg-home-charts />
+      } @placeholder {
+        <div class="dashboard__placeholder" aria-hidden="true">
+          <lpg-skeleton variant="block" height="320px" />
+        </div>
+      }
     </div>
   `,
   styles: [
@@ -280,484 +162,241 @@ function tile(title: string, value: number, icon: string, tone: StatTone, route:
         gap: var(--spacing-xl);
       }
 
-      .dashboard__section-title {
-        margin: 0 0 var(--spacing-md);
-        font-size: var(--typography-heading3-font-size);
-        font-weight: var(--typography-heading3-font-weight);
+      /* Six tiles: 2 across on a phone, 3 on a tablet, one row of 6 when there
+         is room, so the last row is never a stray pair. Sized by the page's
+         own width, not the window's, so the open sidebar is accounted for. */
+      .dashboard {
+        container-type: inline-size;
       }
 
       .dashboard__kpis {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--spacing-lg);
       }
 
-      .dashboard__charts {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--spacing-lg);
-      }
-
-      @media (min-width: 1024px) {
-        .dashboard__charts {
-          grid-template-columns: 2fr 1fr;
+      @container (min-width: 640px) {
+        .dashboard__kpis {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
       }
 
-      .chart-container {
-        position: relative;
-        height: 300px;
-        width: 100%;
+      @container (min-width: 1040px) {
+        .dashboard__kpis {
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
       }
 
-      /* Compact label/value tiles inside a section card (inventory, pricing). */
-      .mini-cards {
+      .dashboard__placeholder {
+        min-block-size: 640px;
+      }
+
+      /* ---- Needs attention ---- */
+
+      .attention__list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: var(--spacing-md);
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: var(--spacing-xs) var(--spacing-lg);
       }
 
-      .mini-card {
+      .attention__row {
+        animation: attention-in var(--motion-duration-medium) var(--motion-easing-emphasized) both;
+        animation-delay: calc(var(--row-index, 0) * 45ms);
+      }
+
+      @keyframes attention-in {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .attention__row {
+          animation: none;
+        }
+      }
+
+      .attention__link {
         display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: var(--spacing-md);
-        background: var(--color-surface-overlay);
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
         border-radius: var(--radius-input);
+        color: var(--color-text-primary);
+        text-decoration: none;
+        transition: background-color var(--motion-duration-small) var(--motion-easing-standard);
       }
 
-      .mini-card__label {
+      .attention__link:hover {
+        background: var(--color-surface-overlay);
+      }
+
+      .attention__link:focus-visible {
+        outline: var(--component-focus-ring-width) solid var(--component-focus-ring-color);
+        outline-offset: -2px;
+      }
+
+      .attention__icon {
+        font-size: var(--icon-size-md);
+        flex-shrink: 0;
+      }
+
+      .attention__icon--critical {
+        color: var(--color-status-danger);
+      }
+
+      .attention__icon--warning {
+        color: var(--color-status-warning);
+      }
+
+      .attention__icon--info {
+        color: var(--color-status-info);
+      }
+
+      .attention__count {
+        min-inline-size: 2ch;
+        font-size: var(--typography-heading3-font-size);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .attention__text {
+        flex: 1;
+        min-inline-size: 0;
+        font-size: var(--typography-secondary-font-size);
+      }
+
+      .attention__detail {
+        display: block;
         font-size: var(--typography-caption-font-size);
         color: var(--color-text-secondary);
       }
 
-      .mini-card__value {
-        font-size: var(--typography-heading3-font-size);
-        font-weight: 700;
-        color: var(--color-text-primary);
+      .attention__go {
+        font-size: 11px;
+        color: var(--color-text-secondary);
+        opacity: 0;
+        transform: translateX(-4px);
+        transition:
+          opacity var(--motion-duration-small) var(--motion-easing-standard),
+          transform var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      .attention__link:hover .attention__go,
+      .attention__link:focus-visible .attention__go {
+        opacity: 1;
+        transform: none;
       }
     `,
   ],
 })
-export class Home implements OnDestroy {
-  protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly el = inject(ElementRef);
-  private readonly dashboardService = inject(DashboardService);
-  private readonly customerService = inject(CustomerService);
-  private readonly wsService = inject(WebSocketService);
+export class Home {
+  protected readonly data = inject(DashboardData);
+  protected readonly icon = SEVERITY_ICON;
 
-  protected readonly loading = signal(true);
-
-  // The whole dashboard is one server-composed summary — every KPI, card and
-  // chart below is a pure projection of this signal, not an independent
-  // fetch. See `GetDashboardSummaryUseCase` on the backend for how it's
-  // assembled from Customer/Driver/Vehicle/Warehouse/Inventory/PriceList/
-  // Audit repositories in a single request.
-  private readonly summary = signal<DashboardSummaryResponse | null>(null);
-
-  protected readonly kpis = signal<KpiData[]>([]);
-  private readonly operations = signal<OperationsSnapshotResponse | null>(null);
-  protected readonly formatCurrencyInr = formatCurrencyInr;
-  protected readonly customerTypeLabel = (type: string): string => toSentenceCase(type);
-
-  /** DO-28: the day's pipeline first; invoice and cash tiles only appear
-   * when the server included them (the caller may see them). */
-  protected readonly operationsKpis = computed<KpiData[]>(() => {
-    const ops = this.operations();
-    if (!ops) return [];
-    const open = ops.orders.open_by_status;
-    const count = (...statuses: string[]) =>
-      statuses.reduce((sum, status) => sum + (open[status] ?? 0), 0);
-    const kpis: KpiData[] = [
-      tile('Bookings today', ops.orders.bookings_today, 'pi pi-calendar-plus', 'info', '/orders'),
-      tile('Awaiting confirmation', count('booked'), 'pi pi-inbox', 'warning', '/orders'),
-      tile(
-        'Waiting for a trip',
-        count('confirmed', 'assigned', 'ready_for_dispatch'),
-        'pi pi-clock',
-        'warning',
-        '/orders',
-      ),
-      tile('Out for delivery', count('out_for_delivery'), 'pi pi-truck', 'primary', '/orders'),
-      tile(
-        'Delivered today',
-        ops.orders.delivered_today,
-        'pi pi-check-circle',
-        'success',
-        '/orders',
-      ),
-      tile('Failed today', ops.orders.failed_today, 'pi pi-times-circle', 'danger', '/orders'),
-      tile(
-        'Cancellations to approve',
-        ops.orders.pending_cancellations,
-        'pi pi-ban',
-        'warning',
-        '/orders',
-      ),
-      tile('Open complaints', ops.open_complaints, 'pi pi-comments', 'warning', '/complaints'),
-      tile('Low-stock locations', ops.low_stock_count, 'pi pi-box', 'danger', '/inventory'),
-    ];
-    if (ops.invoices) {
-      kpis.push(
-        {
-          title: `Outstanding (${ops.invoices.outstanding_count} invoices)`,
-          value: formatCurrencyInr(ops.invoices.outstanding_amount),
-          icon: 'pi pi-wallet',
-          tone: 'info',
-          route: '/invoices',
-        },
-        {
-          title: `Overdue > ${ops.payment_terms_days} days (${ops.invoices.overdue_count})`,
-          value: formatCurrencyInr(ops.invoices.overdue_amount),
-          icon: 'pi pi-exclamation-circle',
-          tone: 'danger',
-          route: '/invoices',
-        },
-      );
-      if (ops.invoices.on_hold_count > 0) {
-        kpis.push(
-          tile(
-            'Invoices on hold',
-            ops.invoices.on_hold_count,
-            'pi pi-pause',
-            'danger',
-            '/invoices',
-          ),
-        );
-      }
-    }
-    if (ops.cash) {
-      kpis.push(
-        {
-          title: 'Cash with drivers',
-          value: formatCurrencyInr(ops.cash.awaiting_handover),
-          icon: 'pi pi-money-bill',
-          tone: 'warning',
-          route: '/cash-handovers',
-        },
-        tile(
-          'Handovers to verify',
-          ops.cash.handovers_awaiting_review,
-          'pi pi-verified',
-          'info',
-          '/cash-handovers',
-        ),
-      );
-    }
-    return kpis;
+  protected readonly attention = computed(() => {
+    const ops = this.data.operations.data();
+    return ops ? attentionItems(ops, formatCurrencyInr) : [];
   });
-  protected readonly inventoryCards = signal<InventoryStatusCard[]>([]);
-  protected readonly priceCards = signal<CylinderTypePriceCardResponse[]>([]);
 
-  protected readonly recentActivity = signal<DashboardActivityEntryResponse[]>([]);
+  /** Holds the card's height while loading so the KPI tiles below do not jump. */
+  protected readonly attentionHeight = computed(() => {
+    const rows = this.attention().length;
+    return rows > 0 ? 0 : 104;
+  });
 
-  // Refills Due Soon — a separate, independently-loaded read model (AI
-  // Operational Intelligence Horizon 1 Stage 2), not part of the
-  // server-composed `summary` above: it reads `ai.prediction`, a
-  // different bounded context to the Customer/Driver/Vehicle/Warehouse/
-  // Inventory/PriceList/Audit repositories `GetDashboardSummaryUseCase`
-  // already aggregates.
-  protected readonly refillsDueLoading = signal(true);
-  protected readonly refillsDueSoon = signal<RefillDueCustomerResponse[]>([]);
+  protected readonly kpis = computed<Kpi[]>(() => {
+    const d = this.data;
+    const today = d.today;
+    const lastWeek = addDays(today, -7);
+    const week = [addDays(today, -6), today] as const;
 
-  protected readonly refillsDueItems = computed<ActivityItem[]>(() =>
-    this.refillsDueSoon()
-      .slice(0, 8)
-      .map((customer) => {
-        const overdue = customer.refill_due_date < this.todayIso;
-        return {
-          time: formatTimestamp(customer.last_delivered_at),
-          icon: 'pi pi-bell',
-          title: customer.full_name,
-          description: customer.phone_number,
-          status: overdue ? 'Overdue' : `Due ${formatDisplayDate(customer.refill_due_date)}`,
-          statusTone: overdue ? 'danger' : 'warning',
-        };
-      }),
-  );
+    const ops = d.operations.data();
+    const drivers = d.drivers.data();
+    const sales = d.sales.data();
+    const summary = d.summary.data();
+    const rating = d.rating.data();
 
-  /** The "Recent Activity" list (doc §17) — a lighter projection than the
-   *  full audit grid at /admin/audit-log. */
-  protected readonly activityItems = computed<ActivityItem[]>(() =>
-    this.recentActivity()
-      .slice(0, 8)
-      .map((entry) => ({
-        time: formatTimestamp(entry.performed_at),
-        icon: ACTION_ICON[entry.action] ?? 'pi pi-circle',
-        title: entry.entity_display_name
-          ? `${formatEntityName(entry.entity_name)} ${entry.entity_display_name}`
-          : formatEntityName(entry.entity_name),
-        description: entry.actor_display_name ? `by ${entry.actor_display_name}` : undefined,
-        status: entry.action
-          ? (ACTION_LABEL[entry.action] ?? toSentenceCase(entry.action))
-          : undefined,
-        statusTone: ACTION_TONE[entry.action] ?? 'neutral',
-      })),
-  );
+    const delivered = drivers ? deliveredByDay(drivers) : null;
+    const revenue = sales ? revenueByDay(sales) : null;
 
-  /** Text alternatives for the two charts (WCAG 1.1.1): the same numbers in words. */
-  protected readonly vehicleChartSummary = computed(() =>
-    chartSummary('Fleet status', this.summary()?.vehicles_by_status, 'vehicles'),
-  );
-  protected readonly inventoryChartSummary = computed(() =>
-    chartSummary('Cylinder inventory', this.summary()?.inventory_by_status, 'cylinders'),
-  );
-
-  // PrimeNG's ChartData<...> generic is impractical to satisfy exactly.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected readonly vehicleStatusChartData = signal<any>({});
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected readonly inventoryChartData = signal<any>({});
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected readonly barChartOptions = signal<any>({});
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected readonly doughnutChartOptions = signal<any>({});
-
-  private themeObserver: MutationObserver | null = null;
-  private readonly todayIso = new Date().toISOString().slice(0, 10);
-
-  constructor() {
-    effect(() => {
-      if (this.isBrowser) {
-        this.initCharts();
-      }
-    });
-    this.loadDashboardData();
-    this.loadRefillsDueSoon();
-
-    // DO-24: KPIs follow order and trip events live. Debounced so a burst
-    // (a whole trip delivered) is one refetch; a reconnect refetches what
-    // was missed while the socket was down.
-    this.wsService.subscribeTo('dashboard');
-    this.wsService.subscribeTo('orders');
-    this.wsService
-      .changes$('dashboard.metrics_stale', 'order.status_changed')
-      .pipe(debounceTime(1000), takeUntilDestroyed())
-      .subscribe(() => {
-        this.loadDashboardData();
-      });
-  }
-
-  ngOnDestroy() {
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-    }
-  }
-
-  private initCharts() {
-    this.updateChartTheme();
-
-    this.themeObserver = new MutationObserver(() => {
-      this.updateChartTheme();
-    });
-    this.themeObserver.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class', 'data-theme'],
-    });
-    this.themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'data-theme'],
-    });
-  }
-
-  private loadDashboardData(): void {
-    this.loading.set(true);
-
-    this.dashboardService
-      .getOperations()
-      .pipe(catchError(() => of(null)))
-      .subscribe((operations) => this.operations.set(operations));
-
-    this.dashboardService
-      .getSummary()
-      .pipe(catchError(() => of(null)))
-      .subscribe((summary) => {
-        this.summary.set(summary);
-        if (summary) {
-          this.recentActivity.set(summary.recent_activity);
-          this.inventoryCards.set(
-            Object.entries(summary.inventory_by_status).map(([status, quantity]) => ({
-              status,
-              label: statusLabel(status),
-              quantity,
-            })),
-          );
-          this.priceCards.set(summary.price_cards);
-        }
-        this.rebuildKpis();
-        this.updateChartTheme();
-        this.loading.set(false);
-      });
-  }
-
-  private loadRefillsDueSoon(): void {
-    this.refillsDueLoading.set(true);
-    this.customerService
-      .listRefillDue(7)
-      .pipe(catchError(() => of(null)))
-      .subscribe((response) => {
-        this.refillsDueSoon.set(response?.items ?? []);
-        this.refillsDueLoading.set(false);
-        this.rebuildKpis();
-      });
-  }
-
-  private rebuildKpis(): void {
-    const summary = this.summary();
-    const inventory = summary?.inventory_by_status ?? {};
-    const filled = inventory['filled'] ?? 0;
-    const needingAttention =
-      (inventory['damaged'] ?? 0) + (inventory['leakage'] ?? 0) + (inventory['quarantine'] ?? 0);
-
-    this.kpis.set([
+    const tiles: Kpi[] = [
       {
-        title: 'Total Customers',
-        value: (summary?.customer_count ?? 0).toLocaleString('en-IN'),
-        icon: 'pi pi-users',
-        tone: 'info',
-        permission: 'customers:read',
-        route: '/customers',
-      },
-      {
-        title: 'Drivers',
-        value: (summary?.driver_count ?? 0).toLocaleString('en-IN'),
-        icon: 'pi pi-id-card',
-        tone: 'info',
-        permission: 'drivers:read',
-        route: '/drivers',
-      },
-      {
-        title: 'Fleet Vehicles',
-        value: (summary?.vehicle_count ?? 0).toLocaleString('en-IN'),
-        icon: 'pi pi-truck',
-        tone: 'warning',
-        permission: 'vehicles:read',
-        route: '/vehicles',
-      },
-      {
-        title: 'Godowns',
-        value: (summary?.warehouse_count ?? 0).toLocaleString('en-IN'),
-        icon: 'pi pi-warehouse',
-        tone: 'primary',
-        permission: 'tenant:configure',
-        route: '/admin/warehouses',
-      },
-      {
-        title: 'Filled Cylinders',
-        value: filled.toLocaleString('en-IN'),
-        icon: 'pi pi-box',
+        key: 'delivered',
+        label: 'Delivered today',
+        value: (ops?.orders.delivered_today ?? 0).toLocaleString('en-IN'),
+        icon: 'pi pi-check-circle',
         tone: 'success',
-        permission: 'inventory:read',
-        route: '/inventory',
+        route: '/orders',
+        loading: pending(d.operations),
+        delta: delivered
+          ? percentChange(delivered.get(today) ?? 0, delivered.get(lastWeek) ?? 0)
+          : null,
+        trend: delivered ? series(delivered, ...week) : [],
       },
       {
-        title: 'Cylinders Needing Attention',
-        value: needingAttention.toLocaleString('en-IN'),
-        icon: 'pi pi-exclamation-triangle',
+        key: 'revenue',
+        label: 'Revenue today',
+        value: compactInr(revenue?.get(today) ?? 0),
+        icon: 'pi pi-indian-rupee',
+        tone: 'primary',
+        route: '/invoices',
+        loading: pending(d.sales),
+        delta: revenue ? percentChange(revenue.get(today) ?? 0, revenue.get(lastWeek) ?? 0) : null,
+        trend: revenue ? series(revenue, ...week) : [],
+      },
+      {
+        key: 'overdue',
+        label: ops?.invoices ? `Overdue over ${ops.payment_terms_days} days` : 'Overdue invoices',
+        value: compactInr(Number(ops?.invoices?.overdue_amount ?? 0)),
+        icon: 'pi pi-exclamation-circle',
         tone: 'danger',
-        permission: 'inventory:read',
-        route: '/inventory',
+        route: '/invoices',
+        loading: pending(d.operations),
       },
       {
-        title: 'Refills Due This Week',
-        value: this.refillsDueSoon().length.toLocaleString('en-IN'),
-        icon: 'pi pi-bell',
+        key: 'filled',
+        label: 'Filled cylinders',
+        value: (summary?.inventory_by_status['filled'] ?? 0).toLocaleString('en-IN'),
+        icon: 'pi pi-box',
+        tone: 'info',
+        route: '/inventory',
+        permission: 'inventory:read',
+        loading: pending(d.summary),
+      },
+      {
+        key: 'rating',
+        label: 'Delivery-time rating',
+        value:
+          typeof rating?.overall_stars === 'number'
+            ? `${rating.overall_stars} ${rating.overall_stars === 1 ? 'star' : 'stars'}`
+            : '—',
+        icon: 'pi pi-star',
         tone: 'warning',
-        permission: 'customers:read',
-        route: '/customers',
+        route: '/reports/tdt-rating',
+        loading: pending(d.rating),
       },
-    ]);
-  }
-
-  private updateChartTheme() {
-    // Read the styles from the component's own element to ensure we get the correct inherited theme variables
-    const rootStyle = getComputedStyle(this.el.nativeElement);
-
-    let textColor = rootStyle.getPropertyValue('--color-text-primary').trim();
-    if (!textColor) textColor = '#111827';
-
-    let textColorSecondary = rootStyle.getPropertyValue('--color-text-secondary').trim();
-    if (!textColorSecondary) textColorSecondary = '#6b7280';
-
-    let surfaceBorder = rootStyle.getPropertyValue('--color-border-default').trim();
-    if (!surfaceBorder) surfaceBorder = '#e5e7eb';
-
-    let brandPrimary = rootStyle.getPropertyValue('--color-action-primary').trim();
-    if (!brandPrimary) brandPrimary = '#162b66';
-
-    const vehicleStatuses = this.summary()?.vehicles_by_status ?? {};
-    const vehicleLabels = Object.keys(vehicleStatuses);
-    this.vehicleStatusChartData.set({
-      labels: vehicleLabels.length > 0 ? vehicleLabels.map(statusLabel) : ['No vehicles yet'],
-      datasets: [
-        {
-          label: 'Vehicles',
-          data: vehicleLabels.length > 0 ? vehicleLabels.map((s) => vehicleStatuses[s]) : [0],
-          backgroundColor: brandPrimary,
-          borderRadius: 8,
-          maxBarThickness: 56,
-        },
-      ],
-    });
-
-    this.barChartOptions.set({
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: textColorSecondary }, grid: { display: false } },
-        y: {
-          ticks: { color: textColorSecondary, stepSize: 1 },
-          grid: { color: surfaceBorder, drawBorder: false },
-          beginAtZero: true,
-        },
+      {
+        key: 'complaints',
+        label: 'Open complaints',
+        value: (ops?.open_complaints ?? 0).toLocaleString('en-IN'),
+        icon: 'pi pi-comments',
+        tone: 'warning',
+        route: '/complaints',
+        loading: pending(d.operations),
       },
-    });
+    ];
 
-    let statusSuccess = rootStyle.getPropertyValue('--color-status-success').trim();
-    if (!statusSuccess) statusSuccess = '#16a34a';
-    let statusWarning = rootStyle.getPropertyValue('--color-status-warning').trim();
-    if (!statusWarning) statusWarning = '#d97706';
-    let statusDanger = rootStyle.getPropertyValue('--color-status-danger').trim();
-    if (!statusDanger) statusDanger = '#dc2626';
-    let flameOrange = rootStyle.getPropertyValue('--primitive-color-flame-orange-500').trim();
-    if (!flameOrange) flameOrange = '#ff6f12';
-    let neutral = rootStyle.getPropertyValue('--color-text-disabled').trim();
-    if (!neutral) neutral = '#9ca3af';
-
-    const inventoryStatuses = this.summary()?.inventory_by_status ?? {};
-    const inventoryLabels = Object.keys(inventoryStatuses);
-    const statusColors: Record<string, string> = {
-      filled: brandPrimary,
-      empty: neutral,
-      damaged: statusDanger,
-      leakage: statusWarning,
-      quarantine: flameOrange,
-      repair: statusSuccess,
-      scrap: surfaceBorder,
-    };
-    this.inventoryChartData.set({
-      labels: inventoryLabels.length > 0 ? inventoryLabels.map(statusLabel) : ['No inventory yet'],
-      datasets: [
-        {
-          data: inventoryLabels.length > 0 ? inventoryLabels.map((s) => inventoryStatuses[s]) : [1],
-          backgroundColor:
-            inventoryLabels.length > 0
-              ? inventoryLabels.map((s) => statusColors[s] ?? neutral)
-              : [surfaceBorder],
-          borderWidth: 0,
-        },
-      ],
-    });
-
-    this.doughnutChartOptions.set({
-      maintainAspectRatio: false,
-      cutout: '60%',
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: textColor, padding: 20, usePointStyle: true },
-        },
-      },
-    });
-  }
+    // Once loaded, leave out tiles the caller may not see (server returns null / 403).
+    return tiles.filter(
+      (tile) =>
+        !(tile.key === 'overdue' && d.operations.status() === 'ready' && ops?.invoices == null) &&
+        !(tile.key === 'revenue' && !d.sales.visible()) &&
+        !(tile.key === 'rating' && !d.rating.visible()),
+    );
+  });
 }

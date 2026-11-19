@@ -1,0 +1,22 @@
+# Status — 65 dashboard revamp
+
+**Phase 1 built** (2026-11-19), on branch `feat/dashboard-revamp-charts`. Frontend only, on data that already exists. See PLAN.md and TASKS.md.
+
+## What changed
+- Home now shows: a ranked "Needs attention" list, six KPI tiles (real deltas against the same weekday last week, animated sparklines), and eight animated charts: order pipeline, drivers today, revenue vs the previous 30 days, cash on the road, cylinder stock, close-to-reorder bullets, delivery-time rating, refills due. Recent activity stays as a card.
+- Removed from Home: customer/driver/vehicle/godown counts, fleet-status bar, 7-slice doughnut, inventory mini-cards, price cards (data still in their modules).
+- New `@lpg/shared/ui/charts` entry point: `ChartComponent` (ECharts, SVG renderer, tree-shaken), `ChartCardComponent` (states, "View as table", link to the module), `ChartThemeService` (one shared theme signal from the design tokens; replaces the per-page MutationObserver that leaked).
+- New `ReportingService` in data-access (sales, driver performance). `echarts` 6.1 added.
+- Each widget loads and fails on its own; refreshes swap data in place (no skeleton flicker); heights are reserved.
+
+## Verified
+- Jest: 101 tests in the dashboard app (new: model maths, chart option builders including tooltip escaping and reduced motion) and 104 in `shared-ui` (new: chart card states and table toggle). Lint and production build pass for `dashboard`, `shared-ui`, `shared-data-access`.
+- In the dev server with sample responses (production has almost no data today): all 8 charts draw in light and dark; table toggle shows the same numbers; 375 px wide has no horizontal scroll; one chart's bad payload no longer breaks the rest.
+- **Bundle:** the chart chunk (`home-charts`) is 605 kB raw / about 173 kB transferred, lazy via `@defer`, under the 200 kB limit set in the research. The initial bundle moved 771.6 -> 780.6 kB (still the existing over-budget warning; cause of the +9 kB not yet isolated). Home no longer loads Chart.js (the licence page still does, T-15).
+
+## Not verified / known gaps
+- High-contrast theme and `prefers-reduced-motion` in a real browser; screen reader pass; real-agency data volumes.
+- Chart click-through lands on the module page unfiltered (deep-link filters are T-11).
+- Stock is by status across all locations; the by-cylinder-type split needs the new endpoint (T-10).
+- Series colours come from existing tokens, not dedicated chart tokens (T-12); the cyan series colour is below 3:1 on a white surface and is only used with value labels.
+- The 85% delivery-time threshold is not drawn: it is tenant-configurable and not exposed to the dashboard.

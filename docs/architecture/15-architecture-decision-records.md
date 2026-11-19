@@ -1801,6 +1801,18 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Alternatives Considered:** a pre-blurred snapshot (what mobile did; drops frames on open); blur on cards (too many layers); runtime noise (cost, flicker).
 
+## ADR-075: Dashboard Charts Use Apache ECharts, Behind Our Own Wrapper, Loaded Only Where Drawn
+
+**Status:** Accepted (2026-11-19). Supplements ADR-028 (PrimeNG primary; AG Grid Community only). Research: `docs/research/dashboard-revamp.md`.
+
+**Context:** The Home dashboard needs animated bar, line/area, bullet and histogram charts (later heatmap, Sankey, timeline) that work in light, dark and high-contrast themes, with a text and table alternative. Chart.js (via PrimeNG `p-chart`) covers only core types, is canvas-only, and was loaded whole. AG Charts Community puts heatmap, gauge, treemap and Sankey behind Enterprise. ApexCharts' licence needs sales contact for a multi-tenant SaaS.
+
+**Decision:** Apache ECharts 6.1 (Apache-2.0), imported from `echarts/core` with only the chart types used and the SVG renderer, behind our own `ChartComponent` in the secondary entry point `@lpg/shared/ui/charts` (never re-exported from the main barrel, same pattern as the data grid). Widgets are loaded with `@defer`. Colours are read from the design tokens by one shared `ChartThemeService`; no hard-coded colours. Every chart has a text alternative and a "View as table" view.
+
+**Consequences:** The chart chunk is about 173 kB transferred (605 kB raw), loaded only on Home. Chart.js stays until the licence page is migrated. ECharts has no documented keyboard navigation, so the table view and the "see all" link are the keyboard route. Dedicated chart design tokens and a per-theme contrast test are still to do.
+
+**Alternatives Considered:** Chart.js plus plugins (smaller, but no Sankey/treemap, canvas-only); AG Charts (Enterprise-gated types); ApexCharts and Highcharts (licence cost/terms); `ngx-echarts` (a verified drop-in if we would rather not own about 100 lines of wrapper).
+
 ## Deferred Decisions
 
 Decisions deliberately left open, each with a defined trigger point:

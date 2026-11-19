@@ -207,6 +207,22 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
         overflow: visible;
       }
 
+      /* The line draws in from the left once, when the tile first shows data. */
+      @media (prefers-reduced-motion: no-preference) {
+        .stat-card__spark {
+          animation: stat-spark-draw 900ms var(--motion-easing-emphasized) both;
+        }
+      }
+
+      @keyframes stat-spark-draw {
+        from {
+          clip-path: inset(-4px 100% -4px 0);
+        }
+        to {
+          clip-path: inset(-4px -4px -4px 0);
+        }
+      }
+
       .stat-card__spark polyline {
         fill: none;
         stroke: var(--color-action-primary);
