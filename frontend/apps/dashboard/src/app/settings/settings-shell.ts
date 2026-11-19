@@ -87,10 +87,10 @@ import { visibleSettingsGroups } from './settings-sections';
         --p-tabs-nav-button-background: transparent;
       }
 
-      /* See-through row with the same rounded corners as the cards. */
+      /* See-through row with a straight hairline under it (square corners). */
       .settings__tabs ::ng-deep .p-tablist {
         background: transparent;
-        border-radius: var(--radius-card);
+        border-radius: 0;
         overflow: hidden;
       }
 
