@@ -159,18 +159,26 @@ html::after {
        bottom-left, orange bottom-right) that overlap mid-page, so the page
        reads as one frosted gradient rather than two corner spots. */
     radial-gradient(
-      circle min(110vw, 110vh) at 0 0,
-      color-mix(in srgb, var(--color-action-primary) var(--page-wash), transparent),
-      transparent
-    ),
+        circle min(110vw, 110vh) at 0 0,
+        color-mix(in srgb, var(--color-action-primary) var(--page-wash), transparent),
+        transparent
+      ),
     radial-gradient(
       ellipse min(80vw, 90vh) min(60vw, 70vh) at 100% 0,
-      color-mix(in srgb, var(--primitive-color-accent-500) calc(var(--page-wash) * 0.8), transparent),
+      color-mix(
+        in srgb,
+        var(--primitive-color-accent-500) calc(var(--page-wash) * 0.8),
+        transparent
+      ),
       transparent
     ),
     radial-gradient(
       ellipse min(70vw, 80vh) min(55vw, 65vh) at 0 100%,
-      color-mix(in srgb, var(--primitive-color-flame-orange-500) calc(var(--page-wash) * 0.45), transparent),
+      color-mix(
+        in srgb,
+        var(--primitive-color-flame-orange-500) calc(var(--page-wash) * 0.45),
+        transparent
+      ),
       transparent
     ),
     radial-gradient(
