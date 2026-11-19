@@ -9,13 +9,12 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Select } from 'primeng/select';
 import {
-  DataGridComponent,
   EmptyStateComponent,
   SectionCardComponent,
   StarRatingComponent,
   StatCardComponent,
-  type DataGridColumn,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { TdtRatingService } from '@lpg/shared/data-access';
 import type { TdtBandDistributionResponse } from '@lpg/shared/data-access';
 

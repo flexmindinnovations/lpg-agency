@@ -1,10 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
-import {
-  DataGridComponent,
-  type DataGridColumn,
-  EmptyStateComponent,
-  formatDecimal,
-} from '@lpg/shared/ui';
+import { EmptyStateComponent, formatDecimal } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ReportingStore, type CustomerConsumptionRecord } from '@lpg/reporting/data-access';
 
 @Component({

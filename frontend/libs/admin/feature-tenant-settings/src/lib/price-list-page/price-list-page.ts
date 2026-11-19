@@ -27,8 +27,6 @@ import {
   errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   DrawerA11yDirective,
   ExportButtonComponent,
   FormFieldComponent,
@@ -40,6 +38,7 @@ import {
   toSentenceCase,
   formatTimestamp,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 
 const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as const;
 

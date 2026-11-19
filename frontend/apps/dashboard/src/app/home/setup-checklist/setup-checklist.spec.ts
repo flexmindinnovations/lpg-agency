@@ -1,18 +1,22 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { AdminTenantService, AuthService } from '@lpg/shared/data-access';
 import { SetupChecklist } from './setup-checklist';
 
 describe('SetupChecklist', () => {
-  function render(permissions: string[], complete = false) {
+  afterEach(() => localStorage.clear());
+
+  function render(permissions: string[], complete = false, pending = false) {
     const tenantService = {
       getSetupProgress: jest.fn().mockReturnValue(
-        of({
-          complete,
-          steps: { branch: true, warehouse: true, cylinder_types: false, prices: false },
-        }),
+        pending
+          ? NEVER
+          : of({
+              complete,
+              steps: { branch: true, warehouse: true, cylinder_types: false, prices: false },
+            }),
       ),
     };
     TestBed.configureTestingModule({
@@ -53,5 +57,34 @@ describe('SetupChecklist', () => {
     const { html } = render(['tenant:configure'], true);
 
     expect(html.textContent?.trim()).toBe('');
+  });
+
+  it('holds the last card height while the answer is on its way, so the page does not jump', () => {
+    localStorage.setItem('lpg.setup-checklist.height', '230');
+    const { html } = render(['tenant:configure'], false, true);
+
+    const reserve = html.querySelector<HTMLElement>('.setup__reserve');
+    expect(reserve?.style.minBlockSize).toBe('230px');
+  });
+
+  it('reserves nothing when the card was never seen', () => {
+    const { html } = render(['tenant:configure'], false, true);
+
+    expect(html.querySelector('.setup__reserve')).toBeNull();
+  });
+
+  it('reserves nothing for a role that cannot configure the agency', () => {
+    localStorage.setItem('lpg.setup-checklist.height', '230');
+    const { html } = render(['orders:read'], false, true);
+
+    expect(html.querySelector('.setup__reserve')).toBeNull();
+  });
+
+  it('drops the reservation once setup is complete', () => {
+    localStorage.setItem('lpg.setup-checklist.height', '230');
+    const { html } = render(['tenant:configure'], true);
+
+    expect(html.querySelector('.setup__reserve')).toBeNull();
+    expect(localStorage.getItem('lpg.setup-checklist.height')).toBeNull();
   });
 });

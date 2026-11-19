@@ -21,14 +21,13 @@ import {
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
   FormFieldComponent,
   PageHeaderComponent,
   StatusChipCell,
   type ChipSeverity,
-  type DataGridColumn,
   toSentenceCase,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import type { TenantResponse } from '@lpg/shared/data-access';
 

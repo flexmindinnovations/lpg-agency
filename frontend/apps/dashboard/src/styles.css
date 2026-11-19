@@ -121,7 +121,7 @@ body::after {
     0 0,
     37px 91px;
   opacity: var(--paper-grain-opacity);
-  filter: blur(var(--paper-grain-blur)) invert(var(--paper-grain-invert));
+  filter: blur(var(--paper-grain-blur));
 }
 
 /* The page behind the see-through cards (ported from the mobile LpgBackdrop):
@@ -155,9 +155,30 @@ html::after {
       color-mix(in srgb, #ffffff var(--frost-sheen), transparent),
       transparent 60%
     ),
+    /* A mesh of four soft brand glows (blue top-left, cyan top-right, peach
+       bottom-left, orange bottom-right) that overlap mid-page, so the page
+       reads as one frosted gradient rather than two corner spots. */
     radial-gradient(
-      circle min(110vw, 110vh) at 0 0,
-      color-mix(in srgb, var(--color-action-primary) var(--page-wash), transparent),
+        circle min(110vw, 110vh) at 0 0,
+        color-mix(in srgb, var(--color-action-primary) var(--page-wash), transparent),
+        transparent
+      ),
+    radial-gradient(
+      ellipse min(80vw, 90vh) min(60vw, 70vh) at 100% 0,
+      color-mix(
+        in srgb,
+        var(--primitive-color-accent-500) calc(var(--page-wash) * 0.8),
+        transparent
+      ),
+      transparent
+    ),
+    radial-gradient(
+      ellipse min(70vw, 80vh) min(55vw, 65vh) at 0 100%,
+      color-mix(
+        in srgb,
+        var(--primitive-color-flame-orange-500) calc(var(--page-wash) * 0.45),
+        transparent
+      ),
       transparent
     ),
     radial-gradient(
@@ -180,7 +201,6 @@ body::before {
   background-image: var(--paper-haze-image);
   background-size: 256px 256px;
   opacity: var(--paper-haze-opacity);
-  filter: invert(var(--paper-grain-invert));
 }
 
 /* Overlays (drawers, dialogs, menus, popovers, select panels) sit above the
@@ -212,7 +232,7 @@ body::before {
     0 0,
     37px 91px;
   opacity: var(--paper-grain-opacity);
-  filter: blur(var(--paper-grain-blur)) invert(var(--paper-grain-invert));
+  filter: blur(var(--paper-grain-blur));
 }
 
 @media print {
@@ -1433,7 +1453,6 @@ p-confirmpopup {
     37px 91px;
   opacity: var(--glass-grain-opacity);
   mix-blend-mode: var(--glass-grain-blend);
-  filter: invert(var(--paper-grain-invert));
 }
 
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {

@@ -54,13 +54,12 @@ import {
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   FormFieldComponent,
   PageHeaderComponent,
   StatusChipCell,
   toSentenceCase,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 
 const CYLINDER_STATUSES = [
   'filled',

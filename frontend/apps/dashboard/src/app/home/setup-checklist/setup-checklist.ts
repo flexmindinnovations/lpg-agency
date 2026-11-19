@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminTenantService, AuthService } from '@lpg/shared/data-access';
 import { SectionCardComponent } from '@lpg/shared/ui';
@@ -21,6 +31,27 @@ const STEPS: readonly SetupStep[] = [
   { key: 'drivers', label: 'Add drivers', link: '/drivers' },
   { key: 'vehicles', label: 'Add vehicles', link: '/vehicles' },
 ];
+
+/** Where the card's last height is remembered, so the next load can save its room. */
+const HEIGHT_KEY = 'lpg.setup-checklist.height';
+
+function readSavedHeight(): number {
+  try {
+    const value = Number(localStorage.getItem(HEIGHT_KEY));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveHeight(height: number | null): void {
+  try {
+    if (height === null) localStorage.removeItem(HEIGHT_KEY);
+    else localStorage.setItem(HEIGHT_KEY, String(Math.round(height)));
+  } catch {
+    // Storage can be blocked; the reservation is only an optimisation.
+  }
+}
 
 /**
  * First-time setup checklist on Home (DA-32). Only an admin who can
@@ -53,10 +84,22 @@ const STEPS: readonly SetupStep[] = [
           }
         </ol>
       </lpg-section-card>
+    } @else if (reservedHeight() > 0) {
+      <!-- The card arrives after an API call and would push the whole page down.
+           Last time it was this tall, so hold its place until the answer comes. -->
+      <div
+        class="setup__reserve"
+        aria-hidden="true"
+        [style.min-block-size.px]="reservedHeight()"
+      ></div>
     }
   `,
   styles: [
     `
+      .setup__reserve {
+        display: block;
+      }
+
       .setup__lede {
         margin: 0 0 var(--spacing-md);
         color: var(--color-text-secondary);
@@ -115,8 +158,12 @@ const STEPS: readonly SetupStep[] = [
 export class SetupChecklist {
   private readonly tenantService = inject(AdminTenantService);
   private readonly authService = inject(AuthService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly steps = STEPS;
+  /** Room to hold for the card until the setup progress arrives (0 = none). */
+  protected readonly reservedHeight = signal(0);
   private readonly progress = signal<Readonly<Record<string, boolean>> | null>(null);
   private readonly complete = signal(true);
 
@@ -127,13 +174,31 @@ export class SetupChecklist {
 
   constructor() {
     if (!this.authService.principal()?.permissions.has('tenant:configure')) return;
+    this.reservedHeight.set(readSavedHeight());
+    effect(() => {
+      if (!this.visible()) return;
+      // Remember how tall the card is, for the next load.
+      afterNextRender(
+        () => {
+          const card = this.host.nativeElement.querySelector('lpg-section-card');
+          if (card) saveHeight(card.getBoundingClientRect().height);
+        },
+        { injector: this.injector },
+      );
+    });
     this.tenantService.getSetupProgress().subscribe({
       next: (response) => {
         this.progress.set(response.steps);
         this.complete.set(response.complete);
+        this.reservedHeight.set(0);
+        // Finished setting up: nothing to reserve on later loads.
+        if (response.complete) saveHeight(null);
       },
       // The checklist is a convenience — Home works without it.
-      error: () => this.progress.set(null),
+      error: () => {
+        this.progress.set(null);
+        this.reservedHeight.set(0);
+      },
     });
   }
 

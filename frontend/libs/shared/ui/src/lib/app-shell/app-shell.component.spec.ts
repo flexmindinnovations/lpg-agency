@@ -60,7 +60,9 @@ describe('AppShellComponent', () => {
   it('starts as the icon rail at tablet width', () => {
     const { el } = render('tablet');
     expect(el.querySelector('.shell')?.classList).toContain('shell--collapsed');
-    expect(el.querySelector('.shell__nav-label')).toBeNull();
+    // The text stays in the DOM (so nothing moves when the rail toggles) but is
+    // hidden from assistive tech and visually.
+    expect(el.querySelector('.shell__nav-label')?.getAttribute('aria-hidden')).toBe('true');
     expect(el.querySelector('#shell-sidebar')?.hasAttribute('inert')).toBe(false);
   });
 

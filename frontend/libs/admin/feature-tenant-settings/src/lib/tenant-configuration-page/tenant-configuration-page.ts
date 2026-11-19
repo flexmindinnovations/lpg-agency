@@ -21,8 +21,6 @@ import {
   type TenantConfigurationResponse,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   DrawerA11yDirective,
   ExportButtonComponent,
   FormFieldComponent,
@@ -31,6 +29,7 @@ import {
   PageHeaderComponent,
   formatTimestamp,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 
 /** The recognized config-key catalog, each with a human-readable label and
  * a description of what it controls — mirrors the backend's

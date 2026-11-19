@@ -17,8 +17,6 @@ import {
 } from '@angular/forms';
 import { map, type Observable } from 'rxjs';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   DocumentUploadComponent,
   FormFieldComponent,
   HasPermissionDirective,
@@ -27,6 +25,7 @@ import {
   type ChipSeverity,
   toSentenceCase,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';

@@ -25,8 +25,6 @@ import {
   errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   DrawerA11yDirective,
   ExportButtonComponent,
   FormFieldComponent,
@@ -34,6 +32,7 @@ import {
   PageActionsDirective,
   PageHeaderComponent,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
  * default, ignoring `valueFormatter` (same fix as Cylinder Types' own

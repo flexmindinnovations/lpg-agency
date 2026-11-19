@@ -1,4 +1,3 @@
-export * from './lib/data-grid/data-grid.component';
 export * from './lib/skeleton/skeleton.component';
 export * from './lib/form-field/form-field.component';
 export * from './lib/document-upload/document-upload.component';

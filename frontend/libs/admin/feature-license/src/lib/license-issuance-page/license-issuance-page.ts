@@ -18,17 +18,16 @@ import {
   type TenantResponse,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
   DetailItemComponent,
   DetailListComponent,
   FormFieldComponent,
   PageHeaderComponent,
   StatusChipCell,
   type ChipSeverity,
-  type DataGridColumn,
   formatTimestamp,
   toSentenceCase,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { forkJoin } from 'rxjs';
 
 const PLAN_TIERS = ['basic', 'standard', 'premium'] as const;
