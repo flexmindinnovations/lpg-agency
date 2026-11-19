@@ -23,8 +23,6 @@ import {
   type ComplianceDocumentItem,
   type ReplaceComplianceDocumentCmd,
   type VerifyComplianceDocumentCmd,
-  DataGridComponent,
-  type DataGridColumn,
   DocumentUploadComponent,
   FormFieldComponent,
   HasPermissionDirective,
@@ -33,6 +31,7 @@ import {
   PageHeaderComponent,
   toSentenceCase,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';

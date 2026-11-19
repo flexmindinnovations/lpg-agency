@@ -24,12 +24,8 @@ import { ButtonDirective } from 'primeng/button';
 import { Select } from 'primeng/select';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
-import {
-  DataGridComponent,
-  type DataGridColumn,
-  StatusChipCell,
-  formatCurrencyInr,
-} from '@lpg/shared/ui';
+import { StatusChipCell, formatCurrencyInr } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { LpgDatePipe, PERMISSION_CHECKER, formatDisplayDate } from '@lpg/shared/util';
 import {
   INVOICE_STATUS_LABEL,

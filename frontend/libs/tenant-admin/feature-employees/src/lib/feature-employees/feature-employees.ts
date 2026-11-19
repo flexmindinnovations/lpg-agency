@@ -34,8 +34,6 @@ import {
 } from '@lpg/shared/data-access';
 import {
   BranchLinkComponent,
-  DataGridComponent,
-  type DataGridColumn,
   FormFieldComponent,
   HasPermissionDirective,
   PageHeaderComponent,
@@ -43,6 +41,7 @@ import {
   type ChipSeverity,
   toSentenceCase,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ROLE_OPTIONS } from '../employee-role-options';
 
 function isAppError(value: unknown): value is AppError {

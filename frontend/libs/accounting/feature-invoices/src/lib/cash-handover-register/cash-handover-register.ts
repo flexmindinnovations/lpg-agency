@@ -16,8 +16,6 @@ import { Select } from 'primeng/select';
 import { Textarea } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   EmptyStateComponent,
   StatusChipCell,
   type ChipSeverity,
@@ -30,6 +28,7 @@ import {
   PageActionsDirective,
   PageHeaderComponent,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   CashHandoverService,

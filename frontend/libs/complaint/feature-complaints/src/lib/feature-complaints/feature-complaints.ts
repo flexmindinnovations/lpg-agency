@@ -48,8 +48,6 @@ import {
   type ResolveComplaintRequest,
 } from '../services/complaint.service';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   displayNameFromEmail,
   FormFieldComponent,
   HasPermissionDirective,
@@ -61,6 +59,7 @@ import {
   shortId,
   toSentenceCase,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 
 /** Labels for the server's enum values (DO-19). */
 const CATEGORY_LABELS: Record<ComplaintCategory, string> = {

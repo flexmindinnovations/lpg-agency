@@ -10,8 +10,7 @@
       content="LPG Agency Management Platform — manage customers, deliveries, inventory and operations."
     />
     <!-- The paper grain tile is on first paint of the page and every glass surface. -->
-    <link rel="preload" as="image" href="/textures/paper-grain.png" />
-    <link rel="icon" type="image/jpeg" href="favicon.jpg" />
+    <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -187,6 +186,17 @@
             t === 'light' || t === 'high-contrast' ? t : 'dark',
           );
         }
+        // Preload the paper grain for the theme that is about to paint (dark has
+        // its own pre-inverted file), so it is on first paint, not a late pop-in.
+        var dark =
+          t === 'system'
+            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+            : !(t === 'light' || t === 'high-contrast');
+        var l = document.createElement('link');
+        l.rel = 'preload';
+        l.as = 'image';
+        l.href = dark ? '/textures/paper-grain-dark.png' : '/textures/paper-grain.png';
+        document.head.appendChild(l);
       } catch (e) {}
     </script>
   </head>

@@ -24,7 +24,6 @@ import {
 } from '@lpg/shared/data-access';
 import { ASSIGNABLE_STAFF_ROLES, ROLE_LABELS, roleLabel } from '@lpg/shared/util';
 import {
-  DataGridComponent,
   DrawerA11yDirective,
   ExportButtonComponent,
   FormFieldComponent,
@@ -33,7 +32,8 @@ import {
   PageHeaderComponent,
   StatusChipCell,
 } from '@lpg/shared/ui';
-import type { DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent } from '@lpg/shared/ui/data-grid';
+import type { DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
 /** One grid row: the API user plus the derived, displayable fields. */

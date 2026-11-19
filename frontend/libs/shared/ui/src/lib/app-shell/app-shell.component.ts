@@ -59,6 +59,8 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       class="shell"
       [class.shell--collapsed]="rail()"
       [class.shell--phone]="isPhone()"
+      [class.shell--opening]="sidebarMotion() === 'opening'"
+      [class.shell--closing]="sidebarMotion() === 'closing'"
       [class.shell--nav-open]="isPhone() && navOpen()"
     >
       @if (isPhone() && navOpen()) {
@@ -92,19 +94,24 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
                   fill="var(--primitive-color-flame-orange-500, #ff6f12)"
                 />
               </svg>
-              @if (!rail()) {
-                <span class="shell__brand-name">{{ brandName() }}</span>
-              }
+              <span class="shell__brand-name" [attr.aria-hidden]="rail() ? 'true' : null">{{
+                brandName()
+              }}</span>
             </div>
           </div>
 
           <!-- Navigation Groups -->
-          <ul class="shell__nav-groups" (scroll)="placeIndicator(false)">
+          <ul class="shell__nav-groups">
             <li class="shell__nav-indicator" aria-hidden="true"></li>
             @for (group of navGroups(); track group.label ?? $index) {
               <li>
-                @if (group.label && !rail()) {
-                  <p class="shell__nav-group-label">{{ group.label }}</p>
+                @if (group.label) {
+                  <!-- Always rendered, so the items below never change height or
+                       position when the rail toggles; in the rail it reads as a
+                       divider line in the same space. -->
+                  <p class="shell__nav-group-label" [attr.aria-hidden]="rail() ? 'true' : null">
+                    {{ group.label }}
+                  </p>
                 }
                 <ul class="shell__nav-list">
                   @for (item of group.items; track item.route) {
@@ -124,11 +131,18 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
                         [attr.aria-label]="rail() ? item.label : null"
                       >
                         <i class="{{ item.icon }}" aria-hidden="true"></i>
-                        @if (!rail()) {
-                          <span class="shell__nav-label">{{ item.label }}</span>
-                        }
-                        @if (item.badge && !rail()) {
-                          <p-badge [value]="item.badge" severity="danger" />
+                        <span
+                          class="shell__nav-label"
+                          [attr.aria-hidden]="rail() ? 'true' : null"
+                          >{{ item.label }}</span
+                        >
+                        @if (item.badge) {
+                          <p-badge
+                            class="shell__nav-badge"
+                            [value]="item.badge"
+                            severity="danger"
+                            [attr.aria-hidden]="rail() ? 'true' : null"
+                          />
                         }
                       </a>
                     </li>
@@ -178,7 +192,12 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         </button>
       </div>
 
-      <div class="shell__content">
+      <!-- Holds the sidebar's room in the layout at its final width straight away
+           (no animation), because the sidebar itself is taken out of the flow
+           and animates over the page; see the .shell__sidebar-wrapper rule. -->
+      <div class="shell__sidebar-spacer" aria-hidden="true"></div>
+
+      <div class="shell__content" (animationend)="onContentMotionEnd($event)">
         <header class="shell__header glass">
           <button
             type="button"
@@ -260,14 +279,22 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
            the visible area; the window itself never scrolls (styles.css). */
         block-size: 100dvh;
         overflow: hidden;
+        position: relative;
       }
 
       /* ---- Sidebar Wrapper & Sidebar ---- */
 
       /* Persistent chrome — a solid surface one step up from the page ground,
          separated by a single border. */
+      /* Out of the layout flow on purpose. Its width animates, and if the page
+         shared a row with it, every frame would re-wrap all the page content.
+         Instead the spacer below takes the final width at once (the page
+         reflows one time) and the page slides into place with a transform, in
+         step with this width (see .shell--opening / --closing). */
       .shell__sidebar-wrapper {
-        position: relative;
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
         display: flex;
         flex-direction: column;
         inline-size: var(--component-app-shell-sidebar-width);
@@ -279,6 +306,60 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
 
       .shell--collapsed .shell__sidebar-wrapper {
         inline-size: var(--component-app-shell-sidebar-collapsed-width);
+      }
+
+      .shell__sidebar-spacer {
+        flex: 0 0 var(--component-app-shell-sidebar-width);
+      }
+
+      .shell--collapsed .shell__sidebar-spacer {
+        flex-basis: var(--component-app-shell-sidebar-collapsed-width);
+      }
+
+      .shell--phone .shell__sidebar-spacer {
+        display: none;
+      }
+
+      /* The page is laid out at its final width immediately and slides from where
+         the sidebar's edge was to where it ends up. Same duration and easing as
+         the sidebar's width, so the page's edge stays on the sidebar's edge. */
+      @keyframes shell-push-open {
+        from {
+          transform: translateX(
+            calc(
+              var(--component-app-shell-sidebar-collapsed-width) - var(
+                  --component-app-shell-sidebar-width
+                )
+            )
+          );
+        }
+      }
+
+      @keyframes shell-push-close {
+        from {
+          transform: translateX(
+            calc(
+              var(--component-app-shell-sidebar-width) - var(
+                  --component-app-shell-sidebar-collapsed-width
+                )
+            )
+          );
+        }
+      }
+
+      .shell--opening .shell__content {
+        animation: shell-push-open var(--motion-duration-medium) var(--motion-easing-emphasized);
+      }
+
+      .shell--closing .shell__content {
+        animation: shell-push-close var(--motion-duration-medium) var(--motion-easing-emphasized);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shell--opening .shell__content,
+        .shell--closing .shell__content {
+          animation: none;
+        }
       }
 
       .shell__sidebar {
@@ -296,16 +377,15 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         justify-content: flex-start;
         padding: var(--spacing-md);
         padding-block-end: var(--spacing-md);
+        /* Same x for the flame in the open sidebar and the rail (it is centred
+           in the 64px rail), so it does not slide sideways when toggling. */
+        padding-inline-start: 20px;
         flex-shrink: 0;
         block-size: 64px;
         /* The nav list scrolls beneath this header; a divider makes the
            boundary explicit so a half-scrolled item never reads as sitting
            under the logo (QA UR-02). */
         border-block-end: var(--border-width) solid var(--surface-mica-border);
-      }
-
-      .shell--collapsed .shell__sidebar-header {
-        justify-content: center;
       }
 
       .shell__brand {
@@ -332,8 +412,17 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         letter-spacing: -0.02em;
         white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis;
+        text-overflow: clip;
         color: var(--color-text-primary);
+      }
+
+      /* Text reveal. Opening: the text is there from the first frame and the
+         sidebar's edge uncovers it letter by letter as it widens (the link and
+         the header clip it). Closing: it goes straight away, with a very quick
+         fade, rather than waiting for the sidebar to finish shrinking. */
+      .shell--collapsed .shell__brand-name {
+        opacity: 0;
+        transition: opacity calc(var(--motion-duration-small) / 3) var(--motion-easing-standard);
       }
 
       /* ---- Floating Collapse Toggle ---- */
@@ -376,8 +465,17 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         border-block-start: var(--border-width) solid var(--color-border-default);
       }
 
+      /* One fixed height (the open sidebar's, avatar plus name) so the footer does
+         not grow or shrink under the nav when the rail toggles. */
+      .shell__sidebar-footer {
+        box-sizing: border-box;
+        block-size: 72px;
+        flex-shrink: 0;
+      }
+
       .shell--collapsed .shell__sidebar-footer {
         flex-direction: column;
+        justify-content: center;
       }
 
       .shell__sidebar-profile {
@@ -392,6 +490,11 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       /* ---- Navigation ---- */
 
       .shell__nav-groups {
+        /* Selected item: the theme's highlight pair (solid brand blue with
+           white text; each theme and high contrast define its own pair and
+           their contrast is checked in the tokens). */
+        --shell-nav-active-bg: var(--color-highlight-background);
+        --shell-nav-active-fg: var(--color-highlight-color);
         position: relative;
         isolation: isolate;
         list-style: none;
@@ -409,18 +512,30 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         overflow-y: auto;
         overflow-x: hidden;
         padding-block-start: var(--spacing-md);
+        /* Flush to the sidebar's left edge: the selected item runs out to it
+           (Gmail), so only the right side keeps a gutter. */
+        padding-inline-start: 0;
         scroll-padding-block: var(--spacing-md);
         overscroll-behavior: contain;
       }
 
-      .shell--collapsed .shell__nav-groups {
-        padding: var(--spacing-sm) var(--spacing-xs) var(--spacing-xs);
-        align-items: center;
+      /* No scrollbar in either mode (the list still scrolls). A bar shows only
+         in the open sidebar, so toggling added or removed ~10px of width on the
+         first frame and the selected item stepped before it animated. */
+      .shell__nav-groups {
+        scrollbar-width: none;
+      }
+
+      .shell__nav-groups::-webkit-scrollbar {
+        display: none;
       }
 
       .shell__nav-group-label {
+        position: relative;
         margin: 0 0 var(--spacing-xs);
-        padding-inline: var(--spacing-sm);
+        padding-inline: calc(var(--spacing-sm) + 16px) var(--spacing-sm);
+        white-space: nowrap;
+        overflow: hidden;
         font-size: 11px;
         font-weight: var(--typography-label-font-weight);
         color: var(--color-text-secondary);
@@ -428,6 +543,30 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         letter-spacing: 0.06em;
         /* Full secondary colour, no opacity: at 0.7 the labels were 2.66:1
            (light) and 3.16:1 (dark) — QA DA-23/DO-35. */
+      }
+
+      /* In the rail the label text is invisible and a thin line takes its place,
+         in the same space, so nothing below it moves. */
+      .shell__nav-group-label::after {
+        content: '';
+        position: absolute;
+        inset-inline: var(--spacing-md) var(--spacing-sm);
+        inset-block-start: 50%;
+        block-size: var(--border-width);
+        background: var(--color-border-default);
+        opacity: 0;
+      }
+
+      /* Same as the item text: on closing the heading text goes straight away
+         and the divider takes its place. */
+      .shell--collapsed .shell__nav-group-label {
+        color: transparent;
+        transition: color calc(var(--motion-duration-small) / 3) var(--motion-easing-standard);
+      }
+
+      .shell--collapsed .shell__nav-group-label::after {
+        opacity: 1;
+        transition: opacity calc(var(--motion-duration-small) / 3) var(--motion-easing-standard);
       }
 
       .shell__nav-list {
@@ -443,8 +582,12 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         display: flex;
         align-items: center;
         gap: var(--spacing-sm);
-        padding: 8px 12px;
-        border-radius: var(--radius-md);
+        /* The icon stays at the same x in the open sidebar and the rail (centred
+           in the 64px rail), so it never slides sideways when toggling. */
+        padding: 8px 16px;
+        /* Gmail-style: the hover and the selected fill run flush to the
+           sidebar's left edge and are rounded only on the right. */
+        border-radius: 0 var(--radius-full) var(--radius-full) 0;
         color: var(--color-text-secondary);
         text-decoration: none;
         white-space: nowrap;
@@ -492,15 +635,15 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       }
 
       /* Active item: the themed highlight surface + its paired text colour
-         (a subtle blue tint in dark, per doc §13), medium weight — no glow,
-         no heavy 700 weight. Text/icon stay on --color-highlight-color so
-         this reads correctly in light + high-contrast too. */
+         (a subtle blue tint in dark, per doc §13), bold like Gmail's selected
+         item, no glow. Text/icon stay on --color-highlight-color so this
+         reads correctly in light + high-contrast too. */
       .shell__nav-link.is-active {
         /* The fill itself is the .shell__nav-indicator behind the links, which
            glides from the old item to the new one; the link only changes
            text colour and weight. No left border. */
-        color: var(--color-highlight-color);
-        font-weight: 600;
+        color: var(--shell-nav-active-fg);
+        font-weight: 700;
       }
 
       .shell__nav-link.is-active:hover {
@@ -512,10 +655,14 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         z-index: 0;
         inset-block-start: 0;
         inset-inline-start: 0;
-        inline-size: 0;
+        /* Same right gutter as the links, so the width is plain layout: it
+           follows the sidebar on every frame of the open/close animation with
+           no script involved. Only the vertical position and height are set
+           from script. */
+        inset-inline-end: var(--spacing-sm);
         block-size: 0;
-        border-radius: var(--radius-md);
-        background: var(--color-highlight-background);
+        border-radius: 0 var(--radius-full) var(--radius-full) 0;
+        background: var(--shell-nav-active-bg);
         opacity: 0;
         pointer-events: none;
         list-style: none;
@@ -529,7 +676,6 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         transition:
           transform var(--motion-duration-medium) var(--motion-easing-emphasized),
           block-size var(--motion-duration-medium) var(--motion-easing-emphasized),
-          inline-size var(--motion-duration-medium) var(--motion-easing-emphasized),
           opacity var(--motion-duration-small) var(--motion-easing-standard);
       }
 
@@ -543,21 +689,28 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         opacity: 1;
       }
 
+      /* Never shrinks: while the sidebar's width animates the link just clips
+         the text, instead of flashing an ellipsis. Hidden (not removed) in the
+         rail so the row keeps the same height. */
       .shell__nav-label {
-        overflow: hidden;
-        text-overflow: ellipsis;
+        flex: 0 0 auto;
       }
 
-      /* ---- Collapsed nav ---- */
-
-      .shell--collapsed .shell__nav-link {
-        justify-content: center;
-        padding: 10px;
+      .shell__nav-badge {
+        flex: 0 0 auto;
+        margin-inline-start: auto;
       }
 
-      .shell--collapsed .shell__nav-link i {
-        inline-size: auto;
+      /* Gone straight away on closing (see the note on .shell__brand-name). */
+      .shell--collapsed .shell__nav-label,
+      .shell--collapsed .shell__nav-badge {
+        opacity: 0;
+        transition: opacity calc(var(--motion-duration-small) / 3) var(--motion-easing-standard);
       }
+
+      /* ---- Collapsed nav ----
+         Nothing here changes the size or position of an item: the rail only
+         hides the text and badge (above) and the width of the sidebar shrinks. */
 
       /* ---- Main Content ---- */
 
@@ -800,6 +953,10 @@ export class AppShellComponent {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly breakpoints = inject(BreakpointObserver);
 
+  /** Which way the sidebar is moving, while it moves; drives the page's slide. */
+  protected readonly sidebarMotion = signal<'opening' | 'closing' | null>(null);
+  private previousRail: boolean | null = null;
+
   readonly brandName = input('');
   /** Overrides the default brand mark with a PrimeIcon class or literal glyph. */
   readonly brandIcon = input<string | null>(null);
@@ -827,6 +984,18 @@ export class AppShellComponent {
   readonly notificationToggle = output<void>();
 
   constructor() {
+    // Remember which way the sidebar is going, so the page slides with it. Not
+    // on first render, and not on the phone menu (that one is an overlay).
+    effect(() => {
+      const rail = this.rail();
+      untracked(() => {
+        const previous = this.previousRail;
+        this.previousRail = rail;
+        if (previous === null || previous === rail || this.isPhone()) return;
+        this.sidebarMotion.set(rail ? 'closing' : 'opening');
+      });
+    });
+
     // Tablet and narrower start on the icon rail and desktop on the full
     // sidebar; crossing the breakpoint resets it. The user's toggle still
     // wins until the next crossing.
@@ -903,27 +1072,32 @@ export class AppShellComponent {
    */
   protected placeIndicator(animate: boolean): void {
     if (typeof requestAnimationFrame !== 'function') return;
-    requestAnimationFrame(() => {
-      const root = this.host.nativeElement;
-      const container = root.querySelector<HTMLElement>('.shell__nav-groups');
-      const indicator = root.querySelector<HTMLElement>('.shell__nav-indicator');
-      const active = root.querySelector<HTMLElement>('.shell__nav-link.is-active');
-      if (!container || !indicator) return;
-      if (!active || active.offsetParent === null) {
-        indicator.classList.remove('is-visible');
-        return;
-      }
-      const c = container.getBoundingClientRect();
-      const a = active.getBoundingClientRect();
-      const x = a.left - c.left + container.scrollLeft;
-      const y = a.top - c.top + container.scrollTop;
-      const wasVisible = indicator.classList.contains('is-visible');
-      indicator.classList.toggle('is-animated', animate && wasVisible);
-      indicator.style.transform = `translate(${x}px, ${y}px)`;
-      indicator.style.inlineSize = `${a.width}px`;
-      indicator.style.blockSize = `${a.height}px`;
-      indicator.classList.add('is-visible');
-    });
+    requestAnimationFrame(() => this.measureIndicator(animate));
+  }
+
+  /** Puts the highlight on the active item right now (no frame delay). */
+  private measureIndicator(animate: boolean): void {
+    const root = this.host.nativeElement;
+    const container = root.querySelector<HTMLElement>('.shell__nav-groups');
+    const indicator = root.querySelector<HTMLElement>('.shell__nav-indicator');
+    const active = root.querySelector<HTMLElement>('.shell__nav-link.is-active');
+    if (!container || !indicator) return;
+    if (!active || active.offsetParent === null) {
+      indicator.classList.remove('is-visible');
+      return;
+    }
+    const c = container.getBoundingClientRect();
+    const a = active.getBoundingClientRect();
+    const y = a.top - c.top + container.scrollTop;
+    const wasVisible = indicator.classList.contains('is-visible');
+    indicator.classList.toggle('is-animated', animate && wasVisible);
+    indicator.style.transform = `translateY(${y}px)`;
+    indicator.style.blockSize = `${a.height}px`;
+    indicator.classList.add('is-visible');
+  }
+
+  protected onContentMotionEnd(event: AnimationEvent): void {
+    if (event.target === event.currentTarget) this.sidebarMotion.set(null);
   }
 
   /** Keep the current page's nav item scrolled into view in a long sidebar. */

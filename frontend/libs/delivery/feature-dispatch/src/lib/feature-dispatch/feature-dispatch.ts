@@ -1,5 +1,4 @@
 import {
-  DataGridComponent,
   DrawerA11yDirective,
   HasPermissionDirective,
   HeaderTitlePortalDirective,
@@ -7,8 +6,8 @@ import {
   PageHeaderComponent,
   StatusChipCell,
   shortId,
-  type DataGridColumn,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
   ChangeDetectionStrategy,
   Component,

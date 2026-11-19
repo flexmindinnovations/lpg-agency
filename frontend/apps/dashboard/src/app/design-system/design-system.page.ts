@@ -9,8 +9,6 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { CheckboxModule } from 'primeng/checkbox';
 import {
   ActivityListComponent,
-  DataGridComponent,
-  type DataGridColumn,
   EmptyStateComponent,
   FormFieldComponent,
   LiveIndicatorComponent,
@@ -19,6 +17,7 @@ import {
   SkeletonComponent,
   StatCardComponent,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 
 interface Swatch {

@@ -1,11 +1,6 @@
 import { Component, computed, inject, viewChildren } from '@angular/core';
-import {
-  DataGridComponent,
-  type DataGridColumn,
-  EmptyStateComponent,
-  formatCurrencyInr,
-  formatReportDate,
-} from '@lpg/shared/ui';
+import { EmptyStateComponent, formatCurrencyInr, formatReportDate } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
   ReportingStore,
   type Gstr1InvoiceRow,

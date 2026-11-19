@@ -32,7 +32,15 @@ const NARROW_GRID_PX = 720;
 // across every app's main.ts. `AllCommunityModule` matches ADR-028's default
 // (AG Grid Community, no Enterprise modules) — found via a real browser
 // selection test silently failing (`AG Grid: error #200`), not a hypothetical.
-ModuleRegistry.registerModules([AllCommunityModule]);
+//
+// Registered from the component's constructor, never at module load: this file
+// is re-exported by the `@lpg/shared/ui` barrel, and a top-level call counts as
+// a side effect that keeps AG Grid (~1.2 MB) in the load of every page that
+// imports anything from the barrel, grid or not (the dashboard home included).
+// Registration is idempotent, so doing it per instance is harmless.
+function registerGridModules(): void {
+  ModuleRegistry.registerModules([AllCommunityModule]);
+}
 
 /**
  * Application-level column definition.
@@ -568,6 +576,7 @@ export class DataGridComponent<TRow = unknown> {
   private gridApi: GridApi<TRow> | undefined;
 
   constructor() {
+    registerGridModules();
     effect(() => {
       const data = this.rowData();
       this.scheduleCellRendererRefresh();

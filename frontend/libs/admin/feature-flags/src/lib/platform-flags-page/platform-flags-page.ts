@@ -14,14 +14,13 @@ import {
   type FeatureFlagResponse,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
   DetailItemComponent,
   DetailListComponent,
-  type DataGridColumn,
   FormFieldComponent,
   PageHeaderComponent,
   formatTimestamp,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 
 /** `dd-mm-yyyy`-picker value → ISO date string, or `null` for an empty/
  * cleared field. */

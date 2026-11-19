@@ -37,8 +37,6 @@ import {
 } from '@lpg/shared/data-access';
 
 import {
-  DataGridComponent,
-  type DataGridColumn,
   FormFieldComponent,
   HasPermissionDirective,
   PageHeaderComponent,
@@ -49,6 +47,7 @@ import {
   formatReportDate,
   shortId,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { InputText } from 'primeng/inputtext';
 import { Subject } from 'rxjs';
 import { CustomerAutocomplete } from '../customer-autocomplete/customer-autocomplete';

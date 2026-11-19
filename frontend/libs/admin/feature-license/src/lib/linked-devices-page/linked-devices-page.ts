@@ -24,7 +24,6 @@ import {
   type LinkedDeviceResponse,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
   DetailItemComponent,
   DetailListComponent,
   DrawerA11yDirective,
@@ -34,8 +33,8 @@ import {
   StatusChipCell,
   ToggleGroupComponent,
   formatTimestamp,
-  type DataGridColumn,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
   CONTROL_MODES,
   STATUS_LABELS,

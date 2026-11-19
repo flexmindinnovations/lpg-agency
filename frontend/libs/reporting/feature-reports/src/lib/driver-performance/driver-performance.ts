@@ -1,12 +1,11 @@
 import { Component, inject, viewChild } from '@angular/core';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   EmptyStateComponent,
   formatCurrencyInr,
   formatPercent,
   formatReportDate,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
   ReportingStore,
   type DriverPerformanceRecord,

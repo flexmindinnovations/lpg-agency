@@ -28,14 +28,13 @@ import {
 } from '@lpg/shared/data-access';
 import {
   ActionChipCell,
-  DataGridComponent,
   DrawerA11yDirective,
-  type DataGridColumn,
   ExportButtonComponent,
   HeaderTitlePortalDirective,
   PageActionsDirective,
   PageHeaderComponent,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { DATE_INPUT_PLACEHOLDER, formatDisplayDateTime } from '@lpg/shared/util';
 import {
   ACTION_LABELS,

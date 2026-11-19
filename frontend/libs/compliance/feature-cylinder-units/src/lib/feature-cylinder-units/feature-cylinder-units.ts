@@ -17,8 +17,6 @@ import {
   Validators,
 } from '@angular/forms';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   HasPermissionDirective,
   StatusChipCell,
   type ChipSeverity,
@@ -27,6 +25,7 @@ import {
   formatReportDate,
   toSentenceCase,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { Dialog } from 'primeng/dialog';

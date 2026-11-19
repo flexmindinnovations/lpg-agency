@@ -48,8 +48,6 @@ import {
   errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
-  DataGridComponent,
-  type DataGridColumn,
   DocumentUploadComponent,
   FormFieldComponent,
   HasPermissionDirective,
@@ -58,6 +56,7 @@ import {
   formatCurrencyInr,
   formatReportDate,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
   PINCODE_PATTERN,
   compactIdentifier,

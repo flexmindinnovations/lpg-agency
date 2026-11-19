@@ -443,6 +443,10 @@ have always been hand-edited directly. Edit them here.
   --paper-grain-opacity: 0.04;
   --frost-sheen: 4%;
   --paper-grain-invert: 1;
+  /* The dark specks are pre-inverted files, so no run-time invert() filter
+     is needed on the two full-window grain layers (the same pixels). */
+  --paper-grain-image: url('/textures/paper-grain-dark.png');
+  --paper-haze-image: url('/textures/paper-haze-dark.png');
   --paper-haze-opacity: 0.045;
   --paper-veil-color: var(--color-surface-base);
   --glass-tint: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
@@ -606,6 +610,10 @@ have always been hand-edited directly. Edit them here.
     --paper-grain-opacity: 0.04;
     --frost-sheen: 4%;
     --paper-grain-invert: 1;
+    /* The dark specks are pre-inverted files, so no run-time invert() filter
+       is needed on the two full-window grain layers (the same pixels). */
+    --paper-grain-image: url('/textures/paper-grain-dark.png');
+    --paper-haze-image: url('/textures/paper-haze-dark.png');
     --paper-haze-opacity: 0.045;
     --paper-veil-color: var(--color-surface-base);
     --glass-tint: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);

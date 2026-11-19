@@ -10,16 +10,15 @@ import {
 import { FormsModule } from '@angular/forms';
 import {
   ComplianceDocumentsPanel,
-  DataGridComponent,
   StatusChipCell,
   type ChipSeverity,
-  type DataGridColumn,
   type AddComplianceDocumentCmd,
   type ComplianceDocumentItem,
   type ReplaceComplianceDocumentCmd,
   type VerifyComplianceDocumentCmd,
   PageHeaderComponent,
 } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
 import { MessageService } from 'primeng/api';
