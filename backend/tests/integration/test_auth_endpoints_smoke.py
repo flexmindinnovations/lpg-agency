@@ -242,3 +242,42 @@ class TestSecurityEventTrail:
         for row in rows:
             assert password not in str(row.metadata)
             assert refresh_token not in str(row.metadata)
+
+
+class TestAccessLog:
+    async def test_viewing_a_report_is_recorded_and_a_refused_request_is_not(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        email = f"{uuid.uuid4().hex}@smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id, user_id = await _seed_tenant_and_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=Argon2PasswordHasher(integration_settings).hash(password),
+        )
+        login = await real_lifespan_client.post(
+            "/api/v1/auth/login", json={"email": email, "password": password}
+        )
+        headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+        anonymous = await real_lifespan_client.get("/api/v1/reporting/consumption")
+        allowed = await real_lifespan_client.get("/api/v1/reporting/consumption", headers=headers)
+
+        assert anonymous.status_code == 401
+        assert allowed.status_code == 200, allowed.text
+        async with admin_engine_lpg_test.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text(
+                        "SELECT actor_id, entity_name, entity_display_name FROM audit.audit_log "
+                        "WHERE action = 'access.report_viewed' AND tenant_id = :t"
+                    ),
+                    {"t": str(tenant_id)},
+                )
+            ).all()
+        assert [(r.actor_id, r.entity_name, r.entity_display_name) for r in rows] == [
+            (user_id, "report", "Customer consumption")
+        ]

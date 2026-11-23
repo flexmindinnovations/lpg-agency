@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+from lpg.api.v1.dependencies.access_log import access_logged
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
 from lpg.api.v1.dependencies.ai import get_prediction_repository
 from lpg.api.v1.dependencies.customer import (
@@ -38,6 +39,7 @@ from lpg.api.v1.schemas.customer import (
 from lpg.api.v1.uploads import read_upload
 from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.ai.prediction import PredictionRepository
+from lpg.application.audit.security_events import KYC_VIEWED
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import FileStorage, UnitOfWork
 from lpg.application.customer.ports import (
@@ -492,7 +494,17 @@ async def _resolve_own_customer_id(
 @router.get(
     "/{customer_id}/kyc",
     response_model=KycDocumentListResponse,
-    dependencies=[Depends(require_permission("kyc:read"))],
+    dependencies=[
+        Depends(
+            access_logged(
+                permission="kyc:read",
+                action=KYC_VIEWED,
+                entity_name="customer",
+                path_param="customer_id",
+                label="KYC documents",
+            )
+        ),
+    ],
 )
 async def list_kyc_documents(
     customer_id: uuid.UUID,

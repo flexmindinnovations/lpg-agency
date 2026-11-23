@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
+from lpg.api.v1.dependencies.access_log import access_logged
 from lpg.api.v1.dependencies.identity import require_permission
 from lpg.api.v1.dependencies.reporting import (
     get_customer_consumption_use_case,
@@ -25,6 +26,7 @@ from lpg.api.v1.schemas.reporting import (
     Gstr1ReportResponse,
     GstTaxTotalsResponse,
 )
+from lpg.application.audit.security_events import REPORT_VIEWED
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.application.reporting.queries.get_customer_consumption import (
     GetCustomerConsumptionQuery,
@@ -52,7 +54,20 @@ from lpg.application.reporting.queries.get_gstr1_report import (
 router = APIRouter(prefix="/reporting", tags=["reporting"])
 
 
-@router.get("/sales", response_model=list[DailySalesResponse])
+@router.get(
+    "/sales",
+    response_model=list[DailySalesResponse],
+    dependencies=[
+        Depends(
+            access_logged(
+                permission="reports:read",
+                action=REPORT_VIEWED,
+                entity_name="report",
+                label="Daily sales",
+            )
+        )
+    ],
+)
 async def get_daily_sales(
     start_date: date,
     end_date: date,
@@ -72,7 +87,20 @@ async def get_daily_sales(
     return [DailySalesResponse.model_validate(record) for record in records]
 
 
-@router.get("/gst", response_model=list[GstFilingResponse])
+@router.get(
+    "/gst",
+    response_model=list[GstFilingResponse],
+    dependencies=[
+        Depends(
+            access_logged(
+                permission="reports:read",
+                action=REPORT_VIEWED,
+                entity_name="report",
+                label="GST filing summary",
+            )
+        )
+    ],
+)
 async def get_gst_report(
     principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("reports:read"))],
     use_case: Annotated[GetGstReportUseCase, Depends(get_gst_report_use_case)],
@@ -81,7 +109,20 @@ async def get_gst_report(
     return [GstFilingResponse.model_validate(record) for record in records]
 
 
-@router.get("/drivers", response_model=list[DriverPerformanceResponse])
+@router.get(
+    "/drivers",
+    response_model=list[DriverPerformanceResponse],
+    dependencies=[
+        Depends(
+            access_logged(
+                permission="reports:read",
+                action=REPORT_VIEWED,
+                entity_name="report",
+                label="Driver performance",
+            )
+        )
+    ],
+)
 async def get_driver_performance(
     start_date: date,
     end_date: date,
@@ -146,7 +187,20 @@ def _invoice_row(row: Gstr1InvoiceRow) -> Gstr1InvoiceRowResponse:
     )
 
 
-@router.get("/gst/gstr1", response_model=Gstr1ReportResponse)
+@router.get(
+    "/gst/gstr1",
+    response_model=Gstr1ReportResponse,
+    dependencies=[
+        Depends(
+            access_logged(
+                permission="reports:read",
+                action=REPORT_VIEWED,
+                entity_name="report",
+                label="GSTR-1",
+            )
+        )
+    ],
+)
 async def get_gstr1_report(
     start_date: date,
     end_date: date,
@@ -187,7 +241,20 @@ async def get_gstr1_report(
     )
 
 
-@router.get("/consumption", response_model=list[CustomerConsumptionResponse])
+@router.get(
+    "/consumption",
+    response_model=list[CustomerConsumptionResponse],
+    dependencies=[
+        Depends(
+            access_logged(
+                permission="reports:read",
+                action=REPORT_VIEWED,
+                entity_name="report",
+                label="Customer consumption",
+            )
+        )
+    ],
+)
 async def get_customer_consumption(
     principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("reports:read"))],
     use_case: Annotated[GetCustomerConsumptionUseCase, Depends(get_customer_consumption_use_case)],

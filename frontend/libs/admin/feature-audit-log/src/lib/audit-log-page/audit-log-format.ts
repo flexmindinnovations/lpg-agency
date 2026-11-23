@@ -19,6 +19,9 @@ export const ACTION_LABELS: Readonly<Record<string, string>> = {
   'auth.logout': 'Signed out',
   'auth.password_reset_requested': 'Password reset requested',
   'auth.password_reset': 'Password reset',
+  'access.kyc_viewed': 'Viewed KYC documents',
+  'access.report_viewed': 'Viewed report',
+  'access.document_printed': 'Printed document',
 };
 
 export function actionLabel(action: unknown): string {

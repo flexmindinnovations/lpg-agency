@@ -241,6 +241,30 @@ class TestEnableDriverLogin:
         # The driver app's own permissions came with the login.
         assert await _permission_count(admin_engine_lpg_test, result.user_id) > 0
 
+    async def test_creating_the_login_leaves_an_audit_row_without_the_password_hash(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        tenant_id, branch_id = await _seed_tenant(admin_engine_lpg_test)
+        employee = await _seed_employee(
+            admin_engine_lpg_test, tenant_id=tenant_id, branch_id=branch_id, phone_number=_phone()
+        )
+
+        result = await SqlAlchemyDriverLoginProvisioner(database).enable(tenant_id, employee)
+
+        async with admin_engine_lpg_test.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text(
+                        "SELECT action, after_state FROM audit.audit_log "
+                        "WHERE tenant_id = :t AND entity_name = 'identity_user' "
+                        "AND entity_id = :id"
+                    ),
+                    {"t": str(tenant_id), "id": str(result.user_id)},
+                )
+            ).all()
+        assert [row.action for row in rows] == ["create"]
+        assert rows[0].after_state["role"] == "driver"
+
     async def test_links_the_login_to_an_existing_driver_profile_without_touching_it(
         self, database: Database, admin_engine_lpg_test: AsyncEngine
     ) -> None:

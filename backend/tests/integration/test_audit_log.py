@@ -12,6 +12,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pytest
+import structlog
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
@@ -90,6 +91,36 @@ class TestAuditRowOnUpdate:
 
         rows = await _audit_rows_for(admin_engine, tenant_id)
         assert len(rows) == 1
+
+    async def test_a_background_job_change_is_attributed_to_the_job(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine, name="Job Co")
+        context = RequestTenantContext(tenant_id=tenant_id)  # no signed-in user
+        structlog.contextvars.bind_contextvars(job_name="check_stale_unassigned_orders")
+        try:
+            async for session in database.open_session(tenant_id=tenant_id):
+                async with SqlAlchemyUnitOfWork(session, context) as uow:
+                    repository = SqlAlchemyTenantRepository(uow)
+                    tenant = await repository.get(tenant_id)
+                    assert tenant is not None
+                    tenant.rename("Job Co Renamed")
+                    await repository.save(tenant)
+        finally:
+            structlog.contextvars.unbind_contextvars("job_name")
+
+        async with admin_engine.connect() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        "SELECT actor_id, actor_display_name FROM audit.audit_log "
+                        "WHERE entity_id = :id"
+                    ),
+                    {"id": str(tenant_id)},
+                )
+            ).one()
+        assert row.actor_id is None
+        assert row.actor_display_name == "System: check_stale_unassigned_orders"
 
     async def test_the_row_captures_actor_tenant_action_and_state(
         self, database: Database, admin_engine: AsyncEngine

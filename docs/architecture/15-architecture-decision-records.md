@@ -1823,6 +1823,8 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Consequences:** No migration. Emails and phone numbers are stored masked; passwords, OTPs, tokens and hashes are never passed in. `client_ip` is the direct peer address, so behind a reverse proxy it is the proxy's address until `X-Forwarded-For` handling is decided (same limitation as the rate limiter). Order, payment and handover changes keep being audited by the generic hook; the new log lines make them searchable by event name.
 
+**Addendum (2026-11-23):** (4) The generic audit hook now also writes one `data_change` log line per recorded change, so every module's writes are searchable in the logs even when the aggregate raises no domain event. (5) A change made by a background job is attributed to `System: <job_name>` instead of a bare "System". (6) Read access to personal or regulated data is recorded through the same recorder as `access.*` actions: a customer's KYC documents, the GST/sales/driver/consumption reports and printed invoices (`api/v1/dependencies/access_log.py`). The record is made only after the permission check passes. Creating a customer or driver phone login was already audited by the hook (the login is an ordinary ORM row); a test now pins that.
+
 **Alternatives Considered:** Persisting every refresh (rejected: table growth); writing failed-login rows only to logs (rejected: the admin Audit Log is where office users look); a separate security table (rejected: duplicates the viewer, filters and RLS).
 
 ## Deferred Decisions
