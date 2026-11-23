@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING, Annotated, cast
 from fastapi import Depends, Request
 
 from lpg.api.v1.dependencies.tenant import get_tenant_context
+from lpg.application.audit.security_events import SecurityEventRecorder
 from lpg.application.common.errors import PermissionDeniedError
 from lpg.application.common.ports import TenantContext
 from lpg.application.identity.authorize import PermissionChecker
@@ -323,6 +324,14 @@ def _get_database() -> Database:
         msg = "Database is not configured — the application lifespan has not run."
         raise RuntimeError(msg)
     return state.database
+
+
+def get_security_event_recorder() -> SecurityEventRecorder:
+    from lpg.infrastructure.persistence.security_event_recorder import (
+        SqlAlchemySecurityEventRecorder,
+    )
+
+    return SqlAlchemySecurityEventRecorder(_get_database())
 
 
 def get_identity_user_repository() -> IdentityUserRepository:

@@ -14,7 +14,12 @@ because they only ever see `UnitOfWork.commit()`, never this class.
 
 from __future__ import annotations
 
+import dataclasses
+import uuid
 from collections import defaultdict
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from lpg.config.logging import get_logger
@@ -27,6 +32,33 @@ if TYPE_CHECKING:
     EventHandler = Callable[[DomainEvent], Awaitable[None]]
 
 _logger = get_logger(__name__)
+
+_SKIPPED_FIELDS = frozenset({"event_id", "occurred_at"})
+_MAX_STRING = 120
+
+
+def _loggable_fields(event: DomainEvent) -> dict[str, object]:
+    """Ids, statuses, amounts and flags of an event; free text and collections
+    are left out (they may carry personal data). Secret-looking names are
+    redacted by the logging pipeline."""
+    fields: dict[str, object] = {}
+    for name, value in vars_of(event).items():
+        if name in _SKIPPED_FIELDS or value is None:
+            continue
+        if isinstance(value, bool | int):
+            fields[name] = value
+        elif isinstance(value, str):
+            if len(value) <= _MAX_STRING:
+                fields[name] = value
+        elif isinstance(value, Enum):
+            fields[name] = str(value.value)
+        elif isinstance(value, uuid.UUID | Decimal | datetime):
+            fields[name] = str(value)
+    return fields
+
+
+def vars_of(event: DomainEvent) -> dict[str, object]:
+    return {f.name: getattr(event, f.name) for f in dataclasses.fields(event)}
 
 
 class DomainEventDispatcher:
@@ -55,6 +87,14 @@ class DomainEventDispatcher:
         dispatch (§6's "documented seam" above).
         """
         for event in events:
+            # One structured line per business event (order placed, delivered,
+            # payment collected, ...), carrying the request's correlation id.
+            _logger.info(
+                "domain_event",
+                event_name=event.event_name,
+                event_id=str(event.event_id),
+                **_loggable_fields(event),
+            )
             handlers = self._handlers.get(type(event), [])
             for handler in handlers:
                 try:

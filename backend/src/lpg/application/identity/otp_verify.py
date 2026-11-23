@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from lpg.application.audit import security_events as sec
 from lpg.application.common.cqrs import Command
 from lpg.application.common.errors import (
     InvalidCredentialsError,
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     import uuid
     from datetime import timedelta
 
+    from lpg.application.audit.security_events import SecurityEventRecorder
     from lpg.application.identity.ports import (
         CustomerLoginProvisioner,
         IdentityUserRepository,
@@ -77,7 +79,9 @@ class VerifyOtpUseCase:
         customer_login_provisioner: CustomerLoginProvisioner,
         refresh_token_ttl: timedelta,
         device_binder: DeviceSessionBinder | None = None,
+        security_events: SecurityEventRecorder | None = None,
     ) -> None:
+        self._security_events = security_events
         self._device_binder = device_binder
         self._otp_store = otp_store
         self._user_repository = user_repository
@@ -90,10 +94,31 @@ class VerifyOtpUseCase:
         self._customer_login_provisioner = customer_login_provisioner
         self._refresh_token_ttl = refresh_token_ttl
 
+    async def _record(
+        self,
+        command: VerifyOtpCommand,
+        outcome: str,
+        user_id: uuid.UUID | None = None,
+        reason: str | None = None,
+    ) -> None:
+        if self._security_events is None:
+            return
+        await self._security_events.record(
+            sec.SecurityEvent(
+                action=sec.OTP_LOGIN if outcome == "success" else sec.OTP_FAILED,
+                outcome=outcome,
+                tenant_id=command.tenant_id,
+                user_id=user_id,
+                subject=sec.mask_phone(command.phone_number),
+                reason=reason,
+            )
+        )
+
     async def execute(self, command: VerifyOtpCommand) -> TokenPair:
         key = otp_store_key(command.tenant_id, command.phone_number)
         matched = await self._otp_store.verify(key, command.code)
         if not matched:
+            await self._record(command, "failure", reason="otp_mismatch")
             msg = "The OTP entered does not match."
             raise OtpMismatchError(msg)
 
@@ -105,28 +130,39 @@ class VerifyOtpUseCase:
                 command.tenant_id, command.phone_number
             )
         if user is None or not user.is_active:
+            await self._record(command, "failure", user.id if user else None, "no_active_account")
             msg = "No account is associated with this number."
             raise InvalidCredentialsError(msg)
 
         tenant_status = await self._tenant_status_checker.get_status(command.tenant_id)
         if tenant_status in ("suspended", "closed"):
+            await self._record(command, "failure", user.id, "tenant_suspended")
             msg = "This tenant's agency has been suspended."
             raise TenantSuspendedError(msg, tenant_id=str(command.tenant_id))
 
         license_status = await self._license_status_checker.get_status(command.tenant_id)
         if license_status is LicenseLifecycleState.PENDING_ACTIVATION:
+            await self._record(command, "failure", user.id, "license_not_active")
             msg = "This tenant's license has not been activated."
             raise LicenseNotActivatedError(msg, tenant_id=str(command.tenant_id))
         if license_status in (LicenseLifecycleState.BLOCKED, LicenseLifecycleState.REVOKED):
+            await self._record(command, "failure", user.id, "license_expired")
             msg = "This tenant's license has expired."
             raise LicenseExpiredError(msg, tenant_id=str(command.tenant_id))
 
-        binding = (
-            await self._device_binder.bind(user, command.device) if self._device_binder else None
-        )
+        try:
+            binding = (
+                await self._device_binder.bind(user, command.device)
+                if self._device_binder
+                else None
+            )
+        except Exception as exc:
+            await self._record(command, "failure", user.id, sec.reason_of(exc))
+            raise
 
         user.record_successful_login()
         await self._user_repository.save(user)
+        await self._record(command, "success", user.id)
 
         return await issue_tokens(
             user,
