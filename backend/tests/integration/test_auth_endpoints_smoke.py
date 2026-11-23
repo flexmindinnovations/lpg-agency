@@ -190,3 +190,55 @@ class TestLoginEndToEnd:
         response = await real_lifespan_client.get("/api/v1/auth/me")
 
         assert response.status_code == 401
+
+
+class TestSecurityEventTrail:
+    async def test_login_failure_refresh_and_logout_leave_audit_rows(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        email = f"{uuid.uuid4().hex}@smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id, user_id = await _seed_tenant_and_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=Argon2PasswordHasher(integration_settings).hash(password),
+        )
+
+        await real_lifespan_client.post(
+            "/api/v1/auth/login", json={"email": email, "password": "wrong-password"}
+        )
+        login = await real_lifespan_client.post(
+            "/api/v1/auth/login",
+            json={"email": email, "password": password},
+            headers={"User-Agent": "audit-smoke/1.0"},
+        )
+        refresh_token = login.json()["refresh_token"]
+        await real_lifespan_client.post(
+            "/api/v1/auth/logout", json={"refresh_token": refresh_token}
+        )
+
+        async with admin_engine_lpg_test.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text(
+                        "SELECT action, tenant_id, actor_id, correlation_id, metadata "
+                        "FROM audit.audit_log WHERE entity_name = 'auth_session' "
+                        "AND tenant_id = :tenant_id ORDER BY performed_at"
+                    ),
+                    {"tenant_id": str(tenant_id)},
+                )
+            ).all()
+
+        assert [row.action for row in rows] == ["auth.login_failed", "auth.login", "auth.logout"]
+        failed, success, _logout = rows
+        assert failed.metadata["reason"] == "bad_password"
+        assert success.actor_id == user_id
+        assert success.correlation_id
+        assert success.metadata["user_agent"] == "audit-smoke/1.0"
+        assert success.metadata["client_ip"]
+        for row in rows:
+            assert password not in str(row.metadata)
+            assert refresh_token not in str(row.metadata)

@@ -18,11 +18,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from lpg.application.audit import security_events as sec
 from lpg.application.common.cqrs import Command
 from lpg.application.common.errors import ResetTokenExpiredError
 from lpg.domain.identity.password_reset_token import PasswordResetToken
 
 if TYPE_CHECKING:
+    from lpg.application.audit.security_events import SecurityEventRecorder
     from lpg.application.identity.ports import (
         EmailSender,
         IdentityUserRepository,
@@ -52,7 +54,9 @@ class RequestPasswordResetUseCase:
         *,
         reset_token_ttl: timedelta,
         link_base: str = "",
+        security_events: SecurityEventRecorder | None = None,
     ) -> None:
+        self._security_events = security_events
         self._user_repository = user_repository
         self._reset_token_repository = reset_token_repository
         self._token_hasher = token_hasher
@@ -80,6 +84,16 @@ class RequestPasswordResetUseCase:
         link = f"{self._link_base}{RESET_PASSWORD_PATH}?token={raw_token}"
         body = f"Use this link to reset your password: {link}"
         await self._email_sender.send(command.email, "Reset your password", body)
+        if self._security_events is not None:
+            await self._security_events.record(
+                sec.SecurityEvent(
+                    action=sec.PASSWORD_RESET_REQUESTED,
+                    outcome="success",
+                    tenant_id=user.tenant_id,
+                    user_id=user.id,
+                    subject=sec.mask_email(command.email),
+                )
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,7 +109,9 @@ class ConfirmPasswordResetUseCase:
         user_repository: IdentityUserRepository,
         token_hasher: TokenHasher,
         password_hasher: PasswordHasher,
+        security_events: SecurityEventRecorder | None = None,
     ) -> None:
+        self._security_events = security_events
         self._reset_token_repository = reset_token_repository
         self._user_repository = user_repository
         self._token_hasher = token_hasher
@@ -106,6 +122,14 @@ class ConfirmPasswordResetUseCase:
         token = await self._reset_token_repository.get_by_token_hash(token_hash)
 
         if token is None or not token.is_usable():
+            if self._security_events is not None:
+                await self._security_events.record(
+                    sec.SecurityEvent(
+                        action=sec.PASSWORD_RESET,
+                        outcome="failure",
+                        reason="token_invalid_or_expired",
+                    )
+                )
             msg = "This password reset link has expired."
             raise ResetTokenExpiredError(msg)
 
@@ -119,3 +143,12 @@ class ConfirmPasswordResetUseCase:
 
         user.change_password_hash(self._password_hasher.hash(command.new_password))
         await self._user_repository.save(user)
+        if self._security_events is not None:
+            await self._security_events.record(
+                sec.SecurityEvent(
+                    action=sec.PASSWORD_RESET,
+                    outcome="success",
+                    tenant_id=user.tenant_id,
+                    user_id=user.id,
+                )
+            )

@@ -41,6 +41,7 @@ from lpg.api.v1.dependencies.identity import (
     get_password_reset_token_repository,
     get_permission_repository,
     get_refresh_token_repository,
+    get_security_event_recorder,
     get_tenant_slug_resolver,
     get_token_hasher,
     require_phone_rate_limit,
@@ -64,6 +65,7 @@ from lpg.api.v1.schemas.identity import (
     UpdateMyProfileRequest,
 )
 from lpg.application.audit.ports import AuditTrail
+from lpg.application.audit.security_events import SecurityEventRecorder
 from lpg.application.common.errors import RefreshTokenInvalidError
 from lpg.application.common.ports import FileStorage
 from lpg.application.identity.login import LoginCommand, LoginUseCase
@@ -171,6 +173,7 @@ async def login(
     license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     tenant_status_checker: Annotated[TenantStatusChecker, Depends(get_tenant_status_checker)],
     device_binder: Annotated[DeviceSessionBinder, Depends(get_device_session_binder)],
+    security_events: Annotated[SecurityEventRecorder, Depends(get_security_event_recorder)],
     _rate_limit: Annotated[
         None,
         Depends(require_rate_limit(key_prefix="auth:login", limit=10, window_seconds=60)),
@@ -189,6 +192,7 @@ async def login(
         lockout_duration=timedelta(minutes=settings.login_lockout_duration_minutes),
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
         device_binder=device_binder,
+        security_events=security_events,
     )
     token_pair = await use_case.execute(
         LoginCommand(
@@ -209,6 +213,7 @@ async def otp_request(
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
     tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
+    security_events: Annotated[SecurityEventRecorder, Depends(get_security_event_recorder)],
     # CA-03: 5 codes an hour per number; the per-IP limit is generous because
     # many customers can share one carrier NAT or office router.
     _rate_limit: Annotated[
@@ -225,7 +230,7 @@ async def otp_request(
     ],
 ) -> None:
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
-    use_case = RequestOtpUseCase(otp_store, otp_delivery)
+    use_case = RequestOtpUseCase(otp_store, otp_delivery, security_events)
     await use_case.execute(RequestOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number))
 
 
@@ -251,6 +256,7 @@ async def otp_verify(
     ],
     device_binder: Annotated[DeviceSessionBinder, Depends(get_device_session_binder)],
     # Per-IP throttle on top of the per-code attempt cap in `OtpService`.
+    security_events: Annotated[SecurityEventRecorder, Depends(get_security_event_recorder)],
     _rate_limit: Annotated[
         None,
         Depends(require_rate_limit(key_prefix="auth:otp_verify", limit=30, window_seconds=600)),
@@ -276,6 +282,7 @@ async def otp_verify(
         customer_login_provisioner=customer_login_provisioner,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
         device_binder=device_binder,
+        security_events=security_events,
     )
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
     token_pair = await use_case.execute(
@@ -308,6 +315,7 @@ async def refresh(
     license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     tenant_status_checker: Annotated[TenantStatusChecker, Depends(get_tenant_status_checker)],
     device_binder: Annotated[DeviceSessionBinder, Depends(get_device_session_binder)],
+    security_events: Annotated[SecurityEventRecorder, Depends(get_security_event_recorder)],
     _rate_limit: Annotated[
         None,
         Depends(require_rate_limit(key_prefix="auth:refresh", limit=60, window_seconds=60)),
@@ -329,6 +337,7 @@ async def refresh(
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
         device_binder=device_binder,
         reuse_grace=timedelta(seconds=settings.refresh_token_reuse_grace_seconds),
+        security_events=security_events,
     )
     token_pair = await use_case.execute(
         RefreshTokenCommand(
@@ -350,10 +359,17 @@ async def logout(
         RefreshTokenRepository, Depends(get_refresh_token_repository)
     ],
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
+    security_events: Annotated[SecurityEventRecorder, Depends(get_security_event_recorder)],
+    user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
 ) -> None:
     raw_token = _resolve_refresh_token(request, body.refresh_token)
     if raw_token is not None:
-        use_case = LogoutUseCase(refresh_token_repository, token_hasher)
+        use_case = LogoutUseCase(
+            refresh_token_repository,
+            token_hasher,
+            security_events=security_events,
+            user_lookup=user_repository,
+        )
         await use_case.execute(LogoutCommand(refresh_token=raw_token))
     _clear_refresh_cookie(response)
 
@@ -368,6 +384,7 @@ async def password_forgot(
     ],
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     email_sender: Annotated[EmailSender, Depends(get_email_sender)],
+    security_events: Annotated[SecurityEventRecorder, Depends(get_security_event_recorder)],
     _rate_limit: Annotated[
         None,
         Depends(
@@ -382,6 +399,7 @@ async def password_forgot(
         email_sender,
         reset_token_ttl=timedelta(seconds=settings.password_reset_token_ttl_seconds),
         link_base=settings.dashboard_url,
+        security_events=security_events,
     )
     # Always 204, regardless of whether the email matched an account — the
     # use case itself already guarantees no user-enumeration; the router
@@ -398,6 +416,7 @@ async def password_reset(
     user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     password_hasher: Annotated[PasswordHasher, Depends(get_password_hasher)],
+    security_events: Annotated[SecurityEventRecorder, Depends(get_security_event_recorder)],
     _rate_limit: Annotated[
         None,
         Depends(
@@ -406,7 +425,11 @@ async def password_reset(
     ],
 ) -> None:
     use_case = ConfirmPasswordResetUseCase(
-        reset_token_repository, user_repository, token_hasher, password_hasher
+        reset_token_repository,
+        user_repository,
+        token_hasher,
+        password_hasher,
+        security_events=security_events,
     )
     await use_case.execute(
         ConfirmPasswordResetCommand(reset_token=body.reset_token, new_password=body.new_password)

@@ -309,6 +309,8 @@ ignore_imports = [
     "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.repositories.tenant",
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.database",
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.repositories.identity",
+    # Sign-in security events (login, logout, OTP, refresh) have no Unit of Work.
+    "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.security_event_recorder",
     # R5: dependencies/identity.py also wires the tenant-slug resolver
     # `routers/auth.py`'s otp_request/otp_verify use to accept an agency
     # code from unauthenticated callers, instead of the router running raw

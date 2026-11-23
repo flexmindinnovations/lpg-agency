@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from lpg.application.audit import security_events as sec
 from lpg.application.common.cqrs import Command
 from lpg.application.common.errors import (
     LicenseExpiredError,
@@ -36,6 +37,9 @@ from lpg.application.identity.tokens import TokenPair, issue_tokens
 from lpg.domain.license.license import LicenseLifecycleState
 
 if TYPE_CHECKING:
+    import uuid
+
+    from lpg.application.audit.security_events import SecurityEventRecorder
     from lpg.application.identity.ports import (
         IdentityUserRepository,
         JwtSigner,
@@ -69,7 +73,11 @@ class RefreshTokenUseCase:
         refresh_token_ttl: timedelta,
         device_binder: DeviceSessionBinder | None = None,
         reuse_grace: timedelta = timedelta(0),
+        security_events: SecurityEventRecorder | None = None,
     ) -> None:
+        self._security_events = security_events
+        # Set once a specific failure event (token reuse) has been recorded.
+        self._failure_recorded = False
         self._reuse_grace = reuse_grace
         self._device_binder = device_binder
         self._refresh_token_repository = refresh_token_repository
@@ -81,7 +89,38 @@ class RefreshTokenUseCase:
         self._tenant_status_checker = tenant_status_checker
         self._refresh_token_ttl = refresh_token_ttl
 
+    async def _record(
+        self,
+        action: str,
+        outcome: str,
+        user_id: uuid.UUID | None = None,
+        tenant_id: uuid.UUID | None = None,
+        reason: str | None = None,
+        *,
+        persist: bool = True,
+    ) -> None:
+        if self._security_events is None:
+            return
+        await self._security_events.record(
+            sec.SecurityEvent(
+                action=action,
+                outcome=outcome,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                reason=reason,
+                persist=persist,
+            )
+        )
+
     async def execute(self, command: RefreshTokenCommand) -> TokenPair:
+        try:
+            return await self._execute(command)
+        except Exception as exc:
+            if not self._failure_recorded:
+                await self._record(sec.REFRESH_FAILED, "failure", reason=sec.reason_of(exc))
+            raise
+
+    async def _execute(self, command: RefreshTokenCommand) -> TokenPair:
         token_hash = self._token_hasher.hash(command.refresh_token)
         token = await self._refresh_token_repository.get_by_token_hash(token_hash)
 
@@ -100,6 +139,13 @@ class RefreshTokenUseCase:
                 # Reuse of an already-rotated token — treat as theft, revoke
                 # the whole session, not just this one token.
                 await self._refresh_token_repository.revoke_all_for_user(token.user_id)
+                self._failure_recorded = True
+                await self._record(
+                    sec.REFRESH_REUSE_DETECTED,
+                    "failure",
+                    user_id=token.user_id,
+                    reason="rotated_token_reused",
+                )
                 msg = "Session expired or invalid. Please log in again."
                 raise RefreshTokenInvalidError(msg)
 
@@ -147,5 +193,13 @@ class RefreshTokenUseCase:
         if not retried:
             token.rotate(new_pair.refresh_token_id)
             await self._refresh_token_repository.save(token)
+
+        await self._record(
+            sec.TOKEN_REFRESHED,
+            "success",
+            user_id=user.id,
+            tenant_id=user.tenant_id,
+            persist=False,
+        )
 
         return new_pair

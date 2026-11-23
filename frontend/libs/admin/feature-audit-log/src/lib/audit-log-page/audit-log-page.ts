@@ -54,6 +54,12 @@ const ACTION_SEVERITY: Record<string, ActionSeverity> = {
   create: 'success',
   update: 'info',
   delete: 'danger',
+  'auth.login': 'success',
+  'auth.otp_login': 'success',
+  'auth.login_failed': 'danger',
+  'auth.otp_failed': 'danger',
+  'auth.refresh_failed': 'danger',
+  'auth.refresh_reuse_detected': 'danger',
 };
 
 interface Option<T> {

@@ -34,6 +34,13 @@ _logger = get_logger(__name__)
 _SAFE_CORRELATION_ID = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
 
 
+def _clean_user_agent(value: str | None) -> str | None:
+    """Printable, length-capped, so a crafted header can't inject log lines."""
+    if not value:
+        return None
+    return "".join(ch for ch in value[:200] if ch.isprintable())
+
+
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     """Bind a correlation ID to every request and log its outcome."""
 
@@ -54,6 +61,8 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             correlation_id=correlation_id,
             request_path=request.url.path,
             request_method=request.method,
+            client_ip=request.client.host if request.client else None,
+            user_agent=_clean_user_agent(request.headers.get("user-agent")),
         )
 
         request.state.correlation_id = correlation_id

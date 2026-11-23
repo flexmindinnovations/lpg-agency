@@ -1813,6 +1813,18 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Alternatives Considered:** Chart.js plus plugins (smaller, but no Sankey/treemap, canvas-only); AG Charts (Enterprise-gated types); ApexCharts and Highcharts (licence cost/terms); `ngx-echarts` (a verified drop-in if we would rather not own about 100 lines of wrapper).
 
+## ADR-076: Sign-In Security Events Go to the Audit Log; Every Domain Event Gets One Log Line
+
+**Status:** Accepted (2026-11-23). Builds on the generic audit hook (`persistence/audit.py`) and the explicit `AuditTrail` (DA-24).
+
+**Context:** The audit log already recorded every data change made in a Unit of Work (orders, payments, handovers) and explicit staff-management actions. Sign-in traffic left no trace there, because login, OTP, refresh and logout run before any tenant context exists and use no Unit of Work. Domain events (order placed, delivered, payment collected, ...) were dispatched but never logged.
+
+**Decision:** (1) A `SecurityEventRecorder` port (`application/audit/security_events.py`) is called by the login, OTP request/verify, refresh, logout and password-reset use cases. Its SQLAlchemy implementation writes a structured `security_event` log line first, then one `audit.audit_log` row (`entity_name = auth_session`, actions `auth.*`) in its own short transaction, and never raises into the sign-in flow. An event with no known tenant (unknown email) is stored under the platform sentinel tenant, readable only by the Platform Console. Token refresh is logged but not persisted, because it fires every few minutes per device. (2) `CorrelationIdMiddleware` binds `client_ip` and a sanitised `user_agent` into the log context, so every log line and audit row carries them with the correlation id. (3) `DomainEventDispatcher` writes one `domain_event` log line per dispatched event with its ids, status and amounts (free text and collections are left out).
+
+**Consequences:** No migration. Emails and phone numbers are stored masked; passwords, OTPs, tokens and hashes are never passed in. `client_ip` is the direct peer address, so behind a reverse proxy it is the proxy's address until `X-Forwarded-For` handling is decided (same limitation as the rate limiter). Order, payment and handover changes keep being audited by the generic hook; the new log lines make them searchable by event name.
+
+**Alternatives Considered:** Persisting every refresh (rejected: table growth); writing failed-login rows only to logs (rejected: the admin Audit Log is where office users look); a separate security table (rejected: duplicates the viewer, filters and RLS).
+
 ## Deferred Decisions
 
 Decisions deliberately left open, each with a defined trigger point:

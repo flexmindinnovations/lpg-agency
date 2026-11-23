@@ -17,11 +17,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from lpg.application.audit import security_events as sec
 from lpg.application.common.cqrs import Command
 
 if TYPE_CHECKING:
     import uuid
 
+    from lpg.application.audit.security_events import SecurityEventRecorder
     from lpg.application.identity.ports import OtpDeliveryPort, OtpStore
 
 
@@ -40,7 +42,13 @@ def otp_store_key(tenant_id: uuid.UUID, phone_number: str) -> str:
 
 
 class RequestOtpUseCase:
-    def __init__(self, otp_store: OtpStore, otp_delivery: OtpDeliveryPort) -> None:
+    def __init__(
+        self,
+        otp_store: OtpStore,
+        otp_delivery: OtpDeliveryPort,
+        security_events: SecurityEventRecorder | None = None,
+    ) -> None:
+        self._security_events = security_events
         self._otp_store = otp_store
         self._otp_delivery = otp_delivery
 
@@ -48,3 +56,13 @@ class RequestOtpUseCase:
         key = otp_store_key(command.tenant_id, command.phone_number)
         code = await self._otp_store.issue(key)
         await self._otp_delivery.send(command.phone_number, code)
+        if self._security_events is not None:
+            # The code itself is never recorded, only that one was sent.
+            await self._security_events.record(
+                sec.SecurityEvent(
+                    action=sec.OTP_REQUESTED,
+                    outcome="success",
+                    tenant_id=command.tenant_id,
+                    subject=sec.mask_phone(command.phone_number),
+                )
+            )

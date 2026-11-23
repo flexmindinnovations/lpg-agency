@@ -7,6 +7,18 @@ export const ACTION_LABELS: Readonly<Record<string, string>> = {
   create: 'Created',
   update: 'Changed',
   delete: 'Deleted',
+  // Sign-in security events (backend `application/audit/security_events.py`).
+  'auth.login': 'Signed in',
+  'auth.login_failed': 'Sign-in failed',
+  'auth.otp_requested': 'Code requested',
+  'auth.otp_login': 'Signed in with code',
+  'auth.otp_failed': 'Code sign-in failed',
+  'auth.token_refreshed': 'Session renewed',
+  'auth.refresh_failed': 'Session renewal failed',
+  'auth.refresh_reuse_detected': 'Session reuse blocked',
+  'auth.logout': 'Signed out',
+  'auth.password_reset_requested': 'Password reset requested',
+  'auth.password_reset': 'Password reset',
 };
 
 export function actionLabel(action: unknown): string {

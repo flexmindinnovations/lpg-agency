@@ -26,6 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from lpg.application.audit import security_events as sec
 from lpg.application.common.cqrs import Command
 from lpg.application.common.errors import (
     AccountLockedError,
@@ -40,6 +41,7 @@ from lpg.domain.license.license import LicenseLifecycleState
 if TYPE_CHECKING:
     from datetime import timedelta
 
+    from lpg.application.audit.security_events import SecurityEventRecorder
     from lpg.application.identity.ports import (
         IdentityUserRepository,
         JwtSigner,
@@ -51,6 +53,7 @@ if TYPE_CHECKING:
     from lpg.application.license.device_access import DeviceContext, DeviceSessionBinder
     from lpg.application.license.ports import LicenseStatusChecker
     from lpg.application.tenant.status import TenantStatusChecker
+    from lpg.domain.identity.user import IdentityUser
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,7 +80,9 @@ class LoginUseCase:
         lockout_duration: timedelta,
         refresh_token_ttl: timedelta,
         device_binder: DeviceSessionBinder | None = None,
+        security_events: SecurityEventRecorder | None = None,
     ) -> None:
+        self._security_events = security_events
         self._device_binder = device_binder
         self._user_repository = user_repository
         self._refresh_token_repository = refresh_token_repository
@@ -91,16 +96,39 @@ class LoginUseCase:
         self._lockout_duration = lockout_duration
         self._refresh_token_ttl = refresh_token_ttl
 
+    async def _record(
+        self,
+        command: LoginCommand,
+        action: str,
+        outcome: str,
+        user: IdentityUser | None = None,
+        reason: str | None = None,
+    ) -> None:
+        if self._security_events is None:
+            return
+        await self._security_events.record(
+            sec.SecurityEvent(
+                action=action,
+                outcome=outcome,
+                tenant_id=user.tenant_id if user else None,
+                user_id=user.id if user else None,
+                subject=sec.mask_email(command.email),
+                reason=reason,
+            )
+        )
+
     async def execute(self, command: LoginCommand) -> TokenPair:
         user = await self._user_repository.get_by_email(command.email)
 
         if user is None or user.password_hash is None:
             # No user-enumeration: an unknown email and a known email with a
             # wrong password report identically.
+            await self._record(command, sec.LOGIN_FAILED, "failure", reason="unknown_account")
             msg = "Email or password is incorrect."
             raise InvalidCredentialsError(msg)
 
         if user.is_locked():
+            await self._record(command, sec.LOGIN_FAILED, "failure", user, "account_locked")
             msg = "Account temporarily locked due to repeated failed login attempts."
             raise AccountLockedError(msg, user_id=str(user.id))
 
@@ -111,10 +139,12 @@ class LoginUseCase:
                 lockout_duration=self._lockout_duration,
             )
             await self._user_repository.save(user)
+            await self._record(command, sec.LOGIN_FAILED, "failure", user, "bad_password")
             msg = "Email or password is incorrect."
             raise InvalidCredentialsError(msg)
 
         if not user.is_active:
+            await self._record(command, sec.LOGIN_FAILED, "failure", user, "inactive_account")
             msg = "Email or password is incorrect."
             raise InvalidCredentialsError(msg)
 
@@ -131,25 +161,35 @@ class LoginUseCase:
             # (see `TenantSuspendedError`'s own docstring).
             tenant_status = await self._tenant_status_checker.get_status(user.tenant_id)
             if tenant_status in ("suspended", "closed"):
+                await self._record(command, sec.LOGIN_FAILED, "failure", user, "tenant_suspended")
                 msg = "This tenant's agency has been suspended."
                 raise TenantSuspendedError(msg, tenant_id=str(user.tenant_id))
 
             license_status = await self._license_status_checker.get_status(user.tenant_id)
             if license_status is LicenseLifecycleState.PENDING_ACTIVATION:
+                await self._record(command, sec.LOGIN_FAILED, "failure", user, "license_not_active")
                 msg = "This tenant's license has not been activated."
                 raise LicenseNotActivatedError(msg, tenant_id=str(user.tenant_id))
             if license_status in (LicenseLifecycleState.BLOCKED, LicenseLifecycleState.REVOKED):
+                await self._record(command, sec.LOGIN_FAILED, "failure", user, "license_expired")
                 msg = "This tenant's license has expired."
                 raise LicenseExpiredError(msg, tenant_id=str(user.tenant_id))
 
         # Device control (ADR-071): refuse a blocked phone before any state is
         # recorded, and bind the session to the phone it comes from.
-        binding = (
-            await self._device_binder.bind(user, command.device) if self._device_binder else None
-        )
+        try:
+            binding = (
+                await self._device_binder.bind(user, command.device)
+                if self._device_binder
+                else None
+            )
+        except Exception as exc:
+            await self._record(command, sec.LOGIN_FAILED, "failure", user, sec.reason_of(exc))
+            raise
 
         user.record_successful_login()
         await self._user_repository.save(user)
+        await self._record(command, sec.LOGIN, "success", user)
 
         return await issue_tokens(
             user,
