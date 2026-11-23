@@ -150,7 +150,7 @@ def _user() -> IdentityUser:
 
 def _login(user: IdentityUser | None, recorder: _Recorder, *, password_ok: bool) -> LoginUseCase:
     return LoginUseCase(
-        _Users(user),  # type: ignore[arg-type]
+        _Users(user),
         _Tokens(),  # type: ignore[arg-type]
         _Permissions(),  # type: ignore[arg-type]
         _Passwords(ok=password_ok),  # type: ignore[arg-type]
@@ -251,14 +251,14 @@ class TestOtp:
         recorder, tenant_id = _Recorder(), uuid.uuid4()
         use_case = VerifyOtpUseCase(
             _Otp(matches=False),  # type: ignore[arg-type]
-            _Users(_user()),  # type: ignore[arg-type]
+            _Users(_user()),
             _Tokens(),  # type: ignore[arg-type]
             _Permissions(),  # type: ignore[arg-type]
             _Hasher(),  # type: ignore[arg-type]
             _Signer(),  # type: ignore[arg-type]
             _License(),  # type: ignore[arg-type]
             _Tenant(),  # type: ignore[arg-type]
-            customer_login_provisioner=_Provisioner(),  # type: ignore[arg-type]
+            customer_login_provisioner=_Provisioner(),
             refresh_token_ttl=timedelta(days=30),
             security_events=recorder,
         )
@@ -276,14 +276,14 @@ class TestOtp:
         recorder, user = _Recorder(), _user()
         use_case = VerifyOtpUseCase(
             _Otp(matches=True),  # type: ignore[arg-type]
-            _Users(user),  # type: ignore[arg-type]
+            _Users(user),
             _Tokens(),  # type: ignore[arg-type]
             _Permissions(),  # type: ignore[arg-type]
             _Hasher(),  # type: ignore[arg-type]
             _Signer(),  # type: ignore[arg-type]
             _License(),  # type: ignore[arg-type]
             _Tenant(),  # type: ignore[arg-type]
-            customer_login_provisioner=_Provisioner(),  # type: ignore[arg-type]
+            customer_login_provisioner=_Provisioner(),
             refresh_token_ttl=timedelta(days=30),
             security_events=recorder,
         )
@@ -315,7 +315,7 @@ def _stored_token(user: IdentityUser, tokens: _Tokens, *, rotated: bool = False)
 def _refresh(user: IdentityUser, tokens: _Tokens, recorder: _Recorder) -> RefreshTokenUseCase:
     return RefreshTokenUseCase(
         tokens,  # type: ignore[arg-type]
-        _Users(user),  # type: ignore[arg-type]
+        _Users(user),
         _Permissions(),  # type: ignore[arg-type]
         _Hasher(),  # type: ignore[arg-type]
         _Signer(),  # type: ignore[arg-type]
@@ -371,7 +371,7 @@ class TestRefreshAndLogout:
             tokens,  # type: ignore[arg-type]
             _Hasher(),  # type: ignore[arg-type]
             security_events=recorder,
-            user_lookup=_Users(user),  # type: ignore[arg-type]
+            user_lookup=_Users(user),
         ).execute(LogoutCommand(refresh_token="raw-1"))
 
         (event,) = recorder.events
