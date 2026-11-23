@@ -116,3 +116,11 @@ jobs:
       # unreachable they skip, so a skip count in this log is a red flag.
       - name: Tests
         run: uv run pytest -q -rs
+
+      # The object-store stub was started through `uvx`, so it still holds
+      # uv's cache lock. setup-uv's post step runs `uv cache prune`, which waits
+      # on that lock for five minutes and then fails the job. Stop the stub
+      # first so the prune can run.
+      - name: Stop the object-store stub
+        if: always()
+        run: pkill -f moto_server || true
