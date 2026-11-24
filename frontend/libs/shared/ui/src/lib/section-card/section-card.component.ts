@@ -39,7 +39,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         border: var(--card-border, var(--border-width) solid var(--component-card-border));
         border-radius: var(--radius-card);
         padding: var(--component-card-padding);
-        box-shadow: var(--card-shadow, var(--elevation-1));
+        box-shadow: var(--card-shadow, var(--component-card-shadow));
         overflow: hidden;
       }
 

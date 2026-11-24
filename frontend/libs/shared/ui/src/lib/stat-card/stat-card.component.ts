@@ -94,7 +94,7 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
         background: var(--component-card-background);
         border: var(--border-width) solid var(--component-card-border);
         border-radius: var(--radius-card);
-        box-shadow: var(--elevation-1);
+        box-shadow: var(--component-card-shadow);
         transition:
           transform var(--motion-duration-small) var(--motion-easing-emphasized),
           border-color var(--motion-duration-small) var(--motion-easing-emphasized),
@@ -104,7 +104,7 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
       .stat-card:hover {
         transform: translateY(-1px);
         border-color: var(--color-border-strong);
-        box-shadow: var(--elevation-2);
+        box-shadow: var(--component-card-shadow);
       }
 
       /* The linked variant renders as <a>, which needs its default browser

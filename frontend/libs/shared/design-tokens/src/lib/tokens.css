@@ -369,8 +369,20 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
-  --component-card-background: color-mix(in srgb, #ffffff 96%, transparent);
-  --component-card-border: #e5e7eb;
+  /* Cards are frosted glass: a translucent tint over the page's colour glows
+     (they show through), a soft light from the top-left and a lit top edge.
+     No drop shadow, and nothing is blurred live: a backdrop blur on every card
+     is redone each scroll frame (measured: average frame 7.2 -> 10.8 ms and
+     21 frames over 16 ms per run instead of 1), and nothing sharp scrolls
+     behind a card that a blur could soften. Kept to a simple gradient too: a
+     radial highlight and a large shadow on each card cost about 1.7 ms per
+     frame while scrolling. */
+  --component-card-background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.12) 60%),
+    color-mix(in srgb, #ffffff 40%, transparent);
+  --component-card-border: rgba(15, 23, 42, 0.08);
+  --component-card-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --component-data-grid-border-color: #e5e7eb;
   --component-data-grid-header-background: #f9fafb;
   --component-avatar-background: #162b66;
@@ -476,8 +488,12 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-background: #2864cc;
   --component-button-primary-background-hover: #1f4fa8;
   --component-button-primary-text: #ffffff;
-  --component-card-background: color-mix(in srgb, #101720 92%, transparent);
-  --component-card-border: rgba(255,255,255,0.07);
+  --component-card-background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.015) 60%),
+    color-mix(in srgb, #0f1722 40%, transparent);
+  --component-card-border: rgba(255, 255, 255, 0.13);
+  --component-card-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
   --component-data-grid-border-color: rgba(255,255,255,0.07);
   --component-data-grid-header-background: #101720;
   --component-avatar-background: #2864cc;
@@ -556,6 +572,7 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-text: #ffffff;
   --component-card-background: #ffffff;
   --component-card-border: #000000;
+  --component-card-shadow: 0 0 0 0 transparent;
   --component-data-grid-border-color: #000000;
   --component-data-grid-header-background: #ffffff;
   --component-avatar-background: #0000ee;
@@ -643,8 +660,12 @@ have always been hand-edited directly. Edit them here.
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
-    --component-card-background: color-mix(in srgb, #101720 92%, transparent);
-    --component-card-border: rgba(255,255,255,0.07);
+    --component-card-background:
+      linear-gradient(150deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.015) 60%),
+      color-mix(in srgb, #0f1722 40%, transparent);
+    --component-card-border: rgba(255, 255, 255, 0.13);
+    --component-card-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
     --component-data-grid-border-color: rgba(255,255,255,0.07);
     --component-data-grid-header-background: #101720;
     --component-avatar-background: #2864cc;

@@ -310,9 +310,12 @@ const CHART_HEIGHT = 280;
         gap: var(--spacing-lg);
       }
 
+      /* Cards in a row stretch to the tallest one. A card host asks for
+         block-size: 100%, which stops a flex item stretching, so reset it. */
       .charts > * {
         flex: 1 1 340px;
         min-inline-size: 0;
+        block-size: auto;
       }
 
       .charts > .charts__wide {
