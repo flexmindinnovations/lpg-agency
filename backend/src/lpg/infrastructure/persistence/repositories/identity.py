@@ -42,6 +42,19 @@ if TYPE_CHECKING:
     from lpg.infrastructure.persistence.database import Database
 
 
+def _phone_lookup_forms(phone_number: str) -> list[str]:
+    """The number as given, then - for an Indian number - as 10 digits.
+
+    Logins are stored as E.164 (`+919876543210`), but a driver login created
+    before employee numbers were normalised holds the number as typed
+    (`9876543210`). Trying both keeps those drivers able to sign in.
+    """
+    forms = [phone_number]
+    if phone_number.startswith("+91") and len(phone_number) == 13:
+        forms.append(phone_number[3:])
+    return forms
+
+
 def _row_to_user(row: Row[Any]) -> IdentityUser | None:
     if row.id is None:
         return None
@@ -151,11 +164,15 @@ class SqlAlchemyIdentityUserRepository:
         self, tenant_id: uuid.UUID, phone_number: str
     ) -> IdentityUser | None:
         async for session in self._database.session():
-            result = await session.execute(
-                text("SELECT * FROM identity.auth_find_user_by_phone(:tenant_id, :phone)"),
-                {"tenant_id": str(tenant_id), "phone": phone_number},
-            )
-            return _row_to_user(result.one())
+            for candidate in _phone_lookup_forms(phone_number):
+                result = await session.execute(
+                    text("SELECT * FROM identity.auth_find_user_by_phone(:tenant_id, :phone)"),
+                    {"tenant_id": str(tenant_id), "phone": candidate},
+                )
+                user = _row_to_user(result.one())
+                if user is not None:
+                    return user
+            return None
         return None  # pragma: no cover
 
     async def save(self, user: IdentityUser) -> None:
