@@ -882,6 +882,9 @@ p-confirmpopup {
 .p-drawer .p-drawer-header {
   padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) !important;
   border-bottom: var(--border-width) solid var(--color-border-default) !important;
+  /* Whatever a custom header holds (a status chip, say) never touches the
+     close button. */
+  gap: var(--spacing-md);
 }
 
 .p-drawer .p-drawer-header .p-drawer-title {

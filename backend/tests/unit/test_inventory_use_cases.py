@@ -614,6 +614,33 @@ async def test_stock_register_walks_back_from_todays_balance(
     ]
 
 
+async def test_stock_register_leaves_out_days_with_no_stock_and_no_movement(
+    mock_location_repo: MagicMock,
+) -> None:
+    cylinder_type_id = uuid.uuid4()
+    mock_location_repo.get_by_location_ref.return_value = _warehouse(cylinder_type_id, 100)
+    received_on = date(2026, 10, 20)
+    mock_location_repo.list_movements_since = AsyncMock(
+        return_value=[LedgerMovement(received_on, cylinder_type_id, "grn_receipt", None, "filled", 100)]
+    )
+
+    lines = await GetStockRegisterUseCase(mock_location_repo).execute(
+        GetStockRegisterQuery(
+            tenant_id=uuid.uuid4(),
+            location_type="warehouse",
+            location_ref_id=uuid.uuid4(),
+            date_from=date(2026, 10, 18),
+            date_to=received_on,
+            today=received_on,
+        )
+    )
+
+    # 18th and 19th: nothing held, nothing moved. Only the receipt day remains.
+    assert [(ln.business_date, ln.opening, ln.receipts, ln.closing) for ln in lines] == [
+        (received_on, 0, 100, 100),
+    ]
+
+
 async def test_stock_register_refuses_a_backwards_range(mock_location_repo: MagicMock) -> None:
     with pytest.raises(ValidationError):
         await GetStockRegisterUseCase(mock_location_repo).execute(
