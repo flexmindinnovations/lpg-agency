@@ -42,6 +42,8 @@ class SqlAlchemySecurityEventRecorder:
         log(
             "security_event",
             action=event.action,
+            entity_name=event.entity_name,
+            entity_id=event.entity_id,
             outcome=event.outcome,
             audit_tenant_id=str(event.tenant_id) if event.tenant_id else None,
             audit_user_id=str(event.user_id) if event.user_id else None,
@@ -73,10 +75,11 @@ class SqlAlchemySecurityEventRecorder:
                     AuditLogModel(
                         tenant_id=tenant_id,
                         actor_id=event.user_id,
-                        actor_display_name=event.subject,
-                        entity_name=ENTITY_NAME,
-                        entity_id=str(event.user_id) if event.user_id else None,
-                        entity_display_name=event.subject,
+                        actor_display_name=event.actor_display_name or event.subject,
+                        entity_name=event.entity_name or ENTITY_NAME,
+                        entity_id=event.entity_id
+                        or (str(event.user_id) if event.user_id else None),
+                        entity_display_name=event.entity_display_name or event.subject,
                         action=event.action,
                         performed_at=datetime.now(UTC),
                         correlation_id=str(correlation_id) if correlation_id else None,

@@ -24,6 +24,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+import structlog
 from sqlalchemy import event, inspect
 
 from lpg.config.logging import get_logger
@@ -202,10 +203,18 @@ class AuditRecorder:
             type(obj).__tablename__, after if after is not None else before, self._lookup
         )
 
+        actor_id = self._tenant_context.user_id
+        actor_display_name = getattr(self._tenant_context, "user_display_name", None)
+        job_name = structlog.contextvars.get_contextvars().get("job_name")
+        if actor_id is None and actor_display_name is None and job_name:
+            # A background job has no signed-in user; name the job instead of
+            # showing a bare "System" (e.g. "System: check_stale_unassigned_orders").
+            actor_display_name = f"System: {job_name}"
+
         row = AuditLogModel(
             tenant_id=self._tenant_context.tenant_id,
-            actor_id=self._tenant_context.user_id,
-            actor_display_name=getattr(self._tenant_context, "user_display_name", None),
+            actor_id=actor_id,
+            actor_display_name=actor_display_name,
             entity_name=type(obj).__tablename__,
             entity_id=_entity_id(obj),
             entity_display_name=entity_display_name,
@@ -216,9 +225,14 @@ class AuditRecorder:
             after_state=after,
         )
         session.add(row)
-        _logger.debug(
-            "audit_row_queued",
+        # One searchable line per recorded change, so every module's writes show
+        # up in the logs whether or not the aggregate raised a domain event.
+        _logger.info(
+            "data_change",
             entity_name=row.entity_name,
             entity_id=row.entity_id,
             action=action,
+            actor_id=str(actor_id) if actor_id else None,
+            audit_tenant_id=str(row.tenant_id),
+            job_name=job_name,
         )

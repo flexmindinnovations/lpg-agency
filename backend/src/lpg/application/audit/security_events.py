@@ -32,7 +32,12 @@ LOGOUT = "auth.logout"
 PASSWORD_RESET_REQUESTED = "auth.password_reset_requested"  # noqa: S105
 PASSWORD_RESET = "auth.password_reset"  # noqa: S105
 
-#: `audit_log.entity_name` for every event here.
+# Read access to sensitive data (who looked at, printed or exported what).
+KYC_VIEWED = "access.kyc_viewed"
+REPORT_VIEWED = "access.report_viewed"
+DOCUMENT_PRINTED = "access.document_printed"
+
+#: `audit_log.entity_name` for every sign-in event here.
 ENTITY_NAME = "auth_session"
 
 
@@ -72,6 +77,12 @@ class SecurityEvent:
     #: False for high-frequency events (token refresh) that belong in the logs
     #: only, so they don't bury sign-ins and failures in the audit table.
     persist: bool = True
+    #: What was touched, for access events. Sign-in events leave these unset
+    #: (they are recorded against `auth_session`).
+    entity_name: str | None = None
+    entity_id: str | None = None
+    entity_display_name: str | None = None
+    actor_display_name: str | None = None
 
 
 @runtime_checkable

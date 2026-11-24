@@ -6,8 +6,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
+from lpg.api.v1.dependencies.access_log import access_logged
 from lpg.api.v1.dependencies.identity import require_permission
 from lpg.api.v1.dependencies.printing import get_printing_use_case
+from lpg.application.audit.security_events import DOCUMENT_PRINTED
 from lpg.application.printing.use_cases import (
     DocumentNotFoundError,
     GeneratePrintJobUseCase,
@@ -55,7 +57,16 @@ def _command(request: PrintJobRequest) -> PrintJobCommand:
             "content": {"application/pdf": {}, "text/html": {}},
         }
     },
-    dependencies=[Depends(require_permission("invoices:read"))],
+    dependencies=[
+        Depends(
+            access_logged(
+                permission="invoices:read",
+                action=DOCUMENT_PRINTED,
+                entity_name="print_document",
+                label="Printed invoice",
+            )
+        )
+    ],
 )
 async def render_print_document(
     request: PrintJobRequest,
