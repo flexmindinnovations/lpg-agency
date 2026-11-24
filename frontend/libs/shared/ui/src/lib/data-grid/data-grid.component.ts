@@ -269,6 +269,17 @@ function escapeHtml(text: string): string {
         min-height: 0 !important;
         height: 100% !important;
       }
+      /* AG Grid gives .ag-root height: 100% of the row-flex body. A percentage
+         only resolves against a definite height, and the host's height comes
+         from its min-block-size when the page around it does not fill the
+         window (the Platform Console pages), so the percentage fell back to
+         auto: the grid body collapsed to the header row and the empty-state
+         overlay, centred in that 49px, painted over the column headers. Let
+         it stretch to the body instead, which has a definite height. */
+      :host ::ng-deep .lpg-data-grid .ag-root-wrapper-body > .ag-root.ag-layout-normal {
+        height: auto !important;
+        align-self: stretch;
+      }
       :host ::ng-deep .lpg-data-grid .ag-paging-panel {
         margin-top: auto !important;
         flex: none !important;
