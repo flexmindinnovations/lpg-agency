@@ -1034,7 +1034,11 @@ p-confirmpopup {
    so buttons stay fixed at the bottom while content scrolls independently above them. */
 .p-dialog .p-dialog-content .modal-actions {
   position: sticky !important;
-  bottom: 0 !important;
+  /* A sticky edge sits inside the scroll container's padding, so `bottom: 0`
+     pushed the row up by the content's bottom padding: a gap under the
+     buttons and none above them. Offsetting by that padding keeps the row
+     flush with the dialog's bottom edge. */
+  bottom: calc(-1 * var(--spacing-md)) !important;
   background-color: var(--color-surface-raised) !important;
   border-top: var(--border-width) solid var(--color-border-default) !important;
   margin-inline: calc(-1 * var(--spacing-lg)) !important;
