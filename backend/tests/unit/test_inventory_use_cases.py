@@ -621,7 +621,9 @@ async def test_stock_register_leaves_out_days_with_no_stock_and_no_movement(
     mock_location_repo.get_by_location_ref.return_value = _warehouse(cylinder_type_id, 100)
     received_on = date(2026, 10, 20)
     mock_location_repo.list_movements_since = AsyncMock(
-        return_value=[LedgerMovement(received_on, cylinder_type_id, "grn_receipt", None, "filled", 100)]
+        return_value=[
+            LedgerMovement(received_on, cylinder_type_id, "grn_receipt", None, "filled", 100)
+        ]
     )
 
     lines = await GetStockRegisterUseCase(mock_location_repo).execute(
