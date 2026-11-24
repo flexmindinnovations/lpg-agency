@@ -29,6 +29,7 @@ from lpg.api.v1.dependencies.compliance import (
     get_weighment_record_repository,
 )
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
+from lpg.api.v1.dependencies.license import require_module
 from lpg.api.v1.dependencies.order import get_file_storage
 from lpg.api.v1.dependencies.printing import get_printing_engine
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
@@ -116,7 +117,11 @@ if TYPE_CHECKING:
     from lpg.domain.compliance.tdt_rating import TdtQuarterlyRating
     from lpg.domain.compliance.weighment_record import WeighmentRecord
 
-router = APIRouter(prefix="/scales", tags=["Compliance — Weighment"])
+router = APIRouter(
+    prefix="/scales",
+    tags=["Compliance — Weighment"],
+    dependencies=[Depends(require_module("scales"))],
+)
 
 #: Weighment-record endpoints are nested under the GRN/route resource they
 #: evidence (`/goods-receipt-notes/{grn_id}/weighment`,
@@ -134,7 +139,11 @@ tdt_rating_router = APIRouter(prefix="/tdt-rating", tags=["Compliance — TDT Ra
 #: registry. `cylinder_units:manage` for every mutation, `cylinder_units:
 #: read` (wider role list, includes dispatcher) for the registry/detail
 #: reads.
-cylinder_units_router = APIRouter(prefix="/cylinder-units", tags=["Compliance — Cylinder Identity"])
+cylinder_units_router = APIRouter(
+    prefix="/cylinder-units",
+    tags=["Compliance — Cylinder Identity"],
+    dependencies=[Depends(require_module("cylinder_units"))],
+)
 
 
 async def _to_response(scale: Scale, file_storage: FileStorage) -> ScaleResponse:

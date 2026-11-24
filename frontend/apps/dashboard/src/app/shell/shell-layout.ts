@@ -8,6 +8,7 @@ import {
   AuthTokenStore,
   HARD_NAVIGATE,
   LicenseStatusStore,
+  ModuleAccessStore,
   PendingDevicesStore,
   WebSocketService,
 } from '@lpg/shared/data-access';
@@ -151,6 +152,7 @@ export class ShellLayout {
   private readonly tokenStore = inject(AuthTokenStore);
   private readonly hardNavigate = inject(HARD_NAVIGATE);
   private readonly licenseStatusStore = inject(LicenseStatusStore);
+  private readonly modules = inject(ModuleAccessStore);
   private readonly pendingDevices = inject(PendingDevicesStore);
   private readonly realtime = inject(WebSocketService);
   private readonly messageService = inject(MessageService);
@@ -242,7 +244,7 @@ export class ShellLayout {
           label: 'AI Command Center',
           icon: 'pi pi-comments',
           route: '/ai-assistant',
-          condition: can('ai:read'),
+          condition: can('ai:read') && this.modules.isEnabled('ai_command_center'),
         },
       ]),
       ...buildGroup('Operations', [
@@ -315,13 +317,13 @@ export class ShellLayout {
           label: 'Scales',
           icon: 'pi pi-sliders-h',
           route: '/scales',
-          condition: can('weighment:record'),
+          condition: can('weighment:record') && this.modules.isEnabled('scales'),
         },
         {
           label: 'Cylinder Units',
           icon: 'pi pi-qrcode',
           route: '/cylinder-units',
-          condition: can('cylinder_units:read'),
+          condition: can('cylinder_units:read') && this.modules.isEnabled('cylinder_units'),
         },
         {
           label: 'Compliance Calendar',

@@ -28,6 +28,7 @@ import type { PrincipalResponse } from './generated/models/principal-response';
 import { AuthPrincipal, AuthTokenStore } from './auth-token.store';
 import { LicenseService } from './license.service';
 import { LicenseStatusStore, type LicenseLifecycleState } from './license-status.store';
+import { ModuleAccessStore } from './module-access.store';
 import { WebSocketService } from './websocket.service';
 
 function toAuthPrincipal(response: PrincipalResponse): AuthPrincipal {
@@ -87,6 +88,7 @@ export class AuthService {
   private readonly wsService = inject(WebSocketService);
   private readonly licenseService = inject(LicenseService);
   private readonly licenseStatusStore = inject(LicenseStatusStore);
+  private readonly moduleAccess = inject(ModuleAccessStore);
 
   readonly accessToken = this.tokenStore.accessToken;
   readonly principal = this.tokenStore.principal;
@@ -185,6 +187,7 @@ export class AuthService {
       catchError(() => {
         this.tokenStore.clear();
         this.licenseStatusStore.clear();
+        this.moduleAccess.clear();
         this.wsService.disconnect();
         return of(false);
       }),
@@ -237,6 +240,7 @@ export class AuthService {
       tap(() => {
         this.tokenStore.clear();
         this.licenseStatusStore.clear();
+        this.moduleAccess.clear();
         this.wsService.disconnect();
       }),
     );
@@ -265,6 +269,7 @@ export class AuthService {
         this.wsService.connect(accessToken);
         if (!isPlatformSession) {
           this.fetchLicenseStatus();
+          this.moduleAccess.load().subscribe();
         }
       }),
       map(() => undefined),

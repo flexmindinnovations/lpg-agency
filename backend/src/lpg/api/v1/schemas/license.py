@@ -114,3 +114,16 @@ class DeviceHistoryEntryResponse(BaseModel):
     from_status: str | None
     to_status: str | None
     display_name: str | None
+
+
+class ModuleResponse(BaseModel):
+    """One module a super admin can switch on or off for an agency."""
+
+    key: str = Field(description="Stable module key, e.g. `scales`.")
+    label: str
+    description: str
+    enabled: bool
+
+
+class SetModuleEnabledRequest(BaseModel):
+    enabled: bool
