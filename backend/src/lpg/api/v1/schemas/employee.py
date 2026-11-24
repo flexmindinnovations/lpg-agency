@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from lpg.domain.common.phone import normalize_phone_number
 
 
 class RegisterEmployeeRequest(BaseModel):
@@ -13,6 +15,10 @@ class RegisterEmployeeRequest(BaseModel):
     role: str = Field(..., description="Role of the employee")
     email: str | None = Field(None, max_length=255)
 
+    #: Stored as E.164 so the driver's OTP login (which normalises what the
+    #: app sends) finds the same number.
+    _normalize_phone = field_validator("phone_number")(normalize_phone_number)
+
 
 class UpdateEmployeeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -23,6 +29,10 @@ class UpdateEmployeeRequest(BaseModel):
     phone_number: str = Field(..., min_length=1, max_length=20)
     role: str = Field(..., description="Role of the employee")
     email: str | None = Field(None, max_length=255)
+
+    #: Stored as E.164 so the driver's OTP login (which normalises what the
+    #: app sends) finds the same number.
+    _normalize_phone = field_validator("phone_number")(normalize_phone_number)
 
 
 class ChangeEmployeeStatusRequest(BaseModel):

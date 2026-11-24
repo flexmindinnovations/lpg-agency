@@ -19,6 +19,7 @@ from lpg.application.common.errors import ConflictError
 from lpg.application.common.tenant import RequestTenantContext
 from lpg.application.tenant_admin.ports import DriverLoginResult
 from lpg.config.logging import get_logger
+from lpg.domain.common.phone import normalize_phone_number
 from lpg.domain.delivery.driver import Driver
 from lpg.domain.identity.user import IdentityUser
 from lpg.infrastructure.persistence.models.identity import IdentityUserModel
@@ -48,7 +49,10 @@ class SqlAlchemyDriverLoginProvisioner:
                 drivers = SqlAlchemyDriverRepository(uow)
                 driver = await drivers.get_by_employee_id(employee.id)
 
-                existing = await _find_login(session, tenant_id, employee.phone_number)
+                # The OTP login looks the number up in E.164, and an employee
+                # saved before numbers were normalised may hold it as typed.
+                phone_number = normalize_phone_number(employee.phone_number)
+                existing = await _find_login(session, tenant_id, phone_number)
                 login_created = existing is None
                 if existing is None:
                     user = IdentityUser(
@@ -56,7 +60,7 @@ class SqlAlchemyDriverLoginProvisioner:
                         tenant_id=tenant_id,
                         branch_id=employee.branch_id,
                         email=employee.email,
-                        phone_number=employee.phone_number,
+                        phone_number=phone_number,
                         password_hash=None,
                         role=_DRIVER_ROLE,
                     )
