@@ -18,8 +18,6 @@ const ALL_DONE = {
 };
 
 describe('SetupChecklist', () => {
-  afterEach(() => localStorage.clear());
-
   function render(permissions: string[], complete = false, pending = false) {
     const tenantService = {
       getSetupProgress: jest.fn().mockReturnValue(
@@ -37,13 +35,20 @@ describe('SetupChecklist', () => {
         { provide: AdminTenantService, useValue: tenantService },
         {
           provide: AuthService,
-          useValue: { principal: signal({ role: 'x', permissions: new Set(permissions) }) },
+          useValue: {
+            principal: signal({ role: 'x', userId: 'u1', permissions: new Set(permissions) }),
+          },
         },
       ],
     });
     const fixture = TestBed.createComponent(SetupChecklist);
     fixture.detectChanges();
-    return { html: fixture.nativeElement as HTMLElement, tenantService };
+    return {
+      html: fixture.nativeElement as HTMLElement,
+      host: fixture.nativeElement as HTMLElement,
+      fixture,
+      tenantService,
+    };
   }
 
   it('lists the steps with links and ticks the finished ones', () => {
@@ -77,32 +82,39 @@ describe('SetupChecklist', () => {
     expect(html.textContent?.trim()).toBe('');
   });
 
-  it('holds the last card height while the answer is on its way, so the page does not jump', () => {
-    localStorage.setItem('lpg.setup-checklist.height', '230');
-    const { html } = render(['tenant:configure'], false, true);
+  it('reserves no room while the answer is on its way, so the cards below are not pushed', () => {
+    const { host } = render(['tenant:configure'], false, true);
 
-    const reserve = html.querySelector<HTMLElement>('.setup__reserve');
-    expect(reserve?.style.minBlockSize).toBe('230px');
+    expect(host.classList).not.toContain('setup--shown');
+    expect(host.children).toHaveLength(0);
   });
 
-  it('reserves nothing when the card was never seen', () => {
-    const { html } = render(['tenant:configure'], false, true);
+  it('shows the card closed first, then opens it so the move is animated', async () => {
+    const { host, fixture } = render(['tenant:configure']);
 
-    expect(html.querySelector('.setup__reserve')).toBeNull();
+    expect(host.classList).toContain('setup--shown');
+    expect(host.classList).not.toContain('setup--open');
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    fixture.detectChanges();
+    expect(host.classList).toContain('setup--open');
   });
 
-  it('reserves nothing for a role that cannot configure the agency', () => {
-    localStorage.setItem('lpg.setup-checklist.height', '230');
-    const { html } = render(['orders:read'], false, true);
+  it('shows the card at once on a revisit, with no entrance', () => {
+    const first = render(['tenant:configure']);
+    first.fixture.destroy();
 
-    expect(html.querySelector('.setup__reserve')).toBeNull();
+    const second = TestBed.createComponent(SetupChecklist);
+    second.detectChanges();
+    const host = second.nativeElement as HTMLElement;
+
+    expect(host.classList).toContain('setup--shown');
+    expect(host.classList).toContain('setup--open');
   });
 
-  it('drops the reservation once setup is complete', () => {
-    localStorage.setItem('lpg.setup-checklist.height', '230');
-    const { html } = render(['tenant:configure'], true);
+  it('shows nothing for a role that cannot configure the agency', () => {
+    const { host } = render(['orders:read'], false, true);
 
-    expect(html.querySelector('.setup__reserve')).toBeNull();
-    expect(localStorage.getItem('lpg.setup-checklist.height')).toBeNull();
+    expect(host.classList).not.toContain('setup--shown');
   });
 });

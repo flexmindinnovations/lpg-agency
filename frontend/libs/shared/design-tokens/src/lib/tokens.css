@@ -367,8 +367,13 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
-  --component-card-background: color-mix(in srgb, #ffffff 96%, transparent);
-  --component-card-border: #e5e7eb;
+  /* Cards are frosted glass: a translucent tint with a soft sheen from the
+     top-left, over the page's colour glows. No blur (it would be redone on
+     every scroll frame) and no grain; the see-through tint carries the look. */
+  --component-card-background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2) 55%),
+    color-mix(in srgb, #ffffff 58%, transparent);
+  --component-card-border: rgba(15, 23, 42, 0.09);
   --component-data-grid-border-color: #e5e7eb;
   --component-data-grid-header-background: #f9fafb;
   --component-avatar-background: #162b66;
@@ -474,8 +479,10 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-background: #2864cc;
   --component-button-primary-background-hover: #1f4fa8;
   --component-button-primary-text: #ffffff;
-  --component-card-background: color-mix(in srgb, #101720 92%, transparent);
-  --component-card-border: rgba(255,255,255,0.07);
+  --component-card-background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02) 55%),
+    color-mix(in srgb, #101720 62%, transparent);
+  --component-card-border: rgba(255, 255, 255, 0.1);
   --component-data-grid-border-color: rgba(255,255,255,0.07);
   --component-data-grid-header-background: #101720;
   --component-avatar-background: #2864cc;
@@ -641,8 +648,10 @@ have always been hand-edited directly. Edit them here.
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
-    --component-card-background: color-mix(in srgb, #101720 92%, transparent);
-    --component-card-border: rgba(255,255,255,0.07);
+    --component-card-background:
+      linear-gradient(150deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02) 55%),
+      color-mix(in srgb, #101720 62%, transparent);
+    --component-card-border: rgba(255, 255, 255, 0.1);
     --component-data-grid-border-color: rgba(255,255,255,0.07);
     --component-data-grid-header-background: #101720;
     --component-avatar-background: #2864cc;

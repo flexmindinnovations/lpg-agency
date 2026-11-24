@@ -92,56 +92,24 @@ body {
 }
 
 /* ========================================================================
-   FROSTED PAPER (ported from the mobile apps' LpgBackdrop)
+   PAGE BACKGROUND
 
-   One fixed, click-through layer over the whole window carrying the mobile
-   design system's paper grain tile (two scales so the pattern never reads as
-   a repeat, like the mobile sharp grain + haze). Because it sits above the
-   page, every card, button, input, table, drawer, dialog and menu gets the
-   same paper texture with no per-component work and no backdrop-filter.
-   Strength and the light/dark flip come from the --paper-grain-* tokens;
-   high contrast and print turn it off.
+   One fixed layer behind the page: soft brand-colour glows and a light sheen.
+   It is what the see-through cards, header and sidebar are frosted against.
+   There is no grain or haze texture layer: each full-window layer is
+   composited on every scroll frame, and the cards carry their own glass look
+   (see --component-card-background), so the textures were cost without a
+   job. The glows switch off in high contrast (--paper-haze-opacity: 0).
    ======================================================================== */
-/* One fixed, click-through layer above the whole window (cards, tables,
-   drawers, dialogs, menus, sidebar, header) carrying the paper grain, softened
-   with a light blur so it reads as frosted paper rather than sharp noise, as
-   on mobile. Surfaces stay opaque and text stays crisp (the layer is faint).
-   The blur is 0 (a no-op), and a filter of any value forces the full-window
-   layer through an extra render pass on every frame, so none is declared
-   here; the overlay copies below still read the token. */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-paper-grain);
-  pointer-events: none;
-  background-image: var(--paper-grain-image), var(--paper-grain-image);
-  background-size:
-    var(--paper-grain-size) var(--paper-grain-size),
-    var(--paper-grain-size-2) var(--paper-grain-size-2);
-  background-position:
-    0 0,
-    37px 91px;
-  opacity: var(--paper-grain-opacity);
-}
-
-/* The page behind the see-through cards (ported from the mobile LpgBackdrop):
-   two soft glows of the brand colours, blue top-left and orange bottom-right,
-   plus the grain softened into mist. Without them the see-through cards sit on a flat
-   colour and just look washed out. Plain gradients on a fixed layer, nothing
-   blurred at run time. The strength is now stronger than the mobile one (13% light, 20% dark, so the grain reads less;
-   dark is --paper-grain-invert: 1) and switches off with the grain in high
-   contrast (--paper-haze-opacity: 0). */
 html {
   --page-wash: calc(
     (13% + 7% * var(--paper-grain-invert)) * min(1, var(--paper-haze-opacity) * 100)
   );
 }
 
-/* The veil: a layer in the page tint between the mist (body::before) and the
-   content, so the noise showing through the see-through cards is softer. The
-   two glows sit on top of it, so the page keeps its colour. Same stacking level
-   as the mist, later in the tree, so it paints over it. */
+/* Glows of the brand colours (blue top-left, cyan top-right, peach bottom-left,
+   orange bottom-right) over a veil in the page tint, so the page reads as one
+   frosted gradient. Plain gradients, nothing blurred at run time. */
 html::after {
   content: '';
   position: fixed;
@@ -191,71 +159,6 @@ html::after {
       color-mix(in srgb, var(--paper-veil-color) var(--paper-veil), transparent),
       color-mix(in srgb, var(--paper-veil-color) var(--paper-veil), transparent)
     );
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: var(--paper-haze-image);
-  background-size: 256px 256px;
-  opacity: var(--paper-haze-opacity);
-}
-
-/* Overlays (drawers, dialogs, menus, popovers, select panels) sit above the
-   page grain layer, so each carries its own: the same tile and tokens, laid
-   over the panel and under its buttons. */
-:is(
-  .p-drawer,
-  .p-dialog,
-  .p-popover,
-  .p-menu,
-  .p-tieredmenu,
-  .p-contextmenu,
-  .p-select-overlay,
-  .p-multiselect-overlay,
-  .p-datepicker-panel,
-  .p-autocomplete-overlay
-)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: var(--z-paper-grain);
-  border-radius: inherit;
-  pointer-events: none;
-  background-image: var(--paper-grain-image), var(--paper-grain-image);
-  background-size:
-    var(--paper-grain-size) var(--paper-grain-size),
-    var(--paper-grain-size-2) var(--paper-grain-size-2);
-  background-position:
-    0 0,
-    37px 91px;
-  opacity: var(--paper-grain-opacity);
-  filter: blur(var(--paper-grain-blur));
-}
-
-@media print {
-  :is(.p-drawer, .p-dialog, .p-popover, .p-menu, .p-tieredmenu, .p-contextmenu)::after {
-    display: none;
-  }
-}
-
-/* Buttons stay solid: lift them one step above the grain layer so the paper
-   texture never frosts a call to action. Both sit BELOW the dropdown, drawer,
-   modal, toast and tooltip layers (--z-index-dropdown and up), so a drawer or
-   dialog is never overlaid by a page button or the header's notification
-   bell. The cost is that those overlays themselves carry no grain. A button
-   held inside some other stacking context keeps the grain. */
-.p-button {
-  z-index: calc(var(--z-paper-grain) + 1);
-}
-
-@media print {
-  body::after {
-    display: none;
-  }
 }
 
 body {
@@ -1386,14 +1289,12 @@ p-confirmpopup {
 /* ========================================================================
    GLASS (frosted chrome)
 
-   Header, sidebar, dialogs, drawers and toasts only; never cards, rows or
-   table cells. Layer order, bottom to top: page paper (body::before + page
-   colour), glass (tint + backdrop blur), grain, content.
-   - The grain is the one paper tile. Chrome that sits UNDER the global fixed
-     grain layer (header, sidebar) already gets it, unblurred, from
-     body::after, so it carries no second copy. Surfaces ABOVE that layer
-     (dialogs, drawers: existing ::after rule above; toasts: below; and any
-     .glass--grain element) carry their own, with the glass tokens.
+   Dialogs, drawers, menus and toasts get a tint (and, where it is cheap, a
+   backdrop blur). Header and sidebar keep the tint only (see below). Cards
+   are glass too, but through their own translucent background token, never a
+   blur. Layer order, bottom to top: page colour and glows, glass tint,
+   content. There is no global grain layer; only a toast or a `.glass--grain`
+   element carries its own grain tile, with the glass tokens.
    - The base rule is the fallback (a nearly solid tint), so before support
      is known, without backdrop-filter, or when the user asks for less
      transparency, nothing is ever see-through without a blur. Blur is only
