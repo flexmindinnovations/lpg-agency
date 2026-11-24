@@ -106,7 +106,9 @@ body {
    drawers, dialogs, menus, sidebar, header) carrying the paper grain, softened
    with a light blur so it reads as frosted paper rather than sharp noise, as
    on mobile. Surfaces stay opaque and text stays crisp (the layer is faint).
-   Static content in a single layer, so the blur is composited once. */
+   The blur is 0 (a no-op), and a filter of any value forces the full-window
+   layer through an extra render pass on every frame, so none is declared
+   here; the overlay copies below still read the token. */
 body::after {
   content: '';
   position: fixed;
@@ -121,7 +123,6 @@ body::after {
     0 0,
     37px 91px;
   opacity: var(--paper-grain-opacity);
-  filter: blur(var(--paper-grain-blur));
 }
 
 /* The page behind the see-through cards (ported from the mobile LpgBackdrop):
@@ -1490,6 +1491,19 @@ p-confirmpopup {
 
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .p-drawer {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* The header and the sidebar never have page content scrolling under them (the
+   content area is their sibling), so all their blur sampled was the static page
+   background. A backdrop blur is still redone on every frame the page scrolls
+   (measured on Home: the sidebar was the single biggest cost), so they keep the
+   frosted tint but not the blur. */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .shell__header.glass,
+  .shell__sidebar-wrapper.glass {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
