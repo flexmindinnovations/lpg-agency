@@ -744,8 +744,9 @@ class GetStockRegisterUseCase:
 
     Built from the append-only ledger, walked back from today's balance —
     so the register always agrees with the live balance, with no snapshot
-    table to drift. A `(type, status)` with no stock and no movement in the
-    whole range is left out.
+    table to drift. A day on which the `(type, status)` held no stock and saw
+    no movement (all four figures zero, e.g. the days before the first
+    receipt) is left out, so the register lists only days that mean something.
     """
 
     def __init__(self, repository: InventoryLocationRepository) -> None:
@@ -809,7 +810,10 @@ class GetStockRegisterUseCase:
                 )
                 opening = closing
                 day += timedelta(days=1)
-            if any(line.opening or line.receipts or line.issues for line in day_lines):
-                lines.extend(day_lines)
+            lines.extend(
+                line
+                for line in day_lines
+                if line.opening or line.receipts or line.issues or line.closing
+            )
         lines.sort(key=lambda line: (line.business_date, str(line.cylinder_type_id), line.status))
         return lines

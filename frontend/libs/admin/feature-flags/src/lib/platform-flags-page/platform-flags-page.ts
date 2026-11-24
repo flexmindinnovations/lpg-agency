@@ -321,10 +321,13 @@ class FlagDefaultCell {
     `
       :host {
         display: block;
+        block-size: 100%;
       }
 
-      .grid-section {
-        margin-block-start: var(--spacing-lg);
+      .admin-page {
+        display: flex;
+        flex-direction: column;
+        block-size: 100%;
       }
 
       .detail-view {

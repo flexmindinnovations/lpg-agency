@@ -186,7 +186,9 @@ have always been hand-edited directly. Edit them here.
   --component-data-grid-border-radius: var(--component-card-radius);
   --component-data-grid-border-width: var(--border-width, 1px);
   --component-data-grid-border: var(--component-data-grid-border-width) solid var(--component-data-grid-border-color);
-  --component-data-grid-min-block-size: 400px;
+  /* A grid fills the space its page gives it; this is only how short it may
+     get, so it follows the window instead of a fixed size. */
+  --component-data-grid-min-block-size: clamp(12rem, 45dvh, 32rem);
   --component-app-shell-sidebar-width: 260px;
   --component-app-shell-sidebar-collapsed-width: 64px;
   --component-app-shell-top-bar-height: 52px;

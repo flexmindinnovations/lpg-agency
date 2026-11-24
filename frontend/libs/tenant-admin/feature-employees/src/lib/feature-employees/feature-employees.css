@@ -20,12 +20,15 @@
   flex: 1;
 }
 
+/* The status chip sits right after the title, not pushed against the close button. */
 .drawer-header {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   align-items: center;
   gap: var(--spacing-sm);
-  inline-size: 100%;
+  flex: 1 1 auto;
+  min-inline-size: 0;
 }
 
 .drawer-title {
