@@ -99,11 +99,13 @@ body {
    There is no grain or haze texture layer: each full-window layer is
    composited on every scroll frame, and the cards carry their own glass look
    (see --component-card-background), so the textures were cost without a
-   job. The glows switch off in high contrast (--paper-haze-opacity: 0).
+   job. The glows are strong enough to show through the translucent cards
+   (15% light, 34% dark) and switch off in high contrast
+   (--paper-haze-opacity: 0).
    ======================================================================== */
 html {
   --page-wash: calc(
-    (13% + 7% * var(--paper-grain-invert)) * min(1, var(--paper-haze-opacity) * 100)
+    (15% + 19% * var(--paper-grain-invert)) * min(1, var(--paper-haze-opacity) * 100)
   );
 }
 
