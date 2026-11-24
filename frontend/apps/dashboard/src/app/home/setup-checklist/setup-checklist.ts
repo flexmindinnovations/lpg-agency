@@ -4,8 +4,8 @@ import {
   Component,
   computed,
   effect,
-  ElementRef,
   inject,
+  Injectable,
   Injector,
   signal,
 } from '@angular/core';
@@ -32,73 +32,107 @@ const STEPS: readonly SetupStep[] = [
   { key: 'vehicles', label: 'Add vehicles', link: '/vehicles' },
 ];
 
-/** Where the card's last height is remembered, so the next load can save its room. */
-const HEIGHT_KEY = 'lpg.setup-checklist.height';
+/** Setup progress already fetched this session, so a revisit shows the card at once. */
+@Injectable({ providedIn: 'root' })
+class SetupProgressMemory {
+  private readonly seen = new Map<string, Readonly<Record<string, boolean>>>();
 
-function readSavedHeight(): number {
-  try {
-    const value = Number(localStorage.getItem(HEIGHT_KEY));
-    return Number.isFinite(value) && value > 0 ? value : 0;
-  } catch {
-    return 0;
+  get(user: string): Readonly<Record<string, boolean>> | null {
+    return this.seen.get(user) ?? null;
   }
-}
 
-function saveHeight(height: number | null): void {
-  try {
-    if (height === null) localStorage.removeItem(HEIGHT_KEY);
-    else localStorage.setItem(HEIGHT_KEY, String(Math.round(height)));
-  } catch {
-    // Storage can be blocked; the reservation is only an optimisation.
+  set(user: string, steps: Readonly<Record<string, boolean>>): void {
+    this.seen.set(user, steps);
   }
 }
 
 /**
  * First-time setup checklist on Home (DA-32). Only an admin who can
- * configure the agency (`tenant:configure`) sees it — and only that role
+ * configure the agency (`tenant:configure`) sees it, and only that role
  * calls `/admin/setup-progress`. It shows only while a step is still to do
  * and disappears once every step is done.
+ *
+ * The rest of Home does not wait for it. When the answer arrives the card
+ * eases in at the top and the cards below move down with it; nothing is held
+ * back as empty space meanwhile. A revisit already knows the answer and shows
+ * the card straight away.
  */
 @Component({
   selector: 'lpg-setup-checklist',
   standalone: true,
   imports: [RouterLink, SectionCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[class.setup--shown]': 'visible()',
+    '[class.setup--open]': 'open()',
+  },
   template: `
     @if (visible()) {
-      <lpg-section-card heading="Finish setting up your agency">
-        <p class="setup__lede">
-          {{ doneCount() }} of {{ steps.length }} done. Orders and invoices need these in place.
-        </p>
-        <ol class="setup__list">
-          @for (step of steps; track step.key) {
-            <li class="setup__item" [class.setup__item--done]="isDone(step.key)">
-              <i
-                class="pi"
-                [class.pi-check-circle]="isDone(step.key)"
-                [class.pi-circle]="!isDone(step.key)"
-                aria-hidden="true"
-              ></i>
-              <a [routerLink]="step.link">{{ step.label }}</a>
-              <span class="sr-only">{{ isDone(step.key) ? '(done)' : '(to do)' }}</span>
-            </li>
-          }
-        </ol>
-      </lpg-section-card>
-    } @else if (reservedHeight() > 0) {
-      <!-- The card arrives after an API call and would push the whole page down.
-           Last time it was this tall, so hold its place until the answer comes. -->
-      <div
-        class="setup__reserve"
-        aria-hidden="true"
-        [style.min-block-size.px]="reservedHeight()"
-      ></div>
+      <div class="setup__inner">
+        <lpg-section-card heading="Finish setting up your agency">
+          <p class="setup__lede">
+            {{ doneCount() }} of {{ steps.length }} done. Orders and invoices need these in place.
+          </p>
+          <ol class="setup__list">
+            @for (step of steps; track step.key) {
+              <li class="setup__item" [class.setup__item--done]="isDone(step.key)">
+                <i
+                  class="pi"
+                  [class.pi-check-circle]="isDone(step.key)"
+                  [class.pi-circle]="!isDone(step.key)"
+                  aria-hidden="true"
+                ></i>
+                <a [routerLink]="step.link">{{ step.label }}</a>
+                <span class="sr-only">{{ isDone(step.key) ? '(done)' : '(to do)' }}</span>
+              </li>
+            }
+          </ol>
+        </lpg-section-card>
+      </div>
     }
   `,
   styles: [
     `
-      .setup__reserve {
-        display: block;
+      /* No card, no box: nothing is reserved while the answer is on its way. */
+      :host {
+        display: none;
+      }
+
+      /* The card opens from nothing. The host is the grid whose one row grows
+         from 0 to its content, and its bottom margin cancels the page's gap
+         until then (the gap is --spacing-xl on Home), so the cards below slide
+         down smoothly instead of jumping. */
+      :host(.setup--shown) {
+        display: grid;
+        grid-template-rows: 0fr;
+        margin-block-end: calc(-1 * var(--spacing-xl));
+        opacity: 0;
+        transform: translateY(calc(-1 * var(--spacing-sm)));
+        transition:
+          grid-template-rows var(--motion-duration-medium) var(--motion-easing-emphasized),
+          margin-block-end var(--motion-duration-medium) var(--motion-easing-emphasized),
+          opacity var(--motion-duration-medium) var(--motion-easing-emphasized),
+          transform var(--motion-duration-medium) var(--motion-easing-emphasized);
+      }
+
+      :host(.setup--open) {
+        grid-template-rows: 1fr;
+        margin-block-end: 0;
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        :host(.setup--shown) {
+          transition: none;
+        }
+      }
+
+      .setup__inner {
+        min-block-size: 0;
+        /* Clip while it grows, but leave room for the card's shadow. */
+        overflow: clip;
+        overflow-clip-margin: var(--spacing-sm);
       }
 
       .setup__lede {
@@ -159,13 +193,13 @@ function saveHeight(height: number | null): void {
 export class SetupChecklist {
   private readonly tenantService = inject(AdminTenantService);
   private readonly authService = inject(AuthService);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly memory = inject(SetupProgressMemory);
   private readonly injector = inject(Injector);
 
   protected readonly steps = STEPS;
-  /** Room to hold for the card until the setup progress arrives (0 = none). */
-  protected readonly reservedHeight = signal(0);
   private readonly progress = signal<Readonly<Record<string, boolean>> | null>(null);
+  /** True once the card has been drawn closed and may grow open. */
+  protected readonly open = signal(false);
 
   /** Shown only while at least one step is still to do. */
   protected readonly visible = computed(() => {
@@ -177,31 +211,32 @@ export class SetupChecklist {
   );
 
   constructor() {
-    if (!this.authService.principal()?.permissions.has('tenant:configure')) return;
-    this.reservedHeight.set(readSavedHeight());
+    const principal = this.authService.principal();
+    if (!principal?.permissions.has('tenant:configure')) return;
+    const user = principal.userId;
+
+    const known = this.memory.get(user);
+    if (known) {
+      // Seen this session: show the card as it was, no entrance, then refresh.
+      this.progress.set(known);
+      this.open.set(true);
+    }
+
     effect(() => {
-      if (!this.visible()) return;
-      // Remember how tall the card is, for the next load.
-      afterNextRender(
-        () => {
-          const card = this.host.nativeElement.querySelector('lpg-section-card');
-          if (card) saveHeight(card.getBoundingClientRect().height);
-        },
-        { injector: this.injector },
-      );
+      if (!this.visible() || this.open()) return;
+      // Let the closed card paint once, then open it so the move is animated.
+      afterNextRender(() => requestAnimationFrame(() => this.open.set(true)), {
+        injector: this.injector,
+      });
     });
+
     this.tenantService.getSetupProgress().subscribe({
       next: (response) => {
+        this.memory.set(user, response.steps);
         this.progress.set(response.steps);
-        this.reservedHeight.set(0);
-        // Finished setting up: nothing to reserve on later loads.
-        if (STEPS.every((step) => response.steps[step.key])) saveHeight(null);
       },
       // The checklist is a convenience — Home works without it.
-      error: () => {
-        this.progress.set(null);
-        this.reservedHeight.set(0);
-      },
+      error: () => this.progress.set(null),
     });
   }
 

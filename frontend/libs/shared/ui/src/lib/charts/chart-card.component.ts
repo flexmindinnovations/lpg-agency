@@ -61,16 +61,21 @@ export interface ChartTable {
           {{ subtitle() }}
         </p>
       }
-      <div class="chart-card__body" [style.min-block-size.px]="height()">
+      <div class="chart-card__body" [style.block-size.px]="height()">
         @switch (state()) {
           @case ('loading') {
             <lpg-skeleton variant="block" [height]="height() + 'px'" />
           }
           @case ('empty') {
-            <lpg-empty-state [title]="emptyTitle()" [description]="emptyDescription()" />
+            <lpg-empty-state
+              [compact]="true"
+              [title]="emptyTitle()"
+              [description]="emptyDescription()"
+            />
           }
           @case ('error') {
             <lpg-empty-state
+              [compact]="true"
               tone="error"
               title="This could not be loaded"
               description="Your other widgets are unaffected. It will retry on the next refresh."
@@ -199,10 +204,13 @@ export interface ChartTable {
         outline-offset: 2px;
       }
 
+      /* Fixed to the chart's height in every state, so every card is the same
+         height whatever it holds (a chart, a table, an empty message). */
       .chart-card__body {
         display: flex;
         flex-direction: column;
         justify-content: center;
+        overflow: hidden;
       }
 
       .chart-card__table-wrap {

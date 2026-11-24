@@ -13,6 +13,7 @@ import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { AgencyModules } from '../agency-modules/agency-modules';
 import {
   AgencyService,
   NotifyService,
@@ -71,6 +72,7 @@ interface SetupLinkView {
   standalone: true,
   imports: [
     PageActionsDirective,
+    AgencyModules,
     HeaderTitlePortalDirective,
     ButtonDirective,
     Drawer,
@@ -324,6 +326,8 @@ interface SetupLinkView {
               </div>
             </div>
 
+            <lpg-agency-modules [tenantId]="agency.id" [readonly]="agency.status === 'closed'" />
+
             <section class="users" aria-labelledby="agency-users-heading">
               <div class="users__header">
                 <h3 id="agency-users-heading" class="detail-label">Users</h3>
@@ -480,10 +484,6 @@ interface SetupLinkView {
         display: flex;
         flex-direction: column;
         block-size: 100%;
-      }
-
-      .grid-section {
-        margin-block-start: var(--spacing-lg);
       }
 
       .detail-view {

@@ -241,7 +241,7 @@ function escapeHtml(text: string): string {
         display: flex;
         flex-direction: column;
         flex: 1;
-        min-block-size: var(--component-data-grid-min-block-size, 400px);
+        min-block-size: var(--component-data-grid-min-block-size, clamp(12rem, 45dvh, 32rem));
         block-size: 100%;
         border-radius: var(--component-data-grid-border-radius, var(--radius-md, 8px));
         overflow: hidden;

@@ -47,6 +47,14 @@ class PermissionDeniedError(ApplicationError):
     title = "Permission denied"
 
 
+class ModuleDisabledError(ApplicationError):
+    """A super admin has switched this module off for the agency."""
+
+    error_code = "MODULE_DISABLED"
+    http_status = 403
+    title = "This module is not enabled for your agency."
+
+
 class AuthenticationError(ApplicationError):
     """No valid credentials were supplied."""
 

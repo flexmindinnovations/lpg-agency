@@ -61,6 +61,7 @@ from lpg.api.v1.dependencies.identity import (
 from lpg.api.v1.dependencies.license import (
     get_license_repository,
     get_license_status_checker,
+    get_module_setting_repository,
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.admin import (
@@ -108,6 +109,7 @@ from lpg.api.v1.schemas.license import (
     ActivateLicenseRequest,
     LicenseResponse,
     LicenseStatusResponse,
+    ModuleResponse,
 )
 from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLogUseCase
 from lpg.application.audit.ports import AuditLogRepository, AuditTrail
@@ -149,10 +151,12 @@ from lpg.application.license.license_status import (
     GetLicenseStatusQuery,
     GetLicenseStatusUseCase,
 )
+from lpg.application.license.module_access import ListModulesUseCase
 from lpg.application.license.ports import (
     DeviceControlModeReader,
     LicenseRepository,
     LicenseStatusChecker,
+    TenantModuleSettingRepository,
 )
 from lpg.application.platform.feature_flag import (
     IsFeatureFlagEnabledQuery,
@@ -349,6 +353,25 @@ async def list_gst_states(
     _principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
 ) -> list[GstStateResponse]:
     return [GstStateResponse(code=code, name=name) for code, name in GST_STATE_CODES.items()]
+
+
+# -- Modules ------------------------------------------------------------------------
+
+
+@router.get(
+    "/modules",
+    response_model=list[ModuleResponse],
+    summary="The agency's switchable modules and whether each is on",
+)
+async def list_my_modules(
+    _principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[TenantModuleSettingRepository, Depends(get_module_setting_repository)],
+) -> list[ModuleResponse]:
+    modules = await ListModulesUseCase(repository).execute()
+    return [
+        ModuleResponse(key=m.key, label=m.label, description=m.description, enabled=m.enabled)
+        for m in modules
+    ]
 
 
 # -- Setup checklist ----------------------------------------------------------------

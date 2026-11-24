@@ -6422,6 +6422,36 @@
         "title": "LogoutRequest",
         "type": "object"
       },
+      "ModuleResponse": {
+        "description": "One module a super admin can switch on or off for an agency.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "Stable module key, e.g. `scales`.",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "description",
+          "enabled"
+        ],
+        "title": "ModuleResponse",
+        "type": "object"
+      },
       "MoveCylinderCustodyRequest": {
         "properties": {
           "custody_ref_id": {
@@ -11589,6 +11619,19 @@
         "title": "SetLicensePlanTierRequest",
         "type": "object"
       },
+      "SetModuleEnabledRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "SetModuleEnabledRequest",
+        "type": "object"
+      },
       "SetNotificationSettingRequest": {
         "additionalProperties": false,
         "properties": {
@@ -14871,6 +14914,31 @@
           }
         },
         "summary": "This tenant's own license status",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/modules": {
+      "get": {
+        "operationId": "list_my_modules_api_v1_admin_modules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModuleResponse"
+                  },
+                  "title": "Response List My Modules Api V1 Admin Modules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The agency's switchable modules and whether each is on",
         "tags": [
           "Administration"
         ]
@@ -23709,6 +23777,108 @@
           }
         },
         "summary": "Close an agency permanently",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies/{tenant_id}/modules": {
+      "get": {
+        "operationId": "list_agency_modules_api_v1_platform_agencies__tenant_id__modules_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModuleResponse"
+                  },
+                  "title": "Response List Agency Modules Api V1 Platform Agencies  Tenant Id  Modules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "An agency's switchable modules and whether each is on",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies/{tenant_id}/modules/{module_key}": {
+      "put": {
+        "operationId": "set_agency_module_api_v1_platform_agencies__tenant_id__modules__module_key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "module_key",
+            "required": true,
+            "schema": {
+              "title": "Module Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetModuleEnabledRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Switch one module on or off for an agency",
         "tags": [
           "Platform Console"
         ]

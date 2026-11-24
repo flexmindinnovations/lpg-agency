@@ -19,15 +19,19 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import Depends
 
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
+from lpg.application.common.errors import ModuleDisabledError
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.license.ports import (
     LicenseFeatureOverrideRepository,
     LicenseRepository,
     LicenseStatusChecker,
     LinkedDeviceRepository,
+    TenantModuleSettingRepository,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
+
     from lpg.api.app import AppState
     from lpg.config.settings import Settings
 
@@ -88,3 +92,30 @@ def get_license_status_checker() -> LicenseStatusChecker:
     from lpg.infrastructure.redis.cache import RedisCacheClient
 
     return RedisLicenseStatusChecker(RedisCacheClient(state.redis), state.database)
+
+
+def get_module_setting_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> TenantModuleSettingRepository:
+    from lpg.infrastructure.persistence.repositories.module_setting import (
+        SqlAlchemyTenantModuleSettingRepository,
+    )
+
+    return SqlAlchemyTenantModuleSettingRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def require_module(module_key: str) -> Callable[..., Coroutine[None, None, None]]:
+    """Router dependency: refuses the call (403 `MODULE_DISABLED`) when a super
+    admin has switched the module off for the caller's agency. Use it on a
+    module's own router, e.g. `APIRouter(dependencies=[Depends(require_module("scales"))])`."""
+
+    async def _check(
+        repository: Annotated[
+            TenantModuleSettingRepository, Depends(get_module_setting_repository)
+        ],
+    ) -> None:
+        if module_key in await repository.disabled_keys():
+            msg = f"The {module_key} module is not enabled for your agency."
+            raise ModuleDisabledError(msg, module=module_key)
+
+    return _check

@@ -10,6 +10,9 @@ import { closeAgencyApiV1PlatformAgenciesTenantIdClosePatch } from './generated/
 import { listAgenciesApiV1PlatformAgenciesGet } from './generated/fn/platform-console/list-agencies-api-v-1-platform-agencies-get';
 import { reactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch } from './generated/fn/platform-console/reactivate-agency-api-v-1-platform-agencies-tenant-id-reactivate-patch';
 import { suspendAgencyApiV1PlatformAgenciesTenantIdSuspendPatch } from './generated/fn/platform-console/suspend-agency-api-v-1-platform-agencies-tenant-id-suspend-patch';
+import { listAgencyModulesApiV1PlatformAgenciesTenantIdModulesGet } from './generated/fn/platform-console/list-agency-modules-api-v-1-platform-agencies-tenant-id-modules-get';
+import { setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut } from './generated/fn/platform-console/set-agency-module-api-v-1-platform-agencies-tenant-id-modules-module-key-put';
+import type { ModuleResponse } from './generated/models/module-response';
 import type { AgencyUserSetupResponse } from './generated/models/agency-user-setup-response';
 import type { StaffUserResponse } from './generated/models/staff-user-response';
 import type { CreateAgencyRequest } from './generated/models/create-agency-request';
@@ -84,5 +87,22 @@ export class AgencyService {
     return closeAgencyApiV1PlatformAgenciesTenantIdClosePatch(this.http, this.config.rootUrl, {
       tenant_id: tenantId,
     }).pipe(map(() => undefined));
+  }
+
+  /** The modules a super admin can switch for this agency, each with its on/off state. */
+  listModules(tenantId: string): Observable<ModuleResponse[]> {
+    return listAgencyModulesApiV1PlatformAgenciesTenantIdModulesGet(
+      this.http,
+      this.config.rootUrl,
+      { tenant_id: tenantId },
+    ).pipe(map((response) => response.body));
+  }
+
+  setModuleEnabled(tenantId: string, moduleKey: string, enabled: boolean): Observable<void> {
+    return setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut(
+      this.http,
+      this.config.rootUrl,
+      { tenant_id: tenantId, module_key: moduleKey, body: { enabled } },
+    ).pipe(map(() => undefined));
   }
 }
