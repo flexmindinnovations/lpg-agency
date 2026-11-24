@@ -486,10 +486,6 @@ interface SetupLinkView {
         block-size: 100%;
       }
 
-      .grid-section {
-        margin-block-start: var(--spacing-lg);
-      }
-
       .detail-view {
         display: flex;
         flex-direction: column;

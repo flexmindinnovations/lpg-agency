@@ -15,7 +15,12 @@ export type EmptyStateTone = 'neutral' | 'error';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="empty-state" [class.empty-state--error]="tone() === 'error'" role="status">
+    <div
+      class="empty-state"
+      [class.empty-state--error]="tone() === 'error'"
+      [class.empty-state--compact]="compact()"
+      role="status"
+    >
       <i class="empty-state__icon {{ resolvedIcon() }}" aria-hidden="true"></i>
       <p class="empty-state__title">{{ title() }}</p>
       @if (description()) {
@@ -40,6 +45,15 @@ export type EmptyStateTone = 'neutral' | 'error';
         gap: var(--spacing-xs);
         padding: var(--spacing-2xl) var(--spacing-lg);
         animation: lpg-empty-in var(--motion-duration-small) var(--motion-easing-emphasized) both;
+      }
+
+      /* For a fixed-size area (a dashboard card): less air, so a longer
+         message wrapping to a second line still fits without growing the card. */
+      .empty-state--compact {
+        padding: var(--spacing-md);
+        justify-content: center;
+        block-size: 100%;
+        box-sizing: border-box;
       }
 
       .empty-state__icon {
@@ -95,6 +109,8 @@ export class EmptyStateComponent {
   readonly title = input.required<string>();
   readonly description = input<string>('');
   readonly tone = input<EmptyStateTone>('neutral');
+  /** Tighter spacing, centred in a fixed-size area. */
+  readonly compact = input(false);
   /** PrimeIcon class. Defaults by tone when not given. */
   readonly icon = input<string>('');
 
