@@ -104,7 +104,7 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
       .stat-card:hover {
         transform: translateY(-1px);
         border-color: var(--color-border-strong);
-        box-shadow: var(--component-card-shadow), var(--elevation-2);
+        box-shadow: var(--component-card-shadow);
       }
 
       /* The linked variant renders as <a>, which needs its default browser
