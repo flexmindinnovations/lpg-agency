@@ -39,6 +39,8 @@ export type { ActivateLicenseApiV1AdminLicenseActivatePost$Params as ActivateLic
 export { activateLicenseApiV1AdminLicenseActivatePost as activateLicenseApiV1AdminLicenseActivatePost } from './fn/administration/activate-license-api-v-1-admin-license-activate-post';
 export type { GetLicenseStatusApiV1AdminLicenseStatusGet$Params as GetLicenseStatusApiV1AdminLicenseStatusGet$Params } from './fn/administration/get-license-status-api-v-1-admin-license-status-get';
 export { getLicenseStatusApiV1AdminLicenseStatusGet as getLicenseStatusApiV1AdminLicenseStatusGet } from './fn/administration/get-license-status-api-v-1-admin-license-status-get';
+export type { ListMyModulesApiV1AdminModulesGet$Params as ListMyModulesApiV1AdminModulesGet$Params } from './fn/administration/list-my-modules-api-v-1-admin-modules-get';
+export { listMyModulesApiV1AdminModulesGet as listMyModulesApiV1AdminModulesGet } from './fn/administration/list-my-modules-api-v-1-admin-modules-get';
 export type { ListPermissionsApiV1AdminPermissionsGet$Params as ListPermissionsApiV1AdminPermissionsGet$Params } from './fn/administration/list-permissions-api-v-1-admin-permissions-get';
 export { listPermissionsApiV1AdminPermissionsGet as listPermissionsApiV1AdminPermissionsGet } from './fn/administration/list-permissions-api-v-1-admin-permissions-get';
 export type { ListPricesApiV1AdminPriceListGet$Params as ListPricesApiV1AdminPriceListGet$Params } from './fn/administration/list-prices-api-v-1-admin-price-list-get';
@@ -489,6 +491,10 @@ export type { AddAgencyAdminApiV1PlatformAgenciesTenantIdAdminsPost$Params as Ad
 export { addAgencyAdminApiV1PlatformAgenciesTenantIdAdminsPost as addAgencyAdminApiV1PlatformAgenciesTenantIdAdminsPost } from './fn/platform-console/add-agency-admin-api-v-1-platform-agencies-tenant-id-admins-post';
 export type { CloseAgencyApiV1PlatformAgenciesTenantIdClosePatch$Params as CloseAgencyApiV1PlatformAgenciesTenantIdClosePatch$Params } from './fn/platform-console/close-agency-api-v-1-platform-agencies-tenant-id-close-patch';
 export { closeAgencyApiV1PlatformAgenciesTenantIdClosePatch as closeAgencyApiV1PlatformAgenciesTenantIdClosePatch } from './fn/platform-console/close-agency-api-v-1-platform-agencies-tenant-id-close-patch';
+export type { ListAgencyModulesApiV1PlatformAgenciesTenantIdModulesGet$Params as ListAgencyModulesApiV1PlatformAgenciesTenantIdModulesGet$Params } from './fn/platform-console/list-agency-modules-api-v-1-platform-agencies-tenant-id-modules-get';
+export { listAgencyModulesApiV1PlatformAgenciesTenantIdModulesGet as listAgencyModulesApiV1PlatformAgenciesTenantIdModulesGet } from './fn/platform-console/list-agency-modules-api-v-1-platform-agencies-tenant-id-modules-get';
+export type { SetAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut$Params as SetAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut$Params } from './fn/platform-console/set-agency-module-api-v-1-platform-agencies-tenant-id-modules-module-key-put';
+export { setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut as setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut } from './fn/platform-console/set-agency-module-api-v-1-platform-agencies-tenant-id-modules-module-key-put';
 export type { ReactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch$Params as ReactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch$Params } from './fn/platform-console/reactivate-agency-api-v-1-platform-agencies-tenant-id-reactivate-patch';
 export { reactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch as reactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch } from './fn/platform-console/reactivate-agency-api-v-1-platform-agencies-tenant-id-reactivate-patch';
 export type { SuspendAgencyApiV1PlatformAgenciesTenantIdSuspendPatch$Params as SuspendAgencyApiV1PlatformAgenciesTenantIdSuspendPatch$Params } from './fn/platform-console/suspend-agency-api-v-1-platform-agencies-tenant-id-suspend-patch';

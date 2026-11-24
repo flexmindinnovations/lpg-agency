@@ -2,6 +2,7 @@ import { Route } from '@angular/router';
 import {
   authGuard,
   licenseGuard,
+  moduleGuard,
   permissionGuard,
   platformAuthGuard,
 } from '@lpg/shared/data-access';
@@ -305,14 +306,20 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'scales',
-        canActivate: [permissionGuard('weighment:record', STAFF_LIST_EXCLUDED_ROLES)],
+        canActivate: [
+          permissionGuard('weighment:record', STAFF_LIST_EXCLUDED_ROLES),
+          moduleGuard('scales'),
+        ],
         data: { breadcrumbs: [{ label: 'Scales', routerLink: '/scales' }] },
         loadChildren: () =>
           import('@lpg/compliance/feature-scales').then((m) => m.complianceScalesRoutes),
       },
       {
         path: 'cylinder-units',
-        canActivate: [permissionGuard('cylinder_units:read', STAFF_LIST_EXCLUDED_ROLES)],
+        canActivate: [
+          permissionGuard('cylinder_units:read', STAFF_LIST_EXCLUDED_ROLES),
+          moduleGuard('cylinder_units'),
+        ],
         data: { breadcrumbs: [{ label: 'Cylinder Units', routerLink: '/cylinder-units' }] },
         loadChildren: () =>
           import('@lpg/compliance/feature-cylinder-units').then(
@@ -373,7 +380,7 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'ai-assistant',
-        canActivate: [permissionGuard('ai:read')],
+        canActivate: [permissionGuard('ai:read'), moduleGuard('ai_command_center')],
         data: { breadcrumbs: [] },
         loadChildren: () =>
           import('@lpg/ai/feature-ai-assistant').then((m) => m.aiFeatureAiAssistantRoutes),

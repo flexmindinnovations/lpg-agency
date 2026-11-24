@@ -192,3 +192,26 @@ class LinkedDeviceModel(Base):
     )
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
     version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
+
+
+class TenantModuleSettingModel(Base):
+    """Maps `platform.tenant_module_setting` (migration `c5a8f2d1b9e7`) — an
+    RLS-scoped tenant table. One row per `(tenant_id, module_key)`, enforced
+    by a DB unique constraint."""
+
+    __tablename__ = "tenant_module_setting"
+    __table_args__ = {"schema": "platform"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    module_key: Mapped[str] = mapped_column(String(50))
+    enabled: Mapped[bool] = mapped_column(Boolean())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
+    version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))

@@ -60,10 +60,13 @@ from lpg.api.v1.schemas.license import (
     IssuedLicenseResponse,
     IssueLicenseRequest,
     LicenseResponse,
+    ModuleResponse,
     SetLicenseDeviceCapRequest,
     SetLicenseFeatureOverrideRequest,
     SetLicensePlanTierRequest,
+    SetModuleEnabledRequest,
 )
+from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.identity.ports import (
     EmailSender,
@@ -93,6 +96,11 @@ from lpg.application.license.issue_license import (
     SetLicenseDeviceCapUseCase,
     SetLicensePlanTierCommand,
     SetLicensePlanTierUseCase,
+)
+from lpg.application.license.module_access import (
+    ListModulesUseCase,
+    SetModuleEnabledCommand,
+    SetModuleEnabledUseCase,
 )
 from lpg.application.license.ports import LicenseStatusChecker
 from lpg.application.platform.agency_users import (
@@ -140,6 +148,9 @@ from lpg.infrastructure.persistence.repositories.identity import SqlAlchemyStaff
 from lpg.infrastructure.persistence.repositories.license import (
     SqlAlchemyLicenseFeatureOverrideRepository,
     SqlAlchemyLicenseRepository,
+)
+from lpg.infrastructure.persistence.repositories.module_setting import (
+    SqlAlchemyTenantModuleSettingRepository,
 )
 from lpg.infrastructure.persistence.repositories.platform import SqlAlchemyFeatureFlagRepository
 from lpg.infrastructure.persistence.repositories.tenant import SqlAlchemyTenantRepository
@@ -227,6 +238,61 @@ async def list_agencies(
         use_case = ListTenantsUseCase(repository)
         tenants = await use_case.execute(ListTenantsQuery())
         return [_tenant_response(tenant) for tenant in tenants]
+
+
+async def _require_agency(uow: UnitOfWork, tenant_id: uuid.UUID) -> None:
+    if await SqlAlchemyTenantRepository(uow).get(tenant_id) is None:  # type: ignore[arg-type]
+        msg = f"No agency '{tenant_id}'."
+        raise NotFoundError(msg, tenant_id=str(tenant_id))
+
+
+@router.get(
+    "/agencies/{tenant_id}/modules",
+    response_model=list[ModuleResponse],
+    summary="An agency's switchable modules and whether each is on",
+)
+async def list_agency_modules(
+    tenant_id: uuid.UUID,
+    _principal: Annotated[
+        PlatformPrincipal, Depends(require_live_platform_permission("license:manage_platform"))
+    ],
+    uow_factory: Annotated[_UowFactory, Depends(get_platform_unit_of_work_factory)],
+) -> list[ModuleResponse]:
+    async with uow_factory(tenant_id) as uow:
+        await _require_agency(uow, tenant_id)
+        modules = await ListModulesUseCase(
+            SqlAlchemyTenantModuleSettingRepository(uow)  # type: ignore[arg-type]
+        ).execute()
+    return [
+        ModuleResponse(key=m.key, label=m.label, description=m.description, enabled=m.enabled)
+        for m in modules
+    ]
+
+
+@router.put(
+    "/agencies/{tenant_id}/modules/{module_key}",
+    status_code=204,
+    summary="Switch one module on or off for an agency",
+)
+async def set_agency_module(
+    tenant_id: uuid.UUID,
+    module_key: str,
+    body: SetModuleEnabledRequest,
+    _principal: Annotated[
+        PlatformPrincipal, Depends(require_live_platform_permission("license:manage_platform"))
+    ],
+    uow_factory: Annotated[_UowFactory, Depends(get_platform_unit_of_work_factory)],
+) -> None:
+    async with uow_factory(tenant_id) as uow:
+        await _require_agency(uow, tenant_id)
+        await SetModuleEnabledUseCase(
+            SqlAlchemyTenantModuleSettingRepository(uow),  # type: ignore[arg-type]
+            uow,
+        ).execute(
+            SetModuleEnabledCommand(
+                tenant_id=tenant_id, module_key=module_key, enabled=body.enabled
+            )
+        )
 
 
 @router.post(

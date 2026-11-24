@@ -370,6 +370,7 @@ ignore_imports = [
     # dependencies/license.py wires the license/linked-device repository and
     # the Redis-backed license status cache.
     "lpg.api.v1.dependencies.license -> lpg.infrastructure.persistence.repositories.license",
+    "lpg.api.v1.dependencies.license -> lpg.infrastructure.persistence.repositories.module_setting",
     "lpg.api.v1.dependencies.license -> lpg.infrastructure.license.license_status_cache",
     # Platform Console: `routers/platform.py` opens its own `UnitOfWork` per
     # call (via `get_platform_unit_of_work_factory`) scoped to an explicit
@@ -393,6 +394,7 @@ ignore_imports = [
     # same reasoning as every other platform entry here — it cannot be a static
     # Depends() provider.
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.license",
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.module_setting",
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.platform",
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.tenant",
     "lpg.api.v1.routers.platform -> lpg.infrastructure.redis.cache",
