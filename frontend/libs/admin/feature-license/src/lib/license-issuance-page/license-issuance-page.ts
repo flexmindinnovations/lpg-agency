@@ -445,10 +445,6 @@ const VALIDITY_OPTIONS = [
         block-size: 100%;
       }
 
-      .grid-section {
-        margin-block-start: var(--spacing-lg);
-      }
-
       .issued-key {
         font-family: monospace;
         font-size: var(--typography-body-font-size);
