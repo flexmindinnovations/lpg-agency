@@ -35,13 +35,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN groupadd --system app && useradd --system --gid app --home-dir /app app
+RUN groupadd --system app && useradd --system --gid app --home-dir /app app \
+    && mkdir -p /var/lib/lpg/uploads && chown app:app /var/lib/lpg/uploads
 
 WORKDIR /app
 COPY --from=builder --chown=app:app /app /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    LPG_STORAGE_LOCAL_DIR=/var/lib/lpg/uploads
 
 USER app
 

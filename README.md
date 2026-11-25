@@ -54,10 +54,7 @@ Python 3.13+ · [uv](https://docs.astral.sh/uv/) · Node.js 22+ · Flutter 3.24+
 | Customer App | `cd mobile/apps/customer_app && flutter run` | device/emulator |
 | Driver App | `cd mobile/apps/driver_app && flutter run` | device/emulator |
 
-> **Object storage (MinIO) — known problem.** The compose file's `minio/minio:latest` can no longer be pulled (Docker Hub now refuses it, and `quay.io/minio/minio` refuses anonymous pulls), so `./scripts/dev-up.sh` fails on a machine that does not already have the image. Until a replacement is chosen:
->
-> - Start only the database and cache: `docker compose -f infrastructure/docker/docker-compose.yml up -d postgres redis`.
-> - If you need file storage (uploads, documents), serve any S3-compatible endpoint on `localhost:59000` with the dev credentials from the compose file. CI does this with [moto](https://docs.getmoto.org/): `uvx --from "moto[server]==5.2.5" moto_server -p 59000`. It is an S3 stand-in, not MinIO, so a MinIO-specific difference would not show up.
+> **File storage.** Uploads (KYC documents, delivery photos, certificates) are written to the server's own disk under `backend/data/uploads` (`LPG_STORAGE_LOCAL_DIR`); no object store or credentials are needed. Images are kept as the untouched original plus a compressed WebP copy (ADR-068).
 
 ### Checks
 

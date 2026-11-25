@@ -12141,6 +12141,44 @@
         "title": "StockRegisterResponse",
         "type": "object"
       },
+      "StorageUsageResponse": {
+        "properties": {
+          "file_count": {
+            "title": "File Count",
+            "type": "integer"
+          },
+          "free_bytes": {
+            "title": "Free Bytes",
+            "type": "integer"
+          },
+          "free_percent": {
+            "title": "Free Percent",
+            "type": "number"
+          },
+          "low_space": {
+            "title": "Low Space",
+            "type": "boolean"
+          },
+          "stored_bytes": {
+            "title": "Stored Bytes",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_bytes",
+          "free_bytes",
+          "free_percent",
+          "stored_bytes",
+          "file_count",
+          "low_space"
+        ],
+        "title": "StorageUsageResponse",
+        "type": "object"
+      },
       "SubmitKycDocumentRequest": {
         "properties": {
           "doc_type": {
@@ -19942,6 +19980,70 @@
         "summary": "Change Employee Status",
         "tags": [
           "Employees"
+        ]
+      }
+    },
+    "/api/v1/files/download": {
+      "get": {
+        "description": "The original, untouched upload. `key` is the `blob_ref` / stored reference.",
+        "operationId": "download_original_api_v1_files_download_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "maxLength": 600,
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Original",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/api/v1/files/usage": {
+      "get": {
+        "description": "Disk space on the server holding uploads, for the admin to watch.",
+        "operationId": "storage_usage_api_v1_files_usage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageUsageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Storage Usage",
+        "tags": [
+          "Files"
         ]
       }
     },
