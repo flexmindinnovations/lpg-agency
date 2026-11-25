@@ -7,7 +7,7 @@ import { ModuleAccessStore } from './module-access.store';
 const URL = '/api/v1/admin/modules';
 
 function module(key: string, enabled: boolean) {
-  return { key, label: key, description: '', enabled };
+  return { key, label: key, description: '', group: 'Operations', requires: [], enabled };
 }
 
 describe('ModuleAccessStore', () => {
@@ -26,19 +26,19 @@ describe('ModuleAccessStore', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  it('shows every module until the server says otherwise', () => {
-    expect(store.isEnabled('scales')).toBe(true);
+  it('shows no module until the server says it is on', () => {
+    expect(store.isEnabled('scales')).toBe(false);
     expect(store.loaded()).toBe(false);
   });
 
-  it('hides only the modules the server reports as off', () => {
+  it('shows only the modules the server reports as on', () => {
     store.load().subscribe();
     http.expectOne(URL).flush([module('scales', false), module('cylinder_units', true)]);
 
     expect(store.loaded()).toBe(true);
     expect(store.isEnabled('scales')).toBe(false);
     expect(store.isEnabled('cylinder_units')).toBe(true);
-    expect(store.isEnabled('ai_command_center')).toBe(true);
+    expect(store.isEnabled('orders')).toBe(false);
   });
 
   it('shares one request between callers', () => {
@@ -47,21 +47,21 @@ describe('ModuleAccessStore', () => {
     http.expectOne(URL).flush([]);
   });
 
-  it('leaves everything visible when the fetch fails (the API still enforces)', () => {
+  it('shows nothing and tries again later when the fetch fails (the API still enforces)', () => {
     store.load().subscribe();
     http.expectOne(URL).flush('nope', { status: 500, statusText: 'Server Error' });
 
-    expect(store.loaded()).toBe(true);
-    expect(store.isEnabled('scales')).toBe(true);
+    expect(store.loaded()).toBe(false);
+    expect(store.isEnabled('scales')).toBe(false);
   });
 
   it('forgets the previous agency on clear', () => {
     store.load().subscribe();
-    http.expectOne(URL).flush([module('scales', false)]);
+    http.expectOne(URL).flush([module('scales', true)]);
 
     store.clear();
 
-    expect(store.isEnabled('scales')).toBe(true);
+    expect(store.isEnabled('scales')).toBe(false);
     expect(store.loaded()).toBe(false);
   });
 });

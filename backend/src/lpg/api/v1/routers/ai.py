@@ -14,14 +14,11 @@ from fastapi import APIRouter, Depends
 
 from lpg.api.v1.dependencies.ai import get_ask_ai_assistant_use_case
 from lpg.api.v1.dependencies.identity import require_permission
-from lpg.api.v1.dependencies.license import require_module
 from lpg.api.v1.schemas.ai import AskAiAssistantRequest, AskAiAssistantResponse
 from lpg.application.ai.use_cases import AskAiAssistantQuery, AskAiAssistantUseCase
 from lpg.application.identity.ports import AuthenticatedPrincipal
 
-router = APIRouter(
-    prefix="/ai", tags=["AI"], dependencies=[Depends(require_module("ai_command_center"))]
-)
+router = APIRouter(prefix="/ai", tags=["AI"])
 
 
 @router.post(

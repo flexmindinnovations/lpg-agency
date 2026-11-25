@@ -51,7 +51,10 @@ from lpg.application.reporting.queries.get_gstr1_report import (
     TaxTotals,
 )
 
-router = APIRouter(prefix="/reporting", tags=["reporting"])
+router = APIRouter(
+    prefix="/reporting",
+    tags=["reporting"],
+)
 
 
 @router.get(

@@ -235,7 +235,7 @@ export class ShellLayout {
           label: 'Reports',
           icon: 'pi pi-chart-bar',
           route: '/reports',
-          condition: can('reports:read'),
+          condition: can('reports:read') && this.modules.isEnabled('reports'),
         },
         // No permission guard on this route (any authenticated user's own
         // notifications) — always shown, matching Dashboard above.
@@ -253,25 +253,25 @@ export class ShellLayout {
           icon: 'pi pi-users',
           route: '/customers',
           aliases: ['/ledger'],
-          condition: canBrowse('customers:read'),
+          condition: canBrowse('customers:read') && this.modules.isEnabled('customers'),
         },
         {
           label: 'Orders',
           icon: 'pi pi-shopping-cart',
           route: '/orders',
-          condition: can('orders:read'),
+          condition: can('orders:read') && this.modules.isEnabled('orders'),
         },
         {
           label: 'Dispatch',
           icon: 'pi pi-map',
           route: '/dispatch',
-          condition: canBrowse('routes:read'),
+          condition: canBrowse('routes:read') && this.modules.isEnabled('dispatch'),
         },
         {
           label: 'Complaints',
           icon: 'pi pi-exclamation-circle',
           route: '/complaints',
-          condition: can('complaints.manage'),
+          condition: can('complaints.manage') && this.modules.isEnabled('complaints'),
         },
       ]),
       ...buildGroup('Accounting', [
@@ -279,13 +279,13 @@ export class ShellLayout {
           label: 'Invoices',
           icon: 'pi pi-receipt',
           route: '/invoices',
-          condition: can('invoices:read'),
+          condition: can('invoices:read') && this.modules.isEnabled('invoices'),
         },
         {
           label: 'Cash Handovers',
           icon: 'pi pi-money-bill',
           route: '/cash-handovers',
-          condition: can('cash_handovers:review'),
+          condition: can('cash_handovers:review') && this.modules.isEnabled('cash_handovers'),
         },
       ]),
       ...buildGroup('Logistics', [
@@ -293,19 +293,19 @@ export class ShellLayout {
           label: 'Drivers',
           icon: 'pi pi-id-card',
           route: '/drivers',
-          condition: canBrowse('drivers:read'),
+          condition: canBrowse('drivers:read') && this.modules.isEnabled('drivers'),
         },
         {
           label: 'Vehicles',
           icon: 'pi pi-truck',
           route: '/vehicles',
-          condition: canBrowse('vehicles:read'),
+          condition: canBrowse('vehicles:read') && this.modules.isEnabled('vehicles'),
         },
         {
           label: 'Inventory',
           icon: 'pi pi-database',
           route: '/inventory',
-          condition: can('inventory:read'),
+          condition: can('inventory:read') && this.modules.isEnabled('inventory'),
         },
         {
           label: 'Godowns',
@@ -329,7 +329,7 @@ export class ShellLayout {
           label: 'Compliance Calendar',
           icon: 'pi pi-shield',
           route: '/compliance-calendar',
-          condition: can('compliance:read'),
+          condition: can('compliance:read') && this.modules.isEnabled('compliance_calendar'),
         },
       ]),
       ...buildGroup('Administration', [

@@ -43,6 +43,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.config.settings import get_settings
 from lpg.domain.common.gst import compute_line_tax
+from lpg.domain.license.modules import TOGGLEABLE_MODULES
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 
 _LOCAL_DEV_FALLBACK = (
@@ -321,6 +322,20 @@ def _dsn() -> str:
     return url
 
 
+async def enable_all_modules(conn, tenant_id) -> None:
+    """Dev/demo tenants get every module on (a real agency starts with none)."""
+    for module in TOGGLEABLE_MODULES:
+        await conn.execute(
+            text(
+                "INSERT INTO platform.tenant_module_setting "
+                "(id, tenant_id, module_key, enabled) "
+                "VALUES (gen_random_uuid(), :t, :k, true) "
+                "ON CONFLICT (tenant_id, module_key) DO UPDATE SET enabled = true"
+            ),
+            {"t": tenant_id, "k": module.key},
+        )
+
+
 async def main() -> None:
     dsn = _dsn()
     engine = create_async_engine(dsn)
@@ -403,6 +418,7 @@ async def main() -> None:
             )
         ).scalar()
         print(f"[seed] tenant: {tenant_slug}  ({tenant_id})")
+        await enable_all_modules(conn, tenant_id)
         p = {"t": tenant_id}
 
         def sid(kind: str, key: str) -> uuid.UUID:

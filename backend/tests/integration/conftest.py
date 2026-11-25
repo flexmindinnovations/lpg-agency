@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from lpg.domain.license.modules import TOGGLEABLE_MODULES
+
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
@@ -71,6 +73,35 @@ async def _auto_activate_licenses_for_new_tenants(postgres_available: bool) -> N
                         RETURN NEW;
                     END;
                     $$ LANGUAGE plpgsql
+                """)
+            )
+            # Modules are off by default, so a tenant a test inserts would get
+            # 403 MODULE_DISABLED on every module route. Switch them all on.
+            keys = ", ".join(f"('{m.key}')" for m in TOGGLEABLE_MODULES)
+            await conn.execute(
+                text(f"""
+                    CREATE OR REPLACE FUNCTION platform.auto_enable_test_modules()
+                    RETURNS trigger AS $$
+                    BEGIN
+                        INSERT INTO platform.tenant_module_setting
+                            (id, tenant_id, module_key, enabled)
+                        SELECT gen_random_uuid(), NEW.id, k.module_key, true
+                        FROM (VALUES {keys}) AS k(module_key)
+                        ON CONFLICT (tenant_id, module_key) DO NOTHING;
+                        RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql
+                """)
+            )
+            await conn.execute(
+                text("DROP TRIGGER IF EXISTS trg_auto_enable_test_modules ON tenant.tenant")
+            )
+            await conn.execute(
+                text("""
+                    CREATE TRIGGER trg_auto_enable_test_modules
+                    AFTER INSERT ON tenant.tenant
+                    FOR EACH ROW
+                    EXECUTE FUNCTION platform.auto_enable_test_modules()
                 """)
             )
             await conn.execute(

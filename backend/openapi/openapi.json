@@ -6433,6 +6433,11 @@
             "title": "Enabled",
             "type": "boolean"
           },
+          "group": {
+            "description": "Heading the module is listed under, e.g. `Operations`.",
+            "title": "Group",
+            "type": "string"
+          },
           "key": {
             "description": "Stable module key, e.g. `scales`.",
             "title": "Key",
@@ -6441,12 +6446,22 @@
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "requires": {
+            "description": "Keys of modules that must be on before this one can be switched on.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Requires",
+            "type": "array"
           }
         },
         "required": [
           "key",
           "label",
           "description",
+          "group",
+          "requires",
           "enabled"
         ],
         "title": "ModuleResponse",

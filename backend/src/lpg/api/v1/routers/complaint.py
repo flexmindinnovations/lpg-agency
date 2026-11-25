@@ -36,7 +36,10 @@ from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.domain.complaint.complaint import Complaint
 from lpg.domain.complaint.value_objects import ComplaintStatus
 
-router = APIRouter(prefix="/complaints", tags=["Complaints"])
+router = APIRouter(
+    prefix="/complaints",
+    tags=["Complaints"],
+)
 
 
 async def _with_names(

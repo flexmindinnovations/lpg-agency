@@ -122,6 +122,10 @@ class ModuleResponse(BaseModel):
     key: str = Field(description="Stable module key, e.g. `scales`.")
     label: str
     description: str
+    group: str = Field(description="Heading the module is listed under, e.g. `Operations`.")
+    requires: list[str] = Field(
+        description="Keys of modules that must be on before this one can be switched on."
+    )
     enabled: bool
 
 

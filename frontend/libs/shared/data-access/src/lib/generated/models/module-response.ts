@@ -10,8 +10,18 @@ export interface ModuleResponse {
   enabled: boolean;
 
   /**
+   * Heading the module is listed under, e.g. `Operations`.
+   */
+  group: string;
+
+  /**
    * Stable module key, e.g. `scales`.
    */
   key: string;
   label: string;
+
+  /**
+   * Keys of modules that must be on before this one can be switched on.
+   */
+  requires: Array<string>;
 }

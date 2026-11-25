@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.common.errors import ModuleDisabledError
@@ -28,10 +28,9 @@ from lpg.application.license.ports import (
     LinkedDeviceRepository,
     TenantModuleSettingRepository,
 )
+from lpg.domain.license.modules import module_for_path
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
-
     from lpg.api.app import AppState
     from lpg.config.settings import Settings
 
@@ -104,18 +103,25 @@ def get_module_setting_repository(
     return SqlAlchemyTenantModuleSettingRepository(unit_of_work)  # type: ignore[arg-type]
 
 
-def require_module(module_key: str) -> Callable[..., Coroutine[None, None, None]]:
-    """Router dependency: refuses the call (403 `MODULE_DISABLED`) when a super
-    admin has switched the module off for the caller's agency. Use it on a
-    module's own router, e.g. `APIRouter(dependencies=[Depends(require_module("scales"))])`."""
+async def require_module_access(
+    request: Request,
+    repository: Annotated[TenantModuleSettingRepository, Depends(get_module_setting_repository)],
+) -> None:
+    """Router dependency for every module-owned router: refuses the call
+    (403 `MODULE_DISABLED`) when the path belongs to a module that a super admin
+    has not switched on for the caller's agency. The path-to-module map lives in
+    `lpg.domain.license.modules`, so a new route is covered by its path and
+    cannot be left ungated by forgetting a decorator. Paths that belong to no
+    module (Home, Notifications, Settings, Administration) always pass.
+    """
+    from lpg.config.settings import get_settings
 
-    async def _check(
-        repository: Annotated[
-            TenantModuleSettingRepository, Depends(get_module_setting_repository)
-        ],
-    ) -> None:
-        if module_key in await repository.disabled_keys():
-            msg = f"The {module_key} module is not enabled for your agency."
-            raise ModuleDisabledError(msg, module=module_key)
-
-    return _check
+    prefix = get_settings().api_v1_prefix
+    path = request.url.path
+    path = path.removeprefix(prefix)
+    module_key = module_for_path(path)
+    if module_key is None:
+        return
+    if module_key not in await repository.enabled_keys():
+        msg = f"The {module_key} module is not enabled for your agency."
+        raise ModuleDisabledError(msg, module=module_key)

@@ -1827,6 +1827,24 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Alternatives Considered:** Persisting every refresh (rejected: table growth); writing failed-login rows only to logs (rejected: the admin Audit Log is where office users look); a separate security table (rejected: duplicates the viewer, filters and RLS).
 
+## ADR-077: Modules Are Off by Default, Switched On Per Agency and Gated by Request Path
+
+**Status:** Accepted · 2026-11-25
+
+**Context:** A super admin needs to decide which parts of the product each agency sees. The first version (ADR-070 era, `platform.tenant_module_setting`) listed three modules that were on unless switched off, and enforced them with a decorator on each router, which meant a forgotten decorator left a route open.
+
+**Decision:**
+- The catalog of 14 switchable modules lives in code (`domain/license/modules.py`) with a group, the modules each one needs (`requires`) and the API paths it owns. No migration is needed to add a module.
+- **A module is off unless an `enabled = true` row exists.** A new agency starts with nothing on. Home, Notifications, Settings and the Administration screens (branches, godowns, cylinder types, pricing, users, employees, audit log) are always available so the agency admin can sign in and be set up.
+- One dependency, `require_module_access`, is attached when each module-owned router is included in `app.py`. It maps the request path to a module (`module_for_path`) and answers 403 `MODULE_DISABLED` when that module is off. Route-level decorators are gone, so a new route is covered by its path.
+- Dependencies are enforced on write: a module cannot be switched on before the modules it needs, nor off while a module that needs it is on. The Platform Console greys out a locked switch and says why; Turn all on / Turn all off apply the switches in dependency order.
+- Migration `d9e1a3b5c7f2` writes `enabled = true` for every existing agency and module that has no row, so nothing changes for agencies that already exist. Dev and demo seed scripts switch every module on.
+- The dashboard hides sidebar items, guards routes and hides Home tiles for modules that are off. Until the list has loaded, or if it fails to load, nothing switchable is shown; the API remains the authority.
+
+**Alternatives Considered:** Keeping modules on by default (rejected: contradicts the requirement that a new agency sees nothing until configured); a decorator per route (rejected: easy to forget); tying modules to licence plan tiers (rejected: modules are an operator decision per agency, independent of licensing).
+
+**Not covered yet:** online-payment and payment-profile endpoints (they share a router with unauthenticated gateway webhooks) and the WhatsApp assistant are not switchable.
+
 ## ADR-068: Uploads on the Server's Own Disk
 
 **Status:** Accepted (2026-11-25). Supersedes the S3-compatible adapter of ADR-030 and the production object-storage deferral.

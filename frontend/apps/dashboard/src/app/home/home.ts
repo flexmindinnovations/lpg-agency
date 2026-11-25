@@ -1,6 +1,7 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ModuleAccessStore } from '@lpg/shared/data-access';
 import {
   EmptyStateComponent,
   formatCurrencyInr,
@@ -34,6 +35,8 @@ interface Kpi {
   tone: StatTone;
   route: string;
   permission?: string;
+  /** The switchable module the tile belongs to; hidden while that module is off. */
+  module?: string;
   loading: boolean;
   delta?: Delta | null;
   trend?: readonly number[];
@@ -292,6 +295,7 @@ function pending(widget: WidgetData<unknown>): boolean {
 })
 export class Home {
   protected readonly data = inject(DashboardData);
+  private readonly modules = inject(ModuleAccessStore);
   protected readonly icon = SEVERITY_ICON;
 
   constructor() {
@@ -329,6 +333,7 @@ export class Home {
     const tiles: Kpi[] = [
       {
         key: 'delivered',
+        module: 'orders',
         label: 'Delivered today',
         value: (ops?.orders.delivered_today ?? 0).toLocaleString('en-IN'),
         icon: 'pi pi-check-circle',
@@ -342,6 +347,7 @@ export class Home {
       },
       {
         key: 'revenue',
+        module: 'invoices',
         label: 'Revenue today',
         value: compactInr(revenue?.get(today) ?? 0),
         icon: 'pi pi-indian-rupee',
@@ -353,6 +359,7 @@ export class Home {
       },
       {
         key: 'overdue',
+        module: 'invoices',
         label: ops?.invoices ? `Overdue over ${ops.payment_terms_days} days` : 'Overdue invoices',
         value: compactInr(Number(ops?.invoices?.overdue_amount ?? 0)),
         icon: 'pi pi-exclamation-circle',
@@ -362,6 +369,7 @@ export class Home {
       },
       {
         key: 'filled',
+        module: 'inventory',
         label: 'Filled cylinders',
         value: (summary?.inventory_by_status['filled'] ?? 0).toLocaleString('en-IN'),
         icon: 'pi pi-box',
@@ -372,6 +380,7 @@ export class Home {
       },
       {
         key: 'rating',
+        module: 'reports',
         label: 'Delivery-time rating',
         value:
           typeof rating?.overall_stars === 'number'
@@ -384,6 +393,7 @@ export class Home {
       },
       {
         key: 'complaints',
+        module: 'complaints',
         label: 'Open complaints',
         value: (ops?.open_complaints ?? 0).toLocaleString('en-IN'),
         icon: 'pi pi-comments',
@@ -396,6 +406,7 @@ export class Home {
     // Once loaded, leave out tiles the caller may not see (server returns null / 403).
     return tiles.filter(
       (tile) =>
+        !(tile.module && !this.modules.isEnabled(tile.module)) &&
         !(tile.key === 'overdue' && d.operations.status() === 'ready' && ops?.invoices == null) &&
         !(tile.key === 'revenue' && !d.sales.visible()) &&
         !(tile.key === 'rating' && !d.rating.visible()),

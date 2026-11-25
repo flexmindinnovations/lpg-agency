@@ -20,10 +20,10 @@ class SqlAlchemyTenantModuleSettingRepository:
     def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
         self._uow = unit_of_work
 
-    async def disabled_keys(self) -> frozenset[str]:
+    async def enabled_keys(self) -> frozenset[str]:
         result = await self._uow.session.execute(
             select(TenantModuleSettingModel.module_key).where(
-                TenantModuleSettingModel.enabled.is_(False)
+                TenantModuleSettingModel.enabled.is_(True)
             )
         )
         return frozenset(result.scalars())

@@ -55,7 +55,10 @@ if TYPE_CHECKING:
     from lpg.application.accounting.ports import CashHandoverRegisterEntry, DriverCashInHand
     from lpg.domain.accounting.cash_handover import CashHandover
 
-router = APIRouter(prefix="/cash-handovers", tags=["Cash Handovers"])
+router = APIRouter(
+    prefix="/cash-handovers",
+    tags=["Cash Handovers"],
+)
 
 _IST = ZoneInfo("Asia/Kolkata")
 
