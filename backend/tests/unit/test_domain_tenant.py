@@ -50,6 +50,47 @@ class TestRename:
             tenant.rename("   ")
 
 
+class TestUpdateDetails:
+    def test_changes_name_and_contact_email_with_provisioning_normalisation(self) -> None:
+        tenant = _make_tenant()
+
+        tenant.update_details(
+            name="  Sunrise LPG  ", primary_contact_email=" Owner@Sunrise.example "
+        )
+
+        assert tenant.name == "Sunrise LPG"
+        assert tenant.primary_contact_email == "owner@sunrise.example"
+        assert tenant.slug == "sunrise-gas"
+        assert [type(e) for e in tenant.events] == [TenantRenamed]
+
+    def test_records_no_rename_when_only_the_email_changes(self) -> None:
+        tenant = _make_tenant()
+
+        tenant.update_details(name=tenant.name, primary_contact_email="new@sunrise.example")
+
+        assert tenant.primary_contact_email == "new@sunrise.example"
+        assert list(tenant.events) == []
+
+    @pytest.mark.parametrize(
+        ("name", "email"),
+        [("   ", "ops@sunrise.example"), ("x" * 121, "ops@sunrise.example"), ("Ok", "no-at")],
+    )
+    def test_rejects_invalid_details_and_changes_nothing(self, name: str, email: str) -> None:
+        tenant = _make_tenant()
+
+        with pytest.raises(InvariantViolation):
+            tenant.update_details(name=name, primary_contact_email=email)
+
+        assert tenant.name == "Sunrise Gas Agency"
+        assert tenant.primary_contact_email == "ops@sunrise-gas.example"
+
+    def test_a_closed_agency_cannot_be_edited(self) -> None:
+        tenant = _make_tenant(status="closed")
+
+        with pytest.raises(InvariantViolation):
+            tenant.update_details(name="New", primary_contact_email="new@sunrise.example")
+
+
 class TestLifecycle:
     def test_activate_moves_trial_to_active(self) -> None:
         tenant = _make_tenant()

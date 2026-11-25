@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { TooltipModule } from 'primeng/tooltip';
 import { DOCUMENT } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
@@ -149,6 +150,7 @@ const PRINCIPLES = [
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TooltipModule,
     ReactiveFormsModule,
     HeaderTitlePortalDirective,
     PageHeaderComponent,

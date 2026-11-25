@@ -12,7 +12,7 @@ import { Message } from 'primeng/message';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import { MessageService } from 'primeng/api';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { PageHeaderComponent, SectionCardComponent } from '@lpg/shared/ui';
+import { InfoTipComponent, PageHeaderComponent, SectionCardComponent } from '@lpg/shared/ui';
 import {
   NotificationSettingsService,
   type NotificationEventResponse,
@@ -48,6 +48,7 @@ const AUDIENCES: readonly { key: string; heading: string }[] = [
     HeaderTitlePortalDirective,
     PageHeaderComponent,
     SectionCardComponent,
+    InfoTipComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -99,9 +100,10 @@ const AUDIENCES: readonly { key: string; heading: string }[] = [
                           <small>Always on</small>
                         }
                       } @else {
-                        <small class="notif__na" title="No approved template for this channel"
-                          >—</small
-                        >
+                        <span class="notif__na">
+                          <span aria-hidden="true">—</span>
+                          <lpg-info-tip text="No approved template for this channel" />
+                        </span>
                       }
                     </span>
                   }
@@ -166,6 +168,12 @@ const AUDIENCES: readonly { key: string; heading: string }[] = [
       }
       .notif__name small,
       .notif__cell small {
+        color: var(--color-text-secondary);
+      }
+      .notif__na {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
         color: var(--color-text-secondary);
       }
       .notif__cell {

@@ -53,6 +53,7 @@ from lpg.api.v1.schemas.admin import (
     SetFeatureFlagRolloutPercentageRequest,
     StaffUserResponse,
     TenantResponse,
+    UpdateAgencyRequest,
 )
 from lpg.api.v1.schemas.identity import PrincipalResponse
 from lpg.api.v1.schemas.license import (
@@ -138,6 +139,10 @@ from lpg.application.tenant.manage_lifecycle import (
 from lpg.application.tenant.provision_tenant import (
     ProvisionTenantCommand,
     ProvisionTenantUseCase,
+)
+from lpg.application.tenant.update_agency import (
+    UpdateAgencyDetailsCommand,
+    UpdateAgencyDetailsUseCase,
 )
 from lpg.config.settings import Settings, get_settings
 from lpg.domain.license.license import License
@@ -481,6 +486,31 @@ async def issue_agency_admin_setup_link(
         ).execute(IssueSetupLinkCommand(tenant_id=tenant_id, user_id=user_id))
         await uow.commit()
     return _setup_response(issued)
+
+
+@router.patch(
+    "/agencies/{tenant_id}",
+    response_model=TenantResponse,
+    summary="Update an agency's name and contact email",
+)
+async def update_agency(
+    tenant_id: uuid.UUID,
+    body: UpdateAgencyRequest,
+    _principal: Annotated[
+        PlatformPrincipal, Depends(require_live_platform_permission("tenant:manage_platform"))
+    ],
+    uow_factory: Annotated[_UowFactory, Depends(get_platform_unit_of_work_factory)],
+) -> TenantResponse:
+    async with uow_factory(tenant_id) as uow:
+        repository = SqlAlchemyTenantRepository(uow)  # type: ignore[arg-type]
+        tenant = await UpdateAgencyDetailsUseCase(repository, uow).execute(
+            UpdateAgencyDetailsCommand(
+                tenant_id=tenant_id,
+                name=body.name,
+                primary_contact_email=body.primary_contact_email,
+            )
+        )
+        return _tenant_response(tenant)
 
 
 @router.patch("/agencies/{tenant_id}/suspend", status_code=204, summary="Suspend an agency")

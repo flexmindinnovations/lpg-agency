@@ -16,7 +16,6 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
-  box-shadow: var(--shadow-sm);
   max-width: 900px;
   margin: 0 auto;
   width: 100%;

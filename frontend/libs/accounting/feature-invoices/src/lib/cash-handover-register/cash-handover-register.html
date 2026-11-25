@@ -106,44 +106,44 @@
   <div class="dialog-form">
     <div class="dialog-form__fields">
       <dl class="register__detail">
-        <div>
-          <dt>Driver</dt>
-          <dd>{{ entry.driver_name }}</dd>
+        <div class="info-item">
+          <dt class="info-label">Driver</dt>
+          <dd class="info-value">{{ entry.driver_name }}</dd>
         </div>
-        <div>
-          <dt>Vehicle</dt>
-          <dd>{{ entry.vehicle_registration ?? '—' }}</dd>
+        <div class="info-item">
+          <dt class="info-label">Vehicle</dt>
+          <dd class="info-value">{{ entry.vehicle_registration ?? '—' }}</dd>
         </div>
-        <div>
-          <dt>Declared</dt>
-          <dd>{{ formatTimestamp(entry.declared_at) }}</dd>
+        <div class="info-item">
+          <dt class="info-label">Declared</dt>
+          <dd class="info-value">{{ formatTimestamp(entry.declared_at) }}</dd>
         </div>
-        <div>
-          <dt>Cash stops</dt>
-          <dd>{{ entry.cash_stop_count }}</dd>
+        <div class="info-item">
+          <dt class="info-label">Cash stops</dt>
+          <dd class="info-value">{{ entry.cash_stop_count }}</dd>
         </div>
-        <div>
-          <dt>Expected</dt>
-          <dd>{{ formatCurrencyInr(entry.expected_amount) }}</dd>
+        <div class="info-item">
+          <dt class="info-label">Expected</dt>
+          <dd class="info-value">{{ formatCurrencyInr(entry.expected_amount) }}</dd>
         </div>
-        <div>
-          <dt>Handed over</dt>
-          <dd>{{ formatCurrencyInr(entry.actual_amount) }}</dd>
+        <div class="info-item">
+          <dt class="info-label">Handed over</dt>
+          <dd class="info-value">{{ formatCurrencyInr(entry.actual_amount) }}</dd>
         </div>
         @if (entry.upi_expected !== null && entry.upi_expected !== undefined) {
-        <div>
-          <dt>UPI collected</dt>
-          <dd>{{ formatCurrencyInr(entry.upi_expected) }}</dd>
+        <div class="info-item">
+          <dt class="info-label">UPI collected</dt>
+          <dd class="info-value">{{ formatCurrencyInr(entry.upi_expected) }}</dd>
         </div>
         } @if (+entry.shortfall > 0) {
-        <div>
-          <dt>Shortfall</dt>
-          <dd class="register__short">{{ formatCurrencyInr(entry.shortfall) }}</dd>
+        <div class="info-item">
+          <dt class="info-label">Shortfall</dt>
+          <dd class="info-value register__short">{{ formatCurrencyInr(entry.shortfall) }}</dd>
         </div>
         } @if (+entry.excess > 0) {
-        <div>
-          <dt>Excess</dt>
-          <dd>{{ formatCurrencyInr(entry.excess) }}</dd>
+        <div class="info-item">
+          <dt class="info-label">Excess</dt>
+          <dd class="info-value">{{ formatCurrencyInr(entry.excess) }}</dd>
         </div>
         }
       </dl>

@@ -7,8 +7,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
  * only the projected content differs.
  *
  * A host area can flatten every card inside it by setting `--card-border`
- * and/or `--card-shadow` (e.g. `none`) — custom properties inherit through
- * view encapsulation, so no `::ng-deep` is needed. Unset, cards look as above.
+ * (e.g. `none`) — custom properties inherit through view encapsulation, so no
+ * `::ng-deep` is needed. Unset, cards have one border and no shadow.
  */
 @Component({
   selector: 'lpg-section-card',
@@ -39,7 +39,6 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         border: var(--card-border, var(--border-width) solid var(--component-card-border));
         border-radius: var(--radius-card);
         padding: var(--component-card-padding);
-        box-shadow: var(--card-shadow, var(--component-card-shadow));
         overflow: hidden;
       }
 

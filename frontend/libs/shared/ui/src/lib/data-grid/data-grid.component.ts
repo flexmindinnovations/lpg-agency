@@ -237,9 +237,14 @@ function escapeHtml(text: string): string {
   `,
   styles: [
     `
+      /* The table's surface is painted once, here; AG Grid's own layers (wrapper,
+         viewports, rows) are transparent, so the app background shows through it
+         like every other surface. Only the header is opaque, because rows scroll
+         under it. */
       :host {
         display: flex;
         flex-direction: column;
+        background: var(--surface-pane);
         flex: 1;
         min-block-size: var(--component-data-grid-min-block-size, clamp(12rem, 45dvh, 32rem));
         block-size: 100%;
@@ -336,14 +341,21 @@ function escapeHtml(text: string): string {
         --ag-cell-horizontal-padding: 12px;
         --ag-border-color: var(--component-data-grid-border-color);
         --ag-header-background-color: var(--component-data-grid-header-background);
-        --ag-background-color: var(--color-surface-base);
+        --ag-background-color: transparent;
+        --ag-data-background-color: transparent;
+        --ag-chrome-background-color: transparent;
+        /* Column menus and filter pop-ups float over rows: they stay solid. */
+        --ag-menu-background-color: var(--surface-acrylic);
+        --ag-panel-background-color: var(--surface-acrylic);
+        --ag-picker-list-background-color: var(--surface-acrylic);
+        --ag-tooltip-background-color: var(--surface-acrylic);
         --ag-foreground-color: var(--color-text-primary);
         --ag-font-size: var(--typography-body-small-font-size);
         --ag-font-family: 'Inter', system-ui, -apple-system, sans-serif;
         --ag-header-font-weight: var(--typography-label-font-weight);
         --ag-header-font-size: var(--typography-caption-font-size);
         --ag-odd-row-background-color: transparent;
-        --ag-row-hover-color: var(--color-surface-overlay);
+        --ag-row-hover-color: var(--surface-inset);
         --ag-selected-row-background-color: var(--color-highlight-background);
         --ag-range-selection-border-color: var(--color-action-primary);
         --ag-borders: none;

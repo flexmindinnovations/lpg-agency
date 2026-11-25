@@ -305,6 +305,10 @@ export type { EnableDriverLoginApiV1EmployeesEmployeeIdEnableLoginPost$Params as
 export { enableDriverLoginApiV1EmployeesEmployeeIdEnableLoginPost as enableDriverLoginApiV1EmployeesEmployeeIdEnableLoginPost } from './fn/employees/enable-driver-login-api-v-1-employees-employee-id-enable-login-post';
 export type { ChangeEmployeeStatusApiV1EmployeesEmployeeIdStatusPatch$Params as ChangeEmployeeStatusApiV1EmployeesEmployeeIdStatusPatch$Params } from './fn/employees/change-employee-status-api-v-1-employees-employee-id-status-patch';
 export { changeEmployeeStatusApiV1EmployeesEmployeeIdStatusPatch as changeEmployeeStatusApiV1EmployeesEmployeeIdStatusPatch } from './fn/employees/change-employee-status-api-v-1-employees-employee-id-status-patch';
+export type { DownloadOriginalApiV1FilesDownloadGet$Params as DownloadOriginalApiV1FilesDownloadGet$Params } from './fn/files/download-original-api-v-1-files-download-get';
+export { downloadOriginalApiV1FilesDownloadGet as downloadOriginalApiV1FilesDownloadGet } from './fn/files/download-original-api-v-1-files-download-get';
+export type { StorageUsageApiV1FilesUsageGet$Params as StorageUsageApiV1FilesUsageGet$Params } from './fn/files/storage-usage-api-v-1-files-usage-get';
+export { storageUsageApiV1FilesUsageGet as storageUsageApiV1FilesUsageGet } from './fn/files/storage-usage-api-v-1-files-usage-get';
 export type { ListGoodsReceiptWeighmentsApiV1GoodsReceiptNotesGrnIdWeighmentGet$Params as ListGoodsReceiptWeighmentsApiV1GoodsReceiptNotesGrnIdWeighmentGet$Params } from './fn/compliance-weighment/list-goods-receipt-weighments-api-v-1-goods-receipt-notes-grn-id-weighment-get';
 export { listGoodsReceiptWeighmentsApiV1GoodsReceiptNotesGrnIdWeighmentGet as listGoodsReceiptWeighmentsApiV1GoodsReceiptNotesGrnIdWeighmentGet } from './fn/compliance-weighment/list-goods-receipt-weighments-api-v-1-goods-receipt-notes-grn-id-weighment-get';
 export type { RecordGoodsReceiptWeighmentApiV1GoodsReceiptNotesGrnIdWeighmentPost$Params as RecordGoodsReceiptWeighmentApiV1GoodsReceiptNotesGrnIdWeighmentPost$Params } from './fn/compliance-weighment/record-goods-receipt-weighment-api-v-1-goods-receipt-notes-grn-id-weighment-post';
@@ -487,6 +491,8 @@ export type { ListAgenciesApiV1PlatformAgenciesGet$Params as ListAgenciesApiV1Pl
 export { listAgenciesApiV1PlatformAgenciesGet as listAgenciesApiV1PlatformAgenciesGet } from './fn/platform-console/list-agencies-api-v-1-platform-agencies-get';
 export type { CreateAgencyApiV1PlatformAgenciesPost$Params as CreateAgencyApiV1PlatformAgenciesPost$Params } from './fn/platform-console/create-agency-api-v-1-platform-agencies-post';
 export { createAgencyApiV1PlatformAgenciesPost as createAgencyApiV1PlatformAgenciesPost } from './fn/platform-console/create-agency-api-v-1-platform-agencies-post';
+export type { UpdateAgencyApiV1PlatformAgenciesTenantIdPatch$Params as UpdateAgencyApiV1PlatformAgenciesTenantIdPatch$Params } from './fn/platform-console/update-agency-api-v-1-platform-agencies-tenant-id-patch';
+export { updateAgencyApiV1PlatformAgenciesTenantIdPatch as updateAgencyApiV1PlatformAgenciesTenantIdPatch } from './fn/platform-console/update-agency-api-v-1-platform-agencies-tenant-id-patch';
 export type { AddAgencyAdminApiV1PlatformAgenciesTenantIdAdminsPost$Params as AddAgencyAdminApiV1PlatformAgenciesTenantIdAdminsPost$Params } from './fn/platform-console/add-agency-admin-api-v-1-platform-agencies-tenant-id-admins-post';
 export { addAgencyAdminApiV1PlatformAgenciesTenantIdAdminsPost as addAgencyAdminApiV1PlatformAgenciesTenantIdAdminsPost } from './fn/platform-console/add-agency-admin-api-v-1-platform-agencies-tenant-id-admins-post';
 export type { CloseAgencyApiV1PlatformAgenciesTenantIdClosePatch$Params as CloseAgencyApiV1PlatformAgenciesTenantIdClosePatch$Params } from './fn/platform-console/close-agency-api-v-1-platform-agencies-tenant-id-close-patch';

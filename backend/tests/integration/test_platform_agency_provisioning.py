@@ -35,6 +35,10 @@ from lpg.application.tenant.provision_tenant import (
     ProvisionTenantCommand,
     ProvisionTenantUseCase,
 )
+from lpg.application.tenant.update_agency import (
+    UpdateAgencyDetailsCommand,
+    UpdateAgencyDetailsUseCase,
+)
 from lpg.infrastructure.identity.token_hasher import Sha256TokenHasher
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.persistence.repositories.identity import (
@@ -257,6 +261,54 @@ class TestProvisioning:
         assert row.tenant_id == PLATFORM_AUDIT_TENANT_ID
         assert row.actor_id == _ACTOR
         assert row.slug == result.tenant.slug
+
+
+class TestUpdateDetails:
+    async def test_updates_only_the_targeted_agency_and_audits_the_change(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        target = (await _provision(database, _command())).tenant
+        bystander = (await _provision(database, _command())).tenant
+
+        async with _platform_uow(database, target.id) as uow:
+            await UpdateAgencyDetailsUseCase(
+                SqlAlchemyTenantRepository(uow),  # type: ignore[arg-type]
+                uow,
+            ).execute(
+                UpdateAgencyDetailsCommand(
+                    tenant_id=target.id,
+                    name="Renamed Agency",
+                    primary_contact_email="renamed@prov.example",
+                )
+            )
+
+        async with admin_engine.connect() as conn:
+            rows = {
+                row.id: (row.name, row.slug, row.primary_contact_email)
+                for row in await conn.execute(
+                    text(
+                        "SELECT id, name, slug, primary_contact_email FROM tenant.tenant "
+                        "WHERE id IN (:target, :bystander)"
+                    ),
+                    {"target": target.id, "bystander": bystander.id},
+                )
+            }
+        assert rows[target.id] == ("Renamed Agency", target.slug, "renamed@prov.example")
+        assert rows[bystander.id] == (
+            bystander.name,
+            bystander.slug,
+            bystander.primary_contact_email,
+        )
+        assert (
+            await _scalar(
+                admin_engine,
+                "SELECT count(*) FROM audit.audit_log WHERE entity_name = 'tenant' "
+                "AND entity_id = :id AND action = 'update' AND actor_id = :actor",
+                id=str(target.id),
+                actor=_ACTOR,
+            )
+            == 1
+        )
 
 
 class TestConflicts:

@@ -142,7 +142,6 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
         align-items: center;
         justify-content: center;
         padding: var(--spacing-lg);
-        background: var(--color-surface-base);
       }
 
       .auth-shell__content-inner {

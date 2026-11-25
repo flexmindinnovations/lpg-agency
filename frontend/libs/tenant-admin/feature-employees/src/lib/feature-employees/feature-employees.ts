@@ -23,6 +23,7 @@ import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import {
+  ModuleAccessStore,
   AdminEmployeeService,
   AdminBranchService,
   DeliveryService,
@@ -98,6 +99,7 @@ const STATUS_SEVERITY: Record<string, ChipSeverity> = {
 })
 export class FeatureEmployees implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly modules = inject(ModuleAccessStore);
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
@@ -249,9 +251,16 @@ export class FeatureEmployees implements OnInit {
   /** Which driver profiles have a login. Best effort: a user without `drivers:read` just sees
    * no login column values (the enable action still works), not an error. */
   protected loadDrivers(): void {
-    this.deliveryService.listDrivers(0, 200).subscribe({
-      next: (page) => this.drivers.set(page.items),
-      error: () => this.drivers.set(null),
+    // Employees is always on, so the module list may still be on its way here.
+    this.modules.ensureLoaded().subscribe(() => {
+      if (!this.modules.isEnabled('drivers')) {
+        this.drivers.set(null);
+        return;
+      }
+      this.deliveryService.listDrivers(0, 200).subscribe({
+        next: (page) => this.drivers.set(page.items),
+        error: () => this.drivers.set(null),
+      });
     });
   }
 

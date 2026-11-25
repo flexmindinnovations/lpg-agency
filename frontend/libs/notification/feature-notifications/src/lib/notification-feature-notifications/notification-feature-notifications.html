@@ -17,7 +17,7 @@
           size="small"
           [severity]="filter() === 'all' ? 'primary' : 'secondary'"
           (click)="setFilter('all')"
-          title="All notifications"
+          pTooltip="All notifications"
           aria-label="All notifications"
         >
           <i class="pi pi-inbox" aria-hidden="true"></i>
@@ -29,7 +29,7 @@
           size="small"
           [severity]="filter() === 'unread' ? 'primary' : 'secondary'"
           (click)="setFilter('unread')"
-          title="Unread notifications"
+          pTooltip="Unread notifications"
           aria-label="Unread notifications"
         >
           <i class="pi pi-envelope" aria-hidden="true"></i>

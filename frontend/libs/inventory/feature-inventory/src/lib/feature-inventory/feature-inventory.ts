@@ -33,6 +33,7 @@ import {
   AdminWarehouseService,
   DeliveryService,
   InventoryService,
+  ModuleAccessStore,
   NotifyService,
   WeighmentService,
   errorMessageFor as sharedErrorMessageFor,
@@ -145,6 +146,15 @@ export class FeatureInventory implements OnInit {
   private readonly deliveryService = inject(DeliveryService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly weighmentService = inject(WeighmentService);
+  private readonly modules = inject(ModuleAccessStore);
+  // Inventory requires neither module: while one is off, its parts of this
+  // screen are hidden and its API is not called.
+  protected readonly hasVehicles = computed(() => this.modules.isEnabled('vehicles'));
+  private readonly hasScales = computed(() => this.modules.isEnabled('scales'));
+  protected readonly locationTypeOptions = computed(() => [
+    { label: 'Godown', value: 'warehouse' },
+    ...(this.hasVehicles() ? [{ label: 'Vehicle', value: 'vehicle' }] : []),
+  ]);
   private readonly notify = inject(NotifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute, { optional: true });
@@ -449,15 +459,19 @@ export class FeatureInventory implements OnInit {
       },
     });
     this.warehouseService.listWarehouses().subscribe({ next: (w) => this.warehouses.set(w) });
-    this.deliveryService.listVehicles(0, 200).subscribe({
-      next: (page) => this.vehicles.set(page.items),
-    });
+    if (this.hasVehicles()) {
+      this.deliveryService.listVehicles(0, 200).subscribe({
+        next: (page) => this.vehicles.set(page.items),
+      });
+    }
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (ct) => this.cylinderTypes.set(ct),
     });
-    this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
-      next: (res) => this.scales.set(res.items),
-    });
+    if (this.hasScales()) {
+      this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
+        next: (res) => this.scales.set(res.items),
+      });
+    }
     this.loadReorderPolicies();
     this.loadReorderSignals();
 
@@ -629,6 +643,11 @@ export class FeatureInventory implements OnInit {
             `${grn.grn_number ?? 'Goods receipt'} recorded — ${grn.quantity_received} cylinders.`,
           );
           this.reload();
+          // No scales, no weight sample to record: the receipt is complete.
+          if (!this.hasScales()) {
+            this.showGrnModal.set(false);
+            return;
+          }
           this.lastGrn.set(grn);
           const suggested = Math.max(1, Math.ceil(grn.quantity_received * 0.1));
           this.weighmentForm.reset({

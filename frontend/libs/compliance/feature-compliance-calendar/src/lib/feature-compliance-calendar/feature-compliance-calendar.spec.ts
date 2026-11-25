@@ -4,7 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
 import { FeatureComplianceCalendar, daysUntil, expiryUrgency } from './feature-compliance-calendar';
-import { ApiConfiguration } from '@lpg/shared/data-access';
+import { ApiConfiguration, ModuleAccessStore } from '@lpg/shared/data-access';
 import { PERMISSION_CHECKER } from '@lpg/shared/util';
 
 const EMPTY_PAGE = { items: [], total: 0, page: 1, page_size: 500 };
@@ -29,6 +29,7 @@ describe('FeatureComplianceCalendar', () => {
         provideHttpClientTesting(),
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
         MessageService,
+        { provide: ModuleAccessStore, useValue: { isEnabled: () => true } },
         { provide: PERMISSION_CHECKER, useValue: signal(null) },
       ],
     }).compileComponents();

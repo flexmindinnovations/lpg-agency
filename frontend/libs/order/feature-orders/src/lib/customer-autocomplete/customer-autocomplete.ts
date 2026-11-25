@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   Input,
   forwardRef,
@@ -77,6 +78,7 @@ import { CustomerService, type CustomerResponse } from '@lpg/shared/data-access'
 })
 export class CustomerAutocomplete implements ControlValueAccessor {
   private readonly customerService = inject(CustomerService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
 
   @Input() placeholder = 'Name, phone or consumer no.';
   @Input() inputId = 'customer_autocomplete';
@@ -129,6 +131,10 @@ export class CustomerAutocomplete implements ControlValueAccessor {
   writeValue(value: CustomerResponse | null): void {
     this.selected = value;
     this.emitted = value;
+    this.suggestions.set([]);
+    // `selected` is a plain field: without this a form reset leaves the old
+    // text in the box.
+    this.changeDetector.markForCheck();
   }
 
   registerOnChange(fn: (value: CustomerResponse | null) => void): void {

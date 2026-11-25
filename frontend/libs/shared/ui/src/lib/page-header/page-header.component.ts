@@ -1,16 +1,9 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  HostListener,
-  input,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Tooltip } from 'primeng/tooltip';
+import { InfoTipComponent } from '../info-tip/info-tip.component';
 
 /**
- * The title block for a page — heading, info-circle tooltip for subtitle, optional
+ * The title block for a page — heading, info button for the subtitle, optional
  * back-link, and an `actions` slot.
  *
  * The dashboard shell portals page titles into its own fixed top bar via
@@ -26,8 +19,11 @@ import { Tooltip } from 'primeng/tooltip';
 @Component({
   selector: 'lpg-page-header',
   standalone: true,
-  imports: [RouterLink, Tooltip],
+  imports: [RouterLink, InfoTipComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // `title` is also an HTML attribute: left on the element, the browser shows
+  // its own tooltip over the whole header.
+  host: { '[attr.title]': 'null' },
   template: `
     <div class="page-header">
       <div class="page-header__text">
@@ -40,17 +36,7 @@ import { Tooltip } from 'primeng/tooltip';
         <div class="page-header__title-row">
           <h1 class="page-header__title">{{ title() }}</h1>
           @if (subtitle()) {
-            <button
-              type="button"
-              class="page-header__info"
-              [pTooltip]="subtitle()"
-              tooltipPosition="bottom"
-              [attr.aria-label]="subtitle()"
-              [attr.aria-expanded]="isInfoOpen()"
-              (click)="toggleInfo($event)"
-            >
-              <i class="pi pi-info-circle" aria-hidden="true"></i>
-            </button>
+            <lpg-info-tip class="page-header__info" [text]="subtitle()" position="bottom" />
           }
         </div>
       </div>
@@ -104,31 +90,7 @@ import { Tooltip } from 'primeng/tooltip';
       }
 
       .page-header__info {
-        background: transparent;
-        border: none;
-        font-family: inherit;
         font-size: 0.95rem;
-        color: var(--color-text-secondary);
-        cursor: pointer;
-        flex-shrink: 0;
-        transition: color var(--motion-duration-fast) var(--motion-easing-standard);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2px;
-        margin: 0;
-        border-radius: var(--radius-sm);
-        line-height: 1;
-      }
-
-      .page-header__info:hover,
-      .page-header__info:focus-visible {
-        color: var(--color-action-primary);
-        outline: none;
-      }
-
-      .page-header__info:focus-visible {
-        box-shadow: 0 0 0 2px var(--color-action-primary);
       }
 
       .page-header__back {
@@ -163,27 +125,4 @@ export class PageHeaderComponent {
   /** A router link array/string; shows a back affordance above the title. */
   readonly backLink = input<unknown[] | string | null>(null);
   readonly backLabel = input<string>('Back');
-
-  protected readonly isInfoOpen = signal(false);
-  private readonly infoTooltip = viewChild(Tooltip);
-
-  protected toggleInfo(event: Event): void {
-    event.stopPropagation();
-    const tip = this.infoTooltip();
-    if (this.isInfoOpen() || tip?.active) {
-      tip?.deactivate();
-      this.isInfoOpen.set(false);
-    } else {
-      tip?.activate();
-      this.isInfoOpen.set(true);
-    }
-  }
-
-  @HostListener('document:click')
-  onDocumentClick(): void {
-    if (this.isInfoOpen()) {
-      this.infoTooltip()?.deactivate();
-      this.isInfoOpen.set(false);
-    }
-  }
 }

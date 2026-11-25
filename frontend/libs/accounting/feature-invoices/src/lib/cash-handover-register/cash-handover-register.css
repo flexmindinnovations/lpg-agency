@@ -24,22 +24,26 @@
   align-items: stretch;
 }
 
-.register__totals,
 .register__detail {
+  display: grid;
+  grid-template-columns: var(--detail-columns);
+  gap: var(--spacing-sm) var(--spacing-xl);
+  margin: 0;
+}
+
+.register__totals {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--spacing-md);
   margin: 0;
 }
 
-.register__totals dt,
-.register__detail dt {
+.register__totals dt {
   color: var(--color-text-secondary);
   font-size: var(--typography-caption-font-size);
 }
 
-.register__totals dd,
-.register__detail dd {
+.register__totals dd {
   margin: 0;
   font-weight: var(--typography-label-font-weight);
 }

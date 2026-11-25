@@ -26,6 +26,13 @@ export class AppErrorHandler implements ErrorHandler {
     if (apiError && (wasToasted(error) || (error as { status?: number }).status === 401)) {
       return; // 401: the session-expired dialog already handles it.
     }
+    // A screen reached into a module that is switched off. That is how the
+    // agency is set up, not a fault to report: screens hide such parts, and one
+    // that misses a call just goes without the data. A change the user asked
+    // for is still explained, by the toast interceptor.
+    if (isAppError(error) && error.errorCode === 'MODULE_DISABLED') {
+      return;
+    }
     const now = Date.now();
     if (now - this.lastShownAt < MIN_INTERVAL_MS) {
       return;

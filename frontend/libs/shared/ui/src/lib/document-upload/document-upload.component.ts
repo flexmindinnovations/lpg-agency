@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { Observable } from 'rxjs';
+import { onDrawerClose } from '../directives/on-drawer-close';
 
 /** What a call site's upload function must resolve to. */
 export interface DocumentUploadResult {
@@ -371,6 +372,8 @@ export class DocumentUploadComponent {
 
   constructor() {
     this.destroyRef.onDestroy(() => this.revokePreview());
+    // Without emitting `cleared`: the host resets its own form when it reopens.
+    onDrawerClose(() => this.reset());
   }
 
   protected onFileSelected(event: Event): void {
@@ -399,13 +402,18 @@ export class DocumentUploadComponent {
   }
 
   protected clear(): void {
+    this.reset();
+    this.cleared.emit();
+  }
+
+  private reset(): void {
     this.revokePreview();
     this.fileName.set(null);
     this.fileSize.set(null);
     this.previewUrl.set(null);
     this.errorMessage.set(null);
+    this.isDragging.set(false);
     this.stage.set('idle');
-    this.cleared.emit();
   }
 
   protected formatSize(bytes: number): string {

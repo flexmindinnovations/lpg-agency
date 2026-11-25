@@ -14,7 +14,7 @@ import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { FieldsetModule } from 'primeng/fieldset';
-import { TooltipModule } from 'primeng/tooltip';
+import { InfoTipComponent } from '@lpg/shared/ui';
 import { AdminStaffUserService, NotifyService, errorMessageFor } from '@lpg/shared/data-access';
 
 const PERMISSION_DESCRIPTIONS: Record<string, string> = {
@@ -64,7 +64,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
     ButtonModule,
     CheckboxModule,
     FieldsetModule,
-    TooltipModule,
+    InfoTipComponent,
   ],
   template: `
     <p-dialog
@@ -104,14 +104,10 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
                         ></p-checkbox>
                         <label [for]="perm" class="flex items-center gap-1 cursor-pointer">
                           {{ perm.substring(group.module.length + 1) | titlecase }}
-                          @if (getPermissionDescription(perm); as desc) {
-                            <i
-                              class="pi pi-info-circle permission-info"
-                              [pTooltip]="desc"
-                              tooltipPosition="top"
-                            ></i>
-                          }
                         </label>
+                        @if (getPermissionDescription(perm); as desc) {
+                          <lpg-info-tip [text]="desc" />
+                        }
                       </div>
                     }
                   </div>
@@ -152,9 +148,6 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
       .permission-item {
         display: flex;
         align-items: center;
-      }
-      .permission-info {
-        color: var(--color-text-secondary);
       }
     `,
   ],

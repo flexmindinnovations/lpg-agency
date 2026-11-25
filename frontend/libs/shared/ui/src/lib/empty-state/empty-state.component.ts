@@ -14,6 +14,9 @@ export type EmptyStateTone = 'neutral' | 'error';
   selector: 'lpg-empty-state',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // `title` is also an HTML attribute: left on the element, the browser shows
+  // its own tooltip over the whole block.
+  host: { '[attr.title]': 'null' },
   template: `
     <div
       class="empty-state"

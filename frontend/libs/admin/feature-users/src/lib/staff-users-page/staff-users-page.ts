@@ -228,21 +228,21 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
           <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
             <div class="dialog-form__fields">
               <dl class="user-summary">
-                <div>
-                  <dt>Email</dt>
-                  <dd>{{ user.email || '—' }}</dd>
+                <div class="info-item">
+                  <dt class="info-label">Email</dt>
+                  <dd class="info-value">{{ user.email || '—' }}</dd>
                 </div>
-                <div>
-                  <dt>Phone</dt>
-                  <dd>{{ user.contact_phone || '—' }}</dd>
+                <div class="info-item">
+                  <dt class="info-label">Phone</dt>
+                  <dd class="info-value">{{ user.contact_phone || '—' }}</dd>
                 </div>
-                <div>
-                  <dt>Role</dt>
-                  <dd>{{ roleName(user.role) }}</dd>
+                <div class="info-item">
+                  <dt class="info-label">Role</dt>
+                  <dd class="info-value">{{ roleName(user.role) }}</dd>
                 </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd>{{ user.is_active ? 'Active' : 'Deactivated' }}</dd>
+                <div class="info-item">
+                  <dt class="info-label">Status</dt>
+                  <dd class="info-value">{{ user.is_active ? 'Active' : 'Deactivated' }}</dd>
                 </div>
               </dl>
 
@@ -418,20 +418,9 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
 
       .user-summary {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--spacing-md);
+        grid-template-columns: var(--detail-columns);
+        gap: var(--spacing-sm) var(--spacing-xl);
         margin: 0;
-      }
-
-      .user-summary dt {
-        font-size: var(--typography-body-small-font-size);
-        color: var(--color-text-secondary);
-      }
-
-      .user-summary dd {
-        margin: 0;
-        color: var(--color-text-primary);
-        overflow-wrap: anywhere;
       }
 
       .self-note {

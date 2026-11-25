@@ -137,7 +137,7 @@
         </div>
       </div>
       <div class="detail-actions">
-        @if (customer.status === 'active' || customer.status === 'onboarding') {
+        @if (hasOrders() && (customer.status === 'active' || customer.status === 'onboarding')) {
         <a
           *lpgHasPermission="'orders:create'"
           pButton
@@ -235,7 +235,9 @@
       <p-tablist>
         <p-tab value="0">Delivery Addresses</p-tab>
         <p-tab value="1">KYC Documents</p-tab>
+        @if (hasOrders()) {
         <p-tab value="2">Orders</p-tab>
+        }
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="0">
@@ -384,6 +386,7 @@
             </div>
           </div>
         </p-tabpanel>
+        @if (hasOrders()) {
         <p-tabpanel value="2">
           <div class="kyc-section">
             <div class="section-header">
@@ -419,6 +422,7 @@
             }
           </div>
         </p-tabpanel>
+        }
       </p-tabpanels>
     </p-tabs>
     }

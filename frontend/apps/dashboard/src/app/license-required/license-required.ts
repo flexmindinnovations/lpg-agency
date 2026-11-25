@@ -99,7 +99,6 @@ import {
         justify-content: center;
         min-block-size: 100vh;
         padding: var(--spacing-lg);
-        background: var(--color-surface-base);
       }
 
       .license-required__content {

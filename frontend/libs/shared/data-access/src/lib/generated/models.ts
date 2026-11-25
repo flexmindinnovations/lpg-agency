@@ -273,6 +273,7 @@ export type { StaffUserResponse } from './models/staff-user-response';
 export type { StatusTransitionsResponse } from './models/status-transitions-response';
 export type { StockRegisterLineResponse } from './models/stock-register-line-response';
 export type { StockRegisterResponse } from './models/stock-register-response';
+export type { StorageUsageResponse } from './models/storage-usage-response';
 export type { SubmitKycDocumentRequest } from './models/submit-kyc-document-request';
 export type { SuggestCylinderTestDueDateResponse } from './models/suggest-cylinder-test-due-date-response';
 export type { SupportContactsResponse } from './models/support-contacts-response';
@@ -286,6 +287,7 @@ export type { UninvoicedOrderResponse } from './models/uninvoiced-order-response
 export type { UnreadCountResponse } from './models/unread-count-response';
 export type { UnregisterDeviceRequest } from './models/unregister-device-request';
 export type { UpdateAgencyBusinessProfileRequest } from './models/update-agency-business-profile-request';
+export type { UpdateAgencyRequest } from './models/update-agency-request';
 export type { UpdateCustomerAddressRequest } from './models/update-customer-address-request';
 export type { UpdateCustomerProfileRequest } from './models/update-customer-profile-request';
 export type { UpdateDriverAssignmentRequest } from './models/update-driver-assignment-request';

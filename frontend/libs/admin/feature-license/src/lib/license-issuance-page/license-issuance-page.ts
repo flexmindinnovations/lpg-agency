@@ -36,7 +36,7 @@ import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid
 import { forkJoin } from 'rxjs';
 
 const PLAN_TIERS = ['basic', 'standard', 'premium'] as const;
-const APP_TYPES = ['customer_app', 'driver_app', 'warehouse_app'] as const;
+const APP_TYPES = ['customer_app', 'driver_app', 'admin_app'] as const;
 const VALIDITY_OPTIONS = [
   { label: '1 year', value: 365 },
   { label: '2 years', value: 730 },
@@ -122,10 +122,10 @@ const VALIDITY_OPTIONS = [
         >
           <div class="dialog-form__fields">
             <lpg-form-field
-              label="Tenant"
+              label="Agency"
               for="issue-tenant-id"
               [control]="issueForm.controls.tenantId"
-              [messages]="{ required: 'Select a tenant to issue a license for.' }"
+              [messages]="{ required: 'Select an agency to issue a license for.' }"
             >
               <p-select
                 inputId="issue-tenant-id"
@@ -144,8 +144,10 @@ const VALIDITY_OPTIONS = [
 
             @if (selectedIssueTenant(); as tenant) {
               <div class="tenant-preview">
-                <lpg-detail-item label="Slug">{{ tenant.slug }}</lpg-detail-item>
-                <lpg-detail-item label="Plan">{{ tenant.subscription_plan }}</lpg-detail-item>
+                <lpg-detail-item label="Agency code">{{ tenant.slug }}</lpg-detail-item>
+                <lpg-detail-item label="Plan">{{
+                  planLabel(tenant.subscription_plan)
+                }}</lpg-detail-item>
                 <lpg-detail-item label="Primary contact">{{
                   tenant.primary_contact_email
                 }}</lpg-detail-item>
@@ -216,7 +218,7 @@ const VALIDITY_OPTIONS = [
       >
         @if (issuedKey(); as issued) {
           <p class="page-lede">
-            Copy this key now and share it with the tenant — it will never be shown again.
+            Copy this key now and share it with the agency — it will never be shown again.
           </p>
           <div class="issued-key">{{ issued.plaintext_key }}</div>
 
@@ -270,10 +272,12 @@ const VALIDITY_OPTIONS = [
           <div class="detail-view">
             <div class="detail-view__fields">
               <lpg-detail-list>
-                <lpg-detail-item label="Tenant">{{ license.tenant_name ?? '—' }}</lpg-detail-item>
-                <lpg-detail-item label="Tenant ID">{{ license.tenant_id }}</lpg-detail-item>
+                <lpg-detail-item label="Agency">{{ license.tenant_name ?? '—' }}</lpg-detail-item>
+                <lpg-detail-item label="Agency code">{{
+                  agencyCodeFor(license.tenant_id)
+                }}</lpg-detail-item>
                 <lpg-detail-item label="Status">{{ statusLabel(license.status) }}</lpg-detail-item>
-                <lpg-detail-item label="Plan">{{ license.plan_tier }}</lpg-detail-item>
+                <lpg-detail-item label="Plan">{{ planLabel(license.plan_tier) }}</lpg-detail-item>
                 <lpg-detail-item label="Key">{{ license.key_prefix }}-****</lpg-detail-item>
                 <lpg-detail-item label="Issued">{{
                   formatDate(license.issued_at)
@@ -339,7 +343,10 @@ const VALIDITY_OPTIONS = [
                         <label [for]="'detail-app-' + option.value">{{ option.label }}</label>
                       </div>
                     }
-                    <span class="app-choices__hint">Choose the apps this cap applies to.</span>
+                    <span class="app-choices__hint"
+                      >Choose the apps this cap applies to. Limits are currently enforced for the
+                      Driver and Admin apps, when device control is on.</span
+                    >
                   </fieldset>
                   <lpg-form-field
                     label="Device cap"
@@ -565,7 +572,12 @@ export class LicenseIssuancePage implements OnInit {
   };
 
   protected readonly statusLabel = (status: string) => toSentenceCase(status);
+  protected readonly planLabel = (plan: string) => toSentenceCase(plan);
   protected readonly formatDate = formatTimestamp;
+
+  /** The code the agency's people sign in with (the tenant's slug). */
+  protected readonly agencyCodeFor = (tenantId: string) =>
+    this.agencies().find((agency) => agency.id === tenantId)?.slug ?? '—';
 
   /** `domain/license/license.py`'s `LicenseLifecycleState`:
    * pending_activation → active → grace → blocked/revoked. */
@@ -588,7 +600,7 @@ export class LicenseIssuancePage implements OnInit {
   protected readonly columns: DataGridColumn<LicenseResponse>[] = [
     {
       field: 'tenant_name',
-      header: 'Tenant',
+      header: 'Agency',
       sortable: true,
       filterable: true,
       valueFormatter: (value) => String(value ?? '—'),

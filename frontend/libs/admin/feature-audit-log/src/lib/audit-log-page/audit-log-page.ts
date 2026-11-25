@@ -222,7 +222,7 @@ interface Option<T> {
                     [routerLink]="['/orders', orderId]"
                     (click)="drawerVisible = false"
                     class="entity-name entity-link"
-                    title="View order details"
+                    pTooltip="View order details"
                   >
                     <span>{{ recordLabel(entry) }}</span>
                   </a>
@@ -288,7 +288,7 @@ interface Option<T> {
                   size="small"
                   class="copy-json-btn"
                   (click)="copyTechnicalIdentifiersAsJson(entry); $event.stopPropagation()"
-                  title="Copy all technical identifiers as JSON"
+                  pTooltip="Copy all technical identifiers as JSON"
                 >
                   <i
                     class="pi"
@@ -310,7 +310,7 @@ interface Option<T> {
                           type="button"
                           class="copy-icon-btn"
                           (click)="copyValue(item.value, item.key)"
-                          [title]="copiedKey() === item.key ? 'Copied!' : 'Copy ' + item.label"
+                          [pTooltip]="copiedKey() === item.key ? 'Copied!' : 'Copy ' + item.label"
                           [attr.aria-label]="'Copy ' + item.label"
                         >
                           <i
@@ -325,7 +325,7 @@ interface Option<T> {
                             [routerLink]="['/orders', item.value]"
                             (click)="drawerVisible = false"
                             class="copy-icon-btn"
-                            title="View order details"
+                            pTooltip="View order details"
                             aria-label="View order details"
                           >
                             <i class="pi pi-arrow-right" aria-hidden="true"></i>
@@ -363,6 +363,8 @@ interface Option<T> {
       }
 
       .audit-detail-header {
+        margin-inline: calc(-1 * var(--drawer-bleed, 0px));
+        padding-inline: var(--drawer-bleed, 0px);
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
@@ -464,28 +466,13 @@ interface Option<T> {
 
       .info-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--spacing-md);
+        grid-template-columns: var(--detail-columns);
+        gap: var(--spacing-sm) var(--spacing-xl);
         margin: 0;
-      }
-
-      .info-item {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
-        min-inline-size: 0;
-      }
-
-      .info-label {
-        font-size: var(--typography-caption-font-size);
-        color: var(--color-text-secondary);
       }
 
       .info-value {
-        margin: 0;
-        font-size: var(--typography-body-small-font-size);
-        color: var(--color-text-primary);
-        overflow-wrap: anywhere;
+        justify-self: stretch;
         display: flex;
         align-items: center;
         justify-content: space-between;

@@ -78,6 +78,13 @@ class CreateAgencyRequest(BaseModel):
     subscription_plan: str = Field(default="standard", min_length=1, max_length=50)
 
 
+class UpdateAgencyRequest(BaseModel):
+    """The editable agency details. The agency code is not one of them."""
+
+    name: str = Field(min_length=1, max_length=NAME_MAX_LENGTH)
+    primary_contact_email: EmailStr
+
+
 class CreateAgencyResponse(BaseModel):
     tenant: TenantResponse
     admin_user_id: str

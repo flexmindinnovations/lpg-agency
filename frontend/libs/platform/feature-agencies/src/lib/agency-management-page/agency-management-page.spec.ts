@@ -96,6 +96,13 @@ interface PageInternals {
   showDetailDrawer(): boolean;
   closeDetailsOnEscape(): void;
   addAdminOpen(): boolean;
+  editForm: FormGroup;
+  editing(): boolean;
+  saving(): boolean;
+  startEdit(agency: TenantResponse): void;
+  saveDetails(agency: TenantResponse): void;
+  selectedAgency(): TenantResponse | null;
+  agencies: { (): TenantResponse[]; set(value: TenantResponse[]): void };
 }
 
 describe('AgencyManagementPage', () => {
@@ -107,6 +114,8 @@ describe('AgencyManagementPage', () => {
     listUsers: jest.Mock;
     addAdmin: jest.Mock;
     issueSetupLink: jest.Mock;
+    update: jest.Mock;
+    listModules: jest.Mock;
   };
 
   const page = () => component as unknown as PageInternals;
@@ -130,6 +139,8 @@ describe('AgencyManagementPage', () => {
       listUsers: jest.fn(() => of([ADMIN, MANAGER])),
       addAdmin: jest.fn(),
       issueSetupLink: jest.fn(),
+      update: jest.fn(),
+      listModules: jest.fn(() => of([])),
     };
 
     await TestBed.configureTestingModule({
@@ -295,6 +306,105 @@ describe('AgencyManagementPage', () => {
 
       expect(page().setupLink()).toBeNull();
       expect(page().acting()).toBe(false);
+    });
+  });
+
+  describe('agency details', () => {
+    const UPDATED: TenantResponse = {
+      ...AGENCY,
+      name: 'Orient Gas',
+      primary_contact_email: 'owner@orient.example',
+    };
+
+    const drawerText = () => {
+      fixture.detectChanges();
+      return document.body.textContent ?? '';
+    };
+
+    it('shows the agency code and never the internal tenant id', () => {
+      page().openDetails(AGENCY);
+
+      const text = drawerText();
+
+      expect(text).toContain('Agency code');
+      expect(text).toContain('orient-lpg');
+      expect(text).not.toContain('Tenant ID');
+      expect(text).not.toContain('Slug');
+    });
+
+    it('starts editing from the current name and contact email only', () => {
+      page().openDetails(AGENCY);
+
+      page().startEdit(AGENCY);
+
+      expect(page().editing()).toBe(true);
+      expect(page().editForm.getRawValue()).toEqual({
+        name: 'Orient LPG Agency',
+        primaryContactEmail: 'ops@orient.example',
+      });
+    });
+
+    it('offers no editing for a closed agency', () => {
+      page().openDetails({ ...AGENCY, status: 'closed' });
+
+      expect(drawerText()).not.toContain('Edit details');
+    });
+
+    it.each([
+      { name: '   ', primaryContactEmail: 'ops@orient.example' },
+      { name: 'x'.repeat(121), primaryContactEmail: 'ops@orient.example' },
+      { name: 'Orient', primaryContactEmail: 'not-an-email' },
+    ])('does not call the API for invalid details %p', (value) => {
+      page().openDetails(AGENCY);
+      page().startEdit(AGENCY);
+      page().editForm.setValue(value);
+
+      page().saveDetails(AGENCY);
+
+      expect(agencyService.update).not.toHaveBeenCalled();
+    });
+
+    it('saves trimmed values and refreshes the drawer and the grid', () => {
+      agencyService.update.mockReturnValue(of(UPDATED));
+      page().agencies.set([AGENCY]);
+      page().openDetails(AGENCY);
+      page().startEdit(AGENCY);
+      page().editForm.setValue({
+        name: '  Orient Gas ',
+        primaryContactEmail: 'owner@orient.example',
+      });
+
+      page().saveDetails(AGENCY);
+
+      expect(agencyService.update).toHaveBeenCalledWith('t-1', {
+        name: 'Orient Gas',
+        primary_contact_email: 'owner@orient.example',
+      });
+      expect(page().selectedAgency()).toEqual(UPDATED);
+      expect(page().agencies()).toEqual([UPDATED]);
+      expect(page().editing()).toBe(false);
+      expect(page().saving()).toBe(false);
+    });
+
+    it('keeps the form open when the API rejects the change', () => {
+      agencyService.update.mockReturnValue(throwError(() => new Error('409')));
+      page().openDetails(AGENCY);
+      page().startEdit(AGENCY);
+
+      page().saveDetails(AGENCY);
+
+      expect(page().editing()).toBe(true);
+      expect(page().saving()).toBe(false);
+      expect(page().selectedAgency()).toEqual(AGENCY);
+    });
+
+    it('leaves edit mode when the details are opened again', () => {
+      page().openDetails(AGENCY);
+      page().startEdit(AGENCY);
+
+      page().openDetails(AGENCY);
+
+      expect(page().editing()).toBe(false);
     });
   });
 

@@ -61,7 +61,7 @@
         >
           <i class="pi pi-external-link" aria-hidden="true"></i>
         </a>
-        }
+        } @if (reviewEnabled()) {
         <button
           *lpgHasPermission="managePermission()"
           pButton
@@ -99,7 +99,7 @@
         >
           Reject
         </button>
-        }
+        } }
       </span>
     </div>
 
@@ -137,7 +137,11 @@
     </div>
     } }
   </div>
-  } } @else {
+  @if (!reviewEnabled()) {
+  <p class="cdp__empty">
+    Checking and replacing documents needs the Compliance Calendar module, which is switched off.
+  </p>
+  } } } @else {
   <form class="cdp__form" [formGroup]="docForm" (ngSubmit)="submitForm()">
     @if (formError(); as err) {
     <p-message severity="error">{{ err }}</p-message>

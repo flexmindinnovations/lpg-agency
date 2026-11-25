@@ -14,7 +14,6 @@ import { Select } from 'primeng/select';
 import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
-import { TooltipModule } from 'primeng/tooltip';
 import {
   AdminTenantConfigurationService,
   NotifyService,
@@ -25,6 +24,7 @@ import {
   ExportButtonComponent,
   FormFieldComponent,
   HeaderTitlePortalDirective,
+  InfoTipComponent,
   PageActionsDirective,
   PageHeaderComponent,
   formatTimestamp,
@@ -157,22 +157,17 @@ function humanizeConfigKey(key: string): string {
   );
 }
 
-/** AG Grid cell renderer for the config-key column: an info icon (hover for
- * the key's description) followed by its human-readable label — the raw
+/** AG Grid cell renderer for the config-key column: an info button (the
+ * key's description) followed by its human-readable label — the raw
  * `gst_rate_percent`-style key is never the only thing shown. */
 @Component({
   selector: 'lpg-config-key-cell',
   standalone: true,
-  imports: [TooltipModule],
+  imports: [InfoTipComponent],
   template: `
     <div style="display: flex; align-items: center; gap: 0.5rem; height: 100%;">
       @if (description()) {
-        <i
-          class="pi pi-info-circle"
-          style="opacity: 0.6; font-size: 0.875rem; cursor: help;"
-          [pTooltip]="description()"
-          tooltipPosition="top"
-        ></i>
+        <lpg-info-tip [text]="description()" />
       }
       <span>{{ label() }}</span>
     </div>
