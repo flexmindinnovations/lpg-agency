@@ -36,6 +36,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
+from lpg.application.common.errors import ServiceUnavailableError, ValidationError
 from lpg.application.common.ports import DocumentOcrResult
 from lpg.config.logging import get_logger
 
@@ -65,7 +66,15 @@ async def _get_engine() -> RapidOCR:
 
     async with _engine_lock:
         if _engine is None:
-            _engine = await asyncio.to_thread(_build_engine)
+            try:
+                _engine = await asyncio.to_thread(_build_engine)
+            except Exception as exc:
+                _logger.error("kyc_ocr_engine_failed", error=str(exc))
+                msg = (
+                    "Document reading is temporarily unavailable. Enter the details "
+                    "manually, or try again shortly."
+                )
+                raise ServiceUnavailableError(msg) from exc
     return _engine
 
 
@@ -91,7 +100,12 @@ class RapidOcrDocumentAdapter:
         from rapidocr.utils.output import RapidOCROutput
 
         engine = await _get_engine()
-        result = await asyncio.to_thread(engine, image_bytes)
+        try:
+            result = await asyncio.to_thread(engine, image_bytes)
+        except Exception as exc:
+            _logger.warning("kyc_ocr_failed", error=str(exc))
+            msg = "The document could not be read. Upload a clear JPEG or PNG photo."
+            raise ValidationError(msg) from exc
 
         if not isinstance(result, RapidOCROutput) or not result.txts or not result.scores:
             _logger.info("kyc_ocr_recognized", line_count=0)

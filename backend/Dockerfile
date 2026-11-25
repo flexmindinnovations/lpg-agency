@@ -44,6 +44,12 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 
 USER app
+
+# Bake the RapidOCR model weights into the image (runtime stage: needs the
+# libgl1/libglib2.0 above). Otherwise they download on the first KYC scan,
+# which fails (500) whenever the server cannot reach the model host, and
+# re-downloads after every redeploy.
+RUN python -c "from lpg.infrastructure.ocr.rapidocr_adapter import _build_engine; _build_engine()"
 EXPOSE 8000
 
 CMD ["gunicorn", "lpg.api.app:app", "--config", "gunicorn.conf.py"]
