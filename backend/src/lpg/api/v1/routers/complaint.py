@@ -10,6 +10,7 @@ from lpg.api.v1.dependencies.complaint import (
 )
 from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
+from lpg.api.v1.dependencies.license import require_module
 from lpg.api.v1.schemas.complaint import (
     AssignComplaintRequest,
     ComplaintAssigneeResponse,
@@ -36,7 +37,11 @@ from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.domain.complaint.complaint import Complaint
 from lpg.domain.complaint.value_objects import ComplaintStatus
 
-router = APIRouter(prefix="/complaints", tags=["Complaints"])
+router = APIRouter(
+    prefix="/complaints",
+    tags=["Complaints"],
+    dependencies=[Depends(require_module("complaints"))],
+)
 
 
 async def _with_names(

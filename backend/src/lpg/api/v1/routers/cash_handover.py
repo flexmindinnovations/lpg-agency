@@ -16,6 +16,7 @@ from lpg.api.v1.dependencies.accounting import (
 )
 from lpg.api.v1.dependencies.delivery import get_driver_repository, get_route_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
+from lpg.api.v1.dependencies.license import require_module
 from lpg.api.v1.dependencies.order import get_idempotency_service
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.cash_handover import (
@@ -55,7 +56,11 @@ if TYPE_CHECKING:
     from lpg.application.accounting.ports import CashHandoverRegisterEntry, DriverCashInHand
     from lpg.domain.accounting.cash_handover import CashHandover
 
-router = APIRouter(prefix="/cash-handovers", tags=["Cash Handovers"])
+router = APIRouter(
+    prefix="/cash-handovers",
+    tags=["Cash Handovers"],
+    dependencies=[Depends(require_module("cash_handovers"))],
+)
 
 _IST = ZoneInfo("Asia/Kolkata")
 

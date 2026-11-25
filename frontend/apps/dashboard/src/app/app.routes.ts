@@ -359,21 +359,21 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'cash-handovers',
-        canActivate: [permissionGuard('cash_handovers:review')],
+        canActivate: [permissionGuard('cash_handovers:review'), moduleGuard('cash_handovers')],
         data: { breadcrumbs: [{ label: 'Cash Handovers', routerLink: '/cash-handovers' }] },
         loadChildren: () =>
           import('@lpg/accounting/feature-invoices').then((m) => m.cashHandoverRegisterRoutes),
       },
       {
         path: 'complaints',
-        canActivate: [permissionGuard('complaints.manage')],
+        canActivate: [permissionGuard('complaints.manage'), moduleGuard('complaints')],
         data: { breadcrumbs: [{ label: 'Complaints', routerLink: '/complaints' }] },
         loadChildren: () =>
           import('@lpg/complaint/feature-complaints').then((m) => m.featureComplaintsRoutes),
       },
       {
         path: 'reports',
-        canActivate: [permissionGuard('reports:read')],
+        canActivate: [permissionGuard('reports:read'), moduleGuard('reports')],
         data: { breadcrumbs: [{ label: 'Reports', routerLink: '/reports' }] },
         loadChildren: () =>
           import('@lpg/reporting/feature-reports').then((m) => m.reportingFeatureReportsRoutes),

@@ -235,7 +235,7 @@ export class ShellLayout {
           label: 'Reports',
           icon: 'pi pi-chart-bar',
           route: '/reports',
-          condition: can('reports:read'),
+          condition: can('reports:read') && this.modules.isEnabled('reports'),
         },
         // No permission guard on this route (any authenticated user's own
         // notifications) — always shown, matching Dashboard above.
@@ -271,7 +271,7 @@ export class ShellLayout {
           label: 'Complaints',
           icon: 'pi pi-exclamation-circle',
           route: '/complaints',
-          condition: can('complaints.manage'),
+          condition: can('complaints.manage') && this.modules.isEnabled('complaints'),
         },
       ]),
       ...buildGroup('Accounting', [
@@ -285,7 +285,7 @@ export class ShellLayout {
           label: 'Cash Handovers',
           icon: 'pi pi-money-bill',
           route: '/cash-handovers',
-          condition: can('cash_handovers:review'),
+          condition: can('cash_handovers:review') && this.modules.isEnabled('cash_handovers'),
         },
       ]),
       ...buildGroup('Logistics', [

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import {
@@ -20,7 +20,11 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="modules" aria-labelledby="agency-modules-heading">
-      <h3 id="agency-modules-heading" class="modules__heading">Modules</h3>
+      <h3 id="agency-modules-heading" class="modules__heading">
+        Modules @if (!loading() && !failed()) {
+          <span>· {{ enabledCount() }} of {{ modules().length }} on</span>
+        }
+      </h3>
       <p class="modules__hint">Switched-off modules are hidden from this agency and blocked.</p>
 
       @if (loading()) {
@@ -108,6 +112,7 @@ export class AgencyModules implements OnInit {
   readonly readonly = input(false);
 
   protected readonly modules = signal<ModuleResponse[]>([]);
+  protected readonly enabledCount = computed(() => this.modules().filter((m) => m.enabled).length);
   protected readonly loading = signal(true);
   protected readonly failed = signal(false);
   protected readonly busy = signal<string | null>(null);

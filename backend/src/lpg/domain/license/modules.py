@@ -35,6 +35,21 @@ TOGGLEABLE_MODULES: tuple[ToggleableModule, ...] = (
         "Cylinder Units",
         "Individual cylinder identity, tracking and history.",
     ),
+    ToggleableModule(
+        "reports",
+        "Reports",
+        "Sales, stock and compliance reports and exports.",
+    ),
+    ToggleableModule(
+        "complaints",
+        "Complaints",
+        "Customer complaints, assignment and resolution.",
+    ),
+    ToggleableModule(
+        "cash_handovers",
+        "Cash Handovers",
+        "Driver cash handover submission and review.",
+    ),
 )
 
 MODULE_KEYS: frozenset[str] = frozenset(module.key for module in TOGGLEABLE_MODULES)
