@@ -975,7 +975,9 @@ p-confirmpopup {
 }
 
 /* Dialog footer pinned at the bottom — never scrollable.
-   Equal top and bottom padding ensures action buttons are vertically centered at the bottom. */
+   Equal top and bottom padding ensures action buttons are vertically centered at the bottom.
+   It paints no background of its own: it is the same surface (tint and grain) as the
+   rest of the dialog. */
 .p-dialog .p-dialog-footer {
   padding-block: var(--spacing-md) !important;
   padding-inline: var(--spacing-lg) !important;
@@ -984,7 +986,7 @@ p-confirmpopup {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
-  background-color: var(--color-surface-raised) !important;
+  background: transparent !important;
 }
 
 .p-dialog .p-dialog-footer .modal-actions {
@@ -1044,6 +1046,12 @@ p-confirmpopup {
     background-color var(--motion-duration-small) var(--motion-easing-standard),
     border-color var(--motion-duration-small) var(--motion-easing-standard),
     color var(--motion-duration-small) var(--motion-easing-standard) !important;
+}
+
+/* A switch keeps its shape. As a flex item next to a long description it was
+   squeezed, which left the knob hanging off the end of the track. */
+.p-toggleswitch {
+  flex-shrink: 0;
 }
 
 /* A disabled switch must still read as on or off ("Always on" in-app
@@ -1355,8 +1363,9 @@ p-confirmpopup {
 /* ========================================================================
    GLASS (frosted chrome)
 
-   Dialogs, drawers, menus and toasts get a tint (and, where it is cheap, a
-   backdrop blur). Header and sidebar keep the tint only (see below). Cards
+   Toasts and `.glass` surfaces get a tint and a backdrop blur. Drawers and
+   dialogs are nearly solid, and dropdowns and menus fully solid, with no blur
+   (see below). Header and sidebar keep the tint only. Cards
    are glass too, but through their own translucent background token, never a
    blur. Layer order, bottom to top: page colour and glows, glass tint,
    content. The page grain is a layer behind the page (see PAGE BACKGROUND);
@@ -1452,13 +1461,43 @@ p-confirmpopup {
 /* Drawers scroll long content. A backdrop blur behind a panel that scrolls is
    redone on every frame (measured: about 50% more time per frame), which made
    every drawer's scrolling lag, and on the 72% overlay tint it was barely
-   visible. Drawers use a near-solid tint with no blur. */
-.p-drawer {
+   visible. Drawers use a near-solid tint with no blur.
+   Dialogs use the same surface: they sit on a dark mask (two when opened over
+   a drawer), which the 72% tint let through, so the panel and its text turned
+   grey while the solid footer stayed white. */
+.p-drawer,
+.p-dialog {
   --glass-surface: var(--glass-drawer-tint);
 }
 
+/* Dropdown panels, date pickers, menus and popovers are fully solid, with no
+   blur. They open directly over text, and a select or autocomplete panel fades
+   in through a wrapper: while an ancestor is below full opacity the browser has
+   nothing behind to blur, so a translucent panel opened see-through, with that
+   text sharp, then turned solid when the fade ended. */
+.p-popover,
+.p-menu,
+.p-tieredmenu,
+.p-contextmenu,
+.p-select-overlay,
+.p-multiselect-overlay,
+.p-datepicker-panel,
+.p-autocomplete-overlay {
+  --glass-surface: var(--surface-acrylic);
+  --glass-fallback-tint: var(--surface-acrylic);
+}
+
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .p-drawer {
+  .p-drawer,
+  .p-dialog,
+  .p-popover,
+  .p-menu,
+  .p-tieredmenu,
+  .p-contextmenu,
+  .p-select-overlay,
+  .p-multiselect-overlay,
+  .p-datepicker-panel,
+  .p-autocomplete-overlay {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
