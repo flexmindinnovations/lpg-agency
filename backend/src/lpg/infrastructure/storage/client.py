@@ -14,11 +14,13 @@ than a fresh ``async with`` per call.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import asyncio
+from typing import TYPE_CHECKING, Any
 
 import aioboto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
+from lpg.application.common.errors import ServiceUnavailableError
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
@@ -39,6 +41,7 @@ class S3CompatibleFileStorage:
         self._session = aioboto3.Session()
         self._client_cm: object | None = None
         self._client: S3Client | None = None
+        self._connect_lock = asyncio.Lock()
 
     @property
     def client(self) -> S3Client:
@@ -56,16 +59,59 @@ class S3CompatibleFileStorage:
             aws_secret_access_key=self._settings.storage_secret_key.get_secret_value(),
             region_name=self._settings.storage_region,
         )
-        self._client = await client_cm.__aenter__()
+        client = await client_cm.__aenter__()
+        try:
+            try:
+                await client.head_bucket(Bucket=self._settings.storage_bucket)
+            except ClientError:
+                await client.create_bucket(Bucket=self._settings.storage_bucket)
+                _logger.info("storage_bucket_created", bucket=self._settings.storage_bucket)
+        except Exception:
+            await client_cm.__aexit__(None, None, None)
+            raise
+        self._client = client
         self._client_cm = client_cm
 
-        try:
-            await self._client.head_bucket(Bucket=self._settings.storage_bucket)
-        except ClientError:
-            await self._client.create_bucket(Bucket=self._settings.storage_bucket)
-            _logger.info("storage_bucket_created", bucket=self._settings.storage_bucket)
-
         _logger.info("storage_client_created", bucket=self._settings.storage_bucket)
+
+    async def _ready_client(self) -> S3Client:
+        """The connected client, (re)connecting on demand.
+
+        Startup tolerates storage being down or unconfigured (readiness just
+        reports it), so the first real upload is where that surfaces. Retry
+        the connection here -- storage that was fixed or came up after boot
+        then works without a restart -- and turn any failure into a 503 that
+        names the cause instead of a bare 500.
+        """
+        if self._client is not None:
+            return self._client
+        async with self._connect_lock:
+            if self._client is None:
+                try:
+                    await self.connect()
+                except Exception as exc:
+                    _logger.error("storage_unavailable", error=str(exc))
+                    msg = (
+                        "File storage is not available. Ask your administrator to "
+                        "check the object storage settings (LPG_STORAGE_*)."
+                    )
+                    raise ServiceUnavailableError(msg) from exc
+        return self.client
+
+    async def _call(self, operation: str, **kwargs: Any) -> Any:
+        client = await self._ready_client()
+        try:
+            return await getattr(client, operation)(**kwargs)
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in _NOT_FOUND_CODES:
+                raise
+            _logger.error("storage_operation_failed", operation=operation, error=str(exc))
+            msg = "File storage rejected the request. Check the storage credentials and bucket."
+            raise ServiceUnavailableError(msg) from exc
+        except BotoCoreError as exc:
+            _logger.error("storage_operation_failed", operation=operation, error=str(exc))
+            msg = "File storage is unreachable. Check the object storage endpoint settings."
+            raise ServiceUnavailableError(msg) from exc
 
     async def disconnect(self) -> None:
         if self._client_cm is not None:
@@ -84,22 +130,20 @@ class S3CompatibleFileStorage:
         return True
 
     async def upload(self, key: str, data: bytes, *, content_type: str | None = None) -> None:
-        # Two explicit calls rather than a conditionally-built kwargs dict —
-        # `put_object`'s stub types every optional argument individually, so
-        # splatting a `dict[str, str]` into it defeats that precision.
         if content_type:
-            await self.client.put_object(
+            await self._call(
+                "put_object",
                 Bucket=self._settings.storage_bucket,
                 Key=key,
                 Body=data,
                 ContentType=content_type,
             )
         else:
-            await self.client.put_object(Bucket=self._settings.storage_bucket, Key=key, Body=data)
+            await self._call("put_object", Bucket=self._settings.storage_bucket, Key=key, Body=data)
 
     async def download(self, key: str) -> bytes | None:
         try:
-            response = await self.client.get_object(Bucket=self._settings.storage_bucket, Key=key)
+            response = await self._call("get_object", Bucket=self._settings.storage_bucket, Key=key)
         except ClientError as exc:
             if exc.response.get("Error", {}).get("Code") in _NOT_FOUND_CODES:
                 return None
@@ -109,11 +153,11 @@ class S3CompatibleFileStorage:
         return data
 
     async def delete(self, key: str) -> None:
-        await self.client.delete_object(Bucket=self._settings.storage_bucket, Key=key)
+        await self._call("delete_object", Bucket=self._settings.storage_bucket, Key=key)
 
     async def exists(self, key: str) -> bool:
         try:
-            await self.client.head_object(Bucket=self._settings.storage_bucket, Key=key)
+            await self._call("head_object", Bucket=self._settings.storage_bucket, Key=key)
         except ClientError as exc:
             if exc.response.get("Error", {}).get("Code") in _NOT_FOUND_CODES:
                 return False
@@ -121,7 +165,8 @@ class S3CompatibleFileStorage:
         return True
 
     async def url(self, key: str, *, expires_seconds: int = 3600) -> str:
-        presigned: str = await self.client.generate_presigned_url(
+        client = await self._ready_client()
+        presigned: str = await client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self._settings.storage_bucket, "Key": key},
             ExpiresIn=expires_seconds,
