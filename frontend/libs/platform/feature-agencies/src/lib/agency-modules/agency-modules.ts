@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import {
@@ -21,7 +29,8 @@ import {
   template: `
     <section class="modules" aria-labelledby="agency-modules-heading">
       <h3 id="agency-modules-heading" class="modules__heading">
-        Modules @if (!loading() && !failed()) {
+        Modules
+        @if (!loading() && !failed()) {
           <span>· {{ enabledCount() }} of {{ modules().length }} on</span>
         }
       </h3>
