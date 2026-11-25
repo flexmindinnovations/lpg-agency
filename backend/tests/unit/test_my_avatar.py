@@ -1,5 +1,5 @@
 """Profile picture (planning feature 62): the domain rules and the use cases, with
-in-memory fakes. Real PostgreSQL / MinIO / tenant-isolation coverage is in
+in-memory fakes. Real PostgreSQL / tenant-isolation coverage is in
 `tests/integration/test_my_profile.py` and the admin endpoint smoke tests."""
 
 from __future__ import annotations

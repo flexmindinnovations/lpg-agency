@@ -32,13 +32,10 @@ x-backend-env: &backend-env
   LPG_DB_USER: lpg_app
   LPG_DB_PASSWORD: ${LPG_APP_DB_PASSWORD}
   LPG_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-  # S3-compatible object storage (e.g. DigitalOcean Spaces) - set in .env.
-  # Left empty, the backend still boots but /health/ready reports storage down.
-  LPG_STORAGE_ENDPOINT_URL: ${LPG_STORAGE_ENDPOINT_URL:-}
-  LPG_STORAGE_ACCESS_KEY: ${LPG_STORAGE_ACCESS_KEY:-}
-  LPG_STORAGE_SECRET_KEY: ${LPG_STORAGE_SECRET_KEY:-}
-  LPG_STORAGE_BUCKET: ${LPG_STORAGE_BUCKET:-}
-  LPG_STORAGE_REGION: ${LPG_STORAGE_REGION:-}
+  # Uploads (KYC documents, delivery photos/signatures, certificates) live on
+  # this server's disk, in the persistent `uploads-data` volume (ADR-068). No
+  # object store or credentials needed. Back this volume up (see DEPLOY.md).
+  LPG_STORAGE_LOCAL_DIR: /var/lib/lpg/uploads
   LPG_JWT_PRIVATE_KEY: ${LPG_JWT_PRIVATE_KEY}
   LPG_JWT_PUBLIC_KEY: ${LPG_JWT_PUBLIC_KEY}
   LPG_KYC_ENCRYPTION_KEY: ${LPG_KYC_ENCRYPTION_KEY}
@@ -106,6 +103,8 @@ services:
     env_file: &integrations-env
       - path: integrations.env
         required: false
+    volumes:
+      - uploads-data:/var/lib/lpg/uploads
     environment:
       <<: *backend-env
       # 1 vCPU / 2 GB host: gunicorn's default (2*cores+1) would be too many.
@@ -132,6 +131,8 @@ services:
     command: ["arq", "lpg.infrastructure.jobs.worker.WorkerSettings"]
     env_file: *integrations-env
     environment: *backend-env
+    volumes:
+      - uploads-data:/var/lib/lpg/uploads
     depends_on:
       backend:
         condition: service_healthy
@@ -159,5 +160,6 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  uploads-data:
   caddy-data:
   caddy-config:

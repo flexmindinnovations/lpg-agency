@@ -16,7 +16,7 @@ migration job, and Caddy serving the Angular dashboard and reverse-proxying
 > **Status (2026-09-25).** Sections 1-6 were executed and verified: the stack
 > deploys, all 86 migrations apply, the dashboard loads at `http://139.59.88.0/`
 > and `/health/live` returns 200. `/health/ready` returns 503 only because
-> object storage is not configured yet (see "Object storage" in section 5).
+> (historical note; uploads now use the server's disk, see "File storage" in section 5).
 > Section 7 (first super_admin) is done; section 8 (HTTPS) is still open.
 
 Commands prefixed `#` describe what follows. Lines in `bash` blocks are meant to
@@ -203,43 +203,36 @@ Until it is set, AI Command Center requests fail with `provider_error`; the
 rest of the app is unaffected.
 
 
-### Object storage: DigitalOcean Spaces
+### File storage: the server's disk
 
-The backend stores uploads (proof-of-delivery photos, generated PDFs) in any
-S3-compatible bucket. MinIO no longer publishes Docker images, so use Spaces:
+Uploads (KYC documents, delivery photos and signatures, scale certificates,
+profile pictures) are stored on this server's own disk (ADR-068). There is no
+object store and nothing to configure: the `uploads-data` Docker volume is
+mounted at `/var/lib/lpg/uploads` in the `backend` and `worker` containers and
+survives every deploy and container recreation.
 
-1. DigitalOcean console -> Spaces Object Storage -> **Create a Space** (pick a
-   region, e.g. `blr1`; note the name).
-2. API -> **Spaces Keys** -> Generate New Key; copy the access key and secret.
-3. Put them in `.env` on the server (endpoint is `https://<region>.digitaloceanspaces.com`):
+- Every image is stored twice: the untouched **original**, and a compressed
+  WebP copy (long edge at most 1600 px, quality 80) used for lists, thumbnails
+  and in-page views. PDFs are stored as they are.
+- Files are never served publicly. Pictures load through short-lived signed
+  links (`/api/v1/files/view`); the original downloads through the signed-in
+  `/api/v1/files/download`.
+- **Disk space:** `GET /api/v1/files/usage` (admins) reports free space and
+  what uploads occupy; `/health/ready` logs `storage_low_disk_space` when free
+  space drops under 15 % (`LPG_STORAGE_LOW_SPACE_PERCENT`). Check it, and
+  resize the droplet or its volume before the disk fills.
+- **Back it up.** The volume is the only copy of every uploaded document. Turn
+  on DigitalOcean droplet backups (weekly snapshots), and for a stronger
+  guarantee copy the volume off the server, e.g. nightly:
 
 ```bash
-nano /opt/lpg-agency/infrastructure/deploy/.env
+docker run --rm -v lpg-agency_uploads-data:/data:ro -v /root/backups:/backup alpine \
+  tar czf /backup/uploads-$(date +%F).tar.gz -C /data .
 ```
 
-```
-LPG_STORAGE_ENDPOINT_URL=https://blr1.digitaloceanspaces.com
-LPG_STORAGE_ACCESS_KEY=<spaces access key>
-LPG_STORAGE_SECRET_KEY=<spaces secret>
-LPG_STORAGE_BUCKET=<space name>
-LPG_STORAGE_REGION=blr1
-```
-
-```bash
-# Recreate the containers that read storage settings.
-docker compose -f docker-compose.prod.yml up -d backend worker
-```
-
-Until these are set the app still starts, but `/health/ready` reports storage
-as down and uploads (KYC documents, delivery photos and signatures, scale
-certificates) fail. Invoice printing does not use storage.
-
-**Without editing the server:** add `LPG_STORAGE_ENDPOINT_URL`,
-`LPG_STORAGE_ACCESS_KEY`, `LPG_STORAGE_SECRET_KEY`, `LPG_STORAGE_BUCKET` (and
-optionally `LPG_STORAGE_REGION`, default `blr1`) as secrets of the GitHub
-`production` environment. The next deploy writes them into `.env` and
-recreates the containers. All four required secrets must exist; with any
-missing the deploy leaves the server's settings alone.
+  Keep the archives somewhere other than the droplet (DO Spaces, another
+  server, your own computer). Restore by extracting into an empty
+  `uploads-data` volume.
 
 ### Integrations: SMS, payments, WhatsApp, Claude, push
 
@@ -316,7 +309,7 @@ docker compose -f docker-compose.prod.yml ps
 ```
 
 ```bash
-# Backend liveness/readiness through Caddy (readiness checks Postgres, Redis, storage).
+# Backend liveness/readiness through Caddy (readiness checks Postgres, Redis, the upload directory).
 curl -s http://localhost/health/live
 curl -s http://localhost/health/ready
 ```
@@ -581,8 +574,7 @@ No agency admins exist yet; they are created with **Platform Console -> Agencies
 | DNS for `vitessetec.com` (holds the `lpg` A record) | MilesWeb cPanel -> DNS Zone Editor, account `zugjjztt` | your MilesWeb login |
 | TLS certificate for `lpg.vitessetec.com` | issued and renewed automatically by Caddy (Let's Encrypt) | `caddy-data` Docker volume |
 
-Not yet configured: object storage credentials (`LPG_STORAGE_*`, a DigitalOcean
-Space), any email/SMS provider, a dedicated domain and wildcard certificates.
+Not yet configured: any email/SMS provider, a dedicated domain and wildcard certificates.
 
 
 ---

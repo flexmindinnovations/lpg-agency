@@ -225,3 +225,6 @@ dump.rdb
 *.rdb
 *.tar.gz
 *.artifact.md
+
+# Local uploads directory (LPG_STORAGE_LOCAL_DIR default in development)
+backend/data/

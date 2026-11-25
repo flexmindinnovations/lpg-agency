@@ -1827,6 +1827,18 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Alternatives Considered:** Persisting every refresh (rejected: table growth); writing failed-login rows only to logs (rejected: the admin Audit Log is where office users look); a separate security table (rejected: duplicates the viewer, filters and RLS).
 
+## ADR-068: Uploads on the Server's Own Disk
+
+**Status:** Accepted (2026-11-25). Supersedes the S3-compatible adapter of ADR-030 and the production object-storage deferral.
+
+**Context:** Each agency is hosted on its own server, and the production object-storage settings (`LPG_STORAGE_*`, a DigitalOcean Space) were never configured, so KYC, delivery-photo and certificate uploads failed with 503. Requiring a separate paid service and four secrets per agency was not worth it.
+
+**Decision:** (1) `LocalDiskFileStorage` implements the unchanged `FileStorage` port over `LPG_STORAGE_LOCAL_DIR` (a persistent Docker volume, `uploads-data`, in production). Keys are relative paths, validated against traversal. (2) Nothing is served publicly: `FileStorage.url()` returns a short-lived HMAC-signed link to `GET /files/view` (key derived from `LPG_KYC_ENCRYPTION_KEY`, or `LPG_STORAGE_URL_SIGNING_KEY`), and the original downloads through `GET /files/download` with normal authentication and tenant scoping. (3) Raster images are stored as the untouched original plus a WebP copy (long edge 1600 px, quality 80, kept only if smaller); views use the copy, downloads and OCR use the original; PDFs and undecodable files (HEIC) are stored as they are. (4) `GET /files/usage` and a low-free-space warning in readiness give disk visibility.
+
+**Consequences:** No storage secrets; deploys never wipe uploads because the volume persists. The disk is the only copy, so backups matter (DEPLOY.md). Moving to an object store later means adding another adapter behind the same port. MinIO, moto and `aioboto3` were removed.
+
+**Alternatives Considered:** Keeping S3 as the default (rejected: extra service and credentials per agency); public static serving of the directory (rejected: KYC documents must be authenticated).
+
 ## Deferred Decisions
 
 Decisions deliberately left open, each with a defined trigger point:
@@ -1837,7 +1849,6 @@ Decisions deliberately left open, each with a defined trigger point:
 | PDF rendering library (WeasyPrint vs ReportLab) | Phase 17 — Printing | ADR-016 · DW-07 |
 | AG Grid Enterprise licence procurement (only if a future feature needs it) | As triggered — no longer a standing Phase 4 blocker | ADR-020 · ADR-028 · DW-08 |
 | Supabase production tier (lower tiers pause idle projects) | Before production | ADR-027 · DW-05 |
-| Production object-storage vendor (Azure Blob if Azure is chosen; an S3-compatible managed service reuses the existing adapter as-is) | Before production, tied to the hosting-topology decision | ADR-030 · ADR-022 |
 | WebSocket connection/subscription authorization (Phase 3's `RealtimePublisher` was built without it — needed real Authentication first) | Immediate fast-follow after Phase 6, not tied to a later numbered phase | ADR-015 · ADR-035 |
 | MFA for Super Admin | Post-MVP (SRS recommends, doesn't require, for this role only) | 08-security-architecture.md |
 | Entra ID SSO — schema seam exists (`identity_user.sso_subject`/`sso_provider`), no working OAuth flow | When an Azure AD app registration and hosting decision exist | ADR-022 |

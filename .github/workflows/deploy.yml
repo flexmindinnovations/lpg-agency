@@ -224,28 +224,6 @@ jobs:
       packages: read
     steps:
       - uses: actions/checkout@v4
-      - name: Collect object-storage settings (optional)
-        id: storage
-        env:
-          ENDPOINT: ${{ secrets.LPG_STORAGE_ENDPOINT_URL }}
-          ACCESS_KEY: ${{ secrets.LPG_STORAGE_ACCESS_KEY }}
-          SECRET_KEY: ${{ secrets.LPG_STORAGE_SECRET_KEY }}
-          BUCKET: ${{ secrets.LPG_STORAGE_BUCKET }}
-          REGION: ${{ secrets.LPG_STORAGE_REGION }}
-        run: |
-          # All-or-nothing: a partial set would break a working configuration.
-          if [ -n "$ENDPOINT" ] && [ -n "$ACCESS_KEY" ] && [ -n "$SECRET_KEY" ] && [ -n "$BUCKET" ]; then
-            echo "::add-mask::$SECRET_KEY"
-            {
-              echo "env<<__LPG_STORAGE_EOF__"
-              printf 'LPG_STORAGE_ENDPOINT_URL=%s\nLPG_STORAGE_ACCESS_KEY=%s\nLPG_STORAGE_SECRET_KEY=%s\nLPG_STORAGE_BUCKET=%s\nLPG_STORAGE_REGION=%s\n' \
-                "$ENDPOINT" "$ACCESS_KEY" "$SECRET_KEY" "$BUCKET" "${REGION:-blr1}"
-              echo "__LPG_STORAGE_EOF__"
-            } >> "$GITHUB_OUTPUT"
-            echo "object storage: settings supplied"
-          else
-            echo "object storage: not configured, server settings left untouched"
-          fi
       - name: Collect Razorpay settings (optional)
         id: payments
         env:
@@ -284,9 +262,6 @@ jobs:
           ghcr-token: ${{ secrets.GITHUB_TOKEN }}
           # Optional. Turns on real push notifications (see DEPLOY.md, "Push").
           fcm-service-account: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}
-          # Optional. Object storage (DigitalOcean Spaces). Stays off until all
-          # four secrets exist in the production environment (see DEPLOY.md).
-          storage-env: ${{ steps.storage.outputs.env }}
           # Optional. Razorpay (test or live keys). Stays as is until all three
           # secrets exist in the production environment (see DEPLOY.md).
           payments-env: ${{ steps.payments.outputs.env }}

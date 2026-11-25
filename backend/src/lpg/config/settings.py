@@ -169,19 +169,22 @@ class Settings(BaseSettings):
     # Pub/Sub backplane (ADR-015). A critical dependency, monitored as one.
     redis_url: RedisDsn = Field(default=RedisDsn("redis://localhost:56379/0"))
 
-    # -- Object storage (D-40) ---------------------------------------------
-    # S3-compatible client against MinIO for every environment that exists
-    # today (local, UAT); a production cloud vendor is deferred with hosting
-    # topology (ADR-022, Phase 3 ADR). No credential is ever hardcoded — the
-    # defaults below point at the local docker compose MinIO, whose
-    # credentials are worthless outside the container.
-    storage_endpoint_url: str = "http://localhost:59000"
-    storage_access_key: str = "lpg_storage"
-    storage_secret_key: SecretStr = SecretStr("dev_only_not_a_real_secret")
-    storage_bucket: str = "lpg-dev"
-    # boto3's S3 client requires a region even against MinIO, which does not
-    # use one — any non-empty string satisfies the client-side validation.
-    storage_region: str = "us-east-1"
+    # -- File storage (ADR-068) --------------------------------------------
+    # Uploads live on this server's disk: each agency has its own server, so no
+    # object store or credentials are needed. In Docker the directory is a
+    # persistent named volume (see infrastructure/deploy/docker-compose.prod.yml).
+    storage_local_dir: str = "./data/uploads"
+    # Origin that signed file links point at (the API is served under it). Falls
+    # back to `dashboard_url`, which is the same origin in production.
+    storage_public_base_url: str = ""
+    # HMAC key for signed file links; falls back to `kyc_encryption_key`.
+    storage_url_signing_key: SecretStr | None = None
+    # Images are stored twice: the untouched original and a WebP copy whose
+    # long edge is capped at `storage_image_max_px`.
+    storage_image_max_px: int = Field(default=1600, ge=200, le=8000)
+    storage_image_quality: int = Field(default=80, ge=30, le=100)
+    # Readiness logs a warning when free disk drops below this percentage.
+    storage_low_space_percent: int = Field(default=15, ge=1, le=90)
 
     # -- Push notifications (FCM, Phase 19) ------------------------------
     # Firebase Cloud Messaging HTTP v1. Left empty by default: the
@@ -387,6 +390,7 @@ class Settings(BaseSettings):
         "whatsapp_access_token",
         "whatsapp_app_secret",
         "whatsapp_verify_token",
+        "storage_url_signing_key",
         mode="before",
     )
     @classmethod

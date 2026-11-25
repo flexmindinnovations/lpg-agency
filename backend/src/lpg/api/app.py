@@ -38,6 +38,7 @@ from lpg.api.v1.routers import (
     devices,
     documents,
     employee,
+    files,
     health,
     inventory,
     invoice,
@@ -95,7 +96,7 @@ from lpg.infrastructure.realtime.connection_manager import ConnectionManager
 from lpg.infrastructure.realtime.publisher import RedisRealtimePublisher
 from lpg.infrastructure.realtime.subscriber import RedisSubscriber
 from lpg.infrastructure.redis.client import RedisClient
-from lpg.infrastructure.storage.client import S3CompatibleFileStorage
+from lpg.infrastructure.storage.local_disk import LocalDiskFileStorage
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -119,7 +120,7 @@ class AppState:
     connection_manager: ConnectionManager | None = None
     realtime_subscriber: RedisSubscriber | None = None
     realtime_publisher: RedisRealtimePublisher | None = None
-    storage: S3CompatibleFileStorage | None = None
+    storage: LocalDiskFileStorage | None = None
     jwt_signer: JwtSigner | None = None
     password_hasher: PasswordHasher | None = None
     sms_channel: SmsChannel | None = None
@@ -175,10 +176,9 @@ async def lifespan(
     except Exception as exc:  # noqa: BLE001 - degrade to not-ready, never crash startup
         _logger.warning("job_queue_connect_failed_at_startup", error=str(exc))
 
-    # Same eager-connect exception as JobQueue: ensuring the bucket exists
-    # (head_bucket/create_bucket) means storage.connect() makes a real network
-    # call at boot. A failure degrades to not-ready rather than crashing startup.
-    storage = S3CompatibleFileStorage(settings)
+    # Creates the upload directory and checks it is writable. A failure
+    # degrades to not-ready rather than crashing startup.
+    storage = LocalDiskFileStorage(settings)
     try:
         await storage.connect()
     except Exception as exc:  # noqa: BLE001 - degrade to not-ready, never crash startup
@@ -356,6 +356,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(compliance.tdt_rating_router, prefix=settings.api_v1_prefix)
     app.include_router(compliance.cylinder_units_router, prefix=settings.api_v1_prefix)
     app.include_router(documents.router, prefix=settings.api_v1_prefix)
+    app.include_router(files.router, prefix=settings.api_v1_prefix)
     app.include_router(notifications.router, prefix=settings.api_v1_prefix)
     app.include_router(notification_settings.router, prefix=settings.api_v1_prefix)
     app.include_router(inventory.router, prefix=settings.api_v1_prefix)

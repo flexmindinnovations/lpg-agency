@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from lpg.infrastructure.jobs.pool import JobQueue
     from lpg.infrastructure.persistence.database import Database
     from lpg.infrastructure.redis.client import RedisClient
-    from lpg.infrastructure.storage.client import S3CompatibleFileStorage
+    from lpg.infrastructure.storage.local_disk import LocalDiskFileStorage
 
 
 class DatabaseHealthCheck:
@@ -64,9 +64,9 @@ class JobQueueHealthCheck:
 
 
 class StorageHealthCheck:
-    """Reports whether object storage (the configured bucket) is reachable."""
+    """Reports whether the upload directory on this server's disk is writable."""
 
-    def __init__(self, storage: S3CompatibleFileStorage) -> None:
+    def __init__(self, storage: LocalDiskFileStorage) -> None:
         self._storage = storage
 
     @property
