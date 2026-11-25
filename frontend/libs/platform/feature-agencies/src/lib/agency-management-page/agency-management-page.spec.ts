@@ -93,6 +93,8 @@ interface PageInternals {
   acting(): boolean;
   users(): StaffUserResponse[];
   usersLoading(): boolean;
+  showDetailDrawer(): boolean;
+  closeDetailsOnEscape(): void;
   addAdminOpen(): boolean;
 }
 
@@ -293,6 +295,28 @@ describe('AgencyManagementPage', () => {
 
       expect(page().setupLink()).toBeNull();
       expect(page().acting()).toBe(false);
+    });
+  });
+
+  describe('Escape on the details drawer', () => {
+    it('closes the drawer when no dialog is open', () => {
+      page().openDetails(AGENCY);
+
+      page().closeDetailsOnEscape();
+
+      expect(page().showDetailDrawer()).toBe(false);
+    });
+
+    it('leaves the drawer open while a dialog is above it', () => {
+      const dialog = document.createElement('div');
+      dialog.className = 'p-dialog';
+      document.body.appendChild(dialog);
+      page().openDetails(AGENCY);
+
+      page().closeDetailsOnEscape();
+
+      expect(page().showDetailDrawer()).toBe(true);
+      dialog.remove();
     });
   });
 });

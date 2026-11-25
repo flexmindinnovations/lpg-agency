@@ -85,6 +85,7 @@ interface SetupLinkView {
     RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown.escape)': 'closeDetailsOnEscape()' },
   template: `
     <div class="admin-page">
       <div class="page-header">
@@ -287,6 +288,7 @@ interface SetupLinkView {
       <p-drawer
         header="Agency Details"
         [(visible)]="showDetailDrawer"
+        [closeOnEscape]="false"
         (onHide)="closeDetails()"
         position="right"
         [modal]="true"
@@ -324,102 +326,110 @@ interface SetupLinkView {
                 <span class="detail-label">Tenant ID</span>
                 <span class="detail-value">{{ agency.id }}</span>
               </div>
-            </div>
+              <!-- Modules and users share the details' one scrolling area, so
+                   neither can squeeze the details out of view. -->
+              <lpg-agency-modules
+                [tenantId]="agency.id"
+                [agencyName]="agency.name"
+                [readonly]="agency.status === 'closed'"
+              />
 
-            <lpg-agency-modules [tenantId]="agency.id" [readonly]="agency.status === 'closed'" />
-
-            <section class="users" aria-labelledby="agency-users-heading">
-              <div class="users__header">
-                <h3 id="agency-users-heading" class="detail-label">Users</h3>
-                @if (agency.status !== 'closed') {
-                  <button
-                    pButton
-                    type="button"
-                    size="small"
-                    severity="secondary"
-                    (click)="toggleAddAdmin()"
-                  >
-                    <i class="pi pi-user-plus"></i><span>Add admin</span>
-                  </button>
-                }
-              </div>
-
-              @if (addAdminOpen()) {
-                <form
-                  [formGroup]="adminForm"
-                  (ngSubmit)="addAdmin(agency)"
-                  novalidate
-                  class="users__add"
-                >
-                  <lpg-form-field
-                    label="New admin email"
-                    for="agency-new-admin-email"
-                    [control]="adminForm.controls.email"
-                    [messages]="{
-                      required: 'Email is required.',
-                      email: 'Enter a valid email address.',
-                    }"
-                  >
-                    <input
-                      pInputText
-                      id="agency-new-admin-email"
-                      type="email"
-                      formControlName="email"
-                      [fluid]="true"
-                    />
-                  </lpg-form-field>
-                  <div class="modal-actions">
+              <section class="users" aria-labelledby="agency-users-heading">
+                <div class="users__header">
+                  <h3 id="agency-users-heading" class="detail-label">Users</h3>
+                  @if (agency.status !== 'closed') {
                     <button
                       pButton
                       type="button"
+                      size="small"
                       severity="secondary"
-                      (click)="addAdminOpen.set(false)"
+                      (click)="toggleAddAdmin()"
                     >
-                      Cancel
+                      <i class="pi pi-user-plus"></i><span>Add admin</span>
                     </button>
-                    <button pButton type="submit" [disabled]="acting()">
-                      @if (acting()) {
-                        <i class="pi pi-spin pi-spinner"></i>
-                      }
-                      Add admin
-                    </button>
-                  </div>
-                </form>
-              }
-
-              @if (usersLoading()) {
-                <p class="detail-value">Loading users…</p>
-              } @else if (users().length === 0) {
-                <p class="detail-value">No users yet.</p>
-              } @else {
-                <ul class="users__list">
-                  @for (user of users(); track user.id) {
-                    <li class="users__item">
-                      <div class="users__who">
-                        <span class="detail-value">{{ user.email }}</span>
-                        <span class="detail-label"
-                          >{{ roleLabel(user.role) }}{{ user.is_active ? '' : ' · inactive' }}</span
-                        >
-                      </div>
-                      @if (
-                        user.role === 'agency_admin' && user.is_active && agency.status !== 'closed'
-                      ) {
-                        <button
-                          pButton
-                          type="button"
-                          size="small"
-                          severity="secondary"
-                          [disabled]="acting()"
-                          (click)="issueSetupLink(agency, user)"
-                        >
-                          New setup link
-                        </button>
-                      }
-                    </li>
                   }
-                </ul>
-              }
-            </section>
+                </div>
+
+                @if (addAdminOpen()) {
+                  <form
+                    [formGroup]="adminForm"
+                    (ngSubmit)="addAdmin(agency)"
+                    novalidate
+                    class="users__add"
+                  >
+                    <lpg-form-field
+                      label="New admin email"
+                      for="agency-new-admin-email"
+                      [control]="adminForm.controls.email"
+                      [messages]="{
+                        required: 'Email is required.',
+                        email: 'Enter a valid email address.',
+                      }"
+                    >
+                      <input
+                        pInputText
+                        id="agency-new-admin-email"
+                        type="email"
+                        formControlName="email"
+                        [fluid]="true"
+                      />
+                    </lpg-form-field>
+                    <div class="modal-actions">
+                      <button
+                        pButton
+                        type="button"
+                        severity="secondary"
+                        (click)="addAdminOpen.set(false)"
+                      >
+                        Cancel
+                      </button>
+                      <button pButton type="submit" [disabled]="acting()">
+                        @if (acting()) {
+                          <i class="pi pi-spin pi-spinner"></i>
+                        }
+                        Add admin
+                      </button>
+                    </div>
+                  </form>
+                }
+
+                @if (usersLoading()) {
+                  <p class="detail-value">Loading users…</p>
+                } @else if (users().length === 0) {
+                  <p class="detail-value">No users yet.</p>
+                } @else {
+                  <ul class="users__list">
+                    @for (user of users(); track user.id) {
+                      <li class="users__item">
+                        <div class="users__who">
+                          <span class="detail-value">{{ user.email }}</span>
+                          <span class="detail-label"
+                            >{{ roleLabel(user.role)
+                            }}{{ user.is_active ? '' : ' · inactive' }}</span
+                          >
+                        </div>
+                        @if (
+                          user.role === 'agency_admin' &&
+                          user.is_active &&
+                          agency.status !== 'closed'
+                        ) {
+                          <button
+                            pButton
+                            type="button"
+                            size="small"
+                            severity="secondary"
+                            [disabled]="acting()"
+                            (click)="issueSetupLink(agency, user)"
+                          >
+                            New setup link
+                          </button>
+                        }
+                      </li>
+                    }
+                  </ul>
+                }
+              </section>
+            </div>
 
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="closeDetails()">
@@ -504,7 +514,6 @@ interface SetupLinkView {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-sm);
-        margin-block: var(--spacing-lg);
       }
 
       .users__header,
@@ -819,6 +828,17 @@ export class AgencyManagementPage implements OnInit {
 
   protected closeDetails(): void {
     this.showDetailDrawer.set(false);
+  }
+
+  /**
+   * The details drawer does not use PrimeNG's own Escape handling, which would
+   * close it together with the modules dialog above it. While a dialog is open,
+   * Escape belongs to that dialog.
+   */
+  protected closeDetailsOnEscape(): void {
+    if (!document.querySelector('.p-dialog')) {
+      this.closeDetails();
+    }
   }
 
   protected suspend(tenantId: string): void {
