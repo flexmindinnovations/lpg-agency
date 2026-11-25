@@ -106,4 +106,22 @@ describe('LicenseIssuancePage', () => {
 
     expect(licenseService['revokeLicense']).toHaveBeenCalledWith('t-pending');
   });
+
+  it('saves the device cap for each ticked app, in listed order', () => {
+    const page = render();
+    licenseService['setDeviceCap'] = jest.fn().mockReturnValue(of(undefined));
+    page['openDetails'](PENDING as never);
+
+    page['setAppSelected']('driver_app', true);
+    page['setAppSelected']('warehouse_app', true);
+    page['setAppSelected']('customer_app', true);
+    page['setAppSelected']('warehouse_app', false);
+    page['deviceCapForm'].controls.maxDevices.setValue(5);
+    page['saveDeviceCap']('t-pending');
+
+    expect(licenseService['setDeviceCap'].mock.calls).toEqual([
+      ['t-pending', 'customer_app', 5],
+      ['t-pending', 'driver_app', 5],
+    ]);
+  });
 });

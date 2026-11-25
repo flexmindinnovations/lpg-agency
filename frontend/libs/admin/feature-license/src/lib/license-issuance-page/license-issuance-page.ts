@@ -1,10 +1,15 @@
 import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
-import { MultiSelect } from 'primeng/multiselect';
+import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
@@ -50,10 +55,11 @@ const VALIDITY_OPTIONS = [
     PageActionsDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
+    FormsModule,
     ButtonDirective,
     InputText,
     Select,
-    MultiSelect,
+    Checkbox,
     Drawer,
     DrawerA11yDirective,
     Dialog,
@@ -316,32 +322,25 @@ const VALIDITY_OPTIONS = [
                 class="dialog-form dialog-form--inline"
               >
                 <div class="dialog-form__fields">
-                  <!-- p-multiselect is deprecated in favor of p-select [multiple]="true", but
-                   Select's #selectedItem template hook only ever exposes a single selected
-                   option (findSelectedOptionIndex() returns the first match, even in
-                   multiple mode) — there's no supported way to render one chip per selection
-                   through it. Reproducing display="chip" would mean hand-rolling the whole
-                   closed-box display ourselves, fragile against future PrimeNG internals.
-                   Left as-is, same as primeng/chart: deprecated with no equivalent-UX
-                   replacement available today. -->
-                  <lpg-form-field
-                    label="Apps"
-                    for="detail-app-type"
-                    [control]="deviceCapForm.controls.appTypes"
-                  >
-                    <p-multiselect
-                      inputId="detail-app-type"
-                      formControlName="appTypes"
-                      [options]="appTypeOptions"
-                      optionLabel="label"
-                      optionValue="value"
-                      display="chip"
-                      placeholder="Select apps"
-                      appendTo="body"
-                      [fluid]="true"
-                    >
-                    </p-multiselect>
-                  </lpg-form-field>
+                  <!-- Checkboxes, not p-multiselect: PrimeNG 22.0.0's option list reads a
+                       template variable inside its @for track expression, so opening it
+                       threw, showed no options and stopped other dropdowns opening. -->
+                  <fieldset class="app-choices">
+                    <legend class="app-choices__legend">Apps</legend>
+                    @for (option of appTypeOptions; track option.value) {
+                      <div class="app-choices__item">
+                        <p-checkbox
+                          [inputId]="'detail-app-' + option.value"
+                          [binary]="true"
+                          [ngModel]="deviceCapForm.controls.appTypes.value.includes(option.value)"
+                          [ngModelOptions]="{ standalone: true }"
+                          (onChange)="setAppSelected(option.value, $event.checked)"
+                        />
+                        <label [for]="'detail-app-' + option.value">{{ option.label }}</label>
+                      </div>
+                    }
+                    <span class="app-choices__hint">Choose the apps this cap applies to.</span>
+                  </fieldset>
                   <lpg-form-field
                     label="Device cap"
                     for="detail-max-devices"
@@ -359,7 +358,14 @@ const VALIDITY_OPTIONS = [
                   </lpg-form-field>
                 </div>
                 <div class="modal-actions">
-                  <button pButton type="submit" severity="secondary" [disabled]="savingDeviceCap()">
+                  <button
+                    pButton
+                    type="submit"
+                    severity="secondary"
+                    [disabled]="
+                      savingDeviceCap() || deviceCapForm.controls.appTypes.value.length === 0
+                    "
+                  >
                     @if (savingDeviceCap()) {
                       <i class="pi pi-spin pi-spinner"></i>
                     }
@@ -472,6 +478,34 @@ const VALIDITY_OPTIONS = [
         background: var(--color-surface-overlay);
         border-radius: var(--radius-sm);
         margin-block-end: var(--spacing-md);
+      }
+
+      .app-choices {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        margin: 0;
+        padding: 0;
+        border: none;
+      }
+
+      .app-choices__legend {
+        padding: 0;
+        margin-block-end: var(--spacing-sm);
+        font-size: var(--typography-body-small-font-size);
+        font-weight: var(--typography-label-font-weight);
+        color: var(--color-text-primary);
+      }
+
+      .app-choices__item {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+      }
+
+      .app-choices__hint {
+        font-size: var(--typography-caption-font-size);
+        color: var(--color-text-secondary);
       }
 
       .detail-view {
@@ -761,6 +795,17 @@ export class LicenseIssuancePage implements OnInit {
       },
       error: () => this.savingPlanTier.set(false),
     });
+  }
+
+  /** Keeps the selected apps in the order they are listed. */
+  protected setAppSelected(appType: string, selected: boolean): void {
+    const chosen = new Set(this.deviceCapForm.controls.appTypes.value);
+    if (selected) {
+      chosen.add(appType);
+    } else {
+      chosen.delete(appType);
+    }
+    this.deviceCapForm.controls.appTypes.setValue(APP_TYPES.filter((type) => chosen.has(type)));
   }
 
   protected saveDeviceCap(tenantId: string): void {
