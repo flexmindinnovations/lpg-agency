@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends
 
 from lpg.api.v1.dependencies.access_log import access_logged
 from lpg.api.v1.dependencies.identity import require_permission
-from lpg.api.v1.dependencies.license import require_module
 from lpg.api.v1.dependencies.reporting import (
     get_customer_consumption_use_case,
     get_daily_sales_use_case,
@@ -55,7 +54,6 @@ from lpg.application.reporting.queries.get_gstr1_report import (
 router = APIRouter(
     prefix="/reporting",
     tags=["reporting"],
-    dependencies=[Depends(require_module("reports"))],
 )
 
 

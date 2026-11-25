@@ -5,7 +5,22 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.config.settings import get_settings
+from lpg.domain.license.modules import TOGGLEABLE_MODULES
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
+
+
+async def enable_all_modules(conn, tenant_id) -> None:
+    """Dev/demo tenants get every module on (a real agency starts with none)."""
+    for module in TOGGLEABLE_MODULES:
+        await conn.execute(
+            text(
+                "INSERT INTO platform.tenant_module_setting "
+                "(id, tenant_id, module_key, enabled) "
+                "VALUES (gen_random_uuid(), :t, :k, true) "
+                "ON CONFLICT (tenant_id, module_key) DO UPDATE SET enabled = true"
+            ),
+            {"t": tenant_id, "k": module.key},
+        )
 
 
 async def main():
@@ -46,6 +61,7 @@ async def main():
             tenant_id = tenant_id.scalar_one()
         else:
             print(f"Using existing tenant: {tenant_id}")
+        await enable_all_modules(conn, tenant_id)
 
         # 2. Get role ID for agency_admin
         print("Fetching role ID for agency_admin...")

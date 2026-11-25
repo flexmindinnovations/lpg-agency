@@ -264,7 +264,14 @@ async def list_agency_modules(
             SqlAlchemyTenantModuleSettingRepository(uow)  # type: ignore[arg-type]
         ).execute()
     return [
-        ModuleResponse(key=m.key, label=m.label, description=m.description, enabled=m.enabled)
+        ModuleResponse(
+            key=m.key,
+            label=m.label,
+            description=m.description,
+            group=m.group,
+            requires=list(m.requires),
+            enabled=m.enabled,
+        )
         for m in modules
     ]
 

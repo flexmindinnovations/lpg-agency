@@ -56,13 +56,13 @@ class LicenseFeatureOverrideRepository(Protocol):
 
 @runtime_checkable
 class TenantModuleSettingRepository(Protocol):
-    """Which modules a super admin has switched on or off for one agency.
+    """Which modules a super admin has switched on for one agency (off unless a row says on).
 
     Scoped to the tenant of the unit of work (RLS); `tenant_id` is passed
     to writes only because the row carries it.
     """
 
-    async def disabled_keys(self) -> frozenset[str]: ...
+    async def enabled_keys(self) -> frozenset[str]: ...
 
     async def set_enabled(
         self, tenant_id: uuid.UUID, module_key: str, *, enabled: bool

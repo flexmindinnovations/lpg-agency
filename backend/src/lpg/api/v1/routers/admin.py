@@ -369,7 +369,14 @@ async def list_my_modules(
 ) -> list[ModuleResponse]:
     modules = await ListModulesUseCase(repository).execute()
     return [
-        ModuleResponse(key=m.key, label=m.label, description=m.description, enabled=m.enabled)
+        ModuleResponse(
+            key=m.key,
+            label=m.label,
+            description=m.description,
+            group=m.group,
+            requires=list(m.requires),
+            enabled=m.enabled,
+        )
         for m in modules
     ]
 

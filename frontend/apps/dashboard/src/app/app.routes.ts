@@ -265,7 +265,10 @@ export const appRoutes: Route[] = [
       // these regardless (`permission.guard.ts`'s own docstring).
       {
         path: 'customers',
-        canActivate: [permissionGuard('customers:read', STAFF_LIST_EXCLUDED_ROLES)],
+        canActivate: [
+          permissionGuard('customers:read', STAFF_LIST_EXCLUDED_ROLES),
+          moduleGuard('customers'),
+        ],
         data: { breadcrumbs: [{ label: 'Customers', routerLink: '/customers' }] },
         loadChildren: () =>
           import('@lpg/customer/feature-customers').then((m) => m.featureCustomersRoutes),
@@ -274,7 +277,10 @@ export const appRoutes: Route[] = [
         path: 'ledger/:customerId',
         // The ledger endpoint needs ledger:read (DO-22); guarding on
         // customers:read let some roles open a page that always 403'd.
-        canActivate: [permissionGuard('ledger:read', STAFF_LIST_EXCLUDED_ROLES)],
+        canActivate: [
+          permissionGuard('ledger:read', STAFF_LIST_EXCLUDED_ROLES),
+          moduleGuard('customers'),
+        ],
         data: {
           breadcrumbs: [
             { label: 'Customers', routerLink: '/customers' },
@@ -285,21 +291,30 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'drivers',
-        canActivate: [permissionGuard('drivers:read', STAFF_LIST_EXCLUDED_ROLES)],
+        canActivate: [
+          permissionGuard('drivers:read', STAFF_LIST_EXCLUDED_ROLES),
+          moduleGuard('drivers'),
+        ],
         data: { breadcrumbs: [{ label: 'Drivers', routerLink: '/drivers' }] },
         loadChildren: () =>
           import('@lpg/delivery/feature-drivers').then((m) => m.deliveryDriversRoutes),
       },
       {
         path: 'vehicles',
-        canActivate: [permissionGuard('vehicles:read', STAFF_LIST_EXCLUDED_ROLES)],
+        canActivate: [
+          permissionGuard('vehicles:read', STAFF_LIST_EXCLUDED_ROLES),
+          moduleGuard('vehicles'),
+        ],
         data: { breadcrumbs: [{ label: 'Fleet Vehicles', routerLink: '/vehicles' }] },
         loadChildren: () =>
           import('@lpg/delivery/feature-vehicles').then((m) => m.deliveryVehiclesRoutes),
       },
       {
         path: 'dispatch',
-        canActivate: [permissionGuard('routes:read', STAFF_LIST_EXCLUDED_ROLES)],
+        canActivate: [
+          permissionGuard('routes:read', STAFF_LIST_EXCLUDED_ROLES),
+          moduleGuard('dispatch'),
+        ],
         data: { breadcrumbs: [{ label: 'Dispatch', routerLink: '/dispatch' }] },
         loadChildren: () =>
           import('@lpg/delivery/feature-dispatch').then((m) => m.deliveryDispatchRoutes),
@@ -328,7 +343,10 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'compliance-calendar',
-        canActivate: [permissionGuard('compliance:read', STAFF_LIST_EXCLUDED_ROLES)],
+        canActivate: [
+          permissionGuard('compliance:read', STAFF_LIST_EXCLUDED_ROLES),
+          moduleGuard('compliance_calendar'),
+        ],
         data: {
           breadcrumbs: [{ label: 'Compliance Calendar', routerLink: '/compliance-calendar' }],
         },
@@ -339,20 +357,20 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'inventory',
-        canActivate: [permissionGuard('inventory:read')],
+        canActivate: [permissionGuard('inventory:read'), moduleGuard('inventory')],
         data: { breadcrumbs: [{ label: 'Inventory', routerLink: '/inventory' }] },
         loadChildren: () =>
           import('@lpg/inventory/feature-inventory').then((m) => m.inventoryFeatureRoutes),
       },
       {
         path: 'orders',
-        canActivate: [permissionGuard('orders:read')],
+        canActivate: [permissionGuard('orders:read'), moduleGuard('orders')],
         data: { breadcrumbs: [{ label: 'Orders', routerLink: '/orders' }] },
         loadChildren: () => import('@lpg/order/feature-orders').then((m) => m.ordersFeatureRoutes),
       },
       {
         path: 'invoices',
-        canActivate: [permissionGuard('invoices:read')],
+        canActivate: [permissionGuard('invoices:read'), moduleGuard('invoices')],
         data: { breadcrumbs: [{ label: 'Invoices', routerLink: '/invoices' }] },
         loadChildren: () =>
           import('@lpg/accounting/feature-invoices').then((m) => m.featureInvoicesRoutes),

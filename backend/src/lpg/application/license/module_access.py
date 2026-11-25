@@ -1,5 +1,5 @@
 """Which modules an agency can use — a super admin switches them per agency
-(`lpg.domain.license.modules`). Every module is on unless switched off."""
+(`lpg.domain.license.modules`). Every module is off until switched on."""
 
 from __future__ import annotations
 
@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command
 from lpg.application.common.errors import ValidationError
-from lpg.domain.license.modules import TOGGLEABLE_MODULES, is_module_key
+from lpg.domain.license.modules import (
+    TOGGLEABLE_MODULES,
+    is_module_key,
+    modules_needing,
+    requirements_of,
+)
 
 if TYPE_CHECKING:
     import uuid
@@ -22,6 +27,8 @@ class ModuleState:
     key: str
     label: str
     description: str
+    group: str
+    requires: tuple[str, ...]
     enabled: bool
 
 
@@ -34,9 +41,11 @@ class ListModulesUseCase:
         self._repository = repository
 
     async def execute(self) -> list[ModuleState]:
-        disabled = await self._repository.disabled_keys()
+        enabled = await self._repository.enabled_keys()
         return [
-            ModuleState(m.key, m.label, m.description, enabled=m.key not in disabled)
+            ModuleState(
+                m.key, m.label, m.description, m.group, m.requires, enabled=m.key in enabled
+            )
             for m in TOGGLEABLE_MODULES
         ]
 
@@ -57,7 +66,23 @@ class SetModuleEnabledUseCase:
         if not is_module_key(command.module_key):
             msg = f"'{command.module_key}' is not a module that can be switched on or off."
             raise ValidationError(msg, field="module_key")
+        enabled = await self._repository.enabled_keys()
+        if command.enabled:
+            missing = [key for key in requirements_of(command.module_key) if key not in enabled]
+            if missing:
+                msg = f"Switch on {_names(missing)} first; this module needs it."
+                raise ValidationError(msg, field="module_key")
+        else:
+            blocking = [key for key in modules_needing(command.module_key) if key in enabled]
+            if blocking:
+                msg = f"Switch off {_names(blocking)} first; it needs this module."
+                raise ValidationError(msg, field="module_key")
         await self._repository.set_enabled(
             command.tenant_id, command.module_key, enabled=command.enabled
         )
         await self._unit_of_work.commit()
+
+
+def _names(keys: list[str]) -> str:
+    labels = {m.key: m.label for m in TOGGLEABLE_MODULES}
+    return ", ".join(labels[key] for key in keys)

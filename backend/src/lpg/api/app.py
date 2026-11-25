@@ -16,12 +16,13 @@ import contextlib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from lpg.api.middleware.correlation import CorrelationIdMiddleware
 from lpg.api.middleware.problem_details import register_exception_handlers
 from lpg.api.middleware.security_headers import SecurityHeadersMiddleware
+from lpg.api.v1.dependencies.license import require_module_access
 from lpg.api.v1.routers import (
     admin,
     ai,
@@ -272,6 +273,10 @@ async def lifespan(
         _logger.info("application_stopped")
 
 
+#: Applied to every router that belongs to a switchable module (`domain/license/modules.py`).
+_MODULE_GATE = [Depends(require_module_access)]
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the FastAPI application."""
     settings = settings or get_settings()
@@ -338,7 +343,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(admin.router, prefix=settings.api_v1_prefix)
     app.include_router(devices.router, prefix=settings.api_v1_prefix)
     app.include_router(device_session.router, prefix=settings.api_v1_prefix)
-    app.include_router(ai.router, prefix=settings.api_v1_prefix)
+    app.include_router(ai.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
     app.include_router(platform.router, prefix=settings.api_v1_prefix)
     # `onboarding_draft.router`'s literal `/customers/onboarding-drafts` path
     # must be registered before `customer.router`'s `/customers/{customer_id}`
@@ -346,33 +351,47 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # path-parameter route matches any literal segment, so a GET to
     # `/customers/onboarding-drafts` would otherwise be swallowed by
     # `get_customer` with `customer_id="onboarding-drafts"`.
-    app.include_router(onboarding_draft.router, prefix=settings.api_v1_prefix)
-    app.include_router(customer.router, prefix=settings.api_v1_prefix)
+    app.include_router(
+        onboarding_draft.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE
+    )
+    app.include_router(customer.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
     app.include_router(employee.router, prefix=settings.api_v1_prefix)
-    app.include_router(cylinder_ledger.router, prefix=settings.api_v1_prefix)
-    app.include_router(delivery.router, prefix=settings.api_v1_prefix)
-    app.include_router(compliance.router, prefix=settings.api_v1_prefix)
-    app.include_router(compliance.weighment_router, prefix=settings.api_v1_prefix)
-    app.include_router(compliance.tdt_rating_router, prefix=settings.api_v1_prefix)
-    app.include_router(compliance.cylinder_units_router, prefix=settings.api_v1_prefix)
+    app.include_router(
+        cylinder_ledger.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE
+    )
+    app.include_router(delivery.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
+    app.include_router(compliance.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
+    app.include_router(
+        compliance.weighment_router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE
+    )
+    app.include_router(
+        compliance.tdt_rating_router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE
+    )
+    app.include_router(
+        compliance.cylinder_units_router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE
+    )
     app.include_router(documents.router, prefix=settings.api_v1_prefix)
     app.include_router(notifications.router, prefix=settings.api_v1_prefix)
     app.include_router(notification_settings.router, prefix=settings.api_v1_prefix)
-    app.include_router(inventory.router, prefix=settings.api_v1_prefix)
+    app.include_router(inventory.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
     # Before `order`: `/orders/reminder-presets` must win over `/orders/{order_id}`.
-    app.include_router(order_reminder.router, prefix=settings.api_v1_prefix)
-    app.include_router(order.router, prefix=settings.api_v1_prefix)
-    app.include_router(route.router, prefix=settings.api_v1_prefix)
+    app.include_router(
+        order_reminder.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE
+    )
+    app.include_router(order.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
+    app.include_router(route.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
     app.include_router(dashboard.router, prefix=settings.api_v1_prefix)
-    app.include_router(invoice.router, prefix=settings.api_v1_prefix)
+    app.include_router(invoice.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
     app.include_router(online_payment.router, prefix=settings.api_v1_prefix)
     app.include_router(payment_gateway.router, prefix=settings.api_v1_prefix)
     app.include_router(payment_profile.router, prefix=settings.api_v1_prefix)
-    app.include_router(cash_handover.router, prefix=settings.api_v1_prefix)
-    app.include_router(complaint.router, prefix=settings.api_v1_prefix)
+    app.include_router(
+        cash_handover.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE
+    )
+    app.include_router(complaint.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
     app.include_router(support.router, prefix=settings.api_v1_prefix)
-    app.include_router(printing.router, prefix=settings.api_v1_prefix)
-    app.include_router(reporting.router, prefix=settings.api_v1_prefix)
+    app.include_router(printing.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
+    app.include_router(reporting.router, prefix=settings.api_v1_prefix, dependencies=_MODULE_GATE)
     app.include_router(ws.router, prefix=settings.api_v1_prefix)
     app.include_router(whatsapp.router, prefix=settings.api_v1_prefix)
 
