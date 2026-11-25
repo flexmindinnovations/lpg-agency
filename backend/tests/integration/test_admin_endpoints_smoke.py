@@ -378,8 +378,8 @@ class TestQaFixesThroughTheRealStack:
         assert url
 
         # The link serves the picture, and the profile read hands out a link too.
-        async with AsyncClient() as storage_client:
-            fetched = await storage_client.get(url)
+        link = url.split("://", 1)[1].split("/", 1)[1]
+        fetched = await real_lifespan_client.get(f"/{link}")
         assert fetched.status_code == 200
         assert fetched.content == picture
         profile = (
@@ -398,8 +398,7 @@ class TestQaFixesThroughTheRealStack:
         removed = await real_lifespan_client.delete("/api/v1/auth/me/avatar", headers=headers)
         assert removed.status_code == 200, removed.text
         assert removed.json()["avatar_url"] is None
-        async with AsyncClient() as storage_client:
-            gone = await storage_client.get(url)
+        gone = await real_lifespan_client.get(f"/{link}")
         assert gone.status_code in (403, 404)
 
         # Without signing in, there is no profile picture to set.

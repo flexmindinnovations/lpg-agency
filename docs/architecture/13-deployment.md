@@ -60,9 +60,9 @@ The architecture depends on these capabilities. Azure product names are the expe
 | Edge / WAF | TLS termination, WAF, DDoS protection | Azure Front Door |
 | Observability | Logs, metrics, traces, alerting (`12-observability.md`) | Azure Monitor + Log Analytics |
 
-**Nothing in the application code binds to any of these.** Object storage sits behind a port, Redis behind the cache and publisher ports, secrets behind configuration. Local development uses Docker Compose with PostgreSQL, Redis, and a MinIO-compatible object store, so local and deployed topologies stay structurally similar.
+**Nothing in the application code binds to any of these.** Object storage sits behind a port, Redis behind the cache and publisher ports, secrets behind configuration. Local development uses Docker Compose with PostgreSQL and Redis (uploads go to a local directory, ADR-068), so local and deployed topologies stay structurally similar.
 
-**Implemented 2026-08-09 (Phase 3, ADR-030):** the `FileStorage` port and its MinIO-backed adapter (`S3CompatibleFileStorage`) now exist. Azure Blob Storage above remains the *illustrative* target, not a committed one — it is not S3-compatible, so a production adapter for it (or for an S3-compatible managed service that reuses the existing adapter) is still deferred with the hosting-topology decision (§1, ADR-022).
+**Implemented 2026-08-09 (Phase 3, ADR-030):** the `FileStorage` port and an S3-compatible adapter existed; ADR-068 (2026-11-25) replaced the adapter with local-disk storage. Azure Blob Storage above remains the *illustrative* target, not a committed one — it is not S3-compatible, so a production adapter for it (or for an S3-compatible managed service that reuses the existing adapter) is still deferred with the hosting-topology decision (§1, ADR-022).
 
 ## 4. Environments
 

@@ -42,14 +42,6 @@ LPG_JWT_PRIVATE_KEY='${private_pem}'
 LPG_JWT_PUBLIC_KEY='${public_pem}'
 LPG_KYC_ENCRYPTION_KEY=${fernet_key}
 
-# S3-compatible object storage (e.g. DigitalOcean Spaces). Fill these in, then
-# `docker compose -f docker-compose.prod.yml up -d backend worker`.
-LPG_STORAGE_ENDPOINT_URL=
-LPG_STORAGE_ACCESS_KEY=
-LPG_STORAGE_SECRET_KEY=
-LPG_STORAGE_BUCKET=
-LPG_STORAGE_REGION=
-
 # AI Command Center (Gemini). Fill this in, then
 # `docker compose -f docker-compose.prod.yml up -d backend worker`.
 LPG_GEMINI_API_KEY=

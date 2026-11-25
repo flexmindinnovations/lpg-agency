@@ -124,10 +124,10 @@ class FileStorage(Protocol):
     enforced by callers, not this protocol, since the key shape is the only
     thing that differs between a delivery photo and a KYC document.
 
-    The concrete adapter is S3-compatible object storage (MinIO for every
-    environment that exists today; a production cloud vendor is deferred
-    with hosting topology, ADR-022). Domain and application code import only
-    this protocol — swapping the vendor touches one infrastructure module.
+    The concrete adapter stores files on the server's local disk (ADR-068;
+    every agency has its own server). Domain and application code import only
+    this protocol — an object-store adapter could be added later without
+    touching them.
     """
 
     async def upload(self, key: str, data: bytes, *, content_type: str | None = None) -> None: ...
@@ -139,12 +139,10 @@ class FileStorage(Protocol):
     async def exists(self, key: str) -> bool: ...
 
     async def url(self, key: str, *, expires_seconds: int = 3600) -> str:
-        """A time-limited URL a client can fetch the object from directly.
-
-        Never serve object bytes through the API process itself for
-        anything but small/cached content — a presigned URL lets the client
-        talk to storage directly, keeping large files off the API's own
-        bandwidth and memory.
+        """A time-limited, signed URL a client can load the object from
+        without an Authorization header (an ``<img>`` tag, a mobile image
+        widget). For images it serves the compressed copy; the untouched
+        original comes from the authenticated download endpoint.
         """
         ...
 
