@@ -11,6 +11,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   Router,
@@ -43,6 +44,7 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
   selector: 'lpg-app-shell',
   standalone: true,
   imports: [
+    NgTemplateOutlet,
     RouterLink,
     RouterLinkActive,
     Badge,
@@ -104,6 +106,34 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
 
           <!-- Navigation Groups -->
           <ul class="shell__nav-groups">
+            <!-- The selected item's fill. It slides between items and clips a second,
+                 inert copy of the list drawn in the selected colours, so the text on
+                 the fill is always the selected colour and the text off it never is,
+                 on every frame of the move. The copy must mirror the list below
+                 (same groups, labels and links) so the two line up exactly. -->
+            <li class="shell__nav-indicator" aria-hidden="true" inert>
+              <ul class="shell__nav-indicator-groups">
+                @for (group of navGroups(); track group.label ?? $index) {
+                  <li>
+                    @if (group.label) {
+                      <p class="shell__nav-group-label">{{ group.label }}</p>
+                    }
+                    <ul class="shell__nav-list">
+                      @for (item of group.items; track item.route) {
+                        <li>
+                          <span class="shell__nav-link">
+                            <ng-container
+                              [ngTemplateOutlet]="navLinkContent"
+                              [ngTemplateOutletContext]="{ $implicit: item }"
+                            />
+                          </span>
+                        </li>
+                      }
+                    </ul>
+                  </li>
+                }
+              </ul>
+            </li>
             @for (group of navGroups(); track group.label ?? $index) {
               <li>
                 @if (group.label) {
@@ -130,20 +160,10 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
                         tooltipPosition="right"
                         [attr.aria-label]="rail() ? item.label : null"
                       >
-                        <i class="{{ item.icon }}" aria-hidden="true"></i>
-                        <span
-                          class="shell__nav-label"
-                          [attr.aria-hidden]="rail() ? 'true' : null"
-                          >{{ item.label }}</span
-                        >
-                        @if (item.badge) {
-                          <p-badge
-                            class="shell__nav-badge"
-                            [value]="item.badge"
-                            severity="danger"
-                            [attr.aria-hidden]="rail() ? 'true' : null"
-                          />
-                        }
+                        <ng-container
+                          [ngTemplateOutlet]="navLinkContent"
+                          [ngTemplateOutletContext]="{ $implicit: item }"
+                        />
                       </a>
                     </li>
                   }
@@ -151,6 +171,23 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
               </li>
             }
           </ul>
+
+          <!-- What is inside a nav link; shared by the real links and the
+               selected-colour copy in the indicator. -->
+          <ng-template #navLinkContent let-item>
+            <i class="{{ item.icon }}" aria-hidden="true"></i>
+            <span class="shell__nav-label" [attr.aria-hidden]="rail() ? 'true' : null">{{
+              item.label
+            }}</span>
+            @if (item.badge) {
+              <p-badge
+                class="shell__nav-badge"
+                [value]="item.badge"
+                severity="danger"
+                [attr.aria-hidden]="rail() ? 'true' : null"
+              />
+            }
+          </ng-template>
 
           <!-- Profile Menu in Sidebar Footer -->
           <div class="shell__sidebar-footer">
@@ -496,6 +533,7 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         --shell-nav-active-bg: var(--color-highlight-background);
         --shell-nav-active-fg: var(--color-highlight-color);
         position: relative;
+        isolation: isolate;
         list-style: none;
         margin: 0;
         padding: 0 var(--spacing-sm) var(--spacing-md);
@@ -593,39 +631,13 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         overflow: hidden;
         font-size: var(--typography-body-small-font-size);
         font-weight: 400;
-        /* Text colour, weight and both fills move together, with one timing, so
-           the text never sits on the wrong background. Weight can only move
-           smoothly with the variable font (see index.html). */
         transition:
-          background-color var(--motion-duration-medium) var(--motion-easing-standard),
-          color var(--motion-duration-medium) var(--motion-easing-standard),
-          font-weight var(--motion-duration-medium) var(--motion-easing-standard);
-        /* A stacking context, so ::before sits behind this link's own text. */
-        position: relative;
-        z-index: 0;
-      }
-
-      /* The selected fill. Each item has its own, so the old one fades out
-         where it is while the new one fades in. */
-      .shell__nav-link::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        border-radius: inherit;
-        background: var(--shell-nav-active-bg);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity var(--motion-duration-medium) var(--motion-easing-standard);
-      }
-
-      .shell__nav-link.is-active::before {
-        opacity: 1;
+          background-color var(--motion-duration-small) var(--motion-easing-standard),
+          color var(--motion-duration-small) var(--motion-easing-standard);
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .shell__nav-link,
-        .shell__nav-link::before {
+        .shell__nav-link {
           transition: none;
         }
       }
@@ -656,21 +668,96 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         opacity: 1;
       }
 
-      /* Active item: the themed highlight surface + its paired text colour
-         (a subtle blue tint in dark, per doc §13), bold like Gmail's selected
-         item, no glow. Text/icon stay on --color-highlight-color so this
-         reads correctly in light + high-contrast too. */
-      .shell__nav-link.is-active {
-        color: var(--shell-nav-active-fg);
-        font-weight: 700;
-      }
-
+      /* Active item. Its look is not on the link itself: a link only ever shows
+         the unselected colours. The selected fill and the selected text are
+         drawn by .shell__nav-indicator, which slides from the old item to the
+         new one (see below), so the text and the fill can never be out of step.
+         The theme's highlight pair is solid brand blue with white text in dark
+         and light, and white with blue text in high contrast. */
       .shell__nav-link.is-active:hover {
         background-color: transparent;
       }
 
-      .shell__nav-link.is-active i {
+      /* The fill, over the links, clipping a copy of the list in the selected
+         colours. Width is plain layout (the same right gutter as the links), so
+         it follows the sidebar on every frame of the open/close animation; only
+         the vertical position and height come from script (--nav-y, --nav-h),
+         and they animate on the compositor. The copy moves the opposite way by
+         the same amount, so it stays put under the fill while the fill travels. */
+      .shell__nav-indicator {
+        --nav-y: 0px;
+        --nav-h: 0px;
+        position: absolute;
+        z-index: 1;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        inset-inline-end: var(--spacing-sm);
+        block-size: var(--nav-h);
+        transform: translateY(var(--nav-y));
+        overflow: hidden;
+        border-radius: 0 var(--radius-full) var(--radius-full) 0;
+        background: var(--shell-nav-active-bg);
+        color: var(--shell-nav-active-fg);
+        opacity: 0;
+        pointer-events: none;
+        list-style: none;
+      }
+
+      .shell__nav-indicator.is-visible {
         opacity: 1;
+      }
+
+      /* One duration and curve for the position and the height, so the copy
+         and the fill always move together. Quick, with a soft landing. */
+      .shell__nav-indicator.is-animated,
+      .shell__nav-indicator.is-animated .shell__nav-indicator-groups {
+        transition:
+          transform var(--motion-duration-small) var(--motion-easing-standard),
+          block-size var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shell__nav-indicator.is-animated,
+        .shell__nav-indicator.is-animated .shell__nav-indicator-groups {
+          transition: none;
+        }
+      }
+
+      /* Same layout as .shell__nav-groups (padding and gap), so every row of
+         the copy sits exactly over its row in the real list. */
+      .shell__nav-indicator-groups {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 0;
+        transform: translateY(calc(-1 * var(--nav-y)));
+        list-style: none;
+        margin: 0;
+        padding: var(--spacing-md) 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+      }
+
+      /* A group heading under the fill is drawn in the selected colour too (in
+         the rail it is transparent, as the real heading is). */
+      .shell:not(.shell--collapsed) .shell__nav-indicator .shell__nav-group-label {
+        color: inherit;
+      }
+
+      .shell__nav-indicator .shell__nav-link {
+        color: inherit;
+        font-weight: 700;
+      }
+
+      .shell__nav-indicator .shell__nav-link i {
+        opacity: 1;
+      }
+
+      /* The link under the fill has the keyboard focus, so its own ring is
+         covered: draw the ring on the fill instead. */
+      .shell__nav-groups:has(.shell__nav-link.is-active:focus-visible) .shell__nav-indicator {
+        outline: var(--component-focus-ring-width) solid var(--component-focus-ring-color);
+        outline-offset: calc(-1 * var(--component-focus-ring-width));
       }
 
       /* Never shrinks: while the sidebar's width animates the link just clips
@@ -993,6 +1080,18 @@ export class AppShellComponent {
     effect(() => {
       if (!this.isPhone()) untracked(() => this.navOpen.set(false));
     });
+    // Re-measure the highlight when the rail/full sidebar, the phone menu or
+    // the nav itself changes (the sidebar's width animates, so measure again
+    // once it settles).
+    effect(() => {
+      this.rail();
+      this.navOpen();
+      this.navGroups();
+      untracked(() => {
+        this.placeIndicator(false);
+        setTimeout(() => this.placeIndicator(false), 350);
+      });
+    });
 
     this.router.events
       .pipe(
@@ -1007,7 +1106,10 @@ export class AppShellComponent {
       .subscribe((event) => {
         // Whatever happened, the router now says which page is open.
         this.pendingRoute.set(null);
-        if (!(event instanceof NavigationEnd)) return;
+        if (!(event instanceof NavigationEnd)) {
+          this.placeIndicator(true);
+          return;
+        }
         let route = this.activatedRoute.root;
         let breadcrumbs: MenuItem[] = [];
 
@@ -1021,6 +1123,7 @@ export class AppShellComponent {
 
         this.navOpen.set(false);
         this.revealActiveLink();
+        this.placeIndicator(true);
 
         if (breadcrumbs.length > 0) {
           this.breadcrumbService.setItems(breadcrumbs);
@@ -1045,6 +1148,39 @@ export class AppShellComponent {
     if (returnFocus) {
       this.host.nativeElement.querySelector<HTMLElement>('.shell__menu-button')?.focus();
     }
+  }
+
+  /**
+   * Moves the sliding highlight onto the active nav item. The first
+   * placement (and any re-measure after a layout change) jumps; only a real
+   * navigation animates, so the fill glides from the old item to the new one.
+   */
+  protected placeIndicator(animate: boolean): void {
+    if (typeof requestAnimationFrame !== 'function') return;
+    requestAnimationFrame(() => this.measureIndicator(animate));
+  }
+
+  /** Puts the highlight on the active item right now (no frame delay). */
+  private measureIndicator(animate: boolean): void {
+    const root = this.host.nativeElement;
+    const container = root.querySelector<HTMLElement>('.shell__nav-groups');
+    const indicator = root.querySelector<HTMLElement>('.shell__nav-indicator');
+    const active = root.querySelector<HTMLElement>('.shell__nav-link.is-active');
+    if (!container || !indicator) return;
+    if (!active || active.offsetParent === null) {
+      indicator.classList.remove('is-visible');
+      return;
+    }
+    const c = container.getBoundingClientRect();
+    const a = active.getBoundingClientRect();
+    // Whole pixels, so the fill's edges stay crisp (the text copy inside it
+    // moves by the same amount the other way, so it is not affected).
+    const y = Math.round(a.top - c.top + container.scrollTop);
+    const wasVisible = indicator.classList.contains('is-visible');
+    indicator.classList.toggle('is-animated', animate && wasVisible);
+    indicator.style.setProperty('--nav-y', `${y}px`);
+    indicator.style.setProperty('--nav-h', `${Math.round(a.height)}px`);
+    indicator.classList.add('is-visible');
   }
 
   protected onContentMotionEnd(event: AnimationEvent): void {
@@ -1074,6 +1210,7 @@ export class AppShellComponent {
     const plain = event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey;
     if (!plain || event.defaultPrevented) return;
     this.pendingRoute.set(item.route);
+    this.placeIndicator(true);
   }
 
   protected isNavActive(item: NavItem, routerActive: boolean): boolean {

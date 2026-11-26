@@ -625,6 +625,28 @@ have always been hand-edited directly. Edit them here.
   }
 }
 
+/* Hairline scale. A border of `1px` is 2 device pixels on a 2x screen, so a
+   1px panel edge looks twice as thick there. Multiply a border width by this
+   (`calc(var(--border-width) * var(--hairline-scale, 1))`) to get one device
+   pixel on 2x and 4x screens; on 1x to 1.9x screens the browser already draws
+   1px as one device pixel. It scales `--border-width`, so the high-contrast
+   theme (2px) keeps a heavier line than the other themes. */
+:root {
+  --hairline-scale: 1;
+}
+
+@media (min-resolution: 2dppx) {
+  :root {
+    --hairline-scale: 0.5;
+  }
+}
+
+@media (min-resolution: 4dppx) {
+  :root {
+    --hairline-scale: 0.25;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-duration-micro: 0ms;

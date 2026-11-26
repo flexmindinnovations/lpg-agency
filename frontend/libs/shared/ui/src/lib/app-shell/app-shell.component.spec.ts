@@ -94,12 +94,45 @@ describe('AppShellComponent', () => {
       ],
       groups,
     );
-    const links = () => [...el.querySelectorAll<HTMLAnchorElement>('.shell__nav-link')];
+    const links = () => [...el.querySelectorAll<HTMLAnchorElement>('a.shell__nav-link')];
 
     links()[1].click();
     fixture.detectChanges();
 
     expect(links().map((link) => link.classList.contains('is-active'))).toEqual([false, true]);
     expect(links()[1].getAttribute('aria-current')).toBe('page');
+  });
+
+  it('draws the selected colours in an inert copy of the list inside the sliding fill', () => {
+    const { el } = render(
+      'desktop',
+      [],
+      [
+        {
+          label: 'Overview',
+          items: [
+            { label: 'Home', icon: 'pi pi-home', route: '/home' },
+            { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders', badge: '3' },
+          ],
+        },
+      ],
+    );
+    const fill = el.querySelector('.shell__nav-indicator') as HTMLElement;
+    const text = (root: ParentNode) =>
+      [...root.querySelectorAll('.shell__nav-label, .shell__nav-badge')].map((node) =>
+        node.textContent?.trim(),
+      );
+
+    // Same labels and badges as the real links, so both lists line up row for row.
+    const realList = el.querySelector('.shell__nav-groups > li:not(.shell__nav-indicator)');
+    expect(realList).not.toBeNull();
+    expect(text(fill)).toEqual(['Home', 'Orders', '3']);
+    expect(text(realList as HTMLElement)).toEqual(text(fill));
+    expect(fill.querySelectorAll('.shell__nav-group-label')).toHaveLength(1);
+    // Never a second set of links for keyboard or screen reader users.
+    expect(fill.getAttribute('aria-hidden')).toBe('true');
+    expect(fill.hasAttribute('inert')).toBe(true);
+    expect(fill.querySelectorAll('a, button')).toHaveLength(0);
+    expect(el.querySelectorAll('a.shell__nav-link')).toHaveLength(2);
   });
 });
