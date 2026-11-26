@@ -822,14 +822,16 @@ p-confirmpopup {
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
-/* The drawer's edge is the same faint hairline as the sidebar's, so it does
-   not stand out as a heavy line. */
+/* The panel's one edge: the same faint hairline colour as the sidebar's, so it
+   does not stand out as a heavy line, and a single device pixel wide on any
+   screen (`--hairline-scale`, tokens.css); 1px would be two pixels on 2x. */
 .p-drawer.p-drawer-right {
-  border-inline-start: var(--border-width) solid var(--glass-border) !important;
+  border-inline-start: calc(var(--border-width) * var(--hairline-scale, 1)) solid
+    var(--glass-border) !important;
 }
 
 .p-drawer.p-drawer-left {
-  border-inline-end: var(--border-width) solid var(--glass-border) !important;
+  border-inline-end: calc(var(--border-width) * var(--hairline-scale, 1)) solid var(--glass-border) !important;
 }
 
 /* Header and footer each sit against a full-bleed divider on the drawer-edge
