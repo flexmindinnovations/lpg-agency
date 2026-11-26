@@ -21,6 +21,8 @@ const _authEndpointPaths = ['/auth/login', '/auth/refresh', '/auth/otp/verify'];
 /// in at app start, exactly the constructor-injectable-functions pattern
 /// `local_storage`'s `DriftLocalDatabase` already established.
 ///
+/// [appType] is `customer_app`, `driver_app` or `admin_app`.
+///
 /// [refreshAccessToken] returns `null` when the session is really over (the
 /// server refused the refresh token), which ends it through
 /// [onSessionExpired]. When the refresh could not be tried at all (no network,
@@ -28,6 +30,7 @@ const _authEndpointPaths = ['/auth/login', '/auth/refresh', '/auth/otp/verify'];
 final class ApiClient {
   ApiClient({
     required String baseUrl,
+    String? appType,
     String? Function()? getAccessToken,
     Future<String?> Function()? refreshAccessToken,
     void Function()? onSessionExpired,
@@ -43,6 +46,9 @@ final class ApiClient {
     dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
+        // Names the app on every request, so the server can refuse an account
+        // that belongs in another app.
+        headers: {'X-App-Type': ?appType},
         connectTimeout: const Duration(seconds: 15),
         sendTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),

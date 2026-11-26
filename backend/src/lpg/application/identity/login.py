@@ -35,6 +35,7 @@ from lpg.application.common.errors import (
     LicenseNotActivatedError,
     TenantSuspendedError,
 )
+from lpg.application.identity.app_access import app_admits
 from lpg.application.identity.tokens import TokenPair, issue_tokens
 from lpg.domain.license.license import LicenseLifecycleState
 
@@ -62,6 +63,8 @@ class LoginCommand(Command):
     password: str
     #: The phone this sign-in comes from, when it is a Driver or Admin app.
     device: DeviceContext | None = None
+    #: The mobile app signing in, or `None` for the web dashboard.
+    app: str | None = None
 
 
 class LoginUseCase:
@@ -145,6 +148,12 @@ class LoginUseCase:
 
         if not user.is_active:
             await self._record(command, sec.LOGIN_FAILED, "failure", user, "inactive_account")
+            msg = "Email or password is incorrect."
+            raise InvalidCredentialsError(msg)
+
+        if not app_admits(command.app, user.role):
+            # Worded as any other failure (see `app_access`).
+            await self._record(command, sec.LOGIN_FAILED, "failure", user, "wrong_app")
             msg = "Email or password is incorrect."
             raise InvalidCredentialsError(msg)
 

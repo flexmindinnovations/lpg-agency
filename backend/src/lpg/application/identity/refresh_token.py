@@ -33,6 +33,7 @@ from lpg.application.common.errors import (
     RefreshTokenInvalidError,
     TenantSuspendedError,
 )
+from lpg.application.identity.app_access import app_admits
 from lpg.application.identity.tokens import TokenPair, issue_tokens
 from lpg.domain.license.license import LicenseLifecycleState
 
@@ -57,6 +58,8 @@ class RefreshTokenCommand(Command):
     refresh_token: str
     #: The phone presenting the token, when it is a Driver or Admin app.
     device: DeviceContext | None = None
+    #: The mobile app presenting the token, when it says which one it is.
+    app: str | None = None
 
 
 class RefreshTokenUseCase:
@@ -155,6 +158,19 @@ class RefreshTokenUseCase:
 
         user = await self._user_repository.get(token.user_id)
         if user is None or not user.is_active:
+            msg = "Session expired or invalid. Please log in again."
+            raise RefreshTokenInvalidError(msg)
+
+        if not app_admits(command.app, user.role):
+            # Worded as any other dead session (see `app_access`).
+            self._failure_recorded = True
+            await self._record(
+                sec.REFRESH_FAILED,
+                "failure",
+                user_id=user.id,
+                tenant_id=user.tenant_id,
+                reason="wrong_app",
+            )
             msg = "Session expired or invalid. Please log in again."
             raise RefreshTokenInvalidError(msg)
 

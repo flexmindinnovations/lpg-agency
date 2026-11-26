@@ -85,6 +85,7 @@ void main() async {
 
   final apiClient = ApiClient(
     baseUrl: _apiBaseUrl,
+    appType: 'driver_app',
     getAccessToken: () => authRepository.accessToken,
     refreshAccessToken: () async {
       final result = await authRepository.restoreSession();

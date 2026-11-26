@@ -88,6 +88,15 @@ No backend change: the OTP flow is exactly as designed (`POST /auth/otp/request`
 **To remove when the gateway ships:** `AuthApi.fetchDevOtp`, both apps' `dev_otp_provider.dart`, the banner in both `LoginScreen`s and `LpgDevOtpBanner`.
 
 Flutter widget tests could not be executed on the authoring machine (Windows Application Control blocked `flutter_tester.exe`); `flutter analyze` is clean for `api_client`, `auth`, `design_system`, `customer_app` and `driver_app` (one pre-existing warning in `driver_app`'s `cached_resource.dart`).
+
+## Addendum — Each app admits only its own accounts (2026-11-26)
+
+A customer could sign in to the Driver app and a driver to the Customer app: only the Admin app checked the role, and only on the phone. The server now checks the `X-App-Type` header at password sign-in, OTP verify and refresh (`application/identity/app_access.py`): `customer_app` admits customers, `driver_app` drivers, `admin_app` everyone else; otherwise the refusal is deliberately indistinguishable from the ordinary one (`INVALID_CREDENTIALS`, or `REFRESH_TOKEN_INVALID` on refresh, with the same status and message), so it does not reveal that the account exists or what kind it is; only the security event log records `wrong_app`. A refused refresh also ends a session already open in the wrong app. The Admin app's own guard, which named the account type, now uses the same ordinary messages. A first OTP sign-in creates a customer login only from the Customer app or a request naming no app. All three apps now send the header from `ApiClient`.
+
+This is not the data boundary (permissions follow the account). A request that names no app is not restricted, so **Customer app builds made before this change still admit other roles** until rebuilt. A phone number has one login per agency, so a person cannot use both the Driver and Customer apps with one number.
+
+Checked: backend ruff, mypy, lint-imports, OpenAPI check and unit tests (19 new); `api_client` tests and analyze, all three apps' tests and analyze. The sign-in, device, employee-login and platform-provisioning integration tests (nine files, 95 tests) also passed against a freshly migrated PostgreSQL database; Backend CI runs the full integration suite. Nothing tried on a phone.
+
 ## Last Updated
 
 2026-08-10 — phase complete, all 12 areas verified across all three stacks.
