@@ -811,12 +811,16 @@ p-confirmpopup {
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
+/* The panel's one edge, a single device pixel wide on any screen
+   (`--hairline-scale`, tokens.css); 1px would be two pixels on a 2x screen. */
 .p-drawer.p-drawer-right {
-  border-inline-start: var(--border-width) solid var(--surface-acrylic-border) !important;
+  border-inline-start: calc(var(--border-width) * var(--hairline-scale, 1)) solid
+    var(--surface-acrylic-border) !important;
 }
 
 .p-drawer.p-drawer-left {
-  border-inline-end: var(--border-width) solid var(--surface-acrylic-border) !important;
+  border-inline-end: calc(var(--border-width) * var(--hairline-scale, 1)) solid
+    var(--surface-acrylic-border) !important;
 }
 
 /* Header and footer each sit against a full-bleed divider on the drawer-edge
