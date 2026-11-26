@@ -36,6 +36,7 @@ class AdminStrings with BaseTranslations<AdminLocale, AdminStrings> {
 
 	// Translations
 	late final AdminStrings$app$en app = AdminStrings$app$en.internal(_root);
+	late final AdminStrings$signInRefused$en signInRefused = AdminStrings$signInRefused$en.internal(_root);
 	late final AdminStrings$dashboard$en dashboard = AdminStrings$dashboard$en.internal(_root);
 	late final AdminStrings$nav$en nav = AdminStrings$nav$en.internal(_root);
 	late final AdminStrings$cashHandover$en cashHandover = AdminStrings$cashHandover$en.internal(_root);
@@ -52,6 +53,24 @@ class AdminStrings$app$en {
 
 	/// en: 'LPG Agency Admin'
 	String get title => 'LPG Agency Admin';
+}
+
+// Path: signInRefused
+class AdminStrings$signInRefused$en {
+	AdminStrings$signInRefused$en.internal(this._root);
+
+	final AdminStrings _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Email or password is incorrect.'
+	String get badPassword => 'Email or password is incorrect.';
+
+	/// en: 'No account is associated with this number.'
+	String get unknownNumber => 'No account is associated with this number.';
+
+	/// en: 'Session expired or invalid. Please log in again.'
+	String get deadSession => 'Session expired or invalid. Please log in again.';
 }
 
 // Path: dashboard
@@ -181,6 +200,9 @@ extension on AdminStrings {
 	dynamic _flatMapFunction(String path) {
 		return switch (path) {
 			'app.title' => 'LPG Agency Admin',
+			'signInRefused.badPassword' => 'Email or password is incorrect.',
+			'signInRefused.unknownNumber' => 'No account is associated with this number.',
+			'signInRefused.deadSession' => 'Session expired or invalid. Please log in again.',
 			'dashboard.hero.delivered' => 'Delivered',
 			'dashboard.hero.failed' => 'Failed',
 			'dashboard.hero.toApprove' => 'To approve',

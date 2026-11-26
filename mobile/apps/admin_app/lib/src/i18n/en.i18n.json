@@ -2,6 +2,11 @@
   "app": {
     "title": "LPG Agency Admin"
   },
+  "signInRefused": {
+    "badPassword": "Email or password is incorrect.",
+    "unknownNumber": "No account is associated with this number.",
+    "deadSession": "Session expired or invalid. Please log in again."
+  },
   "dashboard": {
     "hero": {
       "delivered": "Delivered",

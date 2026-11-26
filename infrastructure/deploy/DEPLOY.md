@@ -386,6 +386,10 @@ What was done, and how to repeat it for a new domain:
    SITE_ADDRESS=lpg.vitessetec.com
    ```
 
+   `PUBLIC_ORIGIN` must be an address that browsers **and phones** can open. The
+   compose file also uses it as `LPG_DASHBOARD_URL`, which uploaded-file view
+   links and the links in invite and password emails are built from.
+
    ```bash
    # Recreates only what changed: web (Caddy) and backend/worker (CORS origin).
    cd /opt/lpg-agency/infrastructure/deploy

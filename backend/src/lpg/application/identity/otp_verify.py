@@ -32,6 +32,7 @@ from lpg.application.common.errors import (
     OtpMismatchError,
     TenantSuspendedError,
 )
+from lpg.application.identity.app_access import app_admits
 from lpg.application.identity.otp_request import otp_store_key
 from lpg.application.identity.tokens import TokenPair, issue_tokens
 from lpg.domain.license.license import LicenseLifecycleState
@@ -62,6 +63,8 @@ class VerifyOtpCommand(Command):
     code: str
     #: The phone this sign-in comes from, when it is a Driver app.
     device: DeviceContext | None = None
+    #: The mobile app signing in, when it says which one it is.
+    app: str | None = None
 
 
 class VerifyOtpUseCase:
@@ -125,12 +128,20 @@ class VerifyOtpUseCase:
         user = await self._user_repository.get_by_phone_number(
             command.tenant_id, command.phone_number
         )
-        if user is None:
+        # A first sign-in creates a customer login, so only an app that admits
+        # customers may cause one.
+        if user is None and app_admits(command.app, "customer"):
             user = await self._customer_login_provisioner.provision(
                 command.tenant_id, command.phone_number
             )
+        refusal = None
         if user is None or not user.is_active:
-            await self._record(command, "failure", user.id if user else None, "no_active_account")
+            refusal = "no_active_account"
+        elif not app_admits(command.app, user.role):
+            refusal = "wrong_app"
+        if user is None or refusal is not None:
+            # One answer for both (see `app_access`).
+            await self._record(command, "failure", user.id if user else None, refusal)
             msg = "No account is associated with this number."
             raise InvalidCredentialsError(msg)
 

@@ -1,16 +1,34 @@
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:core/core.dart';
+import 'package:flutter/widgets.dart';
 
-/// Roles that belong to the Customer and Driver apps. Phone-OTP sign-in
-/// resolves whichever account owns the number, so a customer's or driver's
-/// number signs in successfully here but every admin screen then answers 403
-/// or "not found".
+import 'i18n/admin_strings.dart';
+
+/// Roles that belong to the Customer and Driver apps. The server refuses them
+/// here; this covers a server that does not do so yet.
 const nonStaffRoles = {'customer', 'driver'};
 
+// Each refusal reads exactly like the server's ordinary one. Saying what kind
+// of account it is would tell a stranger that the account exists. Always the
+// English catalogue: the server's refusals are English only.
+final _text = adminStringsFor(const Locale('en')).signInRefused;
+final _badPassword = Failure(
+  message: _text.badPassword,
+  errorCode: 'INVALID_CREDENTIALS',
+);
+final _unknownNumber = Failure(
+  message: _text.unknownNumber,
+  errorCode: 'INVALID_CREDENTIALS',
+);
+final _deadSession = Failure(
+  message: _text.deadSession,
+  errorCode: 'REFRESH_TOKEN_INVALID',
+);
+
 /// Wraps [AuthRepository] so the admin app only ever holds a staff session:
-/// a customer or driver account is signed out again (also when a stored
-/// session is restored) with a message saying which app to use instead.
+/// a customer or driver account is signed out again, also when a stored
+/// session is restored.
 final class StaffOnlyAuthRepository implements AuthRepository {
   StaffOnlyAuthRepository(this._inner);
 
@@ -23,7 +41,10 @@ final class StaffOnlyAuthRepository implements AuthRepository {
   Future<Result<Principal>> login({
     required String email,
     required String password,
-  }) async => _staffOnly(await _inner.login(email: email, password: password));
+  }) async => _staffOnly(
+    await _inner.login(email: email, password: password),
+    _badPassword,
+  );
 
   @override
   Future<Result<Principal>> verifyOtp({
@@ -36,11 +57,12 @@ final class StaffOnlyAuthRepository implements AuthRepository {
       phoneNumber: phoneNumber,
       code: code,
     ),
+    _unknownNumber,
   );
 
   @override
   Future<Result<Principal>> restoreSession() async =>
-      _staffOnly(await _inner.restoreSession());
+      _staffOnly(await _inner.restoreSession(), _deadSession);
 
   @override
   Future<Result<void>> requestOtp({
@@ -64,20 +86,15 @@ final class StaffOnlyAuthRepository implements AuthRepository {
   @override
   Future<void> logout() => _inner.logout();
 
-  Future<Result<Principal>> _staffOnly(Result<Principal> result) async {
+  Future<Result<Principal>> _staffOnly(
+    Result<Principal> result,
+    Failure refusal,
+  ) async {
     if (result case Success(
       :final value,
     ) when nonStaffRoles.contains(value.role)) {
       await _inner.logout();
-      final app = value.role == 'driver' ? 'Driver' : 'Customer';
-      return FailureResult(
-        Failure(
-          message:
-              'This number belongs to a ${value.role} account. Sign in to the '
-              '$app app, or use a staff login (email and password) here.',
-          errorCode: 'NOT_STAFF',
-        ),
-      );
+      return FailureResult(refusal);
     }
     return result;
   }

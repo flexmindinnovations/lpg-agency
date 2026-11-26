@@ -54,6 +54,24 @@ ResponseBody _jsonResponse(Object body, int statusCode) =>
 
 void main() {
   group('ApiClient', () {
+    test('names the app on every request, sign-in included', () async {
+      final adapter = _FakeHttpClientAdapter(
+        (options) => _jsonResponse({'ok': true}, 200),
+      );
+      final client = ApiClient(
+        baseUrl: 'https://example.test',
+        appType: 'customer_app',
+      )..dio.httpClientAdapter = adapter;
+
+      await client.dio.post<void>('/api/v1/auth/otp/verify', data: {});
+      await client.dio.get<void>('/api/v1/auth/me');
+
+      expect(adapter.requests.map((r) => r.headers['X-App-Type']), [
+        'customer_app',
+        'customer_app',
+      ]);
+    });
+
     test('attaches the bearer token when one is available', () async {
       final adapter = _FakeHttpClientAdapter(
         (options) => _jsonResponse({'ok': true}, 200),

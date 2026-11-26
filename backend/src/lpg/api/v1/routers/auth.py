@@ -28,7 +28,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 
 from lpg.api.v1.dependencies.admin import get_audit_trail, get_staff_user_repository
-from lpg.api.v1.dependencies.device import device_context_from, get_device_session_binder
+from lpg.api.v1.dependencies.device import (
+    device_context_from,
+    get_device_session_binder,
+    mobile_app_from,
+)
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_customer_login_provisioner,
@@ -199,6 +203,7 @@ async def login(
             email=body.email,
             password=body.password,
             device=device_context_from(request, body.device),
+            app=mobile_app_from(request),
         )
     )
     _set_refresh_cookie(response, token_pair, settings)
@@ -291,6 +296,7 @@ async def otp_verify(
             phone_number=body.phone_number,
             code=body.code,
             device=device_context_from(request, body.device),
+            app=mobile_app_from(request),
         )
     )
     _set_refresh_cookie(response, token_pair, settings)
@@ -341,7 +347,9 @@ async def refresh(
     )
     token_pair = await use_case.execute(
         RefreshTokenCommand(
-            refresh_token=raw_token, device=device_context_from(request, body.device)
+            refresh_token=raw_token,
+            device=device_context_from(request, body.device),
+            app=mobile_app_from(request),
         )
     )
     _set_refresh_cookie(response, token_pair, settings)

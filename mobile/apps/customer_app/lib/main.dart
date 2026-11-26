@@ -58,6 +58,7 @@ void main() async {
 
   final apiClient = ApiClient(
     baseUrl: _apiBaseUrl,
+    appType: 'customer_app',
     getAccessToken: () => authRepository.accessToken,
     refreshAccessToken: () async {
       final result = await authRepository.restoreSession();

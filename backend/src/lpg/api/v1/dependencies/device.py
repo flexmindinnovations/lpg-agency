@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import Request
 
+from lpg.application.identity.app_access import MOBILE_APPS
 from lpg.application.license.device_access import (
     ADMIN_APP,
     DRIVER_APP,
@@ -38,6 +39,12 @@ _APP_TYPES = frozenset({ADMIN_APP, DRIVER_APP})
 def install_id_from(request: Request) -> str | None:
     raw = request.headers.get(DEVICE_ID_HEADER, "").strip()
     return raw if _INSTALL_ID.fullmatch(raw) else None
+
+
+def mobile_app_from(request: Request) -> str | None:
+    """The mobile app making this sign-in request, if it names itself."""
+    declared = request.headers.get(APP_TYPE_HEADER, "").strip()
+    return declared if declared in MOBILE_APPS else None
 
 
 def device_context_from(request: Request, info: DeviceInfoRequest | None) -> DeviceContext | None:
