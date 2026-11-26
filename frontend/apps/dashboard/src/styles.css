@@ -822,9 +822,8 @@ p-confirmpopup {
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
-/* The drawer's edge is the same faint hairline as the sidebar's. A stronger
-   colour makes it read as 2px: on a 125% or 150% screen a 1px line also lights
-   part of the next pixel. */
+/* The drawer's edge is the same faint hairline as the sidebar's, so it does
+   not stand out as a heavy line. */
 .p-drawer.p-drawer-right {
   border-inline-start: var(--border-width) solid var(--glass-border) !important;
 }
