@@ -11,8 +11,8 @@ from lpg.api.v1.dependencies.license import require_module_access
 from lpg.application.common.errors import ModuleDisabledError, ValidationError
 from lpg.application.license.module_access import (
     ListModulesUseCase,
-    SetModuleEnabledCommand,
-    SetModuleEnabledUseCase,
+    SetModulesCommand,
+    SetModulesUseCase,
 )
 from lpg.domain.license.modules import (
     MODULE_KEYS,
@@ -101,51 +101,77 @@ async def test_a_switched_on_module_is_reported_on() -> None:
     assert {m.key for m in modules if m.enabled} == {"scales"}
 
 
-async def test_switching_a_module_saves_and_commits() -> None:
-    repository, unit_of_work = _repository(), MagicMock(commit=AsyncMock())
-    tenant_id = uuid.uuid4()
+async def _set(
+    changes: dict[str, bool], enabled: frozenset[str] = frozenset()
+) -> tuple[MagicMock, MagicMock]:
+    repository, unit_of_work = _repository(enabled), MagicMock(commit=AsyncMock())
+    await SetModulesUseCase(repository, unit_of_work).execute(
+        SetModulesCommand(tenant_id=uuid.uuid4(), changes=changes)
+    )
+    return repository, unit_of_work
 
-    await SetModuleEnabledUseCase(repository, unit_of_work).execute(
-        SetModuleEnabledCommand(tenant_id=tenant_id, module_key="scales", enabled=True)
+
+def _saved(repository: MagicMock) -> list[tuple[str, bool]]:
+    return [(c.args[1], c.kwargs["enabled"]) for c in repository.set_enabled.await_args_list]
+
+
+async def test_switching_modules_saves_them_and_commits_once() -> None:
+    repository, unit_of_work = await _set(
+        {"scales": True, "reports": False}, frozenset({"reports"})
     )
 
-    repository.set_enabled.assert_awaited_once_with(tenant_id, "scales", enabled=True)
+    assert sorted(_saved(repository)) == [("reports", False), ("scales", True)]
     unit_of_work.commit.assert_awaited_once()
 
 
-async def test_an_unknown_module_is_refused() -> None:
-    repository, unit_of_work = _repository(), MagicMock(commit=AsyncMock())
+async def test_only_modules_that_change_are_written() -> None:
+    repository, _ = await _set({"scales": True, "reports": True}, frozenset({"scales"}))
 
-    with pytest.raises(ValidationError):
-        await SetModuleEnabledUseCase(repository, unit_of_work).execute(
-            SetModuleEnabledCommand(tenant_id=uuid.uuid4(), module_key="nope", enabled=True)
+    assert _saved(repository) == [("reports", True)]
+
+
+async def test_a_module_can_be_switched_on_with_what_it_needs_in_any_order() -> None:
+    repository, _ = await _set({"orders": True, "customers": True})
+
+    assert sorted(_saved(repository)) == [("customers", True), ("orders", True)]
+
+
+async def test_a_module_and_what_it_needs_can_be_switched_off_together() -> None:
+    repository, _ = await _set(
+        {"customers": False, "orders": False}, frozenset({"customers", "orders"})
+    )
+
+    assert sorted(_saved(repository)) == [("customers", False), ("orders", False)]
+
+
+@pytest.mark.parametrize(
+    ("changes", "enabled", "message"),
+    [
+        ({"scales": True, "nope": True}, frozenset(), "not a module"),
+        (
+            {"scales": True, "dispatch": True},
+            frozenset({"customers"}),
+            "Switch on Orders, Drivers, Vehicles too; Dispatch needs it",
+        ),
+        (
+            {"customers": False},
+            frozenset({"customers", "orders"}),
+            "Switch off Orders too; it needs Customers",
+        ),
+    ],
+)
+async def test_a_refused_change_saves_nothing(
+    changes: dict[str, bool], enabled: frozenset[str], message: str
+) -> None:
+    repository, unit_of_work = _repository(enabled), MagicMock(commit=AsyncMock())
+
+    with pytest.raises(ValidationError, match=message):
+        await SetModulesUseCase(repository, unit_of_work).execute(
+            SetModulesCommand(tenant_id=uuid.uuid4(), changes=changes)
         )
 
     repository.set_enabled.assert_not_awaited()
-
-
-async def test_a_module_cannot_be_switched_on_before_what_it_needs() -> None:
-    repository, unit_of_work = _repository(frozenset({"customers"})), MagicMock()
-    unit_of_work.commit = AsyncMock()
-
-    with pytest.raises(ValidationError, match=r"Orders|Drivers|Vehicles"):
-        await SetModuleEnabledUseCase(repository, unit_of_work).execute(
-            SetModuleEnabledCommand(tenant_id=uuid.uuid4(), module_key="dispatch", enabled=True)
-        )
-
-    repository.set_enabled.assert_not_awaited()
-
-
-async def test_a_module_cannot_be_switched_off_while_another_needs_it() -> None:
-    repository = _repository(frozenset({"customers", "orders"}))
-    unit_of_work = MagicMock(commit=AsyncMock())
-
-    with pytest.raises(ValidationError, match="Orders"):
-        await SetModuleEnabledUseCase(repository, unit_of_work).execute(
-            SetModuleEnabledCommand(tenant_id=uuid.uuid4(), module_key="customers", enabled=False)
-        )
-
-    repository.set_enabled.assert_not_awaited()
+    unit_of_work.commit.assert_not_awaited()
 
 
 async def test_the_gate_blocks_a_module_that_is_not_on() -> None:

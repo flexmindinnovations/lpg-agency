@@ -43,11 +43,11 @@ import { AdminTenantService } from '@lpg/shared/data-access';
       <lpg-section-card class="detail-view">
         <lpg-detail-list>
           <lpg-detail-item label="Agency name">{{ agency.name }}</lpg-detail-item>
-          <lpg-detail-item label="Agency code">
+          <lpg-detail-item
+            label="Agency code"
+            info="Drivers and customers enter this code when signing in to the mobile apps."
+          >
             <span class="agency-code">{{ agency.slug }}</span>
-            <span class="agency-code-hint">
-              Drivers and customers enter this code when signing in to the mobile apps.
-            </span>
           </lpg-detail-item>
           <lpg-detail-item label="Status">
             <span class="capitalize">{{ agency.status }}</span>
@@ -91,13 +91,6 @@ import { AdminTenantService } from '@lpg/shared/data-access';
         font-family: var(--typography-font-family-mono);
         font-weight: var(--typography-label-font-weight);
         letter-spacing: 0.04em;
-      }
-
-      .agency-code-hint {
-        display: block;
-        margin-block-start: var(--spacing-xs);
-        font-size: var(--typography-caption-font-size);
-        color: var(--color-text-secondary);
       }
 
       .state-message {

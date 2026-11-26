@@ -65,7 +65,7 @@ from lpg.api.v1.schemas.license import (
     SetLicenseDeviceCapRequest,
     SetLicenseFeatureOverrideRequest,
     SetLicensePlanTierRequest,
-    SetModuleEnabledRequest,
+    SetModulesRequest,
 )
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
@@ -100,8 +100,8 @@ from lpg.application.license.issue_license import (
 )
 from lpg.application.license.module_access import (
     ListModulesUseCase,
-    SetModuleEnabledCommand,
-    SetModuleEnabledUseCase,
+    SetModulesCommand,
+    SetModulesUseCase,
 )
 from lpg.application.license.ports import LicenseStatusChecker
 from lpg.application.platform.agency_users import (
@@ -282,14 +282,13 @@ async def list_agency_modules(
 
 
 @router.put(
-    "/agencies/{tenant_id}/modules/{module_key}",
+    "/agencies/{tenant_id}/modules",
     status_code=204,
-    summary="Switch one module on or off for an agency",
+    summary="Switch an agency's modules on or off, all together or not at all",
 )
-async def set_agency_module(
+async def set_agency_modules(
     tenant_id: uuid.UUID,
-    module_key: str,
-    body: SetModuleEnabledRequest,
+    body: SetModulesRequest,
     _principal: Annotated[
         PlatformPrincipal, Depends(require_live_platform_permission("license:manage_platform"))
     ],
@@ -297,14 +296,10 @@ async def set_agency_module(
 ) -> None:
     async with uow_factory(tenant_id) as uow:
         await _require_agency(uow, tenant_id)
-        await SetModuleEnabledUseCase(
+        await SetModulesUseCase(
             SqlAlchemyTenantModuleSettingRepository(uow),  # type: ignore[arg-type]
             uow,
-        ).execute(
-            SetModuleEnabledCommand(
-                tenant_id=tenant_id, module_key=module_key, enabled=body.enabled
-            )
-        )
+        ).execute(SetModulesCommand(tenant_id=tenant_id, changes=body.modules))
 
 
 @router.post(

@@ -258,7 +258,7 @@ export type { SetFeatureFlagRolloutPercentageRequest } from './models/set-featur
 export type { SetLicenseDeviceCapRequest } from './models/set-license-device-cap-request';
 export type { SetLicenseFeatureOverrideRequest } from './models/set-license-feature-override-request';
 export type { SetLicensePlanTierRequest } from './models/set-license-plan-tier-request';
-export type { SetModuleEnabledRequest } from './models/set-module-enabled-request';
+export type { SetModulesRequest } from './models/set-modules-request';
 export type { SetNotificationSettingRequest } from './models/set-notification-setting-request';
 export type { SetPaymentGatewayRequest } from './models/set-payment-gateway-request';
 export type { SetPaymentProfileRequest } from './models/set-payment-profile-request';

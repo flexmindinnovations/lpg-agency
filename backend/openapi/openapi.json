@@ -11634,17 +11634,22 @@
         "title": "SetLicensePlanTierRequest",
         "type": "object"
       },
-      "SetModuleEnabledRequest": {
+      "SetModulesRequest": {
         "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
+          "modules": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Module key to on (`true`) or off. Modules left out keep their state.",
+            "minProperties": 1,
+            "title": "Modules",
+            "type": "object"
           }
         },
         "required": [
-          "enabled"
+          "modules"
         ],
-        "title": "SetModuleEnabledRequest",
+        "title": "SetModulesRequest",
         "type": "object"
       },
       "SetNotificationSettingRequest": {
@@ -24019,11 +24024,9 @@
         "tags": [
           "Platform Console"
         ]
-      }
-    },
-    "/api/v1/platform/agencies/{tenant_id}/modules/{module_key}": {
+      },
       "put": {
-        "operationId": "set_agency_module_api_v1_platform_agencies__tenant_id__modules__module_key__put",
+        "operationId": "set_agency_modules_api_v1_platform_agencies__tenant_id__modules_put",
         "parameters": [
           {
             "in": "path",
@@ -24034,22 +24037,13 @@
               "title": "Tenant Id",
               "type": "string"
             }
-          },
-          {
-            "in": "path",
-            "name": "module_key",
-            "required": true,
-            "schema": {
-              "title": "Module Key",
-              "type": "string"
-            }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetModuleEnabledRequest"
+                "$ref": "#/components/schemas/SetModulesRequest"
               }
             }
           },
@@ -24070,7 +24064,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Switch one module on or off for an agency",
+        "summary": "Switch an agency's modules on or off, all together or not at all",
         "tags": [
           "Platform Console"
         ]

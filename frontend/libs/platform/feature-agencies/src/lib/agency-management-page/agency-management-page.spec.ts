@@ -328,6 +328,12 @@ describe('AgencyManagementPage', () => {
 
       expect(text).toContain('Agency code');
       expect(text).toContain('orient-lpg');
+      expect(
+        document.querySelector(
+          'lpg-info-tip button[aria-label="Used to sign in to the mobile apps."]',
+        ),
+      ).not.toBeNull();
+      expect(text).not.toContain('Used to sign in to the mobile apps.');
       expect(text).not.toContain('Tenant ID');
       expect(text).not.toContain('Slug');
     });

@@ -753,6 +753,17 @@ lpg-section-card .profile-form__actions {
   color: var(--color-text-primary);
 }
 
+/* An info icon in a label (`<lpg-detail-item info>`) stays beside the last
+   word, and its tap area does not make the row taller. */
+.detail-label__tail {
+  white-space: nowrap;
+}
+
+.detail-label__tail > lpg-info-tip {
+  margin-block: calc(-1 * var(--spacing-xs));
+  vertical-align: middle;
+}
+
 /* A pair that takes the whole line of a multi-column list. */
 .info-item--wide {
   grid-column: 1 / -1;
@@ -811,16 +822,16 @@ p-confirmpopup {
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
-/* The panel's one edge, a single device pixel wide on any screen
-   (`--hairline-scale`, tokens.css); 1px would be two pixels on a 2x screen. */
+/* The panel's one edge: the same faint hairline colour as the sidebar's, so it
+   does not stand out as a heavy line, and a single device pixel wide on any
+   screen (`--hairline-scale`, tokens.css); 1px would be two pixels on 2x. */
 .p-drawer.p-drawer-right {
   border-inline-start: calc(var(--border-width) * var(--hairline-scale, 1)) solid
-    var(--surface-acrylic-border) !important;
+    var(--glass-border) !important;
 }
 
 .p-drawer.p-drawer-left {
-  border-inline-end: calc(var(--border-width) * var(--hairline-scale, 1)) solid
-    var(--surface-acrylic-border) !important;
+  border-inline-end: calc(var(--border-width) * var(--hairline-scale, 1)) solid var(--glass-border) !important;
 }
 
 /* Header and footer each sit against a full-bleed divider on the drawer-edge
@@ -948,6 +959,11 @@ p-confirmpopup {
 }
 
 .p-dialog .p-dialog-header {
+  /* One height with or without a close button. A minimum rather than a fixed
+     height, so a long title on a phone wraps instead of being cut off. */
+  min-block-size: calc(
+    var(--spacing-lg) + var(--component-action-height) + var(--spacing-md) + var(--border-width)
+  );
   padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) !important;
   border-bottom: var(--border-width) solid var(--color-border-default) !important;
   flex-shrink: 0 !important;

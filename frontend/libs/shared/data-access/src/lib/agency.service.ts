@@ -12,7 +12,7 @@ import { reactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch } from './
 import { suspendAgencyApiV1PlatformAgenciesTenantIdSuspendPatch } from './generated/fn/platform-console/suspend-agency-api-v-1-platform-agencies-tenant-id-suspend-patch';
 import { updateAgencyApiV1PlatformAgenciesTenantIdPatch } from './generated/fn/platform-console/update-agency-api-v-1-platform-agencies-tenant-id-patch';
 import { listAgencyModulesApiV1PlatformAgenciesTenantIdModulesGet } from './generated/fn/platform-console/list-agency-modules-api-v-1-platform-agencies-tenant-id-modules-get';
-import { setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut } from './generated/fn/platform-console/set-agency-module-api-v-1-platform-agencies-tenant-id-modules-module-key-put';
+import { setAgencyModulesApiV1PlatformAgenciesTenantIdModulesPut } from './generated/fn/platform-console/set-agency-modules-api-v-1-platform-agencies-tenant-id-modules-put';
 import type { ModuleResponse } from './generated/models/module-response';
 import type { AgencyUserSetupResponse } from './generated/models/agency-user-setup-response';
 import type { StaffUserResponse } from './generated/models/staff-user-response';
@@ -109,11 +109,11 @@ export class AgencyService {
     ).pipe(map((response) => response.body));
   }
 
-  setModuleEnabled(tenantId: string, moduleKey: string, enabled: boolean): Observable<void> {
-    return setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut(
-      this.http,
-      this.config.rootUrl,
-      { tenant_id: tenantId, module_key: moduleKey, body: { enabled } },
-    ).pipe(map(() => undefined));
+  /** Saves several module switches together: all of them, or none. */
+  setModules(tenantId: string, changes: Readonly<Record<string, boolean>>): Observable<void> {
+    return setAgencyModulesApiV1PlatformAgenciesTenantIdModulesPut(this.http, this.config.rootUrl, {
+      tenant_id: tenantId,
+      body: { modules: { ...changes } },
+    }).pipe(map(() => undefined));
   }
 }

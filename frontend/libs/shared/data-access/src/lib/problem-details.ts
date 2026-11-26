@@ -129,8 +129,13 @@ export function toAppError(response: HttpErrorResponse): AppError {
     };
   }
 
-  if (isProblemDetails(response.error)) {
-    const problem = response.error;
+  // The generated client asks for text where success has no body (204), so
+  // the error body of those calls arrives as a string.
+  const body: unknown =
+    typeof response.error === 'string' ? parseJson(response.error) : response.error;
+
+  if (isProblemDetails(body)) {
+    const problem = body;
     return {
       status: problem.status,
       errorCode: problem.error_code,
@@ -152,6 +157,14 @@ export function toAppError(response: HttpErrorResponse): AppError {
     detail: response.message || 'The server returned an unrecognised error.',
     isNetworkError: false,
   };
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -201,9 +214,5 @@ function readBlobText(blob: Blob): Promise<string> {
 }
 
 async function readBlobJson(blob: Blob): Promise<unknown> {
-  try {
-    return JSON.parse(await readBlobText(blob));
-  } catch {
-    return null;
-  }
+  return parseJson(await readBlobText(blob).catch(() => ''));
 }

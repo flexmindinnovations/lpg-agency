@@ -7,19 +7,17 @@ import { filter, map } from 'rxjs/operators';
 import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
-import { SetModuleEnabledRequest } from '../../models/set-module-enabled-request';
+import { SetModulesRequest } from '../../models/set-modules-request';
 
-export interface SetAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut$Params {
+export interface SetAgencyModulesApiV1PlatformAgenciesTenantIdModulesPut$Params {
   tenant_id: string;
-  module_key: string;
-      body: SetModuleEnabledRequest
+      body: SetModulesRequest
 }
 
-export function setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut(http: HttpClient, rootUrl: string, params: SetAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-  const rb = new RequestBuilder(rootUrl, setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut.PATH, 'put');
+export function setAgencyModulesApiV1PlatformAgenciesTenantIdModulesPut(http: HttpClient, rootUrl: string, params: SetAgencyModulesApiV1PlatformAgenciesTenantIdModulesPut$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  const rb = new RequestBuilder(rootUrl, setAgencyModulesApiV1PlatformAgenciesTenantIdModulesPut.PATH, 'put');
   if (params) {
     rb.path('tenant_id', params.tenant_id, {});
-    rb.path('module_key', params.module_key, {});
     rb.body(params.body, 'application/json');
   }
 
@@ -33,4 +31,4 @@ export function setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut(
   );
 }
 
-setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut.PATH = '/api/v1/platform/agencies/{tenant_id}/modules/{module_key}';
+setAgencyModulesApiV1PlatformAgenciesTenantIdModulesPut.PATH = '/api/v1/platform/agencies/{tenant_id}/modules';
