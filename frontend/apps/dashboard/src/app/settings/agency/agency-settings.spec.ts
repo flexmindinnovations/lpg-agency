@@ -37,7 +37,9 @@ describe('AgencySettings', () => {
     const html = render(() => of(TENANT));
 
     expect(html.querySelector('.agency-code')?.textContent?.trim()).toBe('DEV123456');
-    expect(html.textContent).toContain('enter this code when signing in');
+    expect(html.querySelector('lpg-info-tip button')?.getAttribute('aria-label')).toContain(
+      'enter this code when signing in',
+    );
     expect(html.textContent).toContain('Demo LPG Agency');
     expect(html.textContent).toContain('owner@example.com');
   });

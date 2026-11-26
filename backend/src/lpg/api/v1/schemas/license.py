@@ -129,5 +129,8 @@ class ModuleResponse(BaseModel):
     enabled: bool
 
 
-class SetModuleEnabledRequest(BaseModel):
-    enabled: bool
+class SetModulesRequest(BaseModel):
+    modules: dict[str, bool] = Field(
+        min_length=1,
+        description="Module key to on (`true`) or off. Modules left out keep their state.",
+    )

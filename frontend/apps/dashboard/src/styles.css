@@ -753,6 +753,17 @@ lpg-section-card .profile-form__actions {
   color: var(--color-text-primary);
 }
 
+/* An info icon in a label (`<lpg-detail-item info>`) stays beside the last
+   word, and its tap area does not make the row taller. */
+.detail-label__tail {
+  white-space: nowrap;
+}
+
+.detail-label__tail > lpg-info-tip {
+  margin-block: calc(-1 * var(--spacing-xs));
+  vertical-align: middle;
+}
+
 /* A pair that takes the whole line of a multi-column list. */
 .info-item--wide {
   grid-column: 1 / -1;
@@ -811,12 +822,15 @@ p-confirmpopup {
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
+/* The drawer's edge is the same faint hairline as the sidebar's. A stronger
+   colour makes it read as 2px: on a 125% or 150% screen a 1px line also lights
+   part of the next pixel. */
 .p-drawer.p-drawer-right {
-  border-inline-start: var(--border-width) solid var(--surface-acrylic-border) !important;
+  border-inline-start: var(--border-width) solid var(--glass-border) !important;
 }
 
 .p-drawer.p-drawer-left {
-  border-inline-end: var(--border-width) solid var(--surface-acrylic-border) !important;
+  border-inline-end: var(--border-width) solid var(--glass-border) !important;
 }
 
 /* Header and footer each sit against a full-bleed divider on the drawer-edge

@@ -32,6 +32,22 @@ describe('toAppError', () => {
     });
   });
 
+  it('reads a body that arrived as text, as it does for calls that return nothing', () => {
+    const problem: ProblemDetails = {
+      type: 'x',
+      title: 'Validation failed',
+      status: 422,
+      error_code: 'VALIDATION_ERROR',
+      detail: 'Switch off Orders too; it needs Customers.',
+    };
+
+    const result = toAppError(
+      new HttpErrorResponse({ status: 422, error: JSON.stringify(problem) }),
+    );
+
+    expect(errorMessageFor(result)).toBe('Switch off Orders too; it needs Customers.');
+  });
+
   it('carries field errors through for form display', () => {
     const problem: ProblemDetails = {
       type: 'x',

@@ -22,6 +22,7 @@ import {
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
 import {
+  DetailItemComponent,
   FormFieldComponent,
   PageHeaderComponent,
   StatusChipCell,
@@ -80,6 +81,7 @@ interface SetupLinkView {
     DataGridComponent,
     ReactiveFormsModule,
     InputText,
+    DetailItemComponent,
     FormFieldComponent,
     PageHeaderComponent,
     RouterLink,
@@ -384,11 +386,9 @@ interface SetupLinkView {
                     <span class="detail-label">Name</span>
                     <span class="detail-value">{{ agency.name }}</span>
                   </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Agency code</span>
-                    <span class="detail-value">{{ agency.slug }}</span>
-                    <span class="detail-hint">Used to sign in to the mobile apps.</span>
-                  </div>
+                  <lpg-detail-item label="Agency code" info="Used to sign in to the mobile apps.">
+                    {{ agency.slug }}
+                  </lpg-detail-item>
                   <div class="detail-item">
                     <span class="detail-label">Status</span>
                     <span class="detail-value">{{ statusLabel(agency.status) }}</span>

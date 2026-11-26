@@ -21,9 +21,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.api.v1.dependencies.platform import PLATFORM_AUDIT_TENANT_ID
-from lpg.application.common.errors import ConflictError
+from lpg.application.common.errors import ConflictError, ValidationError
 from lpg.application.common.tenant import RequestTenantContext
 from lpg.application.identity.staff_user import InviteStaffUserUseCase
+from lpg.application.license.module_access import SetModulesCommand, SetModulesUseCase
 from lpg.application.tenant.manage_lifecycle import (
     CloseTenantCommand,
     CloseTenantUseCase,
@@ -45,6 +46,9 @@ from lpg.infrastructure.persistence.repositories.identity import (
     SqlAlchemyIdentityUserRepository,
     SqlAlchemyPasswordResetTokenRepository,
     SqlAlchemyStaffUserRepository,
+)
+from lpg.infrastructure.persistence.repositories.module_setting import (
+    SqlAlchemyTenantModuleSettingRepository,
 )
 from lpg.infrastructure.persistence.repositories.tenant import SqlAlchemyTenantRepository
 from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
@@ -368,3 +372,42 @@ class TestCompensation:
             )
             == "closed"
         )
+
+
+class TestAgencyModules:
+    async def test_saves_several_switches_together_for_one_agency_only(
+        self, database: Database
+    ) -> None:
+        agency = (await _provision(database, _command())).tenant.id
+        other = (await _provision(database, _command())).tenant.id
+
+        # The test database starts every new tenant with all modules on.
+        await _set_modules(database, agency, {"scales": False, "reports": False})
+
+        assert {"scales", "reports"}.isdisjoint(await _enabled_modules(database, agency))
+        assert {"scales", "reports"} <= await _enabled_modules(database, other)
+
+    async def test_a_refused_change_leaves_every_switch_as_it_was(self, database: Database) -> None:
+        agency = (await _provision(database, _command())).tenant.id
+        before = await _enabled_modules(database, agency)
+
+        # Orders stays on and needs Customers, so neither change may be saved.
+        with pytest.raises(ValidationError):
+            await _set_modules(database, agency, {"scales": False, "customers": False})
+
+        assert await _enabled_modules(database, agency) == before
+
+
+async def _set_modules(database: Database, tenant_id: uuid.UUID, changes: dict[str, bool]) -> None:
+    async with _platform_uow(database, tenant_id) as uow:
+        await SetModulesUseCase(
+            SqlAlchemyTenantModuleSettingRepository(uow),  # type: ignore[arg-type]
+            uow,
+        ).execute(SetModulesCommand(tenant_id=tenant_id, changes=changes))
+
+
+async def _enabled_modules(database: Database, tenant_id: uuid.UUID) -> frozenset[str]:
+    async with _platform_uow(database, tenant_id) as uow:
+        return await SqlAlchemyTenantModuleSettingRepository(
+            uow  # type: ignore[arg-type]
+        ).enabled_keys()
