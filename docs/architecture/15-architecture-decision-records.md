@@ -1843,6 +1843,8 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Alternatives Considered:** Keeping modules on by default (rejected: contradicts the requirement that a new agency sees nothing until configured); a decorator per route (rejected: easy to forget); tying modules to licence plan tiers (rejected: modules are an operator decision per agency, independent of licensing).
 
+**Addendum (2026-11-26, owner decision):** Orders requires Inventory as well as Customers. Only cylinders with filled stock can be booked (`application/order/orderable.py`), and stock is recorded through Inventory, so Orders without it could leave an agency unable to book anything. Dispatch and Invoices need Inventory through Orders. Migration `e4b7c9a2d513` switches Inventory on for any agency that has Orders on. Rejected: skipping the stock check when Inventory is off, which would accept bookings for cylinders the agency may not have.
+
 **Not covered yet:** online-payment and payment-profile endpoints (they share a router with unauthenticated gateway webhooks) and the WhatsApp assistant are not switchable.
 
 ## ADR-068: Uploads on the Server's Own Disk

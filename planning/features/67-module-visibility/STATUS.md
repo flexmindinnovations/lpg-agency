@@ -27,3 +27,10 @@ switches no longer shrink. Checked on the modules dialog in light and dark.
 - Fixed on the way: error bodies of calls that return nothing arrived as text, so toasts showed the raw HTTP line instead of the server's message (`problem-details.ts`).
 - Checked: backend lint, types, boundaries, OpenAPI export and unit tests; frontend tests, lint and build; headless Chromium with a fake API (dark, light, phone). The two new database tests were not run locally (no PostgreSQL). No live data was changed.
 - **Dialog jumped while in use:** the close button was removed during a save, dependency notes came and went with the switches (resizing and recentring the dialog), and the footer wrapped on phones. The notes are now fixed text ("Needs …", "Needed by …"), the close button stays (closing during a save lets it finish), and the footer keeps its height. Checked frame by frame at four screen sizes.
+
+**2026-11-26 (Orders requires Inventory):** a Customer app showed "No cylinders can be booked right now". Booking needs filled stock, but Orders could be on with Inventory off, where no stock can be recorded.
+- Catalog: Orders now requires Customers and Inventory; Inventory is listed ahead of Orders. This also settles "Dispatch without Inventory" in the open item above.
+- Migration `e4b7c9a2d513` switches Inventory on for agencies with Orders on; others are unchanged.
+- Customer app: Place Order is disabled while there is no cylinder type to order (needs a new APK).
+- Checked: backend lint, types, boundaries, OpenAPI check and unit tests; the migration on a temporary local PostgreSQL database (five module states, then run again); Customer app analyze and tests. Not run: Postgres integration tests. Not yet deployed.
+

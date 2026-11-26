@@ -340,7 +340,8 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
                 summary: selectedType == null
                     ? null
                     : _OrderSummary(type: selectedType, quantity: _quantity),
-                onSubmit: () => _submit(profile),
+                // Nothing to order while the list is loading, failed or empty.
+                onSubmit: selectedType == null ? null : () => _submit(profile),
               ),
             ],
           );
@@ -454,7 +455,9 @@ class _SubmitBar extends StatelessWidget {
   });
 
   final bool submitting;
-  final VoidCallback onSubmit;
+
+  /// `null` disables Place Order.
+  final VoidCallback? onSubmit;
 
   /// What is being ordered and what it costs, so the customer sees the
   /// total before tapping Place Order (CA-06).

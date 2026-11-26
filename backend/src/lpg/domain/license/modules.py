@@ -48,11 +48,25 @@ TOGGLEABLE_MODULES: tuple[ToggleableModule, ...] = (
         path_patterns=(r"^/customers(/|$)",),
     ),
     ToggleableModule(
+        "inventory",
+        "Inventory",
+        "Godown and vehicle stock, goods receipts, transfers and reconciliation.",
+        "Logistics",
+        path_patterns=(
+            r"^/inventory(/|-locations/|$)",
+            r"^/reconciliation-records(/|$)",
+            r"^/goods-receipt-notes(/|$)",
+            r"^/warehouses/[^/]+/(goods-receipt-notes|omc-returns)(/|$)",
+            r"^/vehicles/[^/]+/(collections|deliveries)(/|$)",
+        ),
+    ),
+    ToggleableModule(
         "orders",
         "Orders",
         "Order booking, confirmation, delivery follow-up and proof of delivery.",
         "Operations",
-        requires=("customers",),
+        # Only cylinders in stock can be booked, and stock is recorded in Inventory.
+        requires=("customers", "inventory"),
         path_patterns=(r"^/orders(/|$)",),
     ),
     ToggleableModule(
@@ -84,19 +98,6 @@ TOGGLEABLE_MODULES: tuple[ToggleableModule, ...] = (
         "Logistics",
         requires=("orders", "drivers", "vehicles"),
         path_patterns=(r"^/routes(/|$)",),
-    ),
-    ToggleableModule(
-        "inventory",
-        "Inventory",
-        "Godown and vehicle stock, goods receipts, transfers and reconciliation.",
-        "Logistics",
-        path_patterns=(
-            r"^/inventory(/|-locations/|$)",
-            r"^/reconciliation-records(/|$)",
-            r"^/goods-receipt-notes(/|$)",
-            r"^/warehouses/[^/]+/(goods-receipt-notes|omc-returns)(/|$)",
-            r"^/vehicles/[^/]+/(collections|deliveries)(/|$)",
-        ),
     ),
     ToggleableModule(
         "scales",

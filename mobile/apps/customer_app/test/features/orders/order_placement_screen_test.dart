@@ -28,27 +28,30 @@ const _profile = CustomerResponse(
   ],
 );
 
-Widget _screen({ReorderDraft? draft}) => ProviderScope(
+const _types = [
+  OrderableCylinderTypeResponse(
+    cylinderTypeId: 'ct-5',
+    name: 'Domestic 5kg',
+    weightKg: 5,
+    unitPrice: 389,
+    availableQuantity: 10,
+  ),
+  OrderableCylinderTypeResponse(
+    cylinderTypeId: 'ct-14',
+    name: 'Domestic 14.2kg',
+    weightKg: 14.2,
+    unitPrice: 905.5,
+    availableQuantity: 10,
+  ),
+];
+
+Widget _screen({
+  ReorderDraft? draft,
+  List<OrderableCylinderTypeResponse> types = _types,
+}) => ProviderScope(
   overrides: [
     profileProvider.overrideWith((ref) async => _profile),
-    orderableCylinderTypesProvider.overrideWith(
-      (ref) async => const [
-        OrderableCylinderTypeResponse(
-          cylinderTypeId: 'ct-5',
-          name: 'Domestic 5kg',
-          weightKg: 5,
-          unitPrice: 389,
-          availableQuantity: 10,
-        ),
-        OrderableCylinderTypeResponse(
-          cylinderTypeId: 'ct-14',
-          name: 'Domestic 14.2kg',
-          weightKg: 14.2,
-          unitPrice: 905.5,
-          availableQuantity: 10,
-        ),
-      ],
-    ),
+    orderableCylinderTypesProvider.overrideWith((ref) async => types),
   ],
   child: MaterialApp(
     theme: LpgTheme.light,
@@ -80,6 +83,26 @@ void main() {
 
       expect(find.text('3 × Domestic 5kg'), findsOneWidget);
       expect(find.text('₹1,167.00'), findsOneWidget);
+    });
+
+    LpgButton placeOrder(WidgetTester tester) =>
+        tester.widget<LpgButton>(find.widgetWithText(LpgButton, 'Place Order'));
+
+    testWidgets('Place Order is off when nothing can be booked', (
+      tester,
+    ) async {
+      await pumpScreen(tester, _screen(types: const []));
+
+      expect(find.textContaining('No cylinders can be booked'), findsOneWidget);
+      expect(placeOrder(tester).onPressed, isNull);
+    });
+
+    testWidgets('Place Order is on once a cylinder can be booked', (
+      tester,
+    ) async {
+      await pumpScreen(tester, _screen());
+
+      expect(placeOrder(tester).onPressed, isNotNull);
     });
   });
 }
