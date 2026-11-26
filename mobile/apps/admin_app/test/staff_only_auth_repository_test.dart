@@ -64,6 +64,26 @@ void main() {
     expect(failure.errorCode, 'INVALID_CREDENTIALS');
   });
 
+  test('the other refusals use the server wording too', () async {
+    final repository = StaffOnlyAuthRepository(_FakeRepository('driver'));
+
+    final otp = await repository.verifyOtp(
+      tenantId: 't1',
+      phoneNumber: '+919876543210',
+      code: '123456',
+    );
+    final restored = await repository.restoreSession();
+
+    expect(
+      (otp as FailureResult<Principal>).failure.message,
+      'No account is associated with this number.',
+    );
+    expect(
+      (restored as FailureResult<Principal>).failure.message,
+      'Session expired or invalid. Please log in again.',
+    );
+  });
+
   test('lets a staff account through', () async {
     final inner = _FakeRepository('agency_admin');
     final result = await StaffOnlyAuthRepository(

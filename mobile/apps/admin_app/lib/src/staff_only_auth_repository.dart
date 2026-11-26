@@ -1,23 +1,28 @@
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:core/core.dart';
+import 'package:flutter/widgets.dart';
+
+import 'i18n/admin_strings.dart';
 
 /// Roles that belong to the Customer and Driver apps. The server refuses them
 /// here; this covers a server that does not do so yet.
 const nonStaffRoles = {'customer', 'driver'};
 
 // Each refusal reads exactly like the server's ordinary one. Saying what kind
-// of account it is would tell a stranger that the account exists.
-const _badPassword = Failure(
-  message: 'Email or password is incorrect.',
+// of account it is would tell a stranger that the account exists. Always the
+// English catalogue: the server's refusals are English only.
+final _text = adminStringsFor(const Locale('en')).signInRefused;
+final _badPassword = Failure(
+  message: _text.badPassword,
   errorCode: 'INVALID_CREDENTIALS',
 );
-const _unknownNumber = Failure(
-  message: 'No account is associated with this number.',
+final _unknownNumber = Failure(
+  message: _text.unknownNumber,
   errorCode: 'INVALID_CREDENTIALS',
 );
-const _deadSession = Failure(
-  message: 'Session expired or invalid. Please log in again.',
+final _deadSession = Failure(
+  message: _text.deadSession,
   errorCode: 'REFRESH_TOKEN_INVALID',
 );
 
