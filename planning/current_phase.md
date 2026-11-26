@@ -12,6 +12,8 @@ LPG Agency Management Platform
 
 **2026-11-01 update:** the dashboard Settings area (Tenant Config, Feature Flags, License and Linked Devices consolidated under `/settings` with My Profile) was built and deployed 2026-10-16 but never recorded; it is now: [`planning/features/60-dashboard-settings-area/`](./features/60-dashboard-settings-area/STATUS.md), ADR-070, `MODULE_STATUS.md` row 34.
 
+**2026-11-26 update:** cylinder types are now picked from a standard size list, with a details drawer to edit, deactivate or delete them: [`planning/features/68-cylinder-size-catalog/`](./features/68-cylinder-size-catalog/STATUS.md), ADR-079, D-43. Built and checked on a branch; not yet merged or deployed.
+
 **2026-11-19 update:** the Home dashboard revamp (animated charts and an answers-first layout, built on existing data) is under way: [`planning/features/65-dashboard-revamp/`](./features/65-dashboard-revamp/STATUS.md), ADR-075, research in `docs/research/dashboard-revamp.md`.
 
 **2026-11-05 update:** device registration and access control for the Driver and Admin apps (mobile revamp plan, Epic 11, ADR-071) is being built in stacked PRs: backend device registry first, then enforcement, dashboard, mobile and a security review. Per-agency `device_control` (`off` by default) means nothing changes for an existing agency until its admin switches it on. Progress: [`planning/features/61-mobile-ui-revamp/STATUS.md`](./features/61-mobile-ui-revamp/STATUS.md).

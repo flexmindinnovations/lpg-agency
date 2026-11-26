@@ -7,18 +7,15 @@ import { filter, map } from 'rxjs/operators';
 import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
-import { RenameCylinderTypeRequest } from '../../models/rename-cylinder-type-request';
 
-export interface RenameCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdRenamePatch$Params {
+export interface DeleteCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdDelete$Params {
   cylinder_type_id: string;
-      body: RenameCylinderTypeRequest
 }
 
-export function renameCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdRenamePatch(http: HttpClient, rootUrl: string, params: RenameCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdRenamePatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-  const rb = new RequestBuilder(rootUrl, renameCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdRenamePatch.PATH, 'patch');
+export function deleteCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdDelete(http: HttpClient, rootUrl: string, params: DeleteCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdDelete$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  const rb = new RequestBuilder(rootUrl, deleteCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdDelete.PATH, 'delete');
   if (params) {
     rb.path('cylinder_type_id', params.cylinder_type_id, {});
-    rb.body(params.body, 'application/json');
   }
 
   return http.request(
@@ -31,4 +28,4 @@ export function renameCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdRenamePat
   );
 }
 
-renameCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdRenamePatch.PATH = '/api/v1/admin/cylinder-types/{cylinder_type_id}/rename';
+deleteCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdDelete.PATH = '/api/v1/admin/cylinder-types/{cylinder_type_id}';

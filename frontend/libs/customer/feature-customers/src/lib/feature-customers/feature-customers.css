@@ -84,11 +84,11 @@
   gap: var(--spacing-lg);
 }
 
+/* Name and tags first, then the actions on a row of their own. */
 .detail-card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .detail-card-title h2 {
@@ -142,7 +142,6 @@
   gap: var(--spacing-xs);
 }
 
-.address-item,
 .kyc-doc-item {
   display: flex;
   justify-content: space-between;
@@ -152,6 +151,46 @@
   border-radius: var(--radius-md);
   border: var(--border-width) solid var(--color-border-default);
   font-size: var(--typography-body-small-font-size);
+}
+
+/* Pin, title with the Primary chip and the actions on one line; address below. */
+.address-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'pin title actions'
+    '. text text';
+  column-gap: var(--spacing-sm);
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--surface-inset);
+  border-radius: var(--radius-md);
+  border: var(--border-width) solid var(--color-border-default);
+  font-size: var(--typography-body-small-font-size);
+}
+
+.address-card__icon {
+  grid-area: pin;
+  display: flex;
+  color: var(--color-text-secondary);
+}
+
+.address-card__title {
+  grid-area: title;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-block-size: 2rem;
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-primary);
+}
+
+.address-card__text {
+  grid-area: text;
+  margin: 0;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .order-item {
@@ -259,14 +298,41 @@
   color: var(--color-status-danger);
 }
 
-.detail-actions,
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
 .address-actions {
+  grid-area: actions;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--spacing-xs);
 }
 
-.detail-card-header {
-  flex-wrap: wrap;
+/* A phone cannot fit them in one row: two equal columns instead. */
+@media (max-width: 40rem) {
+  .detail-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail-actions > * {
+    justify-content: center;
+  }
+
+  /* The address buttons move under the address, across the whole card. */
+  .address-card {
+    grid-template-areas:
+      'pin title title'
+      '. text text'
+      'actions actions actions';
+  }
+
+  .address-actions {
+    margin-block-start: var(--spacing-xs);
+  }
 }

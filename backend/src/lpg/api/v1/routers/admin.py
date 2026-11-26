@@ -65,7 +65,6 @@ from lpg.api.v1.dependencies.license import (
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.admin import (
-    AdjustCylinderTypeWeightRequest,
     AgencyBusinessProfileResponse,
     AuditLogEntryResponse,
     AuditLogPageResponse,
@@ -74,7 +73,9 @@ from lpg.api.v1.schemas.admin import (
     CreateBranchRequest,
     CreateCylinderTypeRequest,
     CreateWarehouseRequest,
+    CylinderSizeResponse,
     CylinderTypeResponse,
+    CylinderTypeUsageResponse,
     FeatureFlagEnabledResponse,
     FeatureFlagOverrideResponse,
     FeatureFlagSummaryResponse,
@@ -86,7 +87,6 @@ from lpg.api.v1.schemas.admin import (
     ReassignRoleRequest,
     RelocateWarehouseRequest,
     RenameBranchRequest,
-    RenameCylinderTypeRequest,
     RenameTenantRequest,
     RenameWarehouseRequest,
     ReviewPriceListProposalRequest,
@@ -102,6 +102,7 @@ from lpg.api.v1.schemas.admin import (
     TenantConfigurationResponse,
     TenantResponse,
     UpdateAgencyBusinessProfileRequest,
+    UpdateCylinderTypeRequest,
     UpdateStaffUserPermissionsRequest,
     WarehouseResponse,
 )
@@ -184,18 +185,20 @@ from lpg.application.tenant.business_profile import (
     UpdateAgencyBusinessProfileUseCase,
 )
 from lpg.application.tenant.cylinder_type import (
-    AdjustCylinderTypeWeightCommand,
-    AdjustCylinderTypeWeightUseCase,
     ClassifyCylinderTypeForGstCommand,
     ClassifyCylinderTypeForGstUseCase,
     CreateCylinderTypeCommand,
     CreateCylinderTypeUseCase,
+    DeleteCylinderTypeCommand,
+    DeleteCylinderTypeUseCase,
+    GetCylinderTypeUsageQuery,
+    GetCylinderTypeUsageUseCase,
     ListCylinderTypesQuery,
     ListCylinderTypesUseCase,
-    RenameCylinderTypeCommand,
-    RenameCylinderTypeUseCase,
     SetCylinderTypeActiveCommand,
     SetCylinderTypeActiveUseCase,
+    UpdateCylinderTypeCommand,
+    UpdateCylinderTypeUseCase,
 )
 from lpg.application.tenant.ports import (
     BranchRepository,
@@ -248,6 +251,7 @@ from lpg.config.settings import Settings, get_settings
 from lpg.domain.common.gst import GST_STATE_CODES
 from lpg.domain.license.device_control import DEVICE_CONTROL_CONFIG_KEY
 from lpg.domain.license.license import License
+from lpg.domain.tenant.cylinder_catalog import CYLINDER_SIZES
 from lpg.domain.tenant.cylinder_type import CylinderType
 from lpg.domain.tenant.price_list_proposal import PriceListProposal
 from lpg.domain.tenant.tenant import Tenant
@@ -593,9 +597,26 @@ def _cylinder_type_to_response(cylinder_type: CylinderType) -> CylinderTypeRespo
         name=cylinder_type.name,
         weight_kg=cylinder_type.weight_kg,
         is_active=cylinder_type.is_active,
+        size_code=cylinder_type.size.code if cylinder_type.size else None,
+        category=cylinder_type.size.category if cylinder_type.size else None,
         hsn_code=cylinder_type.hsn_code,
         gst_rate_percent=cylinder_type.gst_rate_percent,
     )
+
+
+@router.get(
+    "/cylinder-sizes",
+    response_model=list[CylinderSizeResponse],
+    dependencies=[Depends(require_permission("tenant:configure"))],
+    summary="List the standard cylinder sizes",
+)
+async def list_cylinder_sizes() -> list[CylinderSizeResponse]:
+    return [
+        CylinderSizeResponse(
+            code=size.code, name=size.name, category=size.category, weight_kg=size.weight_kg
+        )
+        for size in CYLINDER_SIZES
+    ]
 
 
 @router.get(
@@ -626,8 +647,7 @@ async def create_cylinder_type(
     cylinder_type = await use_case.execute(
         CreateCylinderTypeCommand(
             tenant_id=principal.tenant_id,
-            name=body.name,
-            weight_kg=body.weight_kg,
+            size_code=body.size_code,
             hsn_code=body.hsn_code,
             gst_rate_percent=body.gst_rate_percent,
         )
@@ -636,39 +656,64 @@ async def create_cylinder_type(
 
 
 @router.patch(
-    "/cylinder-types/{cylinder_type_id}/rename", status_code=204, summary="Rename a cylinder type"
+    "/cylinder-types/{cylinder_type_id}",
+    response_model=CylinderTypeResponse,
+    summary="Change a cylinder type's size and GST details",
 )
-async def rename_cylinder_type(
+async def update_cylinder_type(
     cylinder_type_id: uuid.UUID,
-    body: RenameCylinderTypeRequest,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    body: UpdateCylinderTypeRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
     repository: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = RenameCylinderTypeUseCase(repository, unit_of_work)
-    await use_case.execute(
-        RenameCylinderTypeCommand(cylinder_type_id=cylinder_type_id, new_name=body.name)
-    )
-
-
-@router.patch(
-    "/cylinder-types/{cylinder_type_id}/weight",
-    status_code=204,
-    summary="Adjust a cylinder type's weight",
-)
-async def adjust_cylinder_type_weight(
-    cylinder_type_id: uuid.UUID,
-    body: AdjustCylinderTypeWeightRequest,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
-    repository: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = AdjustCylinderTypeWeightUseCase(repository, unit_of_work)
-    await use_case.execute(
-        AdjustCylinderTypeWeightCommand(
-            cylinder_type_id=cylinder_type_id, new_weight_kg=body.weight_kg
+) -> CylinderTypeResponse:
+    """The size can change only while nothing refers to the type, except
+    that an older off-list record may take a list size of the same weight.
+    """
+    use_case = UpdateCylinderTypeUseCase(repository, unit_of_work)
+    cylinder_type = await use_case.execute(
+        UpdateCylinderTypeCommand(
+            tenant_id=principal.tenant_id,
+            cylinder_type_id=cylinder_type_id,
+            size_code=body.size_code,
+            hsn_code=body.hsn_code,
+            gst_rate_percent=body.gst_rate_percent,
         )
     )
+    return _cylinder_type_to_response(cylinder_type)
+
+
+@router.get(
+    "/cylinder-types/{cylinder_type_id}/usage",
+    response_model=CylinderTypeUsageResponse,
+    summary="What refers to a cylinder type, and which sizes it can change to",
+)
+async def get_cylinder_type_usage(
+    cylinder_type_id: uuid.UUID,
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    repository: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+) -> CylinderTypeUsageResponse:
+    usage = await GetCylinderTypeUsageUseCase(repository).execute(
+        GetCylinderTypeUsageQuery(cylinder_type_id=cylinder_type_id)
+    )
+    return CylinderTypeUsageResponse(
+        used_in=list(usage.used_in), allowed_size_codes=list(usage.allowed_size_codes)
+    )
+
+
+@router.delete(
+    "/cylinder-types/{cylinder_type_id}",
+    status_code=204,
+    summary="Delete a cylinder type that nothing refers to",
+)
+async def delete_cylinder_type(
+    cylinder_type_id: uuid.UUID,
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    repository: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    use_case = DeleteCylinderTypeUseCase(repository, unit_of_work)
+    await use_case.execute(DeleteCylinderTypeCommand(cylinder_type_id=cylinder_type_id))
 
 
 @router.patch(

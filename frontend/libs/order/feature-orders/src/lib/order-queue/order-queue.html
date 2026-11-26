@@ -205,9 +205,32 @@
         </div>
         @if (!cylinderTypesLoading() && cylinderTypes().length === 0) {
         <p-message severity="warn" variant="simple" size="small">
-          No cylinder can be booked for this customer right now. A cylinder shows here only when it
-          is active, has a price for this customer's type at their branch, and has filled stock.
+          @if (unorderableTypes(); as missing) { @if (missing.length > 0) {
+          <span>No cylinder can be booked for this customer right now:</span>
+          <ul class="unorderable">
+            @for (type of missing; track type.cylinder_type_id) {
+            <li><strong>{{ type.name }}</strong>: {{ type.reasons.join('. ') }}</li>
+            }
+          </ul>
+          } @else {
+          <span>There is no active cylinder type. Add or activate one under Cylinder Types.</span>
+          } } @else {
+          <span>
+            No cylinder can be booked for this customer right now. A cylinder shows here only when
+            it is active, has a price for this customer's type at their branch, and has filled
+            stock.
+          </span>
+          }
         </p-message>
+        } @else if (unorderableTypes()?.length) {
+        <div class="unorderable-note">
+          <span>Not available for this customer:</span>
+          <ul class="unorderable">
+            @for (type of unorderableTypes(); track type.cylinder_type_id) {
+            <li><strong>{{ type.name }}</strong>: {{ type.reasons.join('. ') }}</li>
+            }
+          </ul>
+        </div>
         }
         <div class="lines" formArrayName="lines" aria-labelledby="create_lines_label">
           @for (line of lines.controls; track $index) {

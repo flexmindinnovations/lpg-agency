@@ -163,6 +163,47 @@ async def test_out_of_stock_or_overbooked_types_are_hidden(catalog: Catalog) -> 
     )
 
 
+async def test_unorderable_says_everything_each_active_type_is_missing(catalog: Catalog) -> None:
+    catalog.stock.available[catalog.commercial.id] = 0
+
+    missing = await catalog.service().unorderable(
+        tenant_id=TENANT_ID, branch_id=BRANCH_ID, customer_type="domestic"
+    )
+
+    # The orderable type and the inactive one are not reported.
+    assert [(m.name, m.reasons) for m in missing] == [
+        (
+            "Commercial 19kg",
+            (
+                "No price for domestic customers at this branch",
+                "No free filled stock at this branch",
+            ),
+        ),
+        ("Industrial 47.5kg", ("No price for domestic customers at this branch",)),
+    ]
+
+
+async def test_every_active_type_is_either_listed_or_explained(catalog: Catalog) -> None:
+    catalog.stock.available[catalog.domestic.id] = -2
+    service = catalog.service()
+    for customer_type in ("domestic", "commercial", "industrial"):
+        orderable = await service.list(
+            tenant_id=TENANT_ID, branch_id=BRANCH_ID, customer_type=customer_type
+        )
+        unorderable = await service.unorderable(
+            tenant_id=TENANT_ID, branch_id=BRANCH_ID, customer_type=customer_type
+        )
+        listed = {o.cylinder_type_id for o in orderable}
+        explained = {m.cylinder_type_id for m in unorderable}
+
+        assert not listed & explained
+        assert listed | explained == {
+            catalog.domestic.id,
+            catalog.commercial.id,
+            catalog.future.id,
+        }
+
+
 async def test_require_accepts_an_orderable_booking(catalog: Catalog) -> None:
     order_id = uuid.uuid4()
     await catalog.service().require(

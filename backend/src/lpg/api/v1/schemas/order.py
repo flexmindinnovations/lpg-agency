@@ -203,6 +203,15 @@ class OrderableCylinderTypeResponse(BaseModel):
     available_quantity: int
 
 
+class UnorderableCylinderTypeResponse(BaseModel):
+    """An active cylinder type this customer cannot book right now, and why."""
+
+    cylinder_type_id: uuid.UUID
+    name: str
+    #: Written for office staff; a type can miss more than one thing.
+    reasons: list[str]
+
+
 # ==========================================================================
 # Assign
 # ==========================================================================

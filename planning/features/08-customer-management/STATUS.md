@@ -12,3 +12,13 @@
 - **Found and fixed a pre-existing, unrelated bug while verifying**: AG Grid's v36 modular architecture requires explicit `ModuleRegistry.registerModules(...)`, never called anywhere in this codebase — row selection and column filtering have been silent no-ops since AG Grid was first wired in (Phase 4). Registered in `DataGridComponent` (the sole AG Grid consumption point). This is why row selection didn't work in Customer Management's detail panel until fixed here.
 - Nx project renamed `feature-customers` → `customer-feature-customers` and selector prefix `lib` → `lpg`, matching every other feature library's convention (`eslint.config.mjs`, `project.json`).
 - 447 backend tests passing repo-wide (23 customer-specific), `mypy --strict`/`ruff check`/`ruff format --check`/`import-linter` all clean; frontend `lint`/`test`/`build` clean for `dashboard` and `customer-feature-customers`, no CSS budget warnings.
+- **2026-11-26 — Customer profile drawer.** The profile actions sit on their own
+  row (two columns on a phone), the drawer is at least 42rem wide where the
+  screen allows, and Close connection is the solid danger button. Each address
+  is a card titled by its type, with the Primary chip beside the title and, on a
+  phone, the buttons under the address. Checked in a headless browser with a
+  faked API: dark, light, tablet and phone.
+
+**2026-11-26 — customer list link.** The consumer number now opens the
+profile, not the name. A customer with no number yet (onboarding or awaiting
+approval) shows "View (no number yet)" so the profile can still be opened.

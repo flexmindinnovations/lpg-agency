@@ -210,28 +210,6 @@
         "title": "AddCustomerAddressRequest",
         "type": "object"
       },
-      "AdjustCylinderTypeWeightRequest": {
-        "properties": {
-          "weight_kg": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0.0,
-                "type": "number"
-              },
-              {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                "type": "string"
-              }
-            ],
-            "title": "Weight Kg"
-          }
-        },
-        "required": [
-          "weight_kg"
-        ],
-        "title": "AdjustCylinderTypeWeightRequest",
-        "type": "object"
-      },
       "AdjustInventoryRequest": {
         "properties": {
           "cylinder_type_id": {
@@ -2322,28 +2300,13 @@
             ],
             "title": "Hsn Code"
           },
-          "name": {
-            "minLength": 1,
-            "title": "Name",
+          "size_code": {
+            "title": "Size Code",
             "type": "string"
-          },
-          "weight_kg": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0.0,
-                "type": "number"
-              },
-              {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                "type": "string"
-              }
-            ],
-            "title": "Weight Kg"
           }
         },
         "required": [
-          "name",
-          "weight_kg"
+          "size_code"
         ],
         "title": "CreateCylinderTypeRequest",
         "type": "object"
@@ -2996,6 +2959,36 @@
         "title": "CylinderLedgerResponse",
         "type": "object"
       },
+      "CylinderSizeResponse": {
+        "description": "One entry of the standard cylinder size list.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Weight Kg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "category",
+          "weight_kg"
+        ],
+        "title": "CylinderSizeResponse",
+        "type": "object"
+      },
       "CylinderTypePriceCardResponse": {
         "properties": {
           "customer_type": {
@@ -3041,6 +3034,17 @@
       },
       "CylinderTypeResponse": {
         "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
           "gst_rate_percent": {
             "anyOf": [
               {
@@ -3076,6 +3080,17 @@
             "title": "Name",
             "type": "string"
           },
+          "size_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Code"
+          },
           "weight_kg": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Weight Kg",
@@ -3089,6 +3104,30 @@
           "is_active"
         ],
         "title": "CylinderTypeResponse",
+        "type": "object"
+      },
+      "CylinderTypeUsageResponse": {
+        "properties": {
+          "allowed_size_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Size Codes",
+            "type": "array"
+          },
+          "used_in": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Used In",
+            "type": "array"
+          }
+        },
+        "required": [
+          "used_in",
+          "allowed_size_codes"
+        ],
+        "title": "CylinderTypeUsageResponse",
         "type": "object"
       },
       "CylinderUnitListResponse": {
@@ -10612,20 +10651,6 @@
         "title": "RenameBranchRequest",
         "type": "object"
       },
-      "RenameCylinderTypeRequest": {
-        "properties": {
-          "name": {
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "RenameCylinderTypeRequest",
-        "type": "object"
-      },
       "RenameTenantRequest": {
         "properties": {
           "name": {
@@ -12604,6 +12629,34 @@
         "title": "UninvoicedOrderResponse",
         "type": "object"
       },
+      "UnorderableCylinderTypeResponse": {
+        "description": "An active cylinder type this customer cannot book right now, and why.",
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "name",
+          "reasons"
+        ],
+        "title": "UnorderableCylinderTypeResponse",
+        "type": "object"
+      },
       "UnreadCountResponse": {
         "properties": {
           "count": {
@@ -12986,6 +13039,53 @@
           "status"
         ],
         "title": "UpdateCustomerProfileRequest",
+        "type": "object"
+      },
+      "UpdateCylinderTypeRequest": {
+        "description": "Anything left out stays as it is. HSN and rate go together.",
+        "properties": {
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "maximum": 28.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
+          },
+          "size_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Code"
+          }
+        },
+        "title": "UpdateCylinderTypeRequest",
         "type": "object"
       },
       "UpdateDriverAssignmentRequest": {
@@ -14135,6 +14235,31 @@
         ]
       }
     },
+    "/api/v1/admin/cylinder-sizes": {
+      "get": {
+        "operationId": "list_cylinder_sizes_api_v1_admin_cylinder_sizes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CylinderSizeResponse"
+                  },
+                  "title": "Response List Cylinder Sizes Api V1 Admin Cylinder Sizes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List the standard cylinder sizes",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/cylinder-types": {
       "get": {
         "operationId": "list_cylinder_types_api_v1_admin_cylinder_types_get",
@@ -14194,6 +14319,94 @@
           }
         },
         "summary": "Create a cylinder type",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/cylinder-types/{cylinder_type_id}": {
+      "delete": {
+        "operationId": "delete_cylinder_type_api_v1_admin_cylinder_types__cylinder_type_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_type_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Type Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a cylinder type that nothing refers to",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "patch": {
+        "description": "The size can change only while nothing refers to the type, except\nthat an older off-list record may take a list size of the same weight.",
+        "operationId": "update_cylinder_type_api_v1_admin_cylinder_types__cylinder_type_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_type_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Type Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCylinderTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderTypeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change a cylinder type's size and GST details",
         "tags": [
           "Administration"
         ]
@@ -14299,9 +14512,9 @@
         ]
       }
     },
-    "/api/v1/admin/cylinder-types/{cylinder_type_id}/rename": {
-      "patch": {
-        "operationId": "rename_cylinder_type_api_v1_admin_cylinder_types__cylinder_type_id__rename_patch",
+    "/api/v1/admin/cylinder-types/{cylinder_type_id}/usage": {
+      "get": {
+        "operationId": "get_cylinder_type_usage_api_v1_admin_cylinder_types__cylinder_type_id__usage_get",
         "parameters": [
           {
             "in": "path",
@@ -14314,18 +14527,15 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RenameCylinderTypeRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
-          "204": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderTypeUsageResponse"
+                }
+              }
+            },
             "description": "Successful Response"
           },
           "422": {
@@ -14339,53 +14549,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Rename a cylinder type",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/cylinder-types/{cylinder_type_id}/weight": {
-      "patch": {
-        "operationId": "adjust_cylinder_type_weight_api_v1_admin_cylinder_types__cylinder_type_id__weight_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "cylinder_type_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Cylinder Type Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdjustCylinderTypeWeightRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Adjust a cylinder type's weight",
+        "summary": "What refers to a cylinder type, and which sizes it can change to",
         "tags": [
           "Administration"
         ]
@@ -22132,6 +22296,71 @@
           }
         },
         "summary": "The ready-made reminder messages",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/unorderable-cylinder-types": {
+      "get": {
+        "description": "The active types the booking list leaves out for this customer, with\nwhat each is missing, so staff can fix it. Customer logins are refused:\nthe reasons describe the agency's prices and stock.",
+        "operationId": "list_unorderable_cylinder_types_api_v1_orders_unorderable_cylinder_types_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UnorderableCylinderTypeResponse"
+                  },
+                  "title": "Response List Unorderable Cylinder Types Api V1 Orders Unorderable Cylinder Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Explain why a customer cannot book some cylinder types (staff only)",
         "tags": [
           "Orders"
         ]

@@ -108,16 +108,12 @@
   inline-size: 100%;
   border-collapse: collapse;
   font-size: var(--typography-body-small-font-size);
+  font-variant-numeric: tabular-nums;
 }
 
 .register__notes th,
 .register__notes td {
   padding: var(--spacing-xs) var(--spacing-sm);
   border-block-end: 1px solid var(--color-border-default);
-  text-align: end;
-}
-
-.register__notes th:first-child,
-.register__notes td:first-child {
   text-align: start;
 }

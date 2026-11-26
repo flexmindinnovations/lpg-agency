@@ -29,7 +29,7 @@ Default body (16px) for all primary reading content; bodySmall (14px) reserved f
 - Label: form field labels and Badge text — slightly heavier weight (500) than body text to read as structural, not conversational.
 
 ## 5. Table Typography
-Data Grid cells use bodySmall for data values, label-weight for column headers (with aria-sort semantics, `14-data-grid-guidelines.md`) — numeric columns are right-aligned with tabular figures (fixed-width digits) so columns of numbers align visually, critical for the Accountant persona scanning financial columns.
+Data Grid cells use bodySmall for data values, label-weight for column headers (with aria-sort semantics, `14-data-grid-guidelines.md`) — every column, numeric ones included, aligns its header and values to the start, so tables look consistent (owner decision, 2026-11-26; replaces right-aligned numeric columns). Numeric columns use tabular figures (fixed-width digits), so digits have the same width from row to row for the Accountant persona scanning financial columns.
 
 ## 6. Receipts and Printing Fonts
 - Print output (`18-printing-ux.md`) uses a monospace-influenced typeface for thermal receipts (58/80mm) since thermal printers render fixed-width fonts most reliably and legibly at small sizes — a deliberate, printing-specific typography decision distinct from the screen type scale.

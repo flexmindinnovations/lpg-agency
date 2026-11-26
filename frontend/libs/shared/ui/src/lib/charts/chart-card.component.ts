@@ -98,7 +98,7 @@ export interface ChartTable {
                   <thead>
                     <tr>
                       @for (c of t.columns; track $index) {
-                        <th scope="col" [class.chart-card__num]="$index > 0">{{ c }}</th>
+                        <th scope="col">{{ c }}</th>
                       }
                     </tr>
                   </thead>
@@ -106,7 +106,7 @@ export interface ChartTable {
                     @for (row of t.rows; track $index) {
                       <tr>
                         @for (cell of row; track $index) {
-                          <td [class.chart-card__num]="$index > 0">{{ cell }}</td>
+                          <td>{{ cell }}</td>
                         }
                       </tr>
                     }
@@ -235,10 +235,6 @@ export interface ChartTable {
       .chart-card__table th {
         font-weight: var(--typography-label-font-weight);
         color: var(--color-text-secondary);
-      }
-
-      .chart-card__num {
-        text-align: end !important;
       }
 
       .chart-card__sr {

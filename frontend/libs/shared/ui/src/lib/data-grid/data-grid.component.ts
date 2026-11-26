@@ -70,7 +70,7 @@ export interface DataGridColumn<TRow = unknown> {
    * room for the columns a user scans for (number, name, status, amount).
    */
   readonly priority?: 'high' | 'low';
-  /** Right-align with tabular figures — the convention for numeric columns. */
+  /** Tabular (equal-width) figures. Alignment is the same as every other column. */
   readonly numeric?: boolean;
   readonly valueFormatter?: (value: unknown, row: TRow) => string;
   /**
@@ -106,7 +106,12 @@ export interface DataGridColumn<TRow = unknown> {
   selector: 'lpg-data-grid-link-cell',
   standalone: true,
   template: `
-    <button type="button" class="lpg-data-grid-link" (click)="handleClick()">{{ value() }}</button>
+    <!-- A row with no label has no action: no empty, focusable button. -->
+    @if (value()) {
+      <button type="button" class="lpg-data-grid-link" (click)="handleClick()">
+        {{ value() }}
+      </button>
+    }
   `,
   styles: [
     `
@@ -379,7 +384,7 @@ function escapeHtml(text: string): string {
       /* Extra end padding on the last column. Its cells otherwise sit 12px
          from the grid's edge, and on touch devices (tablets) the vertical
          scrollbar is an overlay that takes no layout width, so AG Grid lays
-         the last column out underneath it and right-aligned values (the
+         the last column out underneath it and long values (the
          Orders "Total", ₹4500.00) lose their last characters. The header
          cell gets the same padding so its label stays aligned with the
          values below it. */
@@ -507,7 +512,9 @@ export class DataGridComponent<TRow = unknown> {
       // with one, the grid scrolls sideways instead. Fixed widths are kept.
       minWidth:
         column.minWidth ?? (column.width === undefined ? defaultMinWidth(column) : undefined),
-      type: column.numeric ? 'numericColumn' : undefined,
+      // Headers and values align at the start in every column: mixing in
+      // right-aligned number columns made tables look uneven.
+      cellStyle: column.numeric ? { fontVariantNumeric: 'tabular-nums' } : undefined,
       cellClass:
         typeof column.cellClass === 'function'
           ? (params) =>

@@ -27,7 +27,25 @@ from lpg.domain.tenant.price_list_proposal import PriceListProposal
 from lpg.domain.tenant.tenant import AgencyBusinessProfile, Tenant
 from lpg.domain.tenant.tenant_configuration import TenantConfiguration
 from lpg.domain.tenant.warehouse import Warehouse
+from lpg.infrastructure.persistence.models.accounting import InvoiceLineModel
 from lpg.infrastructure.persistence.models.audit_log import AuditLogModel
+from lpg.infrastructure.persistence.models.compliance import (
+    CylinderUnitModel,
+    WeighmentRecordModel,
+)
+from lpg.infrastructure.persistence.models.cylinder_ledger import (
+    CylinderBalanceModel,
+    LedgerTransactionModel,
+)
+from lpg.infrastructure.persistence.models.inventory import (
+    GoodsReceiptNoteModel,
+    InventoryBalanceModel,
+    InventoryTransactionModel,
+    OmcReturnNoteModel,
+    ReconciliationRecordModel,
+    ReorderPolicyModel,
+)
+from lpg.infrastructure.persistence.models.order import OrderLineModel
 from lpg.infrastructure.persistence.models.tenant import (
     BranchModel,
     CylinderTypeModel,
@@ -346,6 +364,29 @@ class SqlAlchemyWarehouseRepository:
         row.is_active = warehouse.is_active
 
 
+#: Every table that records a cylinder type, grouped as staff would name it.
+#: A new table with a `cylinder_type_id` belongs here, or its type could be
+#: deleted from under it (`test_every_reference_is_checked` guards this).
+_CYLINDER_TYPE_REFERENCES: tuple[tuple[str, tuple[Any, ...]], ...] = (
+    ("orders", (OrderLineModel,)),
+    (
+        "stock records",
+        (
+            InventoryBalanceModel,
+            InventoryTransactionModel,
+            GoodsReceiptNoteModel,
+            ReconciliationRecordModel,
+            OmcReturnNoteModel,
+            ReorderPolicyModel,
+        ),
+    ),
+    ("prices", (PriceListModel, PriceListProposalModel)),
+    ("invoices", (InvoiceLineModel,)),
+    ("the cylinder ledger", (CylinderBalanceModel, LedgerTransactionModel)),
+    ("compliance records", (WeighmentRecordModel, CylinderUnitModel)),
+)
+
+
 class SqlAlchemyCylinderTypeRepository:
     """Implements `CylinderTypeRepository` (`lpg.application.tenant.ports`)."""
 
@@ -354,7 +395,7 @@ class SqlAlchemyCylinderTypeRepository:
 
     async def get(self, cylinder_type_id: uuid.UUID) -> CylinderType | None:
         row = await self._uow.session.get(CylinderTypeModel, cylinder_type_id)
-        if row is None:
+        if row is None or row.is_deleted:
             return None
 
         cylinder_type = CylinderType(
@@ -417,6 +458,32 @@ class SqlAlchemyCylinderTypeRepository:
         row.is_active = cylinder_type.is_active
         row.hsn_code = cylinder_type.hsn_code
         row.gst_rate_percent = cylinder_type.gst_rate_percent
+
+    async def used_in(self, cylinder_type_id: uuid.UUID) -> Sequence[str]:
+        found = []
+        for label, models in _CYLINDER_TYPE_REFERENCES:
+            for model in models:
+                query = select(
+                    select(model.cylinder_type_id)
+                    .where(model.cylinder_type_id == cylinder_type_id)
+                    .exists()
+                )
+                if await self._uow.session.scalar(query):
+                    found.append(label)
+                    break
+        return found
+
+    async def delete(self, cylinder_type: CylinderType) -> None:
+        """A soft delete: the app role has no `DELETE` on this table."""
+        row = await self._uow.session.get(CylinderTypeModel, cylinder_type.id)
+        if row is None:
+            msg = f"Cannot delete cylinder type {cylinder_type.id} — no matching row was loaded."
+            raise LookupError(msg)
+
+        row.is_deleted = True
+        row.deleted_at = datetime.now(UTC)
+        row.deleted_by = self._uow.tenant_context.user_id
+        self._uow.register_aggregate(cylinder_type)
 
 
 class SqlAlchemyTenantConfigurationRepository:

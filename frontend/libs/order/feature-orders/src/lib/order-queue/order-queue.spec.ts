@@ -73,26 +73,89 @@ describe('OrderQueue', () => {
       availableFor: (id: string) => number | null;
     };
 
+    const isRequestFor =
+      (list: 'orderable' | 'unorderable', customerId: string) =>
+      (req: { url: string; params: { get: (name: string) => string | null } }) =>
+        req.url === `http://test/api/v1/orders/${list}-cylinder-types` &&
+        req.params.get('customer_id') === customerId;
+
+    const option = {
+      cylinder_type_id: 'ct-1',
+      name: 'Domestic 14.2kg',
+      weight_kg: '14.2',
+      unit_price: '903.00',
+      available_quantity: 12,
+    };
+    const unpriced = {
+      cylinder_type_id: 'ct-2',
+      name: 'Commercial 19kg',
+      reasons: ['No price for domestic customers at this branch', 'No free filled stock'],
+    };
+
+    /** Picks a customer in the open form and answers the booking list. */
+    function pickCustomer(orderable: object[]) {
+      const fixture = TestBed.createComponent(OrderQueue);
+      const http = TestBed.inject(HttpTestingController);
+      const component = fixture.componentInstance as unknown as Internals & {
+        showCreateDrawer: { set: (open: boolean) => void };
+      };
+      component.showCreateDrawer.set(true);
+      fixture.detectChanges();
+      component.createForm.controls.customer.setValue({ id: 'cust-1', addresses: [] });
+      http.expectOne(isRequestFor('orderable', 'cust-1')).flush(orderable);
+      const reasons = http.expectOne(isRequestFor('unorderable', 'cust-1'));
+      const text = () => {
+        fixture.detectChanges();
+        return (document.body.textContent ?? '').replace(/\s+/g, ' ');
+      };
+      return { fixture, reasons, text };
+    }
+
+    it('tells staff why nothing can be booked', () => {
+      const { fixture, reasons, text } = pickCustomer([]);
+      reasons.flush([unpriced]);
+
+      expect(text()).toContain('No cylinder can be booked for this customer right now:');
+      expect(text()).toContain(
+        'Commercial 19kg: No price for domestic customers at this branch. No free filled stock',
+      );
+      fixture.destroy();
+    });
+
+    it('lists what is missing beside the types that can be booked', () => {
+      const { fixture, reasons, text } = pickCustomer([option]);
+      reasons.flush([unpriced]);
+
+      expect(text()).toContain('Not available for this customer:');
+      expect(text()).toContain('Commercial 19kg: No price for domestic customers');
+      expect(text()).not.toContain('No cylinder can be booked');
+      fixture.destroy();
+    });
+
+    it('says when there is no active cylinder type at all', () => {
+      const { fixture, reasons, text } = pickCustomer([]);
+      reasons.flush([]);
+
+      expect(text()).toContain('There is no active cylinder type.');
+      fixture.destroy();
+    });
+
+    it('keeps the general message when the reasons fail to load', () => {
+      const { fixture, reasons, text } = pickCustomer([]);
+      reasons.flush(null, { status: 500, statusText: 'Server Error' });
+
+      expect(text()).toContain('A cylinder shows here only when it is active');
+      fixture.destroy();
+    });
+
     it('offers only what the selected customer can order, with price and stock', () => {
       const fixture = TestBed.createComponent(OrderQueue);
       const component = fixture.componentInstance as unknown as Internals;
       const http = TestBed.inject(HttpTestingController);
 
       component.createForm.controls.customer.setValue({ id: 'cust-1', addresses: [] });
-      const request = http.expectOne(
-        (req) =>
-          req.url === 'http://test/api/v1/orders/orderable-cylinder-types' &&
-          req.params.get('customer_id') === 'cust-1',
-      );
-      request.flush([
-        {
-          cylinder_type_id: 'ct-1',
-          name: 'Domestic 14.2kg',
-          weight_kg: '14.2',
-          unit_price: '903.00',
-          available_quantity: 12,
-        },
-      ]);
+      http.expectOne(isRequestFor('orderable', 'cust-1')).flush([option]);
+      http.expectOne(isRequestFor('unorderable', 'cust-1')).flush([]);
 
       expect(component.cylinderTypeOptions()).toEqual([
         { value: 'ct-1', label: 'Domestic 14.2kg · ₹903.00 + GST · 12 in stock' },
@@ -110,7 +173,7 @@ describe('OrderQueue', () => {
 
       component.createForm.controls.customer.setValue('Meen');
 
-      http.expectNone((req) => req.url.endsWith('/orders/orderable-cylinder-types'));
+      http.expectNone((req) => req.url.endsWith('orderable-cylinder-types'));
     });
 
     it('picks the primary address so a booking needs no extra step', () => {

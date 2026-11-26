@@ -87,6 +87,13 @@ class CylinderTypeRepository(Protocol):
 
     async def save(self, cylinder_type: CylinderType) -> None: ...
 
+    async def used_in(self, cylinder_type_id: uuid.UUID) -> Sequence[str]:
+        """What refers to this type, in words ("orders", "prices"); empty
+        when nothing does."""
+        ...
+
+    async def delete(self, cylinder_type: CylinderType) -> None: ...
+
 
 @runtime_checkable
 class TenantConfigurationRepository(Protocol):
