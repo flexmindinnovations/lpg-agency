@@ -32,3 +32,11 @@ by component tests only and has **not been exercised in a browser**.
 - No authenticated change-password endpoint exists.
 
 Design: [PLAN.md](./PLAN.md). Tasks: [TASKS.md](./TASKS.md). Decision: ADR-048.
+
+## 2026-11-25: editing agency details
+
+A Super Admin can now correct an agency's name and primary contact email. The agency code stays fixed because the mobile apps sign in with it; plan comes from the licence and status from Suspend, Reactivate and Close.
+
+Verified: backend unit tests, ruff, `mypy --strict`, import-linter and the OpenAPI drift check; frontend tests, lint and build. In the browser, the drawer and edit form were opened and cancelled; nothing was saved, because the local dev server uses the live server.
+
+Not verified: the new integration test (no local PostgreSQL), and saving end to end (the live server does not have the endpoint until the backend is deployed).

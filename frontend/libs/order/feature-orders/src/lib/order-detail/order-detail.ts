@@ -57,6 +57,7 @@ import {
   DeliveryService,
   InvoiceService,
   InventoryService,
+  ModuleAccessStore,
   NotifyService,
   OrderService,
   WebSocketService,
@@ -204,6 +205,11 @@ export class OrderDetail implements OnInit {
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly inventoryService = inject(InventoryService);
+  private readonly modules = inject(ModuleAccessStore);
+  // Orders does not require these modules: while one is off, its parts of this
+  // page are hidden and its API is not called.
+  protected readonly hasDispatch = computed(() => this.modules.isEnabled('dispatch'));
+  protected readonly hasInventory = computed(() => this.modules.isEnabled('inventory'));
   private readonly customerService = inject(CustomerService);
   private readonly invoiceService = inject(InvoiceService);
   private readonly notify = inject(NotifyService);
@@ -660,6 +666,7 @@ export class OrderDetail implements OnInit {
   protected readonly canConfirm = computed(() => this.order()?.status === 'booked');
   /** A confirmed order, or one on a trip whose van isn't loaded yet. */
   protected readonly canSendOut = computed(() => {
+    if (!this.hasDispatch()) return false;
     const status = this.order()?.status;
     return status === 'confirmed' || status === 'assigned';
   });
@@ -749,6 +756,7 @@ export class OrderDetail implements OnInit {
   protected readonly gpsCaptured = signal(false);
 
   protected readonly signatureCanvas = viewChild<ElementRef<HTMLCanvasElement>>('signatureCanvas');
+  private readonly photoInput = viewChild<ElementRef<HTMLInputElement>>('photoInput');
   private drawing = false;
   private hasSignatureStrokes = false;
 
@@ -828,7 +836,7 @@ export class OrderDetail implements OnInit {
       next: (pod) => this.proofOfDelivery.set(pod),
       error: () => this.proofOfDelivery.set(null),
     });
-    if (this.auth.principal()?.permissions.has('invoices:read')) {
+    if (this.canSeeInvoices()) {
       this.invoiceService.list({ page: 1, pageSize: 10, orderId }).subscribe({
         next: (page) => this.invoices.set(page.items),
         error: () => this.invoices.set([]),
@@ -858,12 +866,16 @@ export class OrderDetail implements OnInit {
   /** Every driver and van, for names on trips; Send out offers the order's branch only.
    * A trip can use a van registered to another branch, so names can't be branch-filtered. */
   private loadFleet(): void {
-    this.deliveryService.listDrivers(0, 200).subscribe({
-      next: (page) => this.drivers.set(page.items),
-    });
-    this.deliveryService.listVehicles(0, 200).subscribe({
-      next: (page) => this.vehicles.set(page.items),
-    });
+    if (this.modules.isEnabled('drivers')) {
+      this.deliveryService.listDrivers(0, 200).subscribe({
+        next: (page) => this.drivers.set(page.items),
+      });
+    }
+    if (this.modules.isEnabled('vehicles')) {
+      this.deliveryService.listVehicles(0, 200).subscribe({
+        next: (page) => this.vehicles.set(page.items),
+      });
+    }
     this.employeeService.listEmployees({ limit: 200, role: 'driver' }).subscribe({
       next: (page) => {
         const map = new Map<string, EmployeeResponse>();
@@ -876,7 +888,7 @@ export class OrderDetail implements OnInit {
   private loadActiveTrips(branchId: string): void {
     // `/routes` needs `routes:read`; roles without it (e.g. an accountant)
     // would only get a 403 — skip the call (DO-31).
-    if (!this.auth.principal()?.permissions.has('routes:read')) {
+    if (!this.hasDispatch() || !this.auth.principal()?.permissions.has('routes:read')) {
       this.activeTrips.set([]);
       return;
     }
@@ -1062,7 +1074,7 @@ export class OrderDetail implements OnInit {
   protected onSendVehicleChange(vehicleId: string | null): void {
     if (this.isNewTrip() || !vehicleId) this.sendVehicleId.set(vehicleId);
     this.vanStock.set(new Map());
-    if (!vehicleId) return;
+    if (!vehicleId || !this.hasInventory()) return;
     this.inventoryService.getBalance('vehicle', vehicleId).subscribe({
       next: (balance) => this.vanStock.set(filledStock(balance.balances)),
     });
@@ -1071,7 +1083,7 @@ export class OrderDetail implements OnInit {
   protected onSendWarehouseChange(warehouseId: string | null): void {
     this.sendWarehouseId.set(warehouseId);
     this.godownStock.set(null);
-    if (!warehouseId) return;
+    if (!warehouseId || !this.hasInventory()) return;
     this.inventoryService.getBalance('warehouse', warehouseId).subscribe({
       next: (balance) => this.godownStock.set(filledStock(balance.balances)),
       // Stock is a guide here; the server still refuses a short load.
@@ -1205,6 +1217,9 @@ export class OrderDetail implements OnInit {
     }
     this.signatureBlobRef.set(null);
     this.photoBlobRef.set(null);
+    // The drawer keeps its content, so the picker would still name the last file.
+    const photoInput = this.photoInput()?.nativeElement;
+    if (photoInput) photoInput.value = '';
     this.gpsCaptured.set(false);
     this.hasSignatureStrokes = false;
     this.showDeliverDrawer.set(true);
@@ -1419,7 +1434,9 @@ export class OrderDetail implements OnInit {
 
   protected readonly invoiceBusy = signal(false);
   protected readonly canSeeInvoices = computed(
-    () => this.auth.principal()?.permissions.has('invoices:read') ?? false,
+    () =>
+      this.modules.isEnabled('invoices') &&
+      (this.auth.principal()?.permissions.has('invoices:read') ?? false),
   );
   /** Delivered and closed orders always have an invoice (or are waiting for
    *  one); any other order shows the card only once an invoice exists. */

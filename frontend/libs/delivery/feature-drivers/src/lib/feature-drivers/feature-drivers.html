@@ -43,6 +43,7 @@
           (input)="onSearch($event)"
         />
       </p-iconfield>
+      @if (hasComplianceCalendar()) {
       <p-select
         [options]="expiryFilterOptions"
         optionLabel="label"
@@ -51,7 +52,7 @@
         (ngModelChange)="expiryFilter.set($event)"
         aria-label="Filter by document expiry"
       ></p-select>
-      }
+      } }
     </div>
   </div>
 
@@ -254,6 +255,7 @@
           [addDocument]="addDriverDocument(driver)"
           [replaceDocument]="replaceComplianceDocument"
           [verifyDocument]="verifyComplianceDocument"
+          [reviewEnabled]="hasComplianceCalendar()"
           (changed)="onDriverDocumentsChanged()"
         />
       </div>

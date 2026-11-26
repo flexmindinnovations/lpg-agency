@@ -130,9 +130,8 @@ class SetupProgressMemory {
 
       .setup__inner {
         min-block-size: 0;
-        /* Clip while it grows, but leave room for the card's shadow. */
+        /* Clip while it grows. */
         overflow: clip;
-        overflow-clip-margin: var(--spacing-sm);
       }
 
       .setup__lede {

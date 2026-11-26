@@ -10,6 +10,7 @@ import { closeAgencyApiV1PlatformAgenciesTenantIdClosePatch } from './generated/
 import { listAgenciesApiV1PlatformAgenciesGet } from './generated/fn/platform-console/list-agencies-api-v-1-platform-agencies-get';
 import { reactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch } from './generated/fn/platform-console/reactivate-agency-api-v-1-platform-agencies-tenant-id-reactivate-patch';
 import { suspendAgencyApiV1PlatformAgenciesTenantIdSuspendPatch } from './generated/fn/platform-console/suspend-agency-api-v-1-platform-agencies-tenant-id-suspend-patch';
+import { updateAgencyApiV1PlatformAgenciesTenantIdPatch } from './generated/fn/platform-console/update-agency-api-v-1-platform-agencies-tenant-id-patch';
 import { listAgencyModulesApiV1PlatformAgenciesTenantIdModulesGet } from './generated/fn/platform-console/list-agency-modules-api-v-1-platform-agencies-tenant-id-modules-get';
 import { setAgencyModuleApiV1PlatformAgenciesTenantIdModulesModuleKeyPut } from './generated/fn/platform-console/set-agency-module-api-v-1-platform-agencies-tenant-id-modules-module-key-put';
 import type { ModuleResponse } from './generated/models/module-response';
@@ -18,6 +19,7 @@ import type { StaffUserResponse } from './generated/models/staff-user-response';
 import type { CreateAgencyRequest } from './generated/models/create-agency-request';
 import type { CreateAgencyResponse } from './generated/models/create-agency-response';
 import type { TenantResponse } from './generated/models/tenant-response';
+import type { UpdateAgencyRequest } from './generated/models/update-agency-request';
 
 /**
  * Thin wrapper over the generated `/platform/agencies*` client functions —
@@ -40,6 +42,15 @@ export class AgencyService {
    * one-time password-setup link — it is never retrievable again. */
   create(request: CreateAgencyRequest): Observable<CreateAgencyResponse> {
     return createAgencyApiV1PlatformAgenciesPost(this.http, this.config.rootUrl, {
+      body: request,
+    }).pipe(map((response) => response.body));
+  }
+
+  /** Corrects an agency's name and contact email. The agency code is fixed:
+   * the mobile apps sign in with it. */
+  update(tenantId: string, request: UpdateAgencyRequest): Observable<TenantResponse> {
+    return updateAgencyApiV1PlatformAgenciesTenantIdPatch(this.http, this.config.rootUrl, {
+      tenant_id: tenantId,
       body: request,
     }).pipe(map((response) => response.body));
   }

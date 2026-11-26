@@ -7,6 +7,7 @@ import {
   AdminBranchService,
   AdminEmployeeService,
   DeliveryService,
+  ModuleAccessStore,
   NotifyService,
   type DriverResponse,
   type EmployeeResponse,
@@ -56,6 +57,7 @@ describe('FeatureEmployees', () => {
   function create(options: {
     employees: EmployeeResponse[];
     drivers: DriverResponse[] | 'forbidden';
+    driversModuleOff?: boolean;
   }): void {
     enableDriverLogin = jest.fn();
     success = jest.fn();
@@ -71,6 +73,13 @@ describe('FeatureEmployees', () => {
       providers: [
         ConfirmationService,
         { provide: PERMISSION_CHECKER, useValue: signal(null) },
+        {
+          provide: ModuleAccessStore,
+          useValue: {
+            isEnabled: () => !options.driversModuleOff,
+            ensureLoaded: () => of(undefined),
+          },
+        },
         {
           provide: AdminEmployeeService,
           useValue: {
@@ -124,6 +133,13 @@ describe('FeatureEmployees', () => {
         'no-profile': 'Not enabled',
         manager: '—',
       });
+    });
+
+    it('does not ask for drivers while the Drivers module is off', () => {
+      create({ employees: [employee('e1', 'driver')], drivers: [], driversModuleOff: true });
+
+      expect(listDrivers).not.toHaveBeenCalled();
+      expect(internals().employeeRows()[0].app_login).toBe('—');
     });
 
     it('claims nothing when the user cannot read drivers', () => {

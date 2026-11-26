@@ -53,7 +53,7 @@
           size="small"
           [severity]="viewMode() === 'kanban' ? 'primary' : 'secondary'"
           (click)="viewMode.set('kanban')"
-          title="Kanban board view"
+          pTooltip="Kanban board view"
           aria-label="Kanban board view"
         >
           <i class="pi pi-th-large" aria-hidden="true"></i>
@@ -65,7 +65,7 @@
           size="small"
           [severity]="viewMode() === 'table' ? 'primary' : 'secondary'"
           (click)="viewMode.set('table')"
-          title="Tabular table view"
+          pTooltip="Tabular table view"
           aria-label="Tabular table view"
         >
           <i class="pi pi-table" aria-hidden="true"></i>
@@ -121,7 +121,7 @@
               (keydown.space)="openNewTrip(order); $event.preventDefault()"
             >
               <div class="jira-card__header">
-                <span class="jira-card__key" [title]="order.id">
+                <span class="jira-card__key" [pTooltip]="order.id">
                   <i class="pi pi-tag jira-card__key-icon" aria-hidden="true"></i>
                   <span>{{ order.order_number ?? shortId(order.id) }}</span>
                 </span>
@@ -412,10 +412,14 @@
             <tr>
               <th scope="col">Cylinder</th>
               <th scope="col">For orders</th>
+              @if (hasInventory()) {
               <th scope="col">Already on van</th>
+              }
               <th scope="col">Spare</th>
               <th scope="col">To load</th>
+              @if (hasInventory()) {
               <th scope="col">In godown</th>
+              }
             </tr>
           </thead>
           <tbody>
@@ -423,7 +427,9 @@
             <tr [class.load-sheet__row--short]="row.short">
               <th scope="row">{{ row.name }}</th>
               <td>{{ row.forOrders }}</td>
+              @if (hasInventory()) {
               <td>{{ row.onVan }}</td>
+              }
               <td>
                 <p-inputnumber
                   [inputId]="'trip_spare_' + row.id"
@@ -436,6 +442,7 @@
                 />
               </td>
               <td><strong>{{ row.toLoad }}</strong></td>
+              @if (hasInventory()) {
               <td>
                 {{ row.inGodown ?? '—' }} @if (row.short) {
                 <span class="load-sheet__short"
@@ -443,6 +450,7 @@
                 >
                 }
               </td>
+              }
             </tr>
             }
           </tbody>
@@ -514,6 +522,7 @@
         <i class="pi pi-send"></i>
         <span>Load &amp; dispatch</span>
       </button>
+      @if (hasScales()) {
       <button
         *lpgHasPermission="'weighment:record'"
         pButton
@@ -526,7 +535,7 @@
         <i class="pi pi-verified"></i>
         <span>Log Load-Out Weighment</span>
       </button>
-      } @if (canAddOrders()) {
+      } } @if (canAddOrders()) {
       <button pButton type="button" severity="secondary" (click)="openTripSheetFor(route)">
         <i class="pi pi-plus"></i>
         <span>Add orders</span>
@@ -587,6 +596,12 @@
     } @if (route.status === 'completed') {
     <p-message severity="warn" styleClass="reconciliation-banner">
       <div class="reconciliation-banner__content">
+        @if (!hasInventory()) {
+        <span
+          >Settling needs an approved reconciliation for this vehicle. That is done in Inventory,
+          which is switched off for this agency.</span
+        >
+        } @else {
         <span>Settling needs an approved reconciliation for this vehicle.</span>
         <button
           pButton
@@ -598,6 +613,7 @@
           <span>Go to Inventory</span>
           <i class="pi pi-arrow-right" aria-hidden="true"></i>
         </button>
+        }
       </div>
     </p-message>
     } @if (showLoadOutWeighmentForm()) {

@@ -42,6 +42,22 @@ _COUNTRY_RE = re.compile(r"^[A-Z]{2}$")
 _PINCODE_RE = re.compile(r"^[1-9][0-9]{5}$")
 
 
+def _clean_agency_name(name: str) -> str:
+    clean = name.strip()
+    if not clean or len(clean) > NAME_MAX_LENGTH:
+        msg = f"Agency name must be 1-{NAME_MAX_LENGTH} characters."
+        raise InvariantViolation(msg)
+    return clean
+
+
+def _clean_contact_email(email: str) -> str:
+    clean = email.strip().lower()
+    if "@" not in clean or clean.startswith("@") or clean.endswith("@"):
+        msg = "A valid primary contact email is required."
+        raise InvariantViolation(msg)
+    return clean
+
+
 @dataclass(frozen=True, slots=True)
 class AgencyBusinessProfile:
     """The agency as a GST supplier — what every tax invoice prints in its
@@ -209,10 +225,7 @@ class Tenant(AggregateRoot):
         first (whitespace trimmed, slug and email lower-cased) because callers
         should not have to pre-clean what they are about to be rejected for.
         """
-        clean_name = name.strip()
-        if not clean_name or len(clean_name) > NAME_MAX_LENGTH:
-            msg = f"Agency name must be 1-{NAME_MAX_LENGTH} characters."
-            raise InvariantViolation(msg)
+        clean_name = _clean_agency_name(name)
 
         clean_slug = slug.strip().lower()
         if not SLUG_MIN_LENGTH <= len(clean_slug) <= SLUG_MAX_LENGTH or not _SLUG_RE.match(
@@ -227,10 +240,7 @@ class Tenant(AggregateRoot):
             msg = f"Agency code '{clean_slug}' is reserved."
             raise InvariantViolation(msg, slug=clean_slug)
 
-        clean_email = primary_contact_email.strip().lower()
-        if "@" not in clean_email or clean_email.startswith("@") or clean_email.endswith("@"):
-            msg = "A valid primary contact email is required."
-            raise InvariantViolation(msg)
+        clean_email = _clean_contact_email(primary_contact_email)
 
         clean_country = country.strip().upper()
         if not _COUNTRY_RE.match(clean_country):
@@ -276,6 +286,26 @@ class Tenant(AggregateRoot):
     @property
     def business_profile(self) -> AgencyBusinessProfile | None:
         return self._business_profile
+
+    def update_details(self, *, name: str, primary_contact_email: str) -> None:
+        """Correct the details a Super Admin typed in at provisioning.
+
+        Deliberately not the agency code: it is what the mobile apps sign in
+        with (and the future subdomain), so changing it would lock users out.
+        Plan comes from the licence and status from the lifecycle methods.
+        A closed agency is a historical record and stays as it was.
+        """
+        if self._status == "closed":
+            msg = "A closed agency cannot be edited."
+            raise InvariantViolation(msg, tenant_id=str(self.id))
+
+        clean_name = _clean_agency_name(name)
+        clean_email = _clean_contact_email(primary_contact_email)
+
+        if clean_name != self._name:
+            self._name = clean_name
+            self.record_event(TenantRenamed(tenant_id=self.id, new_name=clean_name))
+        self._primary_contact_email = clean_email
 
     def update_business_profile(self, profile: AgencyBusinessProfile) -> None:
         """Replace the GST business profile. Invoices already issued keep

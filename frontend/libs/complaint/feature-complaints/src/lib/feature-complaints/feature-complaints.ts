@@ -11,6 +11,7 @@ import {
   viewChild,
   DestroyRef,
 } from '@angular/core';
+import { Message } from 'primeng/message';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
@@ -28,6 +29,7 @@ import { Textarea } from 'primeng/textarea';
 import { PERMISSION_CHECKER } from '@lpg/shared/util';
 import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
+  ModuleAccessStore,
   AdminStaffUserService,
   CustomerService,
   NotifyService,
@@ -94,6 +96,7 @@ function lowerKeys(record: Record<string, string>): Record<string, string> {
 @Component({
   selector: 'lib-feature-complaints',
   imports: [
+    Message,
     PageActionsDirective,
     DatePipe,
     HeaderTitlePortalDirective,
@@ -119,6 +122,10 @@ function lowerKeys(record: Record<string, string>): Record<string, string> {
 })
 export class FeatureComplaints implements OnInit {
   private readonly complaintService = inject(ComplaintService);
+  private readonly modules = inject(ModuleAccessStore);
+  /** A complaint is raised for a customer, so raising one needs that module. */
+  protected readonly hasCustomers = computed(() => this.modules.isEnabled('customers'));
+  protected readonly hasOrders = computed(() => this.modules.isEnabled('orders'));
   private readonly customerService = inject(CustomerService);
   private readonly orderService = inject(OrderService);
   private readonly adminStaffUserService = inject(AdminStaffUserService);
@@ -205,7 +212,7 @@ export class FeatureComplaints implements OnInit {
    * read orders; the drawer falls back to a short id then. */
   protected readonly selectedOrderNumber = signal<string | null>(null);
   private readonly canReadOrders = computed(
-    () => this.permissionChecker()?.permissions?.has('orders:read') ?? false,
+    () => this.hasOrders() && (this.permissionChecker()?.permissions?.has('orders:read') ?? false),
   );
 
   readonly registerModalVisible = signal(false);
@@ -485,6 +492,7 @@ export class FeatureComplaints implements OnInit {
    * map exists only to feed the grid's `valueFormatter` and isn't meant
    * to double as a cache the preview depends on staying in sync with. */
   protected openCustomerPreview(customerId: string): void {
+    if (!this.hasCustomers()) return;
     const dialog = this.customerPreviewDialog();
     dialog.open();
     this.customerService.get(customerId).subscribe({

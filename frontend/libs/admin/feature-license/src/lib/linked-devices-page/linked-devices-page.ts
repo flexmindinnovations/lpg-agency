@@ -13,7 +13,6 @@ import { Drawer } from 'primeng/drawer';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
 import {
   AdminTenantConfigurationService,
   LicenseService,
@@ -33,6 +32,7 @@ import {
   StatusChipCell,
   ToggleGroupComponent,
   formatTimestamp,
+  InfoTipComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
@@ -78,7 +78,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
     Select,
     ToggleGroupComponent,
     Tag,
-    TooltipModule,
+    InfoTipComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -105,12 +105,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
             [disabled]="savingMode()"
             ariaLabel="Who can use the apps"
           />
-          <i
-            class="pi pi-info-circle toolbar__info"
-            [pTooltip]="modeHelp()"
-            tooltipPosition="bottom"
-            aria-hidden="true"
-          ></i>
+          <lpg-info-tip [text]="modeHelp()" position="bottom" />
           <span class="sr-only" aria-live="polite">{{ modeHelp() }}</span>
         </div>
         <div class="toolbar__filters">
@@ -310,11 +305,6 @@ const DEVICE_CONTROL_KEY = 'device_control';
         overflow: hidden;
         clip-path: inset(50%);
         white-space: nowrap;
-      }
-
-      .toolbar__info {
-        color: var(--color-text-secondary);
-        cursor: help;
       }
 
       .grid-section {

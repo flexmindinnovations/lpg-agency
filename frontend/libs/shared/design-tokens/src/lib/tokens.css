@@ -237,19 +237,11 @@ have always been hand-edited directly. Edit them here.
   --icon-size-lg: 20px;
   --icon-size-xl: 24px;
 
-  /* Opacity of the shared .surface-noise grain. 0 in light / high-contrast
-     (nothing to break up — no large gradients there); dark turns it on. */
-  --surface-noise-opacity: 0;
-
-  /* ---- Frosted paper (ported from the mobile apps' LpgBackdrop) ----
-     The same 256px grain tile the mobile design_system uses, laid once over
-     the whole window by `body::after` in styles.css (one fixed layer, no
-     per-element blur). Cards, buttons, inputs, tables, drawers and dialogs
-     all pick it up because it sits over them. Opacity is the mobile
-     "largest grain that keeps secondary text >= 4.55:1" idea: light 0.14,
-     dark 0.09 with the specks inverted to light. 0 in high contrast. */
+  /* ---- App background (frosted paper) ----
+     One background for the whole app (`--app-backdrop` in the dashboard
+     styles.css). The grain is the mobile apps' tile with its strength baked
+     into the file's alpha, so it needs no opacity layer. */
   --paper-grain-image: url('/textures/paper-grain.png');
-  --paper-grain-opacity: 0.05;
   /* The grain tile is drawn small, so each speck reads as a fine glass dot
      rather than a paper fibre (the tile itself is 256px). Two scales so the
      pattern never reads as a repeat. */
@@ -257,46 +249,28 @@ have always been hand-edited directly. Edit them here.
   --paper-grain-size-2: 216px;
   /* Frosted sheen over the page colour (Mica/acrylic-like); 0 = none. */
   --frost-sheen: 34%;
-  --paper-grain-blur: 0px;
-  --paper-grain-invert: 0;
-  /* The grain softened once into mist (mobile LpgGrain.haze), laid UNDER the
-     content by body::before so see-through cards and chrome show it. */
-  --paper-haze-image: url('/textures/paper-haze.png');
-  --paper-haze-opacity: 0.06;
-  /* A veil laid OVER that mist and under the content, so the noise shows through
-     more softly. In light mode it is a soft blue-grey, so the white section
-     cards stand out from the page; dark mode and high contrast use the plain
-     page colour. --paper-veil is its strength (0% = none). */
+  /* Strength of the brand-colour glows; 0 = none. */
+  --page-wash: 15%;
+  /* A veil over the page colour. In light mode it is a soft blue-grey, so the
+     white panes stand out from the page; dark mode and high contrast use the
+     plain page colour. --paper-veil is its strength (0% = none). */
   --paper-veil: 80%;
   --paper-veil-color: #e9edf2;
-  /* ---- Glass (frosted chrome: header, sidebar, dialogs, drawers, toasts) ----
-     Tints come from the surface tokens (same colour, added alpha) so glass
-     matches the palette in both themes. Used by the .glass utility and the
-     overlay rules in the dashboard styles.css; the paper grain itself is the
-     shared tile above. -tint-overlay is more opaque: a dialog or drawer sits
-     over arbitrary page content, so its text needs the worst case (a black
-     word blurred behind it) to stay >= 4.5:1. */
-  --glass-tint: color-mix(in srgb, var(--color-surface-raised) 60%, transparent);
-  --glass-tint-overlay: color-mix(in srgb, var(--color-surface-raised) 72%, transparent);
-  --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-divider: rgba(15, 23, 42, 0.1);
-  --glass-edge: rgba(15, 23, 42, 0.2);
+  /* ---- Surfaces on that background ----
+     `--surface-pane` is the ONE see-through surface for sidebar, header, cards,
+     tables and page panels. The --glass-* tokens are its edges and lines. */
+  --surface-pane: color-mix(in srgb, #ffffff 72%, transparent);
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --glass-divider: rgba(15, 23, 42, 0.14);
+  --glass-edge: rgba(15, 23, 42, 0.34);
   --glass-danger: #b91c1c;
-  --glass-blur: 16px;
-  --glass-saturate: 120%;
-  --glass-grain-opacity: 0.065;
-  --glass-grain-blend: soft-light;
-  /* A row or card sitting inside glass (a drawer's line items, a list of
-     history entries): a faint wash of the text colour, so it reads as a
-     slightly different surface and the glass still shows through. Never an
-     opaque page colour, which looks like a white slab on frosted glass.
-     Follows the theme because it is made from the text colour. */
+  /* A row or band sitting on a surface (a drawer's line items, a table
+     header): a faint wash of the text colour, so it reads as slightly different
+     and the background still shows through. Never an opaque page colour, which
+     looks like a white slab. Follows the theme because it is made from the text
+     colour. */
   --surface-inset: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   --surface-inset-strong: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
-  /* A drawer with no blur: nearly solid, so the page behind it does not ghost
-     through the text. */
-  --glass-drawer-tint: color-mix(in srgb, var(--color-surface-raised) 97%, transparent);
 
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
@@ -317,25 +291,23 @@ have always been hand-edited directly. Edit them here.
   --typography-kpi-font-weight: 600;
   --typography-kpi-line-height: 1.2;
 
-  /* A single shared monochrome noise layer (2-4% opacity when applied via
-     the `.surface-noise` utility in styles.css) — one `feTurbulence` SVG,
-     reused everywhere rather than a `backdrop-filter` per element (doc
-     §40's performance rule). Not applied to anything yet in this stage. */
-  --surface-noise-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-
   /* Light is the default theme; no attribute required. */
   --color-text-primary: #111827;
-  /* #4b5563 (gray-600), 7.6:1 on white. Was #6b7280 (4.8:1), which left no
-     room for text on a tinted or textured page; darkened 2026-11-06 to match
-     the mobile apps (design-tokens/tokens.json). */
-  --color-text-secondary: #4b5563;
+  /* #374151 (gray-700), 10:1 on white. Darker than the mobile apps' #4b5563
+     (design-tokens/tokens.json): labels and hints read crisply on the tinted,
+     textured background (2026-11-25). */
+  --color-text-secondary: #374151;
+  /* Placeholder text stays lighter, so it never looks like a typed value. */
+  --color-text-placeholder: #5f6b7a;
   --color-text-disabled: #9ca3af;
   --color-text-inverse: #f9fafb;
   --color-surface-base: #ffffff;
   --color-surface-raised: #f9fafb;
   --color-surface-overlay: #f3f4f6;
-  --color-border-default: #e5e7eb;
-  --color-border-strong: #d1d5db;
+  --color-border-default: #d9dee6;
+  /* Edges of inputs, checkboxes and secondary buttons: 3:1 on white (WCAG 2.2
+     non-text contrast), so controls look crisp. */
+  --color-border-strong: #8993a4;
   --color-border-focus: #162b66;
   --color-action-primary: #162b66;
   --color-action-primary-hover: #0b173c;
@@ -343,6 +315,14 @@ have always been hand-edited directly. Edit them here.
   --color-status-success: #16a34a;
   --color-status-warning: #d97706;
   --color-status-danger: #dc2626;
+  /* Solid danger buttons: one dark red in every theme, so the themes below do
+     not override it. `--color-status-danger` stays the red for text and icons,
+     which has to be light on dark surfaces; under white text that lighter red
+     is about 3:1, this one is 6.5:1. */
+  --color-action-danger: #b91c1c;
+  --color-action-danger-hover: #991b1b;
+  --color-action-danger-active: #7f1d1d;
+  --color-action-danger-text: #ffffff;
   --color-status-info: #2563eb;
   --color-highlight-background: #162b66;
   --color-highlight-color: #ffffff;
@@ -365,26 +345,19 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-blur: none;
   --surface-acrylic-border: var(--color-border-default);
   --surface-acrylic-shadow: var(--elevation-3);
-  --surface-atmosphere: var(--color-surface-base);
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
-  /* Cards are frosted glass: a translucent tint over the page's colour glows
-     (they show through), a soft light from the top-left and a lit top edge.
-     No drop shadow, and nothing is blurred live: a backdrop blur on every card
-     is redone each scroll frame (measured: average frame 7.2 -> 10.8 ms and
-     21 frames over 16 ms per run instead of 1), and nothing sharp scrolls
-     behind a card that a blur could soften. Kept to a simple gradient too: a
-     radial highlight and a large shadow on each card cost about 1.7 ms per
-     frame while scrolling. */
-  --component-card-background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.12) 60%),
-    color-mix(in srgb, #ffffff 40%, transparent);
-  --component-card-border: rgba(15, 23, 42, 0.08);
-  --component-card-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  /* Cards are the shared pane inside a single border. No fill of their own, no
+     shadow (a highlight along the top edge read as a second border), and
+     nothing blurred live: a backdrop blur on every card is redone each scroll
+     frame (measured: average frame 7.2 -> 10.8 ms). */
+  --component-card-background: var(--surface-pane);
+  --component-card-border: rgba(15, 23, 42, 0.12);
   --component-data-grid-border-color: #e5e7eb;
-  --component-data-grid-header-background: #f9fafb;
+  /* Opaque: AG Grid keeps the header in a sticky strip over the scrolling rows,
+     so a see-through header would show row text through the column names. */
+  --component-data-grid-header-background: #eff1f5;
   --component-avatar-background: #162b66;
   --component-avatar-color: #ffffff;
   --component-profile-menu-item-hover-background: #f3f4f6;
@@ -419,14 +392,15 @@ have always been hand-edited directly. Edit them here.
 [data-theme='dark'] {
   color-scheme: dark;
   --color-text-primary: #e2e7ec;
-  --color-text-secondary: #7d8b99;
+  --color-text-secondary: #a3b1c0;
+  --color-text-placeholder: #8a98a8;
   --color-text-disabled: #526273;
   --color-text-inverse: #0b1118;
   --color-surface-base: #0b1118;
   --color-surface-raised: #101720;
   --color-surface-overlay: #17212c;
-  --color-border-default: rgba(255,255,255,0.07);
-  --color-border-strong: rgba(255,255,255,0.14);
+  --color-border-default: rgba(255,255,255,0.11);
+  --color-border-strong: rgba(255,255,255,0.34);
   --color-border-focus: #4f8df7;
   /* WCAG AA (Stage 10): as *text/link/border* color on the dark card surface
      (#101720) #3978e8 measured 4.31:1 — below 4.5. primary-500 (#4f8df7)
@@ -462,40 +436,25 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-blur: none;
   --surface-acrylic-border: var(--color-border-strong);
   --surface-acrylic-shadow: var(--elevation-3);
-  --surface-atmosphere: var(--color-surface-base);
-  --surface-noise-opacity: 0;
-  --paper-grain-opacity: 0.04;
   --frost-sheen: 4%;
-  --paper-grain-invert: 1;
-  /* The dark specks are pre-inverted files, so no run-time invert() filter
-     is needed on the two full-window grain layers (the same pixels). */
+  --page-wash: 34%;
+  --surface-pane: color-mix(in srgb, #101720 70%, transparent);
+  /* The dark specks are pre-inverted files: no run-time invert() filter. */
   --paper-grain-image: url('/textures/paper-grain-dark.png');
-  --paper-haze-image: url('/textures/paper-haze-dark.png');
-  --paper-haze-opacity: 0.045;
   --paper-veil-color: var(--color-surface-base);
-  --glass-tint: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
-  --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 86%, transparent);
-  --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-divider: rgba(255, 255, 255, 0.09);
-  --glass-edge: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-divider: rgba(255, 255, 255, 0.13);
+  --glass-edge: rgba(255, 255, 255, 0.34);
   --glass-danger: #ff8a8a;
-  --glass-saturate: 140%;
-  --glass-grain-opacity: 0.08;
-  --glass-grain-blend: soft-light;
   /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
      text on it is only 3.2:1. #2864cc gives white text 5.7:1. */
   --component-button-primary-background: #2864cc;
   --component-button-primary-background-hover: #1f4fa8;
   --component-button-primary-text: #ffffff;
-  --component-card-background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.015) 60%),
-    color-mix(in srgb, #0f1722 40%, transparent);
+  --component-card-background: var(--surface-pane);
   --component-card-border: rgba(255, 255, 255, 0.13);
-  --component-card-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
   --component-data-grid-border-color: rgba(255,255,255,0.07);
-  --component-data-grid-header-background: #101720;
+  --component-data-grid-header-background: #171e28;
   --component-avatar-background: #2864cc;
   --component-avatar-color: #ffffff;
   --component-profile-menu-item-hover-background: #17212c;
@@ -517,6 +476,7 @@ have always been hand-edited directly. Edit them here.
 [data-theme='high-contrast'] {
   --color-text-primary: #000000;
   --color-text-secondary: #000000;
+  --color-text-placeholder: #374151;
   --color-text-disabled: #374151;
   --color-text-inverse: #ffffff;
   --color-surface-base: #ffffff;
@@ -549,22 +509,15 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-blur: none;
   --surface-acrylic-border: #000000;
   --surface-acrylic-shadow: none;
-  --surface-atmosphere: none;
-  --surface-noise-image: none;
-  --paper-grain-opacity: 0;
   --frost-sheen: 0%;
-  --paper-haze-opacity: 0;
+  --page-wash: 0%;
+  --paper-grain-image: none;
+  --surface-pane: #ffffff;
   --paper-veil-color: var(--color-surface-base);
-  --glass-tint: var(--color-surface-base);
-  --glass-tint-overlay: var(--color-surface-base);
-  --glass-fallback-tint: var(--color-surface-base);
   --glass-border: #000000;
   --glass-divider: #000000;
   --glass-edge: #000000;
   --glass-danger: #b91c1c;
-  --glass-blur: 0px;
-  --glass-saturate: 100%;
-  --glass-grain-opacity: 0;
   --surface-inset: var(--color-surface-base);
   --surface-inset-strong: var(--color-surface-overlay);
   --component-button-primary-background: #0000ee;
@@ -572,7 +525,6 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-text: #ffffff;
   --component-card-background: #ffffff;
   --component-card-border: #000000;
-  --component-card-shadow: 0 0 0 0 transparent;
   --component-data-grid-border-color: #000000;
   --component-data-grid-header-background: #ffffff;
   --component-avatar-background: #0000ee;
@@ -603,14 +555,15 @@ have always been hand-edited directly. Edit them here.
   :root:not([data-theme]) {
     color-scheme: dark;
     --color-text-primary: #e2e7ec;
-    --color-text-secondary: #7d8b99;
+    --color-text-secondary: #a3b1c0;
+    --color-text-placeholder: #8a98a8;
     --color-text-disabled: #526273;
     --color-text-inverse: #0b1118;
     --color-surface-base: #0b1118;
     --color-surface-raised: #101720;
     --color-surface-overlay: #17212c;
-    --color-border-default: rgba(255,255,255,0.07);
-    --color-border-strong: rgba(255,255,255,0.14);
+    --color-border-default: rgba(255,255,255,0.11);
+    --color-border-strong: rgba(255,255,255,0.34);
     --color-border-focus: #4f8df7;
     /* WCAG AA (Stage 10) — see the [data-theme='dark'] block. */
     --color-action-primary: #4f8df7;
@@ -636,38 +589,23 @@ have always been hand-edited directly. Edit them here.
     --surface-acrylic-blur: none;
     --surface-acrylic-border: var(--color-border-strong);
     --surface-acrylic-shadow: var(--elevation-3);
-    --surface-atmosphere: var(--color-surface-base);
-    --surface-noise-opacity: 0;
-    --paper-grain-opacity: 0.04;
     --frost-sheen: 4%;
-    --paper-grain-invert: 1;
-    /* The dark specks are pre-inverted files, so no run-time invert() filter
-       is needed on the two full-window grain layers (the same pixels). */
+    --page-wash: 34%;
+    --surface-pane: color-mix(in srgb, #101720 70%, transparent);
+    /* The dark specks are pre-inverted files: no run-time invert() filter. */
     --paper-grain-image: url('/textures/paper-grain-dark.png');
-    --paper-haze-image: url('/textures/paper-haze-dark.png');
-    --paper-haze-opacity: 0.045;
     --paper-veil-color: var(--color-surface-base);
-    --glass-tint: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
-    --glass-tint-overlay: color-mix(in srgb, var(--color-surface-overlay) 86%, transparent);
-    --glass-fallback-tint: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-divider: rgba(255, 255, 255, 0.09);
-    --glass-edge: rgba(255, 255, 255, 0.18);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-divider: rgba(255, 255, 255, 0.13);
+    --glass-edge: rgba(255, 255, 255, 0.34);
     --glass-danger: #ff8a8a;
-    --glass-saturate: 140%;
-    --glass-grain-opacity: 0.08;
-    --glass-grain-blend: soft-light;
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
-    --component-card-background:
-      linear-gradient(150deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.015) 60%),
-      color-mix(in srgb, #0f1722 40%, transparent);
+    --component-card-background: var(--surface-pane);
     --component-card-border: rgba(255, 255, 255, 0.13);
-    --component-card-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14);
     --component-data-grid-border-color: rgba(255,255,255,0.07);
-    --component-data-grid-header-background: #101720;
+    --component-data-grid-header-background: #171e28;
     --component-avatar-background: #2864cc;
     --component-avatar-color: #ffffff;
     --component-profile-menu-item-hover-background: #17212c;
@@ -693,5 +631,13 @@ have always been hand-edited directly. Edit them here.
     --motion-duration-small: 0ms;
     --motion-duration-medium: 50ms;
     --motion-duration-large: 50ms;
+  }
+}
+
+/* Asked for less transparency: the pane turns solid in every theme. */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme],
+  :root:not([data-theme]) {
+    --surface-pane: var(--color-surface-raised);
   }
 }

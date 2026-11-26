@@ -39,6 +39,75 @@ class HostComponent {
   ctrl = new FormControl('', { validators: [Validators.required] });
 }
 
+@Component({
+  standalone: true,
+  imports: [FormFieldComponent, ReactiveFormsModule],
+  template: `
+    <form [formGroup]="form" (ngSubmit)="submits = submits + 1">
+      <lpg-form-field label="Code" for="code" [control]="form.controls.code">
+        <input id="code" formControlName="code" />
+      </lpg-form-field>
+      @if (showName) {
+        <lpg-form-field label="Name" for="name" [control]="form.controls.name">
+          <input id="name" formControlName="name" />
+        </lpg-form-field>
+      }
+      <button type="submit">Save</button>
+    </form>
+  `,
+})
+class ReopenedFormHost {
+  form = new FormGroup({
+    code: new FormControl('', { validators: [Validators.required] }),
+    name: new FormControl('', { validators: [Validators.required] }),
+  });
+  showName = false;
+  submits = 0;
+}
+
+/** A drawer or dialog keeps its form alive; reopening it only calls `reset()`. */
+describe('FormFieldComponent after a reset', () => {
+  function submitEmptyThenReset() {
+    const fixture = TestBed.createComponent(ReopenedFormHost);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const submit = () => {
+      el.querySelector('button')?.click();
+      fixture.detectChanges();
+    };
+    const errors = () => el.querySelectorAll('.lpg-field__error').length;
+    submit();
+    expect(errors()).toBe(1);
+    fixture.componentInstance.form.reset();
+    fixture.detectChanges();
+    return { fixture, submit, errors };
+  }
+
+  it('forgets the earlier submit', () => {
+    expect(submitEmptyThenReset().errors()).toBe(0);
+  });
+
+  it('shows errors again on the next submit', () => {
+    const { submit, errors } = submitEmptyThenReset();
+
+    submit();
+
+    expect(errors()).toBe(1);
+  });
+
+  it('keeps a field that appears after the reset quiet too', () => {
+    const { fixture, submit, errors } = submitEmptyThenReset();
+
+    fixture.componentInstance.showName = true;
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(errors()).toBe(0);
+
+    submit();
+    expect(errors()).toBe(2);
+  });
+});
+
 describe('FormFieldComponent', () => {
   function render() {
     const fixture = TestBed.createComponent(HostComponent);

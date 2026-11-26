@@ -8,6 +8,15 @@
 - [x] 6. Live verification (backend, over real HTTP against the local stack): create → 409 duplicate slug/email, 409 reserved code, 422 bad code, 401 no token → set password via link → link is single-use (410) → login blocked `LICENSE_NOT_ACTIVATED` → issue + activate license → login as `agency_admin` (56 permissions) → 403 on `/platform/*`. **Browser check of the UI drawers is still open.**
 - [x] 7. Docs: ADR-048, `planning/MODULE_STATUS.md` row 26, this file, `infrastructure/deploy/DEPLOY.md` note
 
+## Edit agency details (2026-11-25, owner request)
+
+- [x] `Tenant.update_details` (name, contact email; closed agencies refused; agency code fixed)
+- [x] `PATCH /platform/agencies/{tenant_id}`, OpenAPI spec and Angular client
+- [x] Details drawer: edit form, "Agency code" instead of "Slug", internal tenant id removed (also on the License Details drawer)
+- [x] Unit tests (domain, use case, drawer)
+- [ ] Run the new integration test (update touches only the target tenant, writes an audit row) against PostgreSQL
+- [ ] Deploy the backend, then save a real edit once
+
 ## Deferred (discovered, not built)
 
 - Issue + activate a license in the same call (existing endpoints cover it; revisit if the two-step flow proves clumsy)

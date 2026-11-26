@@ -46,6 +46,7 @@ import {
   AuthService,
   DeliveryService,
   InventoryService,
+  ModuleAccessStore,
   NotifyService,
   OrderService,
   WebSocketService,
@@ -119,15 +120,23 @@ function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
 }
 
-function errorMessageFor(error: unknown): string {
+/** `isOn` answers whether a module is switched on, for the messages that send
+ * staff to a screen in that module. */
+function errorMessageFor(error: unknown, isOn: (module: string) => boolean = () => true): string {
   switch (isAppError(error) ? error.errorCode : null) {
     case 'ROUTE_RECONCILIATION_PENDING':
+      if (!isOn('inventory')) {
+        return "This trip's vehicle needs an approved reconciliation before it can be settled. That is done in Inventory, which is switched off for this agency. Ask your platform administrator to switch it on.";
+      }
       return "This trip's vehicle needs an approved reconciliation before it can be settled. Approve one from Inventory first.";
     case 'INVALID_STATE_TRANSITION':
       return 'That action is not valid for the trip in its current state.';
     case 'INSUFFICIENT_STOCK':
       return "The godown doesn't have enough filled cylinders for this trip. Receive stock or remove some orders.";
     case 'WEIGHMENT_CHECK_REQUIRED':
+      if (!isOn('scales')) {
+        return 'This agency requires a weight check before dispatch, but the Scales module is switched off. Ask your platform administrator to switch it on.';
+      }
       return 'This agency weighs every cylinder before dispatch. Open the trip, use "Log Load-Out Weighment" for each cylinder type, then load again.';
     default:
       return sharedErrorMessageFor(error);
@@ -171,6 +180,12 @@ function toDateOnlyString(date: Date): string {
 })
 export class FeatureDispatch implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly modules = inject(ModuleAccessStore);
+  // Dispatch works with three modules it does not require. While one is off,
+  // its parts of this screen are hidden and its API is not called.
+  protected readonly hasScales = computed(() => this.modules.isEnabled('scales'));
+  protected readonly hasInventory = computed(() => this.modules.isEnabled('inventory'));
+  private readonly hasCashHandovers = computed(() => this.modules.isEnabled('cash_handovers'));
   private readonly deliveryService = inject(DeliveryService);
   private readonly orderService = inject(OrderService);
   private readonly branchService = inject(AdminBranchService);
@@ -621,7 +636,7 @@ export class FeatureDispatch implements OnInit {
   protected onTripWarehouseChange(warehouseId: string | null): void {
     this.tripWarehouseId.set(warehouseId);
     this.godownStock.set(null);
-    if (!warehouseId) return;
+    if (!warehouseId || !this.hasInventory()) return;
     this.inventoryService.getBalance('warehouse', warehouseId).subscribe({
       next: (balance) => this.godownStock.set(filledStock(balance.balances)),
       // Stock is a guide here; the server still refuses a short load.
@@ -631,6 +646,7 @@ export class FeatureDispatch implements OnInit {
 
   private loadVanStock(vehicleId: string): void {
     this.vanStock.set(new Map());
+    if (!this.hasInventory()) return;
     this.inventoryService.getBalance('vehicle', vehicleId).subscribe({
       next: (balance) => this.vanStock.set(filledStock(balance.balances)),
     });
@@ -684,6 +700,8 @@ export class FeatureDispatch implements OnInit {
       });
   }
 
+  private readonly isModuleOn = (module: string) => this.modules.isEnabled(module);
+
   private dispatchTrip(route: RouteResponse): void {
     const spares = this.tripSpares();
     this.deliveryService
@@ -702,7 +720,7 @@ export class FeatureDispatch implements OnInit {
           );
         },
         error: (err) => {
-          this.tripError.set(errorMessageFor(err));
+          this.tripError.set(errorMessageFor(err, this.isModuleOn));
           this.loading.set(false);
           // A new trip was created even though loading failed; show it.
           this.loadRoutes();
@@ -741,7 +759,7 @@ export class FeatureDispatch implements OnInit {
   // Declaring the cash collected only makes sense once a trip has actually
   // run — same condition as Reconcile, which also only applies post-completion.
   protected readonly canDeclareCashHandover = computed(
-    () => this.selectedRoute()?.status === 'completed',
+    () => this.hasCashHandovers() && this.selectedRoute()?.status === 'completed',
   );
 
   // ---------------------------------------------------------------------------
@@ -849,9 +867,9 @@ export class FeatureDispatch implements OnInit {
       next: (types) => this.cylinderTypes.set(types),
       error: () => this.errorMessage.set('Failed to load cylinder types.'),
     });
-    // `/scales` needs `weighment:record`; a role without it (e.g. a
-    // dispatcher) would only get a 403 — skip the call (DO-31).
-    if (this.authService.principal()?.permissions.has('weighment:record')) {
+    // `/scales` needs the Scales module and `weighment:record`; without
+    // either (e.g. a dispatcher) the call would only get a 403 (DO-31).
+    if (this.hasScales() && this.authService.principal()?.permissions.has('weighment:record')) {
       this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
         next: (res) => this.scales.set(res.items),
       });
@@ -1028,7 +1046,7 @@ export class FeatureDispatch implements OnInit {
         this.refreshAfterMutation('Trip settled.');
       },
       error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
+        this.errorMessage.set(errorMessageFor(err, this.isModuleOn));
         this.loading.set(false);
       },
     });

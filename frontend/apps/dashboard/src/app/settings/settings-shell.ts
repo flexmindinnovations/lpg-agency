@@ -136,7 +136,6 @@ import { visibleSettingsGroups } from './settings-sections';
         margin-inline-start: calc(-1 * var(--spacing-sm));
         padding-block-end: var(--spacing-xl);
         --card-border: none;
-        --card-shadow: none;
       }
 
       .settings__content ::ng-deep > * {

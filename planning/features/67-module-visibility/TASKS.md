@@ -9,6 +9,7 @@
 - [ ] Backend integration + tenant-isolation test against Postgres (no Postgres available locally; run in CI)
 - [x] Dashboard: `ModuleAccessStore`, `moduleGuard`, sidebar + command-palette filtering
 - [x] Platform Console: Modules switches in the agency details drawer
+- [x] Platform Console: module switches moved into a "Manage modules" dialog; the drawer shows only an "N of M on" summary so the agency details stay visible. Escape closes the dialog first, then the drawer (component and page tests)
 - [x] Frontend tests (store, guard)
 - [ ] Verify end to end after deploy (switch a module off, confirm hidden, URL redirects, API 403)
 

@@ -92,49 +92,43 @@ body {
 }
 
 /* ========================================================================
-   PAGE BACKGROUND (frosted paper)
+   APP BACKGROUND (frosted paper)
 
-   Two fixed layers BEHIND the page, bottom to top: soft brand-colour glows
-   (html::before) and the paper grain (html::after). The cards, header and
-   sidebar are translucent, so the colour and the grain show through them
-   while their own content stays crisp. The grain used to be one layer ABOVE
-   everything (plus a haze layer and a copy on every overlay); each full-window
-   layer above the page is composited over all the content on every scroll
-   frame. Behind the page it costs nothing measurable (average frame 7.3 ms
-   with it, 7.4 ms without), so the texture stays and the extra layers go.
-   The glows and the grain switch off in high contrast.
+   ONE background for the whole app, built from the layers below: the paper
+   grain (a small tile at two sizes, its strength baked into the file), a light
+   sheen, four soft brand-colour glows (blue top-left, cyan top-right, peach
+   bottom-left, orange bottom-right) and the page tint. It is static: nothing in
+   it is blurred, blended or faded at run time, and the soft glows give the
+   frosted look without `backdrop-filter`, which the browser redoes on scroll
+   frames.
+
+   - --app-backdrop: the page itself.
+   - In-flow surfaces (sidebar, header, cards, tables, page panels) are one
+     see-through pane, `--surface-pane`, over it.
+   - --app-panel: drawers and the phone sidebar. They slide over page content,
+     so they paint the pane AND the background themselves: the sidebar's look,
+     with nothing showing through.
+   - --app-float: dialogs, menus, dropdowns and toasts. The same without the
+     glows and sheen, which are sized to the window: squeezed into a small box
+     they mix into grey, and would show a seam on a dialog's pinned buttons.
+   (`background-attachment: fixed` cannot line these up with the page: it does
+   not hold on PrimeNG's overlays.)
    ======================================================================== */
 html {
-  --page-wash: calc(
-    (15% + 19% * var(--paper-grain-invert)) * min(1, var(--paper-haze-opacity) * 100)
-  );
-}
-
-/* Glows of the brand colours (blue top-left, cyan top-right, peach bottom-left,
-   orange bottom-right) over a veil in the page tint, so the page reads as one
-   frosted gradient. Plain gradients, nothing blurred at run time. */
-html::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    /* Frosted sheen, as on Windows 11 Mica/acrylic: a soft light falling from
-       the top-left over the colour glows, fading out by mid-page. */
+  --app-grain:
+    var(--paper-grain-image) 0 0 / var(--paper-grain-size) var(--paper-grain-size),
+    var(--paper-grain-image) 37px 91px / var(--paper-grain-size-2) var(--paper-grain-size-2);
+  --app-light:
     linear-gradient(
       155deg,
       color-mix(in srgb, #ffffff var(--frost-sheen), transparent),
       transparent 60%
     ),
-    /* A mesh of four soft brand glows (blue top-left, cyan top-right, peach
-       bottom-left, orange bottom-right) that overlap mid-page, so the page
-       reads as one frosted gradient rather than two corner spots. */
     radial-gradient(
-        circle min(110vw, 110vh) at 0 0,
-        color-mix(in srgb, var(--color-action-primary) var(--page-wash), transparent),
-        transparent
-      ),
+      circle min(110vw, 110vh) at 0 0,
+      color-mix(in srgb, var(--color-action-primary) var(--page-wash), transparent),
+      transparent
+    ),
     radial-gradient(
       ellipse min(80vw, 90vh) min(60vw, 70vh) at 100% 0,
       color-mix(
@@ -157,71 +151,27 @@ html::before {
       circle min(90vw, 90vh) at 100% 100%,
       color-mix(in srgb, var(--primitive-color-flame-orange-500) var(--page-wash), transparent),
       transparent
-    ),
+    );
+  --app-tint:
     linear-gradient(
       color-mix(in srgb, var(--paper-veil-color) var(--paper-veil), transparent),
       color-mix(in srgb, var(--paper-veil-color) var(--paper-veil), transparent)
-    );
+    ),
+    var(--color-surface-base);
+  --app-pane: linear-gradient(var(--surface-pane), var(--surface-pane));
+
+  --app-backdrop: var(--app-grain), var(--app-light), var(--app-tint);
+  --app-panel: var(--app-pane), var(--app-backdrop);
+  --app-float: var(--app-pane), var(--app-grain), var(--app-tint);
 }
 
-/* The paper grain: two tiles at different scales so it never reads as a
-   repeat. Above the glows, below every surface. It is stronger than the old
-   overlay because the translucent cards now let only part of it through. */
-html::after {
+html::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: var(--paper-grain-image), var(--paper-grain-image);
-  background-size:
-    var(--paper-grain-size) var(--paper-grain-size),
-    var(--paper-grain-size-2) var(--paper-grain-size-2);
-  background-position:
-    0 0,
-    37px 91px;
-  opacity: calc(var(--paper-grain-opacity) * 2.25);
-}
-
-/* Overlay surfaces (drawers, dialogs, menus, popovers, select panels) carry
-   their own grain, so they match the page. It is a layer INSIDE the panel
-   behind its content (z-index: -1 in the panel's own stacking context, which
-   the glass rule below creates with `isolation: isolate`): above the panel's
-   tint, below every label, field and button, so nothing needs lifting and
-   text and controls stay crisp. The panel does not scroll (its content
-   does), so the layer is static. Same tile and strength tokens as the page. */
-:is(
-  .p-drawer,
-  .p-dialog,
-  .p-popover,
-  .p-menu,
-  .p-tieredmenu,
-  .p-contextmenu,
-  .p-select-overlay,
-  .p-multiselect-overlay,
-  .p-datepicker-panel,
-  .p-autocomplete-overlay
-)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  pointer-events: none;
-  background-image: var(--paper-grain-image), var(--paper-grain-image);
-  background-size:
-    var(--paper-grain-size) var(--paper-grain-size),
-    var(--paper-grain-size-2) var(--paper-grain-size-2);
-  background-position:
-    0 0,
-    37px 91px;
-  opacity: var(--paper-grain-opacity);
-}
-
-@media print {
-  :is(.p-drawer, .p-dialog, .p-popover, .p-menu, .p-tieredmenu, .p-contextmenu)::after {
-    display: none;
-  }
+  background: var(--app-backdrop);
 }
 
 body {
@@ -275,33 +225,6 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-default) transparent;
-}
-
-/* ========================================================================
-   MATERIALS (Fluent Glass, Phase 29 Stage 0)
-
-   Three surface materials, applied via these utility classes rather than
-   per-component styles so there's one definition of each — see the
-   surface-mica, surface-acrylic and surface-noise-image tokens in
-   tokens.css. Not yet applied anywhere; later stages (shell,
-   dialogs/drawers/command palette) opt specific surfaces into them
-   deliberately.
-   ======================================================================== */
-
-/* Sidebar, header, other large persistent surfaces — semi-opaque, no blur. */
-.surface-mica {
-  background: var(--surface-mica);
-  border-color: var(--surface-mica-border);
-  box-shadow: var(--surface-mica-shadow);
-}
-
-/* Dialogs, drawers, popovers, the command palette — transient/elevated
- * surfaces. Solid, bordered, tight shadow (the translucency + backdrop-blur
- * that used to be here caused open-flicker and washed the page out). */
-.surface-acrylic {
-  background: var(--surface-acrylic);
-  border-color: var(--surface-acrylic-border);
-  box-shadow: var(--surface-acrylic-shadow);
 }
 
 /* Icon sizing (doc §12) — for `pi` icon-font glyphs, which render in a
@@ -535,7 +458,6 @@ body {
   border-radius: var(--component-card-radius);
   background: var(--component-card-background);
   border: var(--border-width) solid var(--component-card-border);
-  box-shadow: var(--elevation-1);
   max-inline-size: 60ch;
 }
 
@@ -773,17 +695,72 @@ lpg-section-card .profile-form__actions {
 }
 
 /* ========================================================================
-   INFO GRID — label/value pairs in detail panels
+   LABEL / VALUE ROWS — read-only details: the label on the left and its value
+   beside it. This is the only definition; screens add no label or value
+   styling of their own. `.info-*` and `.detail-field*` are older names for
+   the same thing, and `<lpg-detail-item>` uses these classes too.
    ======================================================================== */
 
-.info-label {
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-label-font-weight);
+:root {
+  /* Narrows on a phone, so an email address still fits beside its label. */
+  --detail-label-width: minmax(0, min(9.5rem, 35%));
+  /* A list of pairs shows two or more per line only where each still fits. */
+  --detail-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+}
+
+.detail-item,
+.info-item,
+.detail-field {
+  display: grid;
+  grid-template-columns: var(--detail-label-width) minmax(0, 1fr);
+  align-content: start;
+  align-items: baseline;
+  justify-items: start;
+  column-gap: var(--spacing-md);
+  row-gap: 2px;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-primary);
+}
+
+/* Everything after the label (value, hint, links) stacks beside it. */
+:is(.detail-item, .info-item, .detail-field) > * {
+  grid-column: 2;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+:is(.detail-item, .info-item, .detail-field)
+  > :is(.detail-label, .info-label, .detail-field__label) {
+  grid-column: 1;
+}
+
+.detail-label,
+.info-label,
+.detail-field__label {
+  font-size: var(--typography-body-small-font-size);
   color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  display: block;
-  margin-block-end: 2px;
+}
+
+.detail-value,
+.info-value,
+.detail-field > span:not([class]) {
+  font-size: var(--typography-body-small-font-size);
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-primary);
+}
+
+/* A pair that takes the whole line of a multi-column list. */
+.info-item--wide {
+  grid-column: 1 / -1;
+}
+
+/* Rows of a list sit closer together than the sections of a drawer. */
+.detail-view__fields:has(> .detail-item, > lpg-detail-item) {
+  gap: var(--spacing-sm);
 }
 
 /* ========================================================================
@@ -828,10 +805,9 @@ p-confirmpopup {
   display: contents;
 }
 
-/* Drawer panel — solid elevated surface. The slide-in is PrimeNG's own
-   animation; this just sets the material. */
+/* Drawer panel. The slide-in is PrimeNG's own animation; the background is the
+   shared one (see SURFACES). */
 .p-drawer {
-  background: var(--surface-acrylic) !important;
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
@@ -882,6 +858,29 @@ p-confirmpopup {
 
 .p-drawer .p-drawer-content {
   padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) !important;
+}
+
+/* Dividers in a drawer run from edge to edge. `--drawer-bleed` is the body's
+   side padding: a ruled block pulls out by it and pads back in by it. Component
+   styles use `var(--drawer-bleed, 0px)`, which does nothing outside a drawer. */
+.p-drawer {
+  --drawer-bleed: var(--spacing-lg);
+}
+
+/* The scrolling field list spans the whole drawer, or it would clip those
+   dividers short of the edges. */
+.p-drawer :is(.dialog-form__fields, .detail-view__fields) {
+  margin-inline: calc(-1 * var(--drawer-bleed));
+  padding-inline: var(--drawer-bleed);
+}
+
+/* A drawer's scrolling areas have no background of their own (the drawer's
+   shows through), and Chrome then redraws their text on every scroll frame.
+   This asks for the content to be drawn once and moved. `scroll-position`, not
+   `transform`: it does not change where fixed-position children land. Text in
+   these areas is smoothed in greyscale rather than coloured subpixels. */
+.p-drawer :is(.p-drawer-content, .dialog-form__fields, .detail-view__fields, .notification-list) {
+  will-change: scroll-position;
 }
 
 /* `<ng-template #footer>` drawers whose body is `.dialog-form`/`.detail-view`:
@@ -937,7 +936,6 @@ p-confirmpopup {
 .p-dialog {
   border-radius: var(--radius-lg) !important;
   border: var(--border-width) solid var(--color-border-default) !important;
-  background-color: var(--color-surface-raised) !important;
   box-shadow: var(--shadow-overlay) !important;
   display: flex !important;
   flex-direction: column !important;
@@ -975,7 +973,9 @@ p-confirmpopup {
 }
 
 /* Dialog footer pinned at the bottom — never scrollable.
-   Equal top and bottom padding ensures action buttons are vertically centered at the bottom. */
+   Equal top and bottom padding ensures action buttons are vertically centered at the bottom.
+   It paints no background of its own, so it is the same surface as the rest of the
+   dialog. */
 .p-dialog .p-dialog-footer {
   padding-block: var(--spacing-md) !important;
   padding-inline: var(--spacing-lg) !important;
@@ -984,7 +984,7 @@ p-confirmpopup {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
-  background-color: var(--color-surface-raised) !important;
+  background: transparent !important;
 }
 
 .p-dialog .p-dialog-footer .modal-actions {
@@ -1009,7 +1009,9 @@ p-confirmpopup {
      buttons and none above them. Offsetting by that padding keeps the row
      flush with the dialog's bottom edge. */
   bottom: calc(-1 * var(--spacing-md)) !important;
-  background-color: var(--color-surface-raised) !important;
+  /* The dialog's own background: no visible seam, and it hides what scrolls
+     under the row. */
+  background: var(--app-float) !important;
   border-top: var(--border-width) solid var(--color-border-default) !important;
   margin-inline: calc(-1 * var(--spacing-lg)) !important;
   padding-inline: var(--spacing-lg) !important;
@@ -1046,6 +1048,12 @@ p-confirmpopup {
     color var(--motion-duration-small) var(--motion-easing-standard) !important;
 }
 
+/* A switch keeps its shape. As a flex item next to a long description it was
+   squeezed, which left the knob hanging off the end of the track. */
+.p-toggleswitch {
+  flex-shrink: 0;
+}
+
 /* A disabled switch must still read as on or off ("Always on" in-app
    notifications). PrimeNG's own disabled colours are an almost-white track
    with a grey handle, which looks like an empty pill in light mode and
@@ -1056,12 +1064,12 @@ p-confirmpopup {
   --p-toggleswitch-disabled-background: color-mix(
     in srgb,
     var(--color-text-secondary) 30%,
-    var(--color-surface-base)
+    var(--surface-acrylic)
   );
   --p-toggleswitch-handle-disabled-background: color-mix(
     in srgb,
     var(--color-text-secondary) 75%,
-    var(--color-surface-base)
+    var(--surface-acrylic)
   );
 }
 
@@ -1069,7 +1077,7 @@ p-confirmpopup {
   --p-toggleswitch-disabled-background: color-mix(
     in srgb,
     var(--color-action-primary) 55%,
-    var(--color-surface-base)
+    var(--surface-acrylic)
   );
   --p-toggleswitch-handle-disabled-background: #ffffff;
 }
@@ -1267,12 +1275,13 @@ p-confirmpopup {
    unbroken to either side and nothing is drawn above or inside it. */
 .p-fieldset {
   border-radius: var(--radius-md) !important;
+  background: transparent !important;
 }
 
 .p-fieldset .p-fieldset-legend {
   border: var(--border-width, 1px) solid var(--color-border-default) !important;
   border-radius: var(--radius-md) !important;
-  background: var(--p-fieldset-background, var(--color-surface-base)) !important;
+  background: transparent !important;
   padding: 0 var(--spacing-sm);
   margin-inline-start: var(--spacing-md);
 }
@@ -1296,22 +1305,22 @@ p-confirmpopup {
   padding-block-start: var(--spacing-md) !important;
 }
 
-/* Danger Button refinements — high-contrast solid fill with white text */
+/* Danger Button refinements — the same dark red with white text in every theme */
 .p-button.p-button-danger:not(.p-button-outlined):not(.p-button-text) {
-  background-color: var(--color-status-danger) !important;
-  border-color: var(--color-status-danger) !important;
-  color: #ffffff !important;
+  background-color: var(--color-action-danger) !important;
+  border-color: var(--color-action-danger) !important;
+  color: var(--color-action-danger-text) !important;
 }
 
 .p-button.p-button-danger:not(.p-button-outlined):not(.p-button-text):hover {
-  background-color: color-mix(in srgb, var(--color-status-danger), black 15%) !important;
-  border-color: color-mix(in srgb, var(--color-status-danger), black 15%) !important;
-  color: #ffffff !important;
+  background-color: var(--color-action-danger-hover) !important;
+  border-color: var(--color-action-danger-hover) !important;
+  color: var(--color-action-danger-text) !important;
 }
 
 .p-button.p-button-danger:not(.p-button-outlined):not(.p-button-text):active {
-  background-color: color-mix(in srgb, var(--color-status-danger), black 28%) !important;
-  border-color: color-mix(in srgb, var(--color-status-danger), black 28%) !important;
+  background-color: var(--color-action-danger-active) !important;
+  border-color: var(--color-action-danger-active) !important;
 }
 
 /* Message refinements */
@@ -1347,50 +1356,29 @@ p-confirmpopup {
 
 .p-toast-message {
   border-radius: var(--radius-md) !important;
-  background: var(--surface-acrylic) !important;
   border: var(--border-width) solid var(--surface-acrylic-border) !important;
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
 /* ========================================================================
-   GLASS (frosted chrome)
-
-   Dialogs, drawers, menus and toasts get a tint (and, where it is cheap, a
-   backdrop blur). Header and sidebar keep the tint only (see below). Cards
-   are glass too, but through their own translucent background token, never a
-   blur. Layer order, bottom to top: page colour and glows, glass tint,
-   content. The page grain is a layer behind the page (see PAGE BACKGROUND);
-   overlays carry their own inside the panel, and a toast or a `.glass--grain`
-   element has its own tile with the glass tokens.
-   - The base rule is the fallback (a nearly solid tint), so before support
-     is known, without backdrop-filter, or when the user asks for less
-     transparency, nothing is ever see-through without a blur. Blur is only
-     ever set here, never transitioned or animated; surfaces fade with opacity.
-   - Tint, border and grain are in CSS from the first paint (no JS-applied
-     styles), and they follow the theme through the --glass-* tokens.
+   SURFACES — see APP BACKGROUND
    ======================================================================== */
-:is(
-  .glass,
-  .p-drawer,
-  .p-dialog,
-  .p-toast-message,
-  .p-popover,
-  .p-menu,
-  .p-tieredmenu,
-  .p-contextmenu,
-  .p-select-overlay,
-  .p-multiselect-overlay,
-  .p-datepicker-panel,
-  .p-autocomplete-overlay
-) {
-  --glass-surface: var(--glass-tint);
-  background: var(--glass-fallback-tint) !important;
+
+/* Header and sidebar: one see-through pane over the app background. */
+.glass {
+  background: var(--surface-pane);
+  border-color: var(--glass-border);
+}
+
+/* Everything that floats over page content paints the app background itself
+   (see APP BACKGROUND). */
+.p-drawer,
+.shell--phone .shell__sidebar-wrapper.glass {
+  background: var(--app-panel) !important;
   border-color: var(--glass-border) !important;
-  isolation: isolate;
 }
 
 :is(
-  .p-drawer,
   .p-dialog,
   .p-toast-message,
   .p-popover,
@@ -1402,135 +1390,32 @@ p-confirmpopup {
   .p-datepicker-panel,
   .p-autocomplete-overlay
 ) {
-  --glass-surface: var(--glass-tint-overlay);
+  background: var(--app-float) !important;
+  border-color: var(--glass-border) !important;
 }
 
-.p-toast-message,
-.glass--grain {
-  position: relative;
+/* Inside the page, and inside a drawer or dialog, anything that paints a surface
+   colour (a panel, a row, a callout) would be an opaque slab on the shared
+   background. Those three colours become see-through here, once, so current and
+   future screens get it. PrimeNG form fields and buttons are unaffected: the
+   theme preset resolves their colours at the root, so controls stay solid. The
+   high-contrast theme maps the pane and washes back to solid colours. */
+.shell__main {
+  --color-surface-base: var(--surface-pane);
+  --color-surface-raised: var(--surface-inset);
+  --color-surface-overlay: var(--surface-inset-strong);
 }
 
-:is(.p-toast-message, .glass--grain)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  pointer-events: none;
-  background-image: var(--paper-grain-image), var(--paper-grain-image);
-  background-size:
-    var(--paper-grain-size) var(--paper-grain-size),
-    var(--paper-grain-size-2) var(--paper-grain-size-2);
-  background-position:
-    0 0,
-    37px 91px;
-  opacity: var(--glass-grain-opacity);
-  mix-blend-mode: var(--glass-grain-blend);
-}
-
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  :is(
-    .glass,
-    .p-drawer,
-    .p-dialog,
-    .p-toast-message,
-    .p-popover,
-    .p-menu,
-    .p-tieredmenu,
-    .p-contextmenu,
-    .p-select-overlay,
-    .p-multiselect-overlay,
-    .p-datepicker-panel,
-    .p-autocomplete-overlay
-  ) {
-    background: var(--glass-surface) !important;
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  }
-}
-
-/* Drawers scroll long content. A backdrop blur behind a panel that scrolls is
-   redone on every frame (measured: about 50% more time per frame), which made
-   every drawer's scrolling lag, and on the 72% overlay tint it was barely
-   visible. Drawers use a near-solid tint with no blur. */
-.p-drawer {
-  --glass-surface: var(--glass-drawer-tint);
-}
-
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .p-drawer {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-}
-
-/* The header and the sidebar never have page content scrolling under them (the
-   content area is their sibling), so all their blur sampled was the static page
-   background. A backdrop blur is still redone on every frame the page scrolls
-   (measured on Home: the sidebar was the single biggest cost), so they keep the
-   frosted tint but not the blur. */
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .shell__header.glass,
-  .shell__sidebar-wrapper.glass {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-}
-
-/* Inside a drawer, anything that would paint the page's own surface colour
-   (a card, a row, a callout) would be an opaque slab on frosted glass. Those
-   three surface colours become faint translucent washes here, once, so every
-   current and future drawer gets it. PrimeNG form fields are unaffected: the
-   theme preset resolves their colours at the root, so inputs stay solid.
-   The high-contrast theme maps the washes back to solid colours. */
-.p-drawer {
+.p-drawer,
+.p-dialog {
   --color-surface-base: var(--surface-inset);
   --color-surface-raised: var(--surface-inset);
   --color-surface-overlay: var(--surface-inset-strong);
 }
 
-@media (prefers-reduced-transparency: reduce) {
-  :is(
-    .glass,
-    .p-drawer,
-    .p-dialog,
-    .p-toast-message,
-    .p-popover,
-    .p-menu,
-    .p-tieredmenu,
-    .p-contextmenu,
-    .p-select-overlay,
-    .p-multiselect-overlay,
-    .p-datepicker-panel,
-    .p-autocomplete-overlay
-  ) {
-    background: var(--glass-fallback-tint) !important;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-}
-
 @media print {
-  :is(
-    .glass,
-    .p-drawer,
-    .p-dialog,
-    .p-toast-message,
-    .p-popover,
-    .p-menu,
-    .p-tieredmenu,
-    .p-contextmenu,
-    .p-select-overlay,
-    .p-multiselect-overlay,
-    .p-datepicker-panel,
-    .p-autocomplete-overlay
-  ) {
-    background: var(--color-surface-base) !important;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  :is(.p-toast-message, .glass--grain)::after {
-    display: none;
+  :is(.glass, .p-drawer, .p-dialog, .p-toast-message, .p-popover, .p-menu) {
+    background: #ffffff !important;
   }
 }
 
@@ -1596,10 +1481,20 @@ p-confirmpopup {
   background: color-mix(in srgb, var(--color-text-primary) 4%, transparent) !important;
 }
 
-/* One surface for everything inside a panel: tabs, their panels and lists sit
-   on the panel's own frosted surface instead of painting a second background
-   (white tabs inside a frosted drawer). */
-:is(.p-tabs, .p-tablist, .p-tablist-content, .p-tablist-tab-list, .p-tabpanels, .p-tabpanel) {
+/* Tabs and steppers sit on the surface around them instead of painting a second
+   background (white tabs inside a frosted drawer). */
+:is(
+  .p-tabs,
+  .p-tablist,
+  .p-tablist-content,
+  .p-tablist-tab-list,
+  .p-tabpanels,
+  .p-tabpanel,
+  .p-stepper,
+  .p-steppanels,
+  .p-steppanel,
+  .p-steppanel-content
+) {
   background: transparent !important;
 }
 
@@ -1609,6 +1504,30 @@ p-confirmpopup {
 .p-popover,
 .p-select-overlay {
   box-shadow: var(--surface-acrylic-shadow) !important;
+}
+
+/* The calendar keeps its own standard width. PrimeNG sets the pop-up's minimum
+   width to that of its input, which stretched a full-width date field into a
+   very wide, sparse grid. Wider variants (several months) still grow. */
+.p-datepicker-panel:not(.p-datepicker-panel-inline) {
+  min-inline-size: min(20rem, calc(100vw - 1rem)) !important;
+  inline-size: max-content;
+  max-inline-size: calc(100vw - 1rem);
+}
+
+/* Header and grid share the pop-up's one background. */
+.p-datepicker-panel .p-datepicker-header {
+  background: transparent;
+}
+
+/* The month arrows are small square buttons: without this the app's standard
+   control height stretched them into tall ovals. */
+.p-datepicker-panel .p-datepicker-header .p-button.p-button-icon-only {
+  inline-size: 2rem !important;
+  block-size: 2rem !important;
+  min-block-size: 0 !important;
+  padding: 0 !important;
+  gap: 0;
 }
 
 /* Tooltip refinements */

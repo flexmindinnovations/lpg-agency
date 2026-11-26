@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { TooltipModule } from 'primeng/tooltip';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
@@ -29,6 +30,7 @@ type InboxFilter = 'all' | 'unread';
 @Component({
   selector: 'lib-notification-feature-notifications',
   imports: [
+    TooltipModule,
     PageActionsDirective,
     DatePipe,
     HeaderTitlePortalDirective,

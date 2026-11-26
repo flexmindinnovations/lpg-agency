@@ -26,6 +26,12 @@ describe('AppErrorHandler', () => {
     expect(notify.error).toHaveBeenCalledTimes(1);
   });
 
+  it('stays quiet when a background load hits a switched-off module', () => {
+    handler.handleError({ status: 403, errorCode: 'MODULE_DISABLED', detail: 'off' });
+
+    expect(notify.error).not.toHaveBeenCalled();
+  });
+
   it('leaves session-expiry 401s to the session dialog', () => {
     handler.handleError(new HttpErrorResponse({ status: 401 }));
     expect(notify.error).not.toHaveBeenCalled();

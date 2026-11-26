@@ -47,7 +47,7 @@
       <i class="pi pi-replay"></i>
       <span>Return to OMC</span>
     </button>
-    }
+    } @if (hasVehicles()) {
     <button
       *lpgHasPermission="'inventory:load'"
       #transferTriggerEl
@@ -59,7 +59,7 @@
       <i class="pi pi-arrow-right-arrow-left"></i>
       <span>Load Transfer</span>
     </button>
-    @if (locationType() === 'vehicle') {
+    } @if (locationType() === 'vehicle') {
     <button
       *lpgHasPermission="'inventory:load'"
       #deliveryCollectionTriggerEl
@@ -126,10 +126,7 @@
       <p-select
         ariaLabel="Location Type"
         inputId="location_type"
-        [options]="[
-          { label: 'Godown', value: 'warehouse' },
-          { label: 'Vehicle', value: 'vehicle' }
-        ]"
+        [options]="locationTypeOptions()"
         optionLabel="label"
         optionValue="value"
         [ngModel]="locationType()"

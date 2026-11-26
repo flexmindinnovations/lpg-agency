@@ -9,6 +9,7 @@
          'complaints:assign'/'complaints:resolve' codes this used to check —
          'complaints:assign' doesn't even exist as a permission row, so that
          button could never render for anyone. Matching backend reality. -->
+    @if (hasCustomers()) {
     <button
       *lpgHasPermission="'complaints.manage'"
       #registerTriggerEl
@@ -19,7 +20,14 @@
       <i class="pi pi-plus"></i>
       <span>Raise Complaint</span>
     </button>
+    }
   </ng-template>
+
+  @if (!hasCustomers()) {
+  <p-message severity="info" icon="pi pi-info-circle">
+    New complaints can't be raised because the Customers module is switched off for this agency.
+  </p-message>
+  }
 
   <!-- Grid -->
   <section class="grid-section">
@@ -58,6 +66,7 @@
         </div>
         <div class="info-item">
           <span class="info-label">Customer</span>
+          @if (hasCustomers()) {
           <button
             type="button"
             class="info-value info-link"
@@ -66,7 +75,11 @@
             {{ complaint.customer_name ?? customerById().get(complaint.customer_id)?.full_name ??
             shortId(complaint.customer_id) }}
           </button>
-          @if (complaint.customer_phone || complaint.consumer_number) {
+          } @else {
+          <span class="info-value"
+            >{{ complaint.customer_name ?? shortId(complaint.customer_id) }}</span
+          >
+          } @if (complaint.customer_phone || complaint.consumer_number) {
           <span class="info-sub"
             >{{ complaint.customer_phone }}@if (complaint.consumer_number) { · {{
             complaint.consumer_number }} }</span
@@ -93,7 +106,7 @@
           >
         </div>
         @if (complaint.order_id) {
-        <div class="info-item col-span-2">
+        <div class="info-item info-item--wide">
           <span class="info-label">Order</span>
           <span class="info-value font-mono"
             >{{ complaint.order_number ?? selectedOrderNumber() ?? shortId(complaint.order_id)
@@ -101,7 +114,7 @@
           >
         </div>
         }
-        <div class="info-item col-span-2">
+        <div class="info-item info-item--wide">
           <span class="info-label">Description</span>
           <span class="info-value whitespace-pre-wrap">{{ complaint.description }}</span>
         </div>
@@ -239,6 +252,7 @@
         </p-autocomplete>
       </lpg-form-field>
 
+      @if (hasOrders()) {
       <lpg-form-field
         label="Order"
         for="order_id"
@@ -257,6 +271,7 @@
           [fluid]="true"
         />
       </lpg-form-field>
+      }
 
       <lpg-form-field
         label="Category"

@@ -36,6 +36,7 @@ import { Select } from 'primeng/select';
 import { Message } from 'primeng/message';
 import { Tag } from 'primeng/tag';
 import {
+  ModuleAccessStore,
   AdminCylinderTypeService,
   AdminWarehouseService,
   CylinderUnitService,
@@ -138,6 +139,7 @@ export function testDueLabel(
 })
 export class FeatureCylinderUnits implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly modules = inject(ModuleAccessStore);
   private readonly cylinderUnitService = inject(CylinderUnitService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly warehouseService = inject(AdminWarehouseService);
@@ -167,10 +169,18 @@ export class FeatureCylinderUnits implements OnInit {
     value: s,
   }));
 
-  protected readonly custodyTypeOptions = CUSTODY_TYPES.map((c) => ({
-    label: toSentenceCase(c),
-    value: c,
-  }));
+  /** A cylinder can only be handed to a vehicle or a customer while that
+   * module is on; without it there is no list to pick from. */
+  protected readonly custodyTypeOptions = computed(() =>
+    CUSTODY_TYPES.filter(
+      (type) =>
+        !(type === 'vehicle' && !this.modules.isEnabled('vehicles')) &&
+        !(type === 'customer' && !this.modules.isEnabled('customers')),
+    ).map((c) => ({
+      label: toSentenceCase(c),
+      value: c,
+    })),
+  );
 
   protected readonly toSentenceCase = toSentenceCase;
   protected readonly formatReportDate = formatReportDate;
@@ -422,6 +432,7 @@ export class FeatureCylinderUnits implements OnInit {
   }
 
   protected loadVehicles(): void {
+    if (!this.modules.isEnabled('vehicles')) return;
     this.deliveryService.listVehicles(0, 200).subscribe({
       next: (page) => this.vehicles.set(page.items),
       // Custody options just stay empty on failure — deliberately silent,
@@ -431,6 +442,7 @@ export class FeatureCylinderUnits implements OnInit {
   }
 
   protected loadCustomers(): void {
+    if (!this.modules.isEnabled('customers')) return;
     this.customerService.list(0, 200).subscribe({
       next: (page) => this.customers.set(page.items),
       error: () => undefined,

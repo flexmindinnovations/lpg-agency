@@ -12705,6 +12705,28 @@
         "title": "UpdateAgencyBusinessProfileRequest",
         "type": "object"
       },
+      "UpdateAgencyRequest": {
+        "description": "The editable agency details. The agency code is not one of them.",
+        "properties": {
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_contact_email": {
+            "format": "email",
+            "title": "Primary Contact Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "primary_contact_email"
+        ],
+        "title": "UpdateAgencyRequest",
+        "type": "object"
+      },
       "UpdateCustomerAddressRequest": {
         "properties": {
           "address_type": {
@@ -23806,6 +23828,59 @@
           }
         },
         "summary": "Create an agency (tenant) and its first admin",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies/{tenant_id}": {
+      "patch": {
+        "operationId": "update_agency_api_v1_platform_agencies__tenant_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgencyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update an agency's name and contact email",
         "tags": [
           "Platform Console"
         ]

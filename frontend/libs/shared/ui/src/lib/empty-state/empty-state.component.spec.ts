@@ -1,3 +1,4 @@
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { EmptyStateComponent } from './empty-state.component';
 
@@ -31,5 +32,20 @@ describe('EmptyStateComponent', () => {
   it('honours an explicit icon override', () => {
     const el = render({ title: 'x', icon: 'pi pi-calendar' });
     expect(el.querySelector('.empty-state__icon')?.className).toContain('pi-calendar');
+  });
+
+  it('leaves no title attribute for the browser to show as a tooltip', () => {
+    @Component({
+      imports: [EmptyStateComponent],
+      template: `<lpg-empty-state title="Orders" />`,
+    })
+    class Host {}
+    const fixture = TestBed.createComponent(Host);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('lpg-empty-state').hasAttribute('title')).toBe(
+      false,
+    );
+    expect(fixture.nativeElement.textContent).toContain('Orders');
   });
 });

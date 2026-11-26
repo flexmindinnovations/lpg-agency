@@ -1785,7 +1785,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ## ADR-074: Frosted Glass on Chrome Only, Blurred Live by the Compositor
 
-**Status:** Accepted (2026-11-17, owner request). Narrows the earlier "no backdrop blur" rules (web Phase 29 pull-back; mobile sheet change that removed the per-open screen capture).
+**Status:** Superseded for the web dashboard by [ADR-078](#adr-078-dashboard-one-shared-frosted-background-no-live-blur) (2026-11-25); still in force for mobile. Originally accepted (2026-11-17, owner request). Narrows the earlier "no backdrop blur" rules (web Phase 29 pull-back; mobile sheet change that removed the per-open screen capture).
 
 **Context:** Backdrop blur was removed twice for flicker on open (web) and dropped frames (mobile screen capture while a sheet slid up, blur on every card). The owner wants the One UI / iOS frosted look back, on top of the paper grain.
 
@@ -1856,6 +1856,27 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 **Consequences:** No storage secrets; deploys never wipe uploads because the volume persists. The disk is the only copy, so backups matter (DEPLOY.md). Moving to an object store later means adding another adapter behind the same port. MinIO, moto and `aioboto3` were removed.
 
 **Alternatives Considered:** Keeping S3 as the default (rejected: extra service and credentials per agency); public static serving of the directory (rejected: KYC documents must be authenticated).
+
+## ADR-078: Dashboard: One Shared Frosted Background, No Live Blur
+
+**Status:** Accepted (2026-11-25, owner request). Supersedes ADR-074 for the web dashboard.
+
+**Context:** Tables, panels and overlays painted their own backgrounds (a data grid alone stacked several solid layers over the frosted page), so the app did not read as one surface. The owner asked for a single frosted, grainy background that every element shares, without extra layers, for performance.
+
+**Decision:**
+- **One background** (`--app-backdrop`, dashboard `styles.css`): page tint, four soft brand glows, a sheen and the grain. The grain's strength is baked into the tile's alpha; the second full-window grain layer, the haze textures and the per-overlay grain layers are gone.
+- **One see-through surface** (`--surface-pane`) for sidebar, header, cards, tables and page panels. Inside the page, drawers and dialogs the three surface colour tokens are remapped to the pane or a faint wash, so feature screens need no changes.
+- **Overlays are opaque copies of that look**, so page text never shows through them: drawers and the phone sidebar use pane + background (`--app-panel`); dialogs, menus, dropdowns, toasts and the command palette use pane + grain + tint without the window-sized glows (`--app-float`).
+- **No `backdrop-filter` anywhere.** The frosted look comes from the soft background.
+- **One exception:** the data grid header is a solid colour per theme, because AG Grid keeps it in a sticky strip over the scrolling rows.
+- High contrast and reduced transparency use solid panes.
+- **Readability first** (owner feedback, 2026-11-25): grain strength halved, the light pane raised to 72% white, darker secondary text and borders in both themes, a separate placeholder colour, and control borders at 3:1 or better. The header no longer has its own compositor layer (`translateZ(0)`), which can soften text on Windows.
+
+**Consequences:** Fewer painted layers and one definition to change. Overlays do not blur what is behind them. `background-attachment: fixed` was tried to line overlays up with the page and does not hold on PrimeNG overlays. Frame times were not measured for this change; live blur was already off on the header, sidebar, drawers, dialogs and menus, so a large speed difference should not be assumed.
+
+**Alternatives Considered:** see-through overlays with live blur (costs scroll performance, and showed text sharp through a dropdown while it faded in); see-through grid header (row text shows through the column names).
+
+---
 
 ## Deferred Decisions
 

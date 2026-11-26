@@ -1,3 +1,4 @@
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { PageHeaderComponent } from './page-header.component';
@@ -14,7 +15,7 @@ describe('PageHeaderComponent', () => {
   it('renders the title as an h1 and an info icon with tooltip for subtitle', () => {
     const el = render({ title: 'Agency Overview', subtitle: "Today's operational data" });
     expect(el.querySelector('h1.page-header__title')?.textContent).toContain('Agency Overview');
-    const infoIcon = el.querySelector('.page-header__info');
+    const infoIcon = el.querySelector('.page-header__info button');
     expect(infoIcon).not.toBeNull();
     expect(infoIcon?.getAttribute('aria-label')).toBe("Today's operational data");
     expect(el.querySelector('.page-header__subtitle')).toBeNull();
@@ -41,7 +42,7 @@ describe('PageHeaderComponent', () => {
     fixture.detectChanges();
 
     const btn = fixture.nativeElement.querySelector(
-      'button.page-header__info',
+      '.page-header__info button',
     ) as HTMLButtonElement;
     expect(btn).not.toBeNull();
     expect(btn.getAttribute('aria-expanded')).toBe('false');
@@ -53,5 +54,21 @@ describe('PageHeaderComponent', () => {
     btn.click();
     fixture.detectChanges();
     expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('leaves no title attribute for the browser to show as a tooltip', () => {
+    @Component({
+      imports: [PageHeaderComponent],
+      template: `<lpg-page-header title="Orders" />`,
+    })
+    class Host {}
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(Host);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('lpg-page-header').hasAttribute('title')).toBe(
+      false,
+    );
+    expect(fixture.nativeElement.textContent).toContain('Orders');
   });
 });

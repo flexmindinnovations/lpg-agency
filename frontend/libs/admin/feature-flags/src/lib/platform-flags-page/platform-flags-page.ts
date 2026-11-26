@@ -202,7 +202,7 @@ class FlagDefaultCell {
         @if (selectedFlag(); as flag) {
           @if (!editMode()) {
             <div class="detail-view">
-              <lpg-detail-list>
+              <lpg-detail-list class="detail-view__fields">
                 <lpg-detail-item label="Key">{{ flag.key }}</lpg-detail-item>
                 <lpg-detail-item label="Description">{{ flag.description }}</lpg-detail-item>
                 <lpg-detail-item label="Default">{{

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
-import { CustomerService, OrderService } from '@lpg/shared/data-access';
+import { CustomerService, ModuleAccessStore, OrderService } from '@lpg/shared/data-access';
 import { CommandPaletteComponent, fuzzyScore } from './command-palette.component';
 import { CommandPaletteService } from './command-palette.service';
 
@@ -57,10 +57,11 @@ describe('CommandPaletteComponent', () => {
     { label: 'Dispatch', icon: 'pi pi-truck', route: '/dispatch' },
   ];
 
-  function setup() {
+  function setup(off: readonly string[] = []) {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        { provide: ModuleAccessStore, useValue: { isEnabled: (m: string) => !off.includes(m) } },
         { provide: CustomerService, useValue: { list: () => of({ items: [], total: 0 }) } },
         {
           provide: OrderService,
@@ -83,6 +84,23 @@ describe('CommandPaletteComponent', () => {
     fixture.detectChanges();
     return { fixture, svc };
   }
+
+  it('offers nothing from a module that is switched off', async () => {
+    const { fixture } = setup(['orders']);
+    const proto = fixture.componentInstance as unknown as {
+      query: { set: (v: string) => void };
+      flat: () => { label: string }[];
+    };
+    proto.query.set('new order');
+    fixture.detectChanges();
+    expect(proto.flat().map((i) => i.label)).not.toContain('New booking');
+
+    proto.query.set('ORD0000');
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    fixture.detectChanges();
+    expect(proto.flat().map((i) => i.label)).not.toContain('ORD000001');
+  });
 
   it('lists all nav items when the query is empty and filters as you type', () => {
     const { fixture } = setup();

@@ -36,28 +36,9 @@
 
 .preview-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
+  grid-template-columns: var(--detail-columns);
+  gap: var(--spacing-sm) var(--spacing-xl);
   padding-block: var(--spacing-md);
   border-block-start: var(--border-width) solid var(--color-border-default);
   border-block-end: var(--border-width) solid var(--color-border-default);
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.info-label {
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-label-font-weight);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.info-value {
-  font-size: var(--typography-body-small-font-size);
-  color: var(--color-text-primary);
 }

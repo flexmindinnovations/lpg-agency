@@ -284,9 +284,11 @@
       <div class="detail-field">
         <span class="detail-field__label">Trip</span>
         <span>{{ routeStatusLabel(t.route_status) }}</span>
+        @if (hasDispatch()) {
         <span class="detail-field__links" *lpgHasPermission="'routes:manage'">
           <a [routerLink]="['/dispatch']" [queryParams]="{ trip: t.route_id }">Open trip</a>
         </span>
+        }
       </div>
       }
     </div>
@@ -625,9 +627,13 @@
             <tr>
               <th scope="col">Cylinder</th>
               <th scope="col">For this order</th>
+              @if (hasInventory()) {
               <th scope="col">Already on van</th>
+              }
               <th scope="col">To load</th>
+              @if (hasInventory()) {
               <th scope="col">In godown</th>
+              }
             </tr>
           </thead>
           <tbody>
@@ -635,8 +641,11 @@
             <tr [class.load-sheet__row--short]="row.short">
               <th scope="row">{{ row.name }}</th>
               <td>{{ row.forOrder }}</td>
+              @if (hasInventory()) {
               <td>{{ row.onVan }}</td>
+              }
               <td><strong>{{ row.toLoad }}</strong></td>
+              @if (hasInventory()) {
               <td>
                 {{ row.inGodown ?? '—' }} @if (row.short) {
                 <span class="load-sheet__short"
@@ -644,6 +653,7 @@
                 >
                 }
               </td>
+              }
             </tr>
             }
           </tbody>
@@ -884,6 +894,7 @@
 
         <lpg-form-field label="Delivery photo" for="deliver_photo" [optional]="true">
           <input
+            #photoInput
             id="deliver_photo"
             type="file"
             accept="image/*"

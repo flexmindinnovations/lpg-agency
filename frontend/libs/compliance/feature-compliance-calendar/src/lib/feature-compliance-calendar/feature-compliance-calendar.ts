@@ -23,6 +23,7 @@ import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
 import { MessageService } from 'primeng/api';
 import {
+  ModuleAccessStore,
   AdminWarehouseService,
   DeliveryService,
   DocumentService,
@@ -112,6 +113,7 @@ export function expiryUrgency(isoDate: string, today: Date = new Date()): Expiry
 })
 export class FeatureComplianceCalendar implements OnInit {
   private readonly warehouseService = inject(AdminWarehouseService);
+  private readonly modules = inject(ModuleAccessStore);
   private readonly documentService = inject(DocumentService);
   private readonly deliveryService = inject(DeliveryService);
   private readonly messageService = inject(MessageService);
@@ -237,12 +239,16 @@ export class FeatureComplianceCalendar implements OnInit {
    * the row still shows "Driver" / "Vehicle". */
   private loadOwnerNames(): void {
     forkJoin({
-      drivers: this.deliveryService
-        .listDrivers(0, OWNER_LOOKUP_LIMIT)
-        .pipe(catchError(() => of({ items: [] }))),
-      vehicles: this.deliveryService
-        .listVehicles(0, OWNER_LOOKUP_LIMIT)
-        .pipe(catchError(() => of({ items: [] }))),
+      drivers: this.modules.isEnabled('drivers')
+        ? this.deliveryService
+            .listDrivers(0, OWNER_LOOKUP_LIMIT)
+            .pipe(catchError(() => of({ items: [] })))
+        : of({ items: [] }),
+      vehicles: this.modules.isEnabled('vehicles')
+        ? this.deliveryService
+            .listVehicles(0, OWNER_LOOKUP_LIMIT)
+            .pipe(catchError(() => of({ items: [] })))
+        : of({ items: [] }),
     }).subscribe(({ drivers, vehicles }) => {
       this.driverNames.set(new Map(drivers.items.map((d) => [d.id, d.name ?? d.license_number])));
       this.vehicleNumbers.set(new Map(vehicles.items.map((v) => [v.id, v.registration_number])));

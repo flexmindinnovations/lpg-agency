@@ -85,6 +85,7 @@ interface SetupLinkView {
     RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown.escape)': 'closeDetailsOnEscape()' },
   template: `
     <div class="admin-page">
       <div class="page-header">
@@ -262,11 +263,11 @@ interface SetupLinkView {
                   [fluid]="true"
                 />
               </lpg-form-field>
-              <p class="detail-value">
+              <p class="detail-note">
                 Send this link to the admin. It is shown only once, works once, and expires
                 {{ expiryLabel() }}. Email delivery is not configured, so nothing was sent.
               </p>
-              <p class="detail-value">
+              <p class="detail-note">
                 The admin cannot sign in until the agency has an active license —
                 <a routerLink="/platform/licenses">issue one next</a>.
               </p>
@@ -287,6 +288,7 @@ interface SetupLinkView {
       <p-drawer
         header="Agency Details"
         [(visible)]="showDetailDrawer"
+        [closeOnEscape]="false"
         (onHide)="closeDetails()"
         position="right"
         [modal]="true"
@@ -296,130 +298,219 @@ interface SetupLinkView {
         @if (selectedAgency(); as agency) {
           <div class="detail-view">
             <div class="detail-view__fields">
-              <div class="detail-item">
-                <span class="detail-label">Name</span>
-                <span class="detail-value">{{ agency.name }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Slug</span>
-                <span class="detail-value">{{ agency.slug }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Status</span>
-                <span class="detail-value">{{ statusLabel(agency.status) }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Plan</span>
-                <span class="detail-value">{{ agency.subscription_plan }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Primary contact</span>
-                <span class="detail-value">{{ agency.primary_contact_email }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Country</span>
-                <span class="detail-value">{{ agency.country }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Tenant ID</span>
-                <span class="detail-value">{{ agency.id }}</span>
-              </div>
-            </div>
-
-            <lpg-agency-modules [tenantId]="agency.id" [readonly]="agency.status === 'closed'" />
-
-            <section class="users" aria-labelledby="agency-users-heading">
-              <div class="users__header">
-                <h3 id="agency-users-heading" class="detail-label">Users</h3>
-                @if (agency.status !== 'closed') {
-                  <button
-                    pButton
-                    type="button"
-                    size="small"
-                    severity="secondary"
-                    (click)="toggleAddAdmin()"
-                  >
-                    <i class="pi pi-user-plus"></i><span>Add admin</span>
-                  </button>
-                }
-              </div>
-
-              @if (addAdminOpen()) {
-                <form
-                  [formGroup]="adminForm"
-                  (ngSubmit)="addAdmin(agency)"
-                  novalidate
-                  class="users__add"
-                >
-                  <lpg-form-field
-                    label="New admin email"
-                    for="agency-new-admin-email"
-                    [control]="adminForm.controls.email"
-                    [messages]="{
-                      required: 'Email is required.',
-                      email: 'Enter a valid email address.',
-                    }"
-                  >
-                    <input
-                      pInputText
-                      id="agency-new-admin-email"
-                      type="email"
-                      formControlName="email"
-                      [fluid]="true"
-                    />
-                  </lpg-form-field>
-                  <div class="modal-actions">
+              <section class="details" aria-labelledby="agency-details-heading">
+                <div class="section-header">
+                  <h3 id="agency-details-heading" class="detail-heading">Details</h3>
+                  @if (agency.status !== 'closed' && !editing()) {
                     <button
                       pButton
                       type="button"
+                      size="small"
                       severity="secondary"
-                      (click)="addAdminOpen.set(false)"
+                      class="details__edit"
+                      (click)="startEdit(agency)"
                     >
-                      Cancel
+                      <i class="pi pi-pencil"></i><span>Edit details</span>
                     </button>
-                    <button pButton type="submit" [disabled]="acting()">
-                      @if (acting()) {
-                        <i class="pi pi-spin pi-spinner"></i>
-                      }
-                      Add admin
-                    </button>
-                  </div>
-                </form>
-              }
-
-              @if (usersLoading()) {
-                <p class="detail-value">Loading users…</p>
-              } @else if (users().length === 0) {
-                <p class="detail-value">No users yet.</p>
-              } @else {
-                <ul class="users__list">
-                  @for (user of users(); track user.id) {
-                    <li class="users__item">
-                      <div class="users__who">
-                        <span class="detail-value">{{ user.email }}</span>
-                        <span class="detail-label"
-                          >{{ roleLabel(user.role) }}{{ user.is_active ? '' : ' · inactive' }}</span
-                        >
-                      </div>
-                      @if (
-                        user.role === 'agency_admin' && user.is_active && agency.status !== 'closed'
-                      ) {
-                        <button
-                          pButton
-                          type="button"
-                          size="small"
-                          severity="secondary"
-                          [disabled]="acting()"
-                          (click)="issueSetupLink(agency, user)"
-                        >
-                          New setup link
-                        </button>
-                      }
-                    </li>
                   }
-                </ul>
-              }
-            </section>
+                </div>
+
+                @if (editing()) {
+                  <form
+                    [formGroup]="editForm"
+                    (ngSubmit)="saveDetails(agency)"
+                    novalidate
+                    class="section-form"
+                  >
+                    <lpg-form-field
+                      label="Agency name"
+                      for="agency-edit-name"
+                      [control]="editForm.controls.name"
+                      [messages]="{
+                        required: 'Agency name is required.',
+                        pattern: 'Agency name is required.',
+                        maxlength: 'Use at most 120 characters.',
+                      }"
+                    >
+                      <input
+                        pInputText
+                        id="agency-edit-name"
+                        type="text"
+                        formControlName="name"
+                        [fluid]="true"
+                      />
+                    </lpg-form-field>
+                    <lpg-form-field
+                      label="Primary contact email"
+                      for="agency-edit-contact"
+                      [control]="editForm.controls.primaryContactEmail"
+                      [messages]="{
+                        required: 'Contact email is required.',
+                        email: 'Enter a valid email address.',
+                      }"
+                    >
+                      <input
+                        pInputText
+                        id="agency-edit-contact"
+                        type="email"
+                        formControlName="primaryContactEmail"
+                        [fluid]="true"
+                      />
+                    </lpg-form-field>
+                    <p class="detail-hint">
+                      The agency code can't be changed, because people use it to sign in to the
+                      mobile apps. The plan comes from the license.
+                    </p>
+                    <div class="section-actions">
+                      <button
+                        pButton
+                        type="button"
+                        severity="secondary"
+                        [disabled]="saving()"
+                        (click)="editing.set(false)"
+                      >
+                        Cancel
+                      </button>
+                      <button pButton type="submit" [disabled]="saving()">
+                        @if (saving()) {
+                          <i class="pi pi-spin pi-spinner"></i>
+                        }
+                        Save changes
+                      </button>
+                    </div>
+                  </form>
+                } @else {
+                  <div class="detail-item">
+                    <span class="detail-label">Name</span>
+                    <span class="detail-value">{{ agency.name }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Agency code</span>
+                    <span class="detail-value">{{ agency.slug }}</span>
+                    <span class="detail-hint">Used to sign in to the mobile apps.</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value">{{ statusLabel(agency.status) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Plan</span>
+                    <span class="detail-value">{{ planLabel(agency.subscription_plan) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Primary contact</span>
+                    <span class="detail-value">{{ agency.primary_contact_email }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Country</span>
+                    <span class="detail-value">{{ agency.country }}</span>
+                  </div>
+                }
+              </section>
+              <!-- Modules and users share the details' one scrolling area, so
+                   neither can squeeze the details out of view. -->
+              <lpg-agency-modules
+                [tenantId]="agency.id"
+                [agencyName]="agency.name"
+                [readonly]="agency.status === 'closed'"
+              />
+
+              <section class="users" aria-labelledby="agency-users-heading">
+                <div class="section-header">
+                  <h3 id="agency-users-heading" class="detail-heading">Users</h3>
+                  @if (agency.status !== 'closed') {
+                    <button
+                      pButton
+                      type="button"
+                      size="small"
+                      severity="secondary"
+                      (click)="toggleAddAdmin()"
+                    >
+                      <i class="pi pi-user-plus"></i><span>Add admin</span>
+                    </button>
+                  }
+                </div>
+
+                @if (addAdminOpen()) {
+                  <form
+                    [formGroup]="adminForm"
+                    (ngSubmit)="addAdmin(agency)"
+                    novalidate
+                    class="section-form"
+                  >
+                    <lpg-form-field
+                      label="New admin email"
+                      for="agency-new-admin-email"
+                      [control]="adminForm.controls.email"
+                      [messages]="{
+                        required: 'Email is required.',
+                        email: 'Enter a valid email address.',
+                      }"
+                    >
+                      <input
+                        pInputText
+                        id="agency-new-admin-email"
+                        type="email"
+                        formControlName="email"
+                        [fluid]="true"
+                      />
+                    </lpg-form-field>
+                    <div class="section-actions">
+                      <button
+                        pButton
+                        type="button"
+                        severity="secondary"
+                        (click)="addAdminOpen.set(false)"
+                      >
+                        Cancel
+                      </button>
+                      <button pButton type="submit" [disabled]="acting()">
+                        @if (acting()) {
+                          <i class="pi pi-spin pi-spinner"></i>
+                        }
+                        Add admin
+                      </button>
+                    </div>
+                  </form>
+                }
+
+                @if (usersLoading()) {
+                  <p class="detail-hint">Loading users…</p>
+                } @else if (users().length === 0) {
+                  <p class="detail-hint">No users yet.</p>
+                } @else {
+                  <ul class="users__list">
+                    @for (user of users(); track user.id) {
+                      <li class="users__item">
+                        <div class="users__who">
+                          <span class="detail-value">{{ user.email }}</span>
+                          <span class="detail-hint"
+                            >{{ roleLabel(user.role)
+                            }}{{ user.is_active ? '' : ' · inactive' }}</span
+                          >
+                        </div>
+                        @if (
+                          user.role === 'agency_admin' &&
+                          user.is_active &&
+                          agency.status !== 'closed'
+                        ) {
+                          <button
+                            pButton
+                            type="button"
+                            size="small"
+                            severity="secondary"
+                            [disabled]="acting()"
+                            (click)="issueSetupLink(agency, user)"
+                          >
+                            New setup link
+                          </button>
+                        }
+                      </li>
+                    }
+                  </ul>
+                }
+              </section>
+            </div>
 
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="closeDetails()">
@@ -493,21 +584,14 @@ interface SetupLinkView {
         min-height: 0;
       }
 
-      .detail-item {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-      }
-
+      .details,
       .users {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-sm);
-        margin-block: var(--spacing-lg);
       }
 
-      .users__header,
+      .section-header,
       .users__item {
         display: flex;
         align-items: center;
@@ -532,13 +616,21 @@ interface SetupLinkView {
         overflow-wrap: anywhere;
       }
 
-      .users__add {
+      .section-form {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-sm);
       }
 
-      .detail-label {
+      .section-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: var(--spacing-sm);
+      }
+
+      .detail-heading {
+        margin: 0;
         font-size: var(--typography-caption-font-size);
         font-weight: var(--typography-label-font-weight);
         color: var(--color-text-secondary);
@@ -546,9 +638,16 @@ interface SetupLinkView {
         letter-spacing: 0.04em;
       }
 
-      .detail-value {
+      .detail-note {
+        margin: 0;
         font-size: var(--typography-body-small-font-size);
         color: var(--color-text-primary);
+      }
+
+      .detail-hint {
+        margin: 0;
+        font-size: var(--typography-caption-font-size);
+        color: var(--color-text-secondary);
       }
 
       .modal-actions {
@@ -585,6 +684,14 @@ export class AgencyManagementPage implements OnInit {
     email: ['', [Validators.required, Validators.email]],
   });
 
+  protected readonly editForm = this.formBuilder.group({
+    name: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(120)]],
+    primaryContactEmail: ['', [Validators.required, Validators.email]],
+  });
+
+  protected readonly editing = signal(false);
+  protected readonly saving = signal(false);
+
   protected readonly createDrawerVisible = signal(false);
   protected readonly setupLinkDrawerVisible = signal(false);
   protected readonly submitting = signal(false);
@@ -602,6 +709,7 @@ export class AgencyManagementPage implements OnInit {
 
   protected readonly statusLabel = (status: string) => toSentenceCase(status);
   protected readonly roleLabel = (role: string) => toSentenceCase(role);
+  protected readonly planLabel = (plan: string) => toSentenceCase(plan);
 
   /** `domain/tenant/tenant.py`'s lifecycle: `trial` → `active` →
    * `suspended` ⇄ `active`, `close()` terminal from any of the three. */
@@ -628,7 +736,7 @@ export class AgencyManagementPage implements OnInit {
       filterable: true,
       onLinkClick: (row) => this.openDetails(row),
     },
-    { field: 'slug', header: 'Slug', sortable: true },
+    { field: 'slug', header: 'Agency code', sortable: true },
     {
       field: 'status',
       header: 'Status',
@@ -758,8 +866,49 @@ export class AgencyManagementPage implements OnInit {
     this.selectedAgency.set(agency);
     this.addAdminOpen.set(false);
     this.adminForm.reset();
+    this.editing.set(false);
     this.showDetailDrawer.set(true);
     this.loadUsers(agency.id);
+  }
+
+  protected startEdit(agency: TenantResponse): void {
+    this.editForm.reset({
+      name: agency.name,
+      primaryContactEmail: agency.primary_contact_email,
+    });
+    this.editing.set(true);
+  }
+
+  protected saveDetails(agency: TenantResponse): void {
+    if (this.saving()) {
+      return;
+    }
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+
+    this.saving.set(true);
+    const { name, primaryContactEmail } = this.editForm.getRawValue();
+    this.agencyService
+      .update(agency.id, {
+        name: name.trim(),
+        primary_contact_email: primaryContactEmail.trim(),
+      })
+      .subscribe({
+        next: (updated) => {
+          this.saving.set(false);
+          this.agencies.update((agencies) =>
+            agencies.map((item) => (item.id === updated.id ? updated : item)),
+          );
+          if (this.selectedAgency()?.id === updated.id) {
+            this.selectedAgency.set(updated);
+            this.editing.set(false);
+          }
+          this.notify.success('Agency details saved.');
+        },
+        error: () => this.saving.set(false),
+      });
   }
 
   private loadUsers(tenantId: string): void {
@@ -819,6 +968,17 @@ export class AgencyManagementPage implements OnInit {
 
   protected closeDetails(): void {
     this.showDetailDrawer.set(false);
+  }
+
+  /**
+   * The details drawer does not use PrimeNG's own Escape handling, which would
+   * close it together with the modules dialog above it. While a dialog is open,
+   * Escape belongs to that dialog.
+   */
+  protected closeDetailsOnEscape(): void {
+    if (!document.querySelector('.p-dialog')) {
+      this.closeDetails();
+    }
   }
 
   protected suspend(tenantId: string): void {

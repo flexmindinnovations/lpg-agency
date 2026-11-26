@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 /**
- * Vertical stack of `<lpg-detail-item>` rows — the layout half of the
+ * Vertical list of `<lpg-detail-item>` rows — the layout half of the
  * shared detail-item primitive (see `detail-item.component.ts`'s own
  * doc comment for the duplication this replaces). Deliberately plain,
  * no card chrome of its own: wrap it in `<lpg-section-card>` for a
@@ -19,7 +19,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       :host {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
+        gap: var(--spacing-sm);
       }
     `,
   ],

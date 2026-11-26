@@ -14,7 +14,7 @@ import { DOCUMENT } from '@angular/common';
 import { Router } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import type { NavItem } from '@lpg/shared/ui/app-shell';
-import { CustomerService, OrderService } from '@lpg/shared/data-access';
+import { CustomerService, ModuleAccessStore, OrderService } from '@lpg/shared/data-access';
 import { CommandPaletteService } from './command-palette.service';
 
 interface PaletteItem {
@@ -141,7 +141,8 @@ export function fuzzyScore(text: string, q: string): number {
         max-block-size: 60vh;
         display: flex;
         flex-direction: column;
-        background: var(--color-surface-overlay);
+        /* The app background (dashboard styles.css), as on dialogs. */
+        background: var(--app-float);
         border: var(--border-width) solid var(--color-border-strong);
         border-radius: var(--radius-dialog);
         box-shadow: var(--elevation-4);
@@ -292,6 +293,7 @@ export function fuzzyScore(text: string, q: string): number {
 export class CommandPaletteComponent {
   protected readonly palette = inject(CommandPaletteService);
   private readonly router = inject(Router);
+  private readonly modules = inject(ModuleAccessStore);
   private readonly customerService = inject(CustomerService);
   private readonly orderService = inject(OrderService);
   private readonly document = inject(DOCUMENT);
@@ -304,8 +306,9 @@ export class CommandPaletteComponent {
 
   private readonly inputEl = viewChild<ElementRef<HTMLInputElement>>('inputEl');
 
-  private readonly actions: readonly PaletteItem[] = [
+  private readonly actions: readonly (PaletteItem & { module: string })[] = [
     {
+      module: 'orders',
       id: 'act-new-order',
       // Same words as the Orders page button (DO-37).
       label: 'New booking',
@@ -314,6 +317,7 @@ export class CommandPaletteComponent {
       run: () => void this.router.navigate(['/orders'], { queryParams: { create: true } }),
     },
     {
+      module: 'customers',
       id: 'act-new-customer',
       label: 'New customer',
       keywords: ['register customer', 'new connection', 'onboard'],
@@ -329,7 +333,7 @@ export class CommandPaletteComponent {
       debounceTime(200),
       distinctUntilChanged(),
       switchMap((q) =>
-        q.length < 2
+        q.length < 2 || !this.modules.isEnabled('customers')
           ? of<PaletteItem[]>([])
           : this.customerService.list(0, 6, q).pipe(
               map((page) =>
@@ -357,7 +361,7 @@ export class CommandPaletteComponent {
       debounceTime(200),
       distinctUntilChanged(),
       switchMap((q) =>
-        q.length < 3
+        q.length < 3 || !this.modules.isEnabled('orders')
           ? of<PaletteItem[]>([])
           : this.orderService.listOrders({ search: q, limit: 5 }).pipe(
               map((page) =>
@@ -400,7 +404,7 @@ export class CommandPaletteComponent {
     if (nav.length) out.push({ label: 'Navigation', items: nav });
     if (this.orderHits().length) out.push({ label: 'Orders', items: this.orderHits() });
     if (this.customerHits().length) out.push({ label: 'Customers', items: this.customerHits() });
-    const acts = rank(this.actions);
+    const acts = rank(this.actions.filter((a) => this.modules.isEnabled(a.module)));
     if (acts.length) out.push({ label: 'Actions', items: acts });
     return out;
   });

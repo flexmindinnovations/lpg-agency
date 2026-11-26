@@ -10,6 +10,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Observable, catchError, finalize, map, of } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import {
   AgencyService,
@@ -19,27 +20,66 @@ import {
 } from '@lpg/shared/data-access';
 
 /**
- * Switches an agency's modules on or off (Platform Console, super admin).
- * Every module is off until switched on; a module that is off is hidden from
- * the agency's dashboard and its API refuses calls. A module can only be on
- * while the modules it needs are on, so the switches follow that order.
+ * An agency's modules (Platform Console, super admin): a one-line summary with
+ * a button that opens every switch in a dialog. Every module is off until
+ * switched on; a module that is off is hidden from the agency's dashboard and
+ * its API refuses calls. A module can only be on while the modules it needs
+ * are on, so the switches follow that order.
  */
 @Component({
   selector: 'lpg-agency-modules',
   standalone: true,
-  imports: [FormsModule, ToggleSwitch, ButtonModule],
+  imports: [FormsModule, ToggleSwitch, ButtonModule, DialogModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="modules" aria-labelledby="agency-modules-heading">
-      <div class="modules__header">
-        <h3 id="agency-modules-heading" class="modules__heading">
-          Modules
-          @if (!loading() && !failed()) {
-            <span>· {{ enabledCount() }} of {{ modules().length }} on</span>
+    <section class="summary" aria-labelledby="agency-modules-heading">
+      <div class="summary__text">
+        <h3 id="agency-modules-heading" class="summary__heading">Modules</h3>
+        <span class="summary__status" aria-live="polite">
+          @if (loading()) {
+            Loading modules…
+          } @else if (failed()) {
+            Modules could not be loaded.
+          } @else {
+            {{ enabledCount() }} of {{ modules().length }} on
           }
-        </h3>
-        @if (!loading() && !failed() && !readonly()) {
-          <div class="modules__bulk">
+        </span>
+      </div>
+      <button
+        #openButton
+        pButton
+        type="button"
+        size="small"
+        severity="secondary"
+        class="summary__open"
+        [disabled]="loading() || failed()"
+        (click)="dialogOpen.set(true)"
+      >
+        <i class="pi pi-th-large" aria-hidden="true"></i>
+        <span>{{ readonly() ? 'View modules' : 'Manage modules' }}</span>
+      </button>
+    </section>
+
+    <p-dialog
+      [visible]="dialogOpen()"
+      (visibleChange)="dialogOpen.set($event)"
+      (onHide)="openButton.focus()"
+      [header]="'Modules · ' + agencyName()"
+      [modal]="true"
+      [closeOnEscape]="true"
+      [draggable]="false"
+      [resizable]="false"
+      appendTo="body"
+      [style]="{ width: '56rem', maxWidth: '95vw' }"
+    >
+      <div class="toolbar">
+        <p class="hint toolbar__hint">
+          Switched-off modules are hidden from this agency and blocked. Home, Notifications,
+          Settings and the Administration screens are always available. Changes save as you make
+          them.
+        </p>
+        @if (!readonly()) {
+          <div class="toolbar__bulk">
             <button
               pButton
               type="button"
@@ -63,112 +103,143 @@ import {
           </div>
         }
       </div>
-      <p class="modules__hint">
-        New agencies start with every module off. Home, Notifications, Settings and the
-        Administration screens are always available.
-      </p>
 
-      @if (loading()) {
-        <p class="modules__hint">Loading modules…</p>
-      } @else if (failed()) {
-        <p class="modules__hint">Modules could not be loaded.</p>
-      } @else {
-        @for (group of groups(); track group.name) {
-          <h4 class="modules__group">{{ group.name }}</h4>
-          <ul class="modules__list">
-            @for (module of group.modules; track module.key) {
-              <li class="modules__item">
-                <div class="modules__text">
-                  <span class="modules__label">{{ module.label }}</span>
-                  <span class="modules__hint">{{ module.description }}</span>
-                  @if (hint(module); as note) {
-                    <span class="modules__hint modules__hint--note">{{ note }}</span>
-                  }
-                </div>
-                <p-toggleswitch
-                  [ngModel]="module.enabled"
-                  [disabled]="readonly() || busy() !== null || locked(module)"
-                  [ariaLabel]="module.label"
-                  (onChange)="toggle(module, $event.checked)"
-                />
-              </li>
-            }
-          </ul>
-        }
+      @for (group of groups(); track group.name) {
+        <h4 class="group">{{ group.name }}</h4>
+        <ul class="grid">
+          @for (module of group.modules; track module.key) {
+            <li class="module">
+              <div class="module__text">
+                <span class="module__label">{{ module.label }}</span>
+                <span class="hint">{{ module.description }}</span>
+                @if (hint(module); as note) {
+                  <span class="hint module__note">{{ note }}</span>
+                }
+              </div>
+              <p-toggleswitch
+                [ngModel]="module.enabled"
+                [disabled]="readonly() || busy() !== null || locked(module)"
+                [ariaLabel]="module.label"
+                (onChange)="toggle(module, $event.checked)"
+              />
+            </li>
+          }
+        </ul>
       }
-    </section>
+
+      <ng-template #footer>
+        <div class="footer">
+          <span class="hint" aria-live="polite">
+            {{ enabledCount() }} of {{ modules().length }} on
+          </span>
+          <button pButton type="button" (click)="dialogOpen.set(false)">Done</button>
+        </div>
+      </ng-template>
+    </p-dialog>
   `,
   styles: [
     `
-      .modules {
+      .summary {
         display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-        margin-block: var(--spacing-lg);
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
       }
 
-      .modules__heading {
+      .summary__text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .summary__heading {
         margin: 0;
         font-size: var(--typography-caption-font-size);
         font-weight: var(--typography-label-font-weight);
         color: var(--color-text-secondary);
         text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
-      .modules__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--spacing-md);
-        flex-wrap: wrap;
-      }
-
-      .modules__bulk {
-        display: flex;
-        gap: var(--spacing-xs);
-      }
-
-      .modules__group {
-        margin: var(--spacing-sm) 0 0;
-        font-size: var(--typography-caption-font-size);
-        color: var(--color-text-secondary);
-      }
-
-      .modules__hint--note {
+      .summary__status {
+        font-size: var(--typography-body-small-font-size);
         color: var(--color-text-primary);
       }
 
-      .modules__list {
+      .toolbar {
         display: flex;
-        flex-direction: column;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
         gap: var(--spacing-md);
+        padding-block-start: var(--spacing-md);
+      }
+
+      .toolbar__hint {
+        flex: 1 1 20rem;
+      }
+
+      .toolbar__bulk {
+        display: flex;
+        gap: var(--spacing-sm);
+      }
+
+      .group {
+        margin: var(--spacing-lg) 0 var(--spacing-sm);
+        font-size: var(--typography-caption-font-size);
+        font-weight: var(--typography-label-font-weight);
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+        gap: var(--spacing-sm);
         margin: 0;
         padding: 0;
         list-style: none;
       }
 
-      .modules__item {
+      .module {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-md);
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-input);
       }
 
-      .modules__text {
+      .module__text {
         display: flex;
         flex-direction: column;
         min-inline-size: 0;
       }
 
-      .modules__label {
+      .module__label {
         color: var(--color-text-primary);
         font-weight: var(--typography-label-font-weight);
       }
 
-      .modules__hint {
+      .module__note {
+        color: var(--color-text-primary);
+      }
+
+      .hint {
         margin: 0;
         color: var(--color-text-secondary);
         font-size: var(--typography-caption-font-size);
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-md);
+        inline-size: 100%;
       }
     `,
   ],
@@ -178,6 +249,8 @@ export class AgencyModules implements OnInit {
   private readonly notify = inject(NotifyService);
 
   readonly tenantId = input.required<string>();
+  /** Named in the dialog's title, so it is clear which agency is being changed. */
+  readonly agencyName = input.required<string>();
   /** A closed agency's modules are shown but not editable. */
   readonly readonly = input(false);
 
@@ -185,6 +258,7 @@ export class AgencyModules implements OnInit {
   protected readonly enabledCount = computed(() => this.modules().filter((m) => m.enabled).length);
   protected readonly loading = signal(true);
   protected readonly failed = signal(false);
+  protected readonly dialogOpen = signal(false);
   /** Set while any switch is being saved, so changes happen one at a time, in order. */
   protected readonly busy = signal<string | null>(null);
 

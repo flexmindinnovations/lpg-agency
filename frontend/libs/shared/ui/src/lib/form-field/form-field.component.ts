@@ -7,9 +7,15 @@ import {
   inject,
   input,
 } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { AbstractControl, FormGroupDirective, NgForm, Validators } from '@angular/forms';
-import { of, startWith, switchMap } from 'rxjs';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
+import {
+  AbstractControl,
+  FormGroupDirective,
+  FormResetEvent,
+  NgForm,
+  Validators,
+} from '@angular/forms';
+import { of, startWith, switchMap, tap } from 'rxjs';
 
 /**
  * The one submit rule for every form (QA DA-29): keep the submit button
@@ -39,6 +45,15 @@ export function validateForSubmit(form: AbstractControl, scope?: HTMLElement | n
   }
   return false;
 }
+
+/**
+ * Forms that were reset after their last submit. `reset()` on a form group
+ * leaves the form directive's `submitted` flag set, and a form inside a drawer
+ * or dialog outlives it, so reopening would show the old "required" errors on
+ * an untouched form. Shared by a form's fields, so that one created after the
+ * reset knows too.
+ */
+const resetSinceSubmit = new WeakSet<object>();
 
 /**
  * The standard form field wrapper (doc §19) — a 13px medium label above the
@@ -197,6 +212,11 @@ export class FormFieldComponent {
   private readonly controlTick = toSignal(
     toObservable(this.control).pipe(
       switchMap((c) => (c ? c.events.pipe(startWith(null)) : of(null))),
+      tap((event) => {
+        if (event instanceof FormResetEvent && this.formDirective) {
+          resetSinceSubmit.add(this.formDirective);
+        }
+      }),
     ),
     { initialValue: null },
   );
@@ -205,11 +225,16 @@ export class FormFieldComponent {
     this.controlTick();
     this.submitTick();
     const c = this.control();
-    const submitted = this.formDirective?.submitted ?? false;
+    const form = this.formDirective;
+    const submitted = !!form && form.submitted && !resetSinceSubmit.has(form);
     return !!c && c.invalid && (c.touched || c.dirty || submitted);
   });
 
   constructor() {
+    this.formDirective?.ngSubmit
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => resetSinceSubmit.delete(this.formDirective as object));
+
     // Tie the message to the control for assistive tech: aria-invalid and
     // aria-describedby on the element whose id is `for`.
     effect(() => {

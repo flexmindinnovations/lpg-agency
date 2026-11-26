@@ -136,7 +136,7 @@
           <p-select
             inputId="custody_type"
             formControlName="custody_type"
-            [options]="custodyTypeOptions"
+            [options]="custodyTypeOptions()"
             optionLabel="label"
             optionValue="value"
             appendTo="body"
@@ -460,7 +460,7 @@
               [severity]="conditionSeverity(result.condition_status)"
             />
           </div>
-          <div class="detail-item detail-item--span-2">
+          <div class="detail-item">
             <span class="detail-label">Retest Due</span>
             <span class="detail-value">
               {{ result.test_due_date ? formatReportDate(result.test_due_date) : 'Never tested' }}
@@ -469,7 +469,7 @@
               }
             </span>
           </div>
-          <div class="detail-item detail-item--full-width">
+          <div class="detail-item">
             <span class="detail-label">Current Custody</span>
             <span class="detail-value"
               >{{ formatCustodyDisplay(result.custody_type, result.custody_ref_id) }}</span
@@ -532,17 +532,17 @@
     @if (selectedUnit(); as unit) {
     <div class="dialog-form">
       <div class="dialog-summary-card">
-        <div class="summary-field">
-          <span class="summary-label">Serial Number</span>
-          <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
+        <div class="detail-item">
+          <span class="detail-label">Serial Number</span>
+          <span class="detail-value font-semibold">{{ unit.serial_number }}</span>
         </div>
-        <div class="summary-field">
-          <span class="summary-label">QR / Barcode</span>
-          <span class="summary-value font-mono">{{ unit.qr_code }}</span>
+        <div class="detail-item">
+          <span class="detail-label">QR / Barcode</span>
+          <span class="detail-value font-mono">{{ unit.qr_code }}</span>
         </div>
-        <div class="summary-field">
-          <span class="summary-label">Current Custody</span>
-          <span class="summary-value"
+        <div class="detail-item">
+          <span class="detail-label">Current Custody</span>
+          <span class="detail-value"
             >{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span
           >
         </div>
@@ -558,7 +558,7 @@
             <p-select
               inputId="move_custody_type"
               formControlName="custody_type"
-              [options]="custodyTypeOptions"
+              [options]="custodyTypeOptions()"
               optionLabel="label"
               optionValue="value"
               appendTo="body"
@@ -652,17 +652,17 @@
     @if (selectedUnit(); as unit) {
     <div class="dialog-form">
       <div class="dialog-summary-card">
-        <div class="summary-field">
-          <span class="summary-label">Serial Number</span>
-          <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
+        <div class="detail-item">
+          <span class="detail-label">Serial Number</span>
+          <span class="detail-value font-semibold">{{ unit.serial_number }}</span>
         </div>
-        <div class="summary-field">
-          <span class="summary-label">QR / Barcode</span>
-          <span class="summary-value font-mono">{{ unit.qr_code }}</span>
+        <div class="detail-item">
+          <span class="detail-label">QR / Barcode</span>
+          <span class="detail-value font-mono">{{ unit.qr_code }}</span>
         </div>
-        <div class="summary-field">
-          <span class="summary-label">Current Test Due</span>
-          <span class="summary-value"> {{ testDueLabel(unit.test_due_date, unit) }} </span>
+        <div class="detail-item">
+          <span class="detail-label">Current Test Due</span>
+          <span class="detail-value"> {{ testDueLabel(unit.test_due_date, unit) }} </span>
         </div>
       </div>
 
@@ -752,17 +752,17 @@
     @if (selectedUnit(); as unit) {
     <div class="dialog-form">
       <div class="dialog-summary-card">
-        <div class="summary-field">
-          <span class="summary-label">Serial Number</span>
-          <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
+        <div class="detail-item">
+          <span class="detail-label">Serial Number</span>
+          <span class="detail-value font-semibold">{{ unit.serial_number }}</span>
         </div>
-        <div class="summary-field">
-          <span class="summary-label">QR / Barcode</span>
-          <span class="summary-value font-mono">{{ unit.qr_code }}</span>
+        <div class="detail-item">
+          <span class="detail-label">QR / Barcode</span>
+          <span class="detail-value font-mono">{{ unit.qr_code }}</span>
         </div>
-        <div class="summary-field">
-          <span class="summary-label">Current Condition</span>
-          <div class="summary-value">
+        <div class="detail-item">
+          <span class="detail-label">Current Condition</span>
+          <div class="detail-value">
             <p-tag
               [value]="toSentenceCase(unit.condition_status)"
               [severity]="conditionSeverity(unit.condition_status)"

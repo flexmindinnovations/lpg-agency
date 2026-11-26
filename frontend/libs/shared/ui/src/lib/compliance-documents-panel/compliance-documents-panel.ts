@@ -13,6 +13,7 @@ import {
 } from '../document-upload/document-upload.component';
 import { FormFieldComponent } from '../form-field/form-field.component';
 import { HasPermissionDirective } from '../directives/has-permission.directive';
+import { onDrawerClose } from '../directives/on-drawer-close';
 import { formatReportDate } from '../format/format';
 import { type ChipSeverity, toSentenceCase } from '../status-chip-cell/status-chip-cell';
 
@@ -119,6 +120,9 @@ export class ComplianceDocumentsPanel {
    * `vehicles:manage` depending on the owner. Verify/Reject are always
    * gated by `compliance:verify` regardless of owner. */
   readonly managePermission = input('drivers:manage');
+  /** False hides Replace, Verify and Reject: the host cannot perform them
+   * (the Compliance Calendar module, which serves them, is off). */
+  readonly reviewEnabled = input(true);
 
   readonly uploader = input.required<(file: File) => Observable<{ blobRef: string }>>();
   readonly addDocument = input.required<(cmd: AddComplianceDocumentCmd) => Observable<unknown>>();
@@ -160,6 +164,18 @@ export class ComplianceDocumentsPanel {
     document_number: { required: 'Document number is required.' },
     file_ref: { required: 'Upload a scan of the document.' },
   };
+
+  constructor() {
+    // Back to the list: a half-filled form or a pending rejection belongs to
+    // the record that was open, not to the one opened next.
+    onDrawerClose(() => {
+      this.cancelForm();
+      this.cancelReject();
+      this.rejectReason.set('');
+      this.rejectError.set(null);
+      this.replacingDoc.set(null);
+    });
+  }
 
   protected docTypeLabel(docType: string): string {
     return this.docTypeOptions().find((o) => o.value === docType)?.label ?? toSentenceCase(docType);

@@ -44,6 +44,7 @@ import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
 import { Tag } from 'primeng/tag';
 import {
+  ModuleAccessStore,
   AuthTokenStore,
   AdminBranchService,
   DeliveryService,
@@ -95,6 +96,12 @@ function formatDateForApi(value: unknown): string | undefined {
 })
 export class FeatureVehicles implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly modules = inject(ModuleAccessStore);
+  /** Reviewing and replacing documents, and the expiry filter, belong to the
+   * Compliance Calendar module. */
+  protected readonly hasComplianceCalendar = computed(() =>
+    this.modules.isEnabled('compliance_calendar'),
+  );
   private readonly deliveryService = inject(DeliveryService);
   private readonly authTokenStore = inject(AuthTokenStore);
   private readonly documentService = inject(DocumentService);
@@ -319,6 +326,7 @@ export class FeatureVehicles implements OnInit {
    * document, reduced to a per-vehicle flag map client-side (the list
    * endpoint has no "missing required doc" query of its own). */
   protected loadVehicleComplianceFlags(): void {
+    if (!this.hasComplianceCalendar()) return;
     this.documentService.listComplianceDocuments({ owner_type: 'vehicle', limit: 500 }).subscribe({
       next: (res) => {
         const today = new Date();

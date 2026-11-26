@@ -35,6 +35,7 @@ import { Tag } from 'primeng/tag';
 import { Badge } from 'primeng/badge';
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from 'primeng/tabs';
 import {
+  ModuleAccessStore,
   CustomerService,
   AdminBranchService,
   NotifyService,
@@ -108,6 +109,8 @@ import { TitleCasePipe } from '@angular/common';
 })
 export class FeatureCustomers implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly modules = inject(ModuleAccessStore);
+  protected readonly hasOrders = computed(() => this.modules.isEnabled('orders'));
   private readonly customerService = inject(CustomerService);
   private readonly orderService = inject(OrderService);
   private readonly branchService = inject(AdminBranchService);
@@ -487,6 +490,7 @@ export class FeatureCustomers implements OnInit {
   /** The customer's recent orders, newest first (DO-06). */
   private loadCustomerOrders(customerId: string): void {
     this.customerOrders.set([]);
+    if (!this.hasOrders()) return;
     this.customerOrdersLoading.set(true);
     this.orderService.listOrders({ customerId, limit: 20 }).subscribe({
       next: (page) => {
