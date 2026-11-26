@@ -24,42 +24,57 @@
   } @else if (documents().length === 0) {
   <p class="cdp__empty">No compliance documents on file yet.</p>
   } @else {
-  <div class="cdp__table" role="table" aria-label="Compliance documents">
-    <div class="cdp__row cdp__row--head" role="row">
-      <span role="columnheader">Type</span>
-      <span role="columnheader">Number</span>
-      <span role="columnheader">Expiry</span>
-      <span role="columnheader">Status</span>
-      <span role="columnheader" class="cdp__actions-head">Actions</span>
-    </div>
+  <ul class="cdp__list" aria-label="Compliance documents">
     @for (doc of documents(); track doc.id) {
-    <div class="cdp__row" role="row">
-      <span role="cell">{{ docTypeLabel(doc.doc_type) }}</span>
-      <span role="cell">{{ doc.document_number }}</span>
-      <span role="cell" class="cdp__expiry">
-        {{ doc.expiry_date ? formatDate(doc.expiry_date) : '—' }} @if (expiryBadge(doc); as badge) {
-        <p-tag [value]="badge.label" [severity]="badge.severity" />
-        }
-      </span>
-      <span role="cell">
+    <li class="cdp__card" [attr.aria-labelledby]="'cdp-title-' + doc.id">
+      <div class="cdp__card-head">
+        <span class="cdp__doc-type" id="cdp-title-{{ doc.id }}"
+          >{{ docTypeLabel(doc.doc_type) }}</span
+        >
         <p-tag
           [value]="toSentenceCase(doc.verification_status)"
           [severity]="verificationSeverity(doc.verification_status)"
         />
-        @if (doc.verification_status === 'rejected' && doc.rejection_reason) {
-        <span class="cdp__reject-reason">{{ doc.rejection_reason }}</span>
+      </div>
+
+      <dl class="cdp__facts">
+        <div class="cdp__fact">
+          <dt>Number</dt>
+          <dd>{{ doc.document_number }}</dd>
+        </div>
+        @if (doc.issue_date) {
+        <div class="cdp__fact">
+          <dt>Issue date</dt>
+          <dd>{{ formatDate(doc.issue_date) }}</dd>
+        </div>
         }
-      </span>
-      <span role="cell" class="cdp__actions">
+        <div class="cdp__fact">
+          <dt>Expiry date</dt>
+          <dd>
+            {{ doc.expiry_date ? formatDate(doc.expiry_date) : '—' }} @if (expiryBadge(doc); as
+            badge) {
+            <p-tag [value]="badge.label" [severity]="badge.severity" />
+            }
+          </dd>
+        </div>
+      </dl>
+
+      @if (doc.verification_status === 'rejected' && doc.rejection_reason) {
+      <p class="cdp__reject-reason">Rejected: {{ doc.rejection_reason }}</p>
+      } @if (doc.file_url || reviewEnabled()) {
+      <div class="cdp__actions">
         @if (doc.file_url) {
         <a
+          pButton
+          severity="secondary"
+          size="small"
           [href]="doc.file_url"
           target="_blank"
           rel="noopener"
           class="cdp__view-link"
-          aria-label="View document file"
         >
           <i class="pi pi-external-link" aria-hidden="true"></i>
+          <span>View file</span>
         </a>
         } @if (reviewEnabled()) {
         <button
@@ -67,76 +82,76 @@
           pButton
           type="button"
           severity="secondary"
-          text
           size="small"
           [disabled]="verifyingId() === doc.id"
           (click)="openReplaceForm(doc)"
         >
-          Replace
+          <i class="pi pi-sync" aria-hidden="true"></i>
+          <span>Replace</span>
         </button>
-        @if (doc.verification_status === 'pending') {
-        <button
-          *lpgHasPermission="'compliance:verify'"
-          pButton
-          type="button"
-          severity="success"
-          text
-          size="small"
-          [disabled]="verifyingId() === doc.id"
-          (click)="verifyNow(doc)"
-        >
-          Verify
-        </button>
-        <button
-          *lpgHasPermission="'compliance:verify'"
-          pButton
-          type="button"
-          severity="danger"
-          text
-          size="small"
-          [disabled]="verifyingId() === doc.id"
-          (click)="openReject(doc)"
-        >
-          Reject
-        </button>
+        @if (doc.verification_status === 'pending' && rejectingDoc()?.id !== doc.id) {
+        <span class="cdp__review">
+          <button
+            *lpgHasPermission="'compliance:verify'"
+            pButton
+            type="button"
+            severity="danger"
+            size="small"
+            [disabled]="verifyingId() === doc.id"
+            (click)="openReject(doc)"
+          >
+            Reject
+          </button>
+          <button
+            *lpgHasPermission="'compliance:verify'"
+            pButton
+            type="button"
+            severity="success"
+            size="small"
+            [disabled]="verifyingId() === doc.id"
+            (click)="verifyNow(doc)"
+          >
+            Verify
+          </button>
+        </span>
         } }
-      </span>
-    </div>
-
-    @if (rejectingDoc()?.id === doc.id) {
-    <div class="cdp__reject-form">
-      <lpg-form-field label="Rejection reason" for="reject-reason-{{ doc.id }}">
-        <input
-          pInputText
-          id="reject-reason-{{ doc.id }}"
-          type="text"
-          [fluid]="true"
-          placeholder="e.g. Scan is illegible"
-          [value]="rejectReason()"
-          (input)="rejectReason.set($any($event.target).value)"
-        />
-      </lpg-form-field>
-      @if (rejectError(); as err) {
-      <p-message severity="error">{{ err }}</p-message>
-      }
-      <div class="cdp__reject-actions">
-        <button pButton type="button" severity="secondary" size="small" (click)="cancelReject()">
-          Cancel
-        </button>
-        <button
-          pButton
-          type="button"
-          severity="danger"
-          size="small"
-          [disabled]="verifyingId() === doc.id"
-          (click)="confirmReject()"
-        >
-          Confirm reject
-        </button>
       </div>
-    </div>
-    } }
-  </div>
+      } @if (rejectingDoc()?.id === doc.id) {
+      <div class="cdp__reject-form">
+        <lpg-form-field label="Rejection reason" for="reject-reason-{{ doc.id }}">
+          <input
+            pInputText
+            id="reject-reason-{{ doc.id }}"
+            type="text"
+            [fluid]="true"
+            placeholder="e.g. Scan is illegible"
+            [value]="rejectReason()"
+            (input)="rejectReason.set($any($event.target).value)"
+          />
+        </lpg-form-field>
+        @if (rejectError(); as err) {
+        <p-message severity="error">{{ err }}</p-message>
+        }
+        <div class="cdp__reject-actions">
+          <button pButton type="button" severity="secondary" size="small" (click)="cancelReject()">
+            Cancel
+          </button>
+          <button
+            pButton
+            type="button"
+            severity="danger"
+            size="small"
+            [disabled]="verifyingId() === doc.id"
+            (click)="confirmReject()"
+          >
+            Confirm reject
+          </button>
+        </div>
+      </div>
+      }
+    </li>
+    }
+  </ul>
   @if (!reviewEnabled()) {
   <p class="cdp__empty">
     Checking and replacing documents needs the Compliance Calendar module, which is switched off.

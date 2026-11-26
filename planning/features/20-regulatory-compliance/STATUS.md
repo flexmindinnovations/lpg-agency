@@ -109,6 +109,8 @@ A sixth item, `PLAN.md` §7, was built as its own narrower slice: PESO Form F (e
 
 **This does not move the file's own `State` above off NOT STARTED either** — Compliance Calendar is now six exceptions (D24, Weighment, TDT, Cylinder Identity, DAC, Compliance Calendar) out of the much larger PLAN.md backlog; Consumer lifecycle vouchers, Subsidy/PMUY, biennial safety inspection, the accident-notification workflow, and Cash/UPI settlement all remain untouched.
 
+**2026-11-26 (documents panel layout):** `<lpg-compliance-documents-panel>` shows one card per document instead of a five-column table, which broke apart in the 32rem driver and vehicle drawers. Each card has the type and status, labelled number and dates (issue date is now shown), and labelled actions. Cards sit side by side on wide pages. Checked: 6 new unit tests, all projects' tests and lint (not e2e), dashboard build; headless Chromium with every API call faked, the vehicle drawer (desktop light and dark, 360px phone, Compliance Calendar module off) and the Compliance Calendar page. The driver drawer uses the same component and was not viewed.
+
 ## Rules
 
 This file follows [`planning/MODULE_STATUS.md`](../../MODULE_STATUS.md): the `State` above moves off NOT STARTED only when *all* of `PLAN.md`'s gates are re-run and green, with the command output seen. Four phases in this project were marked COMPLETE here and then failed independent verification — that is why the bar is stated explicitly rather than assumed. D24's own gates above were independently re-run and are reported honestly as green; they cover D24 only, not the rest of this file's scope.

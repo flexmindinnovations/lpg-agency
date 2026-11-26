@@ -32,79 +32,106 @@
   color: var(--color-text-secondary);
 }
 
-.cdp__table {
-  display: flex;
-  flex-direction: column;
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+/* One card per document. A table of five columns did not fit a drawer or a
+   phone; a card reads the same at every width. A drawer holds one column, and
+   a full-width page puts cards side by side. */
+.cdp__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.cdp__row {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1fr auto;
+.cdp__card {
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-sm);
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-block-end: var(--border-width) solid var(--color-border-default);
+  padding: var(--spacing-md);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
   font-size: var(--typography-body-small-font-size);
   color: var(--color-text-primary);
 }
 
-.cdp__row:last-child {
-  border-block-end: none;
-}
-
-.cdp__row--head {
-  background: var(--color-surface-raised);
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-label-font-weight);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.cdp__actions-head {
-  text-align: end;
-}
-
-.cdp__expiry {
+.cdp__card-head {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.cdp__doc-type {
+  min-inline-size: 0;
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-label-font-weight);
+  overflow-wrap: anywhere;
+}
+
+/* Label and value side by side, with the labels in one column. */
+.cdp__facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--spacing-xs) var(--spacing-lg);
+  margin: 0;
+}
+
+.cdp__fact {
+  display: contents;
+}
+
+.cdp__fact dt {
+  color: var(--color-text-secondary);
+}
+
+.cdp__fact dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
+  margin: 0;
+  font-weight: var(--typography-label-font-weight);
+  overflow-wrap: anywhere;
 }
 
 .cdp__reject-reason {
-  display: block;
+  margin: 0;
   font-size: var(--typography-caption-font-size);
   color: var(--color-status-danger);
-  margin-block-start: 2px;
 }
 
 .cdp__actions {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--spacing-xs);
   flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+  /* At the foot of the card, so cards side by side line their actions up. */
+  margin-block-start: auto;
+  padding-block-start: var(--spacing-sm);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+/* A card whose actions are all hidden by permissions has no empty rule. */
+.cdp__actions:not(:has(a, button)) {
+  display: none;
 }
 
 .cdp__view-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-action-primary);
-  padding: var(--spacing-xs);
+  text-decoration: none;
+}
+
+/* Reject and Verify stay together at the end, also when they wrap. */
+.cdp__review {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-inline-start: auto;
 }
 
 .cdp__reject-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
-  background: var(--color-surface-raised);
-  border-block-end: var(--border-width) solid var(--color-border-default);
 }
 
 .cdp__reject-actions {
