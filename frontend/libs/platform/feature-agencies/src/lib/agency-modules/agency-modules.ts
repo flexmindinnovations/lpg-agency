@@ -142,14 +142,16 @@ import {
                 pButton
                 type="button"
                 class="footer__save"
-                [class.footer__save--saving]="saving()"
                 [attr.aria-busy]="saving()"
                 [disabled]="saving() || changeCount() === 0"
                 (click)="save()"
               >
-                @if (saving()) {
-                  <i class="pi pi-spin pi-spinner footer__spinner" aria-hidden="true"></i>
-                }
+                <!-- Always an icon, so the button keeps its width when it spins. -->
+                <i
+                  class="pi"
+                  [class]="saving() ? 'pi-spin pi-spinner' : 'pi-check'"
+                  aria-hidden="true"
+                ></i>
                 <span>Save changes</span>
               </button>
             }
@@ -276,18 +278,12 @@ import {
         margin-inline-start: auto;
       }
 
-      /* The spinner sits over the label, so the button keeps its own width and
-         nothing beside it moves. The label stays readable to screen readers. */
-      .footer__spinner {
-        position: absolute;
-        inset: 0;
-        margin: auto;
-        inline-size: 1em;
-        block-size: 1em;
-      }
-
-      .footer__save--saving > span {
-        opacity: 0;
+      /* The checkmark and the spinner are not quite the same width. */
+      .footer__save .pi {
+        display: inline-grid;
+        place-items: center;
+        inline-size: 1.25em;
+        block-size: 1.25em;
       }
 
       /* On a phone the count always has its own line, so a longer count never
