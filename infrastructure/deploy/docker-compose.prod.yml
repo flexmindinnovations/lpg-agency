@@ -26,6 +26,9 @@ x-backend-env: &backend-env
   LPG_LOG_LEVEL: INFO
   LPG_LOG_JSON: "true"
   LPG_CORS_ORIGINS: ${PUBLIC_ORIGIN}
+  # The address people and phones use. File view links and the links in invite
+  # and password emails are built from it; without it they point at localhost.
+  LPG_DASHBOARD_URL: ${PUBLIC_ORIGIN}
   LPG_DB_HOST: postgres
   LPG_DB_PORT: "5432"
   LPG_DB_NAME: lpg
