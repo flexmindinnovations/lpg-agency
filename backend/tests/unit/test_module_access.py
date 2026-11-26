@@ -131,9 +131,13 @@ async def test_only_modules_that_change_are_written() -> None:
 
 
 async def test_a_module_can_be_switched_on_with_what_it_needs_in_any_order() -> None:
-    repository, _ = await _set({"orders": True, "customers": True})
+    repository, _ = await _set({"orders": True, "inventory": True, "customers": True})
 
-    assert sorted(_saved(repository)) == [("customers", True), ("orders", True)]
+    assert sorted(_saved(repository)) == [
+        ("customers", True),
+        ("inventory", True),
+        ("orders", True),
+    ]
 
 
 async def test_a_module_and_what_it_needs_can_be_switched_off_together() -> None:
@@ -155,8 +159,19 @@ async def test_a_module_and_what_it_needs_can_be_switched_off_together() -> None
         ),
         (
             {"customers": False},
-            frozenset({"customers", "orders"}),
+            frozenset({"customers", "inventory", "orders"}),
             "Switch off Orders too; it needs Customers",
+        ),
+        # No booking can succeed without stock, so Orders never runs without Inventory.
+        (
+            {"orders": True},
+            frozenset({"customers"}),
+            "Switch on Inventory too; Orders needs it",
+        ),
+        (
+            {"inventory": False},
+            frozenset({"customers", "inventory", "orders"}),
+            "Switch off Orders too; it needs Inventory",
         ),
     ],
 )
