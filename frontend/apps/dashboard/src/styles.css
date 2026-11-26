@@ -957,6 +957,11 @@ p-confirmpopup {
 }
 
 .p-dialog .p-dialog-header {
+  /* One height with or without a close button. A minimum rather than a fixed
+     height, so a long title on a phone wraps instead of being cut off. */
+  min-block-size: calc(
+    var(--spacing-lg) + var(--component-action-height) + var(--spacing-md) + var(--border-width)
+  );
   padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) !important;
   border-bottom: var(--border-width) solid var(--color-border-default) !important;
   flex-shrink: 0 !important;

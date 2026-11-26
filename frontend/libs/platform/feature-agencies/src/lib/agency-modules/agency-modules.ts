@@ -142,11 +142,13 @@ import {
                 pButton
                 type="button"
                 class="footer__save"
+                [class.footer__save--saving]="saving()"
+                [attr.aria-busy]="saving()"
                 [disabled]="saving() || changeCount() === 0"
                 (click)="save()"
               >
                 @if (saving()) {
-                  <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+                  <i class="pi pi-spin pi-spinner footer__spinner" aria-hidden="true"></i>
                 }
                 <span>Save changes</span>
               </button>
@@ -274,10 +276,18 @@ import {
         margin-inline-start: auto;
       }
 
-      /* Room for the spinner, so Cancel does not shift when saving starts. */
-      .footer__save {
-        min-inline-size: 10rem;
-        justify-content: center;
+      /* The spinner sits over the label, so the button keeps its own width and
+         nothing beside it moves. The label stays readable to screen readers. */
+      .footer__spinner {
+        position: absolute;
+        inset: 0;
+        margin: auto;
+        inline-size: 1em;
+        block-size: 1em;
+      }
+
+      .footer__save--saving > span {
+        opacity: 0;
       }
 
       /* On a phone the count always has its own line, so a longer count never
