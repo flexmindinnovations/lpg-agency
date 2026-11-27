@@ -202,9 +202,9 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # payment_profile`. Printed on invoices and used to build UPI QR codes.
         "payment_profile",
         # How strictly the agency controls which phones may use its Driver and
-        # Admin apps (ADR-071): "off" (default — nothing enforced or
-        # recorded), "observe" (phones register, nobody is blocked) or
-        # "enforce". Validated on write by `application.license.device_control`.
+        # Admin apps (ADR-071): "observe" (default — phones are listed,
+        # nobody is blocked) or "enforce" (a new phone needs approval).
+        # Validated on write by `application.tenant.tenant_configuration`.
         "device_control",
     }
 )

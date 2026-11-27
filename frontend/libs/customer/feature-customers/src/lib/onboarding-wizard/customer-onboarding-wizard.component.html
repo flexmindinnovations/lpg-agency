@@ -81,31 +81,31 @@
                   <div class="extracted-preview">
                     <div class="extracted-preview-header">Extracted Details</div>
                     <div class="review-grid">
-                      <div class="review-item">
-                        <span>Full Name</span>
-                        {{
+                      <div class="detail-item">
+                        <span class="detail-label">Full Name</span>
+                        <span class="detail-value">{{
                           registrationForm.value.first_name
                             ? registrationForm.value.first_name +
                               ' ' +
                               registrationForm.value.last_name
                             : 'Not extracted — please fill in manually'
-                        }}
+                        }}</span>
                       </div>
-                      <div class="review-item">
-                        <span>Date of Birth</span>
-                        {{
+                      <div class="detail-item">
+                        <span class="detail-label">Date of Birth</span>
+                        <span class="detail-value">{{
                           registrationForm.value.date_of_birth
                             ? (registrationForm.value.date_of_birth | date: 'dd/MM/yyyy')
                             : 'Not extracted — please fill in manually'
-                        }}
+                        }}</span>
                       </div>
-                      <div class="review-item">
-                        <span>Document Type</span>
-                        {{ docTypeLabel(kycForm.value.doc_type) }}
+                      <div class="detail-item">
+                        <span class="detail-label">Document Type</span>
+                        <span class="detail-value">{{ docTypeLabel(kycForm.value.doc_type) }}</span>
                       </div>
-                      <div class="review-item">
-                        <span>Document Number</span>
-                        {{ kycForm.value.document_number }}
+                      <div class="detail-item">
+                        <span class="detail-label">Document Number</span>
+                        <span class="detail-value">{{ kycForm.value.document_number }}</span>
                       </div>
                     </div>
                     <div class="extracted-preview-footer">
@@ -237,6 +237,8 @@
                     [messages]="fieldMessages.branch_id"
                   >
                     <p-select
+                      [filter]="true"
+                      [resetFilterOnHide]="true"
                       inputId="branch_id"
                       formControlName="branch_id"
                       [options]="branches()"
@@ -255,6 +257,8 @@
                     [messages]="fieldMessages.consumer_category"
                   >
                     <p-select
+                      [filter]="true"
+                      [resetFilterOnHide]="true"
                       inputId="consumer_category"
                       formControlName="consumer_category"
                       [options]="customerCategoryOptions"
@@ -347,6 +351,8 @@
                     [messages]="fieldMessages.address_type"
                   >
                     <p-select
+                      [filter]="true"
+                      [resetFilterOnHide]="true"
                       inputId="address_type"
                       formControlName="address_type"
                       [options]="addressTypeOptions"
@@ -520,6 +526,8 @@
                     [messages]="fieldMessages.doc_type"
                   >
                     <p-select
+                      [filter]="true"
+                      [resetFilterOnHide]="true"
                       inputId="doc_type"
                       formControlName="doc_type"
                       [options]="kycDocTypeOptions"
@@ -632,41 +640,58 @@
               <div class="review-section">
                 <h3>Personal Information</h3>
                 <div class="review-grid">
-                  <div class="review-item">
-                    <span>{{ isBusiness() ? 'Contact person:' : 'Name:' }}</span>
-                    {{ registrationForm.value.first_name }} {{ registrationForm.value.last_name }}
-                    @if (isBusiness()) {
-                      <br /><span>Business:</span> {{ registrationForm.value.business_name }}
-                      @if (registrationForm.value.gstin) {
-                        · GSTIN {{ registrationForm.value.gstin }}
-                      }
+                  <div class="detail-item">
+                    <span class="detail-label">{{ isBusiness() ? 'Contact person' : 'Name' }}</span>
+                    <span class="detail-value"
+                      >{{ registrationForm.value.first_name }}
+                      {{ registrationForm.value.last_name }}</span
+                    >
+                  </div>
+                  @if (isBusiness()) {
+                    <div class="detail-item">
+                      <span class="detail-label">Business</span>
+                      <span class="detail-value">{{ registrationForm.value.business_name }}</span>
+                    </div>
+                    @if (registrationForm.value.gstin) {
+                      <div class="detail-item">
+                        <span class="detail-label">GSTIN</span>
+                        <span class="detail-value">{{ registrationForm.value.gstin }}</span>
+                      </div>
                     }
+                  }
+                  <div class="detail-item">
+                    <span class="detail-label">Phone</span>
+                    <span class="detail-value">{{ registrationForm.value.phone_number }}</span>
                   </div>
-                  <div class="review-item">
-                    <span>Phone:</span> {{ registrationForm.value.phone_number }}
-                  </div>
-                  <div class="review-item">
-                    <span>Category:</span>
-                    {{ categoryLabel(registrationForm.value.consumer_category) }}
+                  <div class="detail-item">
+                    <span class="detail-label">Category</span>
+                    <span class="detail-value">{{
+                      categoryLabel(registrationForm.value.consumer_category)
+                    }}</span>
                   </div>
                 </div>
 
                 <h3>Delivery Address</h3>
                 <div class="review-grid">
-                  <div class="review-item full-width">
-                    <span>Address:</span> {{ addressForm.value.line_1 }},
-                    {{ addressForm.value.area }}, {{ addressForm.value.city }},
-                    {{ addressForm.value.state }} - {{ addressForm.value.pincode }}
+                  <div class="detail-item info-item--wide">
+                    <span class="detail-label">Address</span>
+                    <span class="detail-value"
+                      >{{ addressForm.value.line_1 }}, {{ addressForm.value.area }},
+                      {{ addressForm.value.city }}, {{ addressForm.value.state }} -
+                      {{ addressForm.value.pincode }}</span
+                    >
                   </div>
                 </div>
 
                 <h3>KYC Details</h3>
                 <div class="review-grid">
-                  <div class="review-item">
-                    <span>Document:</span> {{ docTypeLabel(kycForm.value.doc_type) }}
+                  <div class="detail-item">
+                    <span class="detail-label">Document</span>
+                    <span class="detail-value">{{ docTypeLabel(kycForm.value.doc_type) }}</span>
                   </div>
-                  <div class="review-item">
-                    <span>ID Number:</span> {{ kycForm.value.document_number }}
+                  <div class="detail-item">
+                    <span class="detail-label">ID Number</span>
+                    <span class="detail-value">{{ kycForm.value.document_number }}</span>
                   </div>
                 </div>
               </div>

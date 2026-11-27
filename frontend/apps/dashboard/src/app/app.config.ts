@@ -113,6 +113,11 @@ export const appConfig: ApplicationConfig = {
       // the last Role in Register Employee could not be reached on a tablet).
       // Drawers keep rendering inline — DrawerA11yDirective pins them.
       overlayAppendTo: 'body',
+      // Every dropdown has a search box (AGENTS.md); this names it once, for
+      // all of them. `lpg-search-select` says what it searches by instead.
+      pt: {
+        select: { pcFilter: { root: { placeholder: 'Search', 'aria-label': 'Search the list' } } },
+      },
       // Every date input reads and shows dd/mm/yyyy (QA DO-08); never set
       // `dateFormat` per picker. Display formatting is `formatDisplayDate`.
       translation: { dateFormat: DATE_INPUT_FORMAT },

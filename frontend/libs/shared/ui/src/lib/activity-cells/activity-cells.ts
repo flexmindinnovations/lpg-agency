@@ -32,13 +32,6 @@ export const ACTION_SEVERITY: Record<string, string> = {
   delete: 'danger',
 };
 
-/** Audit actions as an office user says them ("CREATE" read as a code). */
-const ACTION_CHIP_LABELS: Record<string, string> = {
-  create: 'Created',
-  update: 'Changed',
-  delete: 'Deleted',
-};
-
 /** AG Grid cell renderer: an action name as a coloured `p-tag` chip. */
 @Component({
   selector: 'lpg-action-chip-cell',
@@ -61,7 +54,8 @@ export class ActionChipCell {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
   agInit(params: any): void {
     const raw = typeof params.value === 'string' ? params.value : '';
-    this.value.set(ACTION_CHIP_LABELS[raw] ?? raw);
+    // The page's own words for each action, so no chip shows a code.
+    this.value.set(params.labelMap?.[raw] ?? raw);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.severity.set((ACTION_SEVERITY[params.value] as any) || 'secondary');
   }

@@ -299,6 +299,16 @@ class DeliveredLine:
 
 
 @dataclass(frozen=True, slots=True)
+class CollectedEmpty:
+    """Empties taken back of a size that is not on the order. Empties of an
+    ordered size are recorded on its line.
+    """
+
+    cylinder_type_id: uuid.UUID
+    quantity: int
+
+
+@dataclass(frozen=True, slots=True)
 class OrderStatusHistoryEntry:
     """One append-only `order_status_history` row produced by a transition.
 
@@ -463,6 +473,7 @@ class Order(AggregateRoot):
         "_lines",
         "_metadata",
         "_order_number",
+        "_other_empties",
         "_payment_method_preference",
         "_pending_failed_delivery_entries",
         "_pending_status_history",
@@ -493,6 +504,7 @@ class Order(AggregateRoot):
         route_stop_id: uuid.UUID | None = None,
         total_amount: Decimal | None = None,
         prices_include_gst: bool | None = None,
+        other_empties: Sequence[CollectedEmpty] = (),
         version: int = 1,
     ) -> None:
         super().__init__(order_id, version=version)
@@ -535,6 +547,7 @@ class Order(AggregateRoot):
         self._total_amount = total_amount
         self._prices_include_gst = prices_include_gst
         self._lines = list(lines)
+        self._other_empties = tuple(other_empties)
         self._pending_status_history: list[OrderStatusHistoryEntry] = []
         self._pending_failed_delivery_entries: list[FailedDeliveryEntry] = []
 
@@ -687,6 +700,10 @@ class Order(AggregateRoot):
         """
         return self._status in _APPROVAL_CANCEL_STATES
 
+    @property
+    def other_empties(self) -> tuple[CollectedEmpty, ...]:
+        return self._other_empties
+
     def line_for(self, cylinder_type_id: uuid.UUID) -> OrderLine:
         for line in self._lines:
             if line.cylinder_type_id == cylinder_type_id:
@@ -813,7 +830,13 @@ class Order(AggregateRoot):
         """`ready_for_dispatch -> out_for_delivery` ("driver departs")."""
         self._transition("out_for_delivery", changed_by=changed_by)
 
-    def deliver(self, *, lines: Sequence[DeliveredLine], changed_by: uuid.UUID) -> None:
+    def deliver(
+        self,
+        *,
+        lines: Sequence[DeliveredLine],
+        changed_by: uuid.UUID,
+        other_empties: Sequence[CollectedEmpty] = (),
+    ) -> None:
         """`out_for_delivery -> delivered`. POD completeness (OTP,
         signature, photo, GPS) is validated by the use case, not here — see
         `domain/order/order.py`'s module docstring / the plan's layering
@@ -821,10 +844,12 @@ class Order(AggregateRoot):
         `DomainError` to 409, but BR-08 documents a 400 for incomplete POD).
         """
         self._ensure_transition_allowed("delivered")
+        self._validate_other_empties(other_empties)
 
         for delivered in lines:
             line = self.line_for(delivered.cylinder_type_id)
             line.record_delivery(delivered.quantity_delivered, delivered.quantity_collected_empty)
+        self._other_empties = tuple(other_empties)
 
         self._apply_transition("delivered", changed_by=changed_by)
         self.record_event(
@@ -836,6 +861,20 @@ class Order(AggregateRoot):
                 delivered_at=datetime.now(UTC),
             )
         )
+
+    def _validate_other_empties(self, other_empties: Sequence[CollectedEmpty]) -> None:
+        on_order = {line.cylinder_type_id for line in self._lines}
+        listed: set[uuid.UUID] = set()
+        for empty in other_empties:
+            if empty.quantity <= 0:
+                msg = "The number of empties collected must be more than zero."
+                raise InvariantViolation(msg, order_id=str(self.id))
+            if empty.cylinder_type_id in on_order or empty.cylinder_type_id in listed:
+                msg = "Each cylinder size reports its empties once."
+                raise InvariantViolation(
+                    msg, order_id=str(self.id), cylinder_type_id=str(empty.cylinder_type_id)
+                )
+            listed.add(empty.cylinder_type_id)
 
     def fail_delivery(
         self,

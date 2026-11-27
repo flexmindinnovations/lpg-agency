@@ -23,7 +23,6 @@ import {
   AdminAuditLogService,
   AdminStaffUserService,
   errorMessageFor,
-  type AuditLogAction,
   type AuditLogEntryResponse,
 } from '@lpg/shared/data-access';
 import {
@@ -33,6 +32,7 @@ import {
   HeaderTitlePortalDirective,
   PageActionsDirective,
   PageHeaderComponent,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { DATE_INPUT_PLACEHOLDER, formatDisplayDateTime } from '@lpg/shared/util';
@@ -43,6 +43,7 @@ import {
   auditChanges,
   auditLogCsv,
   entityTypeLabel,
+  hasEarlierValues,
   orderIdForEntry,
   recordLabel,
   technicalIdentifiersOf,
@@ -79,6 +80,7 @@ interface Option<T> {
   selector: 'lpg-audit-log-page',
   standalone: true,
   imports: [
+    SectionCardComponent,
     ExportButtonComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
@@ -135,6 +137,7 @@ interface Option<T> {
             />
           </p-iconfield>
           <p-select
+            [resetFilterOnHide]="true"
             ariaLabel="Record type"
             inputId="audit_entity"
             [options]="entityOptions()"
@@ -142,11 +145,13 @@ interface Option<T> {
             optionValue="value"
             placeholder="All records"
             [showClear]="true"
-            [filter]="entityOptions().length > 8"
+            [filter]="true"
             [ngModel]="entityName()"
             (ngModelChange)="entityName.set($event ?? null); reload()"
           />
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             ariaLabel="Action"
             inputId="audit_action"
             [options]="actionOptions"
@@ -159,6 +164,7 @@ interface Option<T> {
           />
           @if (actorOptions().length > 0) {
             <p-select
+              [resetFilterOnHide]="true"
               ariaLabel="Done by"
               inputId="audit_actor"
               [options]="actorOptions()"
@@ -208,7 +214,7 @@ interface Option<T> {
       [(visible)]="drawerVisible"
       position="right"
       [modal]="true"
-      [style]="{ width: '100%', maxWidth: '36rem' }"
+      [style]="{ width: '100%', maxWidth: 'var(--drawer-width-wide)' }"
       [closeOnEscape]="true"
       ariaCloseLabel="Close details"
     >
@@ -240,19 +246,17 @@ interface Option<T> {
               </p>
             </div>
 
-            <section class="detail-section">
-              <h3 class="section-label">
-                {{ entry.action === 'update' ? 'What changed' : 'Details' }}
-              </h3>
+            <lpg-section-card [heading]="entry.action === 'update' ? 'What changed' : 'Details'">
               @if (changesOf(entry); as changes) {
                 @if (changes.length === 0) {
                   <p class="dim">No field-level details were recorded.</p>
                 } @else {
+                  @let showBefore = hasEarlierValues(changes);
                   <table class="changes">
                     <thead>
                       <tr>
                         <th scope="col">Field</th>
-                        @if (entry.action !== 'create') {
+                        @if (showBefore) {
                           <th scope="col">Before</th>
                         }
                         @if (entry.action !== 'delete') {
@@ -264,7 +268,7 @@ interface Option<T> {
                       @for (change of changes; track change.field) {
                         <tr>
                           <th scope="row">{{ change.field }}</th>
-                          @if (entry.action !== 'create') {
+                          @if (showBefore) {
                             <td>{{ change.before }}</td>
                           }
                           @if (entry.action !== 'delete') {
@@ -276,67 +280,69 @@ interface Option<T> {
                   </table>
                 }
               }
-            </section>
+            </lpg-section-card>
 
-            <details class="detail-section ids" open>
-              <summary class="section-label-row">
-                <span class="section-label">Technical identifiers</span>
-                <button
-                  pButton
-                  type="button"
-                  severity="secondary"
-                  size="small"
-                  class="copy-json-btn"
-                  (click)="copyTechnicalIdentifiersAsJson(entry); $event.stopPropagation()"
-                  pTooltip="Copy all technical identifiers as JSON"
-                >
-                  <i
-                    class="pi"
-                    [class.pi-copy]="!copiedJson()"
-                    [class.pi-check]="copiedJson()"
-                    aria-hidden="true"
-                  ></i>
-                  <span>{{ copiedJson() ? 'Copied JSON!' : 'Copy as JSON' }}</span>
-                </button>
-              </summary>
-              <dl class="info-grid">
-                @for (item of technicalIdentifiers(entry); track item.key) {
-                  <div class="info-item">
-                    <dt class="info-label">{{ item.label }}</dt>
-                    <dd class="info-value">
-                      <span class="mono">{{ item.value }}</span>
-                      <div class="info-actions">
-                        <button
-                          type="button"
-                          class="copy-icon-btn"
-                          (click)="copyValue(item.value, item.key)"
-                          [pTooltip]="copiedKey() === item.key ? 'Copied!' : 'Copy ' + item.label"
-                          [attr.aria-label]="'Copy ' + item.label"
-                        >
-                          <i
-                            class="pi"
-                            [class.pi-copy]="copiedKey() !== item.key"
-                            [class.pi-check]="copiedKey() === item.key"
-                            aria-hidden="true"
-                          ></i>
-                        </button>
-                        @if (item.isOrderId) {
-                          <a
-                            [routerLink]="['/orders', item.value]"
-                            (click)="drawerVisible = false"
+            <lpg-section-card>
+              <details class="detail-section ids" open>
+                <summary class="section-label-row">
+                  <span class="section-label">Technical identifiers</span>
+                  <button
+                    pButton
+                    type="button"
+                    severity="secondary"
+                    size="small"
+                    class="copy-json-btn"
+                    (click)="copyTechnicalIdentifiersAsJson(entry); $event.stopPropagation()"
+                    pTooltip="Copy all technical identifiers as JSON"
+                  >
+                    <i
+                      class="pi"
+                      [class.pi-copy]="!copiedJson()"
+                      [class.pi-check]="copiedJson()"
+                      aria-hidden="true"
+                    ></i>
+                    <span>{{ copiedJson() ? 'Copied JSON!' : 'Copy as JSON' }}</span>
+                  </button>
+                </summary>
+                <dl class="info-grid">
+                  @for (item of technicalIdentifiers(entry); track item.key) {
+                    <div class="info-item">
+                      <dt class="info-label">{{ item.label }}</dt>
+                      <dd class="info-value">
+                        <span class="mono">{{ item.value }}</span>
+                        <div class="info-actions">
+                          <button
+                            type="button"
                             class="copy-icon-btn"
-                            pTooltip="View order details"
-                            aria-label="View order details"
+                            (click)="copyValue(item.value, item.key)"
+                            [pTooltip]="copiedKey() === item.key ? 'Copied!' : 'Copy ' + item.label"
+                            [attr.aria-label]="'Copy ' + item.label"
                           >
-                            <i class="pi pi-arrow-right" aria-hidden="true"></i>
-                          </a>
-                        }
-                      </div>
-                    </dd>
-                  </div>
-                }
-              </dl>
-            </details>
+                            <i
+                              class="pi"
+                              [class.pi-copy]="copiedKey() !== item.key"
+                              [class.pi-check]="copiedKey() === item.key"
+                              aria-hidden="true"
+                            ></i>
+                          </button>
+                          @if (item.isOrderId) {
+                            <a
+                              [routerLink]="['/orders', item.value]"
+                              (click)="drawerVisible = false"
+                              class="copy-icon-btn"
+                              pTooltip="View order details"
+                              aria-label="View order details"
+                            >
+                              <i class="pi pi-arrow-right" aria-hidden="true"></i>
+                            </a>
+                          }
+                        </div>
+                      </dd>
+                    </div>
+                  }
+                </dl>
+              </details>
+            </lpg-section-card>
           </div>
 
           <div class="modal-actions">
@@ -451,8 +457,22 @@ interface Option<T> {
         border-block-end: var(--border-width) solid var(--color-border-default);
         text-align: start;
         vertical-align: top;
-        overflow-wrap: anywhere;
         color: var(--color-text-primary);
+      }
+
+      /* Values may break anywhere (long ids); names keep their words whole, so
+         a long value cannot squeeze the name column to a few letters. */
+      .changes td {
+        overflow-wrap: anywhere;
+      }
+
+      .changes thead th {
+        white-space: nowrap;
+      }
+
+      .changes tbody th {
+        inline-size: 30%;
+        overflow-wrap: break-word;
       }
 
       .changes thead th {
@@ -526,7 +546,7 @@ export class AuditLogPage implements OnInit {
   protected readonly showDrawer = signal(false);
 
   protected readonly entityName = signal<string | null>(null);
-  protected readonly action = signal<AuditLogAction | null>(null);
+  protected readonly action = signal<string | null>(null);
   protected readonly actorId = signal<string | null>(null);
   protected readonly dateRange = signal<(Date | null)[] | null>(null);
   protected readonly searchQuery = signal('');
@@ -535,9 +555,9 @@ export class AuditLogPage implements OnInit {
   protected readonly entityOptions = computed<Option<string>[]>(() =>
     this.entityTypes().map((name) => ({ label: entityTypeLabel(name), value: name })),
   );
-  protected readonly actionOptions: Option<AuditLogAction>[] = (
-    Object.keys(ACTION_LABELS) as AuditLogAction[]
-  ).map((value) => ({ label: ACTION_LABELS[value], value }));
+  protected readonly actionOptions: Option<string>[] = Object.entries(ACTION_LABELS).map(
+    ([value, label]) => ({ label, value }),
+  );
   protected readonly actorOptions = signal<Option<string>[]>([]);
 
   protected readonly today = new Date();
@@ -568,8 +588,9 @@ export class AuditLogPage implements OnInit {
     {
       field: 'action',
       header: 'Action',
-      width: 120,
+      width: 200,
       cellRenderer: ActionChipCell,
+      cellRendererParams: { labelMap: ACTION_LABELS },
     },
     {
       field: 'actor_display_name',
@@ -597,6 +618,7 @@ export class AuditLogPage implements OnInit {
   protected readonly actionLabel = actionLabel;
   protected readonly entityTypeLabel = entityTypeLabel;
   protected readonly changesOf = auditChanges;
+  protected readonly hasEarlierValues = hasEarlierValues;
   protected readonly technicalIdentifiers = technicalIdentifiersOf;
   protected readonly orderIdFor = orderIdForEntry;
 

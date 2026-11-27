@@ -88,6 +88,35 @@ class TestChangeAndDelete:
         assert gone.status_code == 404, gone.text
         assert added_again.status_code == 201, added_again.text
 
+    async def test_a_type_with_only_a_price_can_be_deleted_but_not_resized(
+        self,
+        stack: _AppAndClient,  # noqa: F811
+        admin_engine: AsyncEngine,
+    ) -> None:
+        """Every new cylinder gets a price, so a mistake must still be deletable."""
+        client = stack.client
+        _, headers = await _agency(client, admin_engine)
+        created = await client.post(TYPES, json={"size_code": "commercial_19"}, headers=headers)
+        type_id = created.json()["id"]
+        url = f"{TYPES}/{type_id}"
+        priced = await client.post(
+            "/api/v1/admin/price-list",
+            json={"cylinder_type_id": type_id, "customer_type": "commercial", "price": 2100},
+            headers=headers,
+        )
+
+        usage = await client.get(f"{url}/usage", headers=headers)
+        resized = await client.patch(url, json={"size_code": "commercial_35"}, headers=headers)
+        deleted = await client.delete(url, headers=headers)
+        listed = await client.get(TYPES, headers=headers)
+
+        assert priced.status_code in (200, 201), priced.text
+        assert usage.json()["used_in"] == ["prices"]
+        assert usage.json()["delete_blocked_by"] == []
+        assert resized.status_code == 409, resized.text
+        assert deleted.status_code == 204, deleted.text
+        assert type_id not in [t["id"] for t in listed.json()]
+
     async def test_a_used_type_cannot_be_deleted_or_change_weight(
         self,
         stack: _AppAndClient,  # noqa: F811
@@ -105,6 +134,8 @@ class TestChangeAndDelete:
         after = await client.get(f"{url}/usage", headers=headers)
 
         assert {"stock records", "prices"} <= set(usage.json()["used_in"])
+        assert "stock records" in usage.json()["delete_blocked_by"]
+        assert "prices" not in usage.json()["delete_blocked_by"]
         assert usage.json()["allowed_size_codes"] == ["domestic_14_2"]
         assert deleted.status_code == 409, deleted.text
         assert "Deactivate it instead" in deleted.text

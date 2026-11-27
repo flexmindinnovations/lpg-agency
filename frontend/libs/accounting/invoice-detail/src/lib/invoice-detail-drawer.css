@@ -1,9 +1,3 @@
-.invoice-detail-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
 .detail-card-title__row {
   display: flex;
   align-items: center;
@@ -25,14 +19,9 @@
 }
 
 .detail-info-grid {
-  margin-inline: calc(-1 * var(--drawer-bleed, 0px));
-  padding-inline: var(--drawer-bleed, 0px);
   display: grid;
   grid-template-columns: var(--detail-columns);
   gap: var(--spacing-sm) var(--spacing-xl);
-  /* The drawer header's own rule sits directly above. */
-  padding-block-end: var(--spacing-md);
-  border-block-end: var(--border-width) solid var(--color-border-default);
 }
 
 /* Rendered as a `<button>` (not `<a>`) so clicking it opens an in-page
@@ -58,40 +47,24 @@
   color: var(--color-action-primary-hover);
 }
 
-.lines-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.section-heading {
-  font-size: var(--typography-body-small-font-size);
-  font-weight: var(--typography-heading3-font-weight);
-  color: var(--color-text-primary);
-  margin: 0;
-}
-
 .line-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
 }
 
+/* Rows inside a card, not boxes of their own. */
 .line-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--surface-inset);
-  border-radius: var(--radius-md);
-  border: var(--border-width) solid var(--color-border-default);
+  gap: var(--spacing-md);
+  padding-block: var(--spacing-sm);
+  border-block-end: var(--border-width) solid var(--color-border-default);
   font-size: var(--typography-body-small-font-size);
+}
+
+.line-item:last-child {
+  border-block-end: 0;
 }
 
 .line-info {
@@ -114,14 +87,11 @@
 }
 
 .totals-section {
-  margin-inline: calc(-1 * var(--drawer-bleed, 0px));
-  padding-inline: var(--drawer-bleed, 0px);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   padding-block-start: var(--spacing-md);
   border-block-start: var(--border-width) solid var(--color-border-default);
-  margin-block-start: auto;
 }
 
 .total-row {
@@ -149,24 +119,6 @@
 
 .numeric-value {
   font-variant-numeric: tabular-nums;
-}
-
-.print-actions {
-  margin-inline: calc(-1 * var(--drawer-bleed, 0px));
-  padding-inline: var(--drawer-bleed, 0px);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  padding-block-start: var(--spacing-md);
-  border-block-start: var(--border-width) solid var(--color-border-default);
-  margin-block-start: var(--spacing-md);
-}
-
-/* Stacked action rows read as one group: one divider above the first. */
-.print-actions + .print-actions {
-  padding-block-start: 0;
-  border-block-start: 0;
-  margin-block-start: var(--spacing-sm);
 }
 
 /* Thermal receipt preview dialog */
@@ -225,8 +177,8 @@
 
 .preview-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
+  grid-template-columns: var(--detail-columns);
+  gap: var(--spacing-sm) var(--spacing-xl);
   padding-block: var(--spacing-md);
   border-block-start: var(--border-width) solid var(--color-border-default);
   border-block-end: var(--border-width) solid var(--color-border-default);

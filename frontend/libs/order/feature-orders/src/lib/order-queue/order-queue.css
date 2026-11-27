@@ -34,12 +34,15 @@
   align-items: center;
 }
 
+/* A long cylinder label must shrink, not push the quantity out of use. */
 .line-row__type {
-  flex: 1;
+  flex: 1 1 0;
+  min-inline-size: 0;
 }
 
 .line-row__qty {
-  inline-size: 6rem;
+  flex: 0 0 6rem;
+  min-inline-size: 0;
 }
 
 /* Why some cylinder types are missing from the booking list. */

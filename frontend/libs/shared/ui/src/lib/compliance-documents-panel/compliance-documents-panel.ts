@@ -14,6 +14,7 @@ import {
 import { FormFieldComponent } from '../form-field/form-field.component';
 import { HasPermissionDirective } from '../directives/has-permission.directive';
 import { onDrawerClose } from '../directives/on-drawer-close';
+import { CardActionsDirective } from '../section-card/card-actions.directive';
 import { formatReportDate } from '../format/format';
 import { type ChipSeverity, toSentenceCase } from '../status-chip-cell/status-chip-cell';
 
@@ -93,6 +94,7 @@ const VERIFICATION_SEVERITY: Record<string, ChipSeverity> = {
   standalone: true,
   imports: [
     ReactiveFormsModule,
+    CardActionsDirective,
     ButtonDirective,
     DatePicker,
     InputText,
@@ -112,9 +114,6 @@ export class ComplianceDocumentsPanel {
 
   readonly documents = input<ComplianceDocumentItem[]>([]);
   readonly loading = input(false);
-  /** The panel's own sub-heading. A host whose section already has a heading
-   * passes `null` so the page doesn't repeat "Compliance Documents" (UR-02). */
-  readonly heading = input<string | null>('Compliance Documents');
   readonly docTypeOptions = input.required<ComplianceDocTypeOption[]>();
   /** Gates the "Add document" / "Replace" controls — `drivers:manage` or
    * `vehicles:manage` depending on the owner. Verify/Reject are always

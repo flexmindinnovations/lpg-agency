@@ -51,6 +51,8 @@
         (ngModelChange)="onDateRangeChange($event)"
       ></p-datepicker>
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         ariaLabel="Status"
         id="status_filter"
         [options]="statusOptions"
@@ -97,7 +99,7 @@
   <p-drawer
     [(visible)]="showCreateDrawer"
     position="right"
-    styleClass="!w-full md:!w-[30rem]"
+    styleClass="!w-full md:!w-[var(--drawer-width)]"
     (onHide)="closeCreateDrawer(); createTrigger()?.nativeElement?.focus()"
   >
     <ng-template #header>
@@ -123,11 +125,16 @@
           [control]="createForm.controls.customer"
           [messages]="fieldMessages.customer"
         >
-          <lpg-customer-autocomplete
+          <lpg-search-select
             inputId="create_customer"
             formControlName="customer"
-            placeholder="Name, phone or consumer no."
-          ></lpg-customer-autocomplete>
+            [search]="searchCustomers"
+            [itemLabel]="customerName"
+            [itemDetail]="customerFacts"
+            placeholder="Select a customer"
+            searchHint="Name, phone or consumer no."
+            noMatchMessage="No customers match"
+          />
         </lpg-form-field>
 
         @if (selectedCustomer(); as customer) {
@@ -138,6 +145,8 @@
           [messages]="fieldMessages.address_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="create_address"
             formControlName="address_id"
             [options]="customer.addresses"
@@ -160,6 +169,8 @@
           [control]="createForm.controls.booking_source"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="create_booking_source"
             formControlName="booking_source"
             [options]="bookingSourceOptions"
@@ -200,7 +211,7 @@
             (click)="addLine()"
           >
             <i class="pi pi-plus"></i>
-            <span>Add line</span>
+            <span>Add another cylinder</span>
           </button>
         </div>
         @if (!cylinderTypesLoading() && cylinderTypes().length === 0) {
@@ -213,7 +224,9 @@
             }
           </ul>
           } @else {
-          <span>There is no active cylinder type. Add or activate one under Cylinder Types.</span>
+          <span
+            >There is no active cylinder type. Add or activate one under Cylinders & Prices.</span
+          >
           } } @else {
           <span>
             No cylinder can be booked for this customer right now. A cylinder shows here only when
@@ -236,6 +249,8 @@
           @for (line of lines.controls; track $index) {
           <div [formGroupName]="$index" class="line-row">
             <p-select
+              [filter]="true"
+              [resetFilterOnHide]="true"
               formControlName="cylinder_type_id"
               [options]="cylinderTypeOptions()"
               optionLabel="label"

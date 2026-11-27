@@ -697,7 +697,9 @@ async def get_cylinder_type_usage(
         GetCylinderTypeUsageQuery(cylinder_type_id=cylinder_type_id)
     )
     return CylinderTypeUsageResponse(
-        used_in=list(usage.used_in), allowed_size_codes=list(usage.allowed_size_codes)
+        used_in=list(usage.used_in),
+        delete_blocked_by=list(usage.delete_blocked_by),
+        allowed_size_codes=list(usage.allowed_size_codes),
     )
 
 
@@ -1374,7 +1376,11 @@ async def list_audit_log(
     actor_id: uuid.UUID | None = None,
     action: Annotated[
         str | None,
-        Query(pattern="^(create|update|delete)$", description="create, update or delete"),
+        Query(
+            pattern=r"^[a-z_]+(\.[a-z_]+)?$",
+            max_length=64,
+            description="An action as recorded, e.g. update or auth.login",
+        ),
     ] = None,
     date_from: Annotated[
         datetime | None, Query(description="Only entries at or after this instant")

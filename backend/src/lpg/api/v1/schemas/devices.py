@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class MyDeviceResponse(BaseModel):
-    control: str = Field(description="The agency's device control mode: off, observe or enforce.")
+    control: str = Field(description="The agency's device control mode: observe or enforce.")
     status: str | None = Field(
         description="This phone's state (pending, approved, blocked, removed), or null when the "
         "session is not under device control."
@@ -14,7 +14,7 @@ class MyDeviceResponse(BaseModel):
     display_name: str | None
     allowed: bool = Field(
         description="Whether the agency lets this phone use the app right now. Under 'observe' "
-        "and 'off' this is always true."
+        "only a blocked phone is refused."
     )
     needs_name: bool = Field(
         default=False,

@@ -22,15 +22,26 @@ const _locationIqApiKey = String.fromEnvironment('LOCATIONIQ_API_KEY');
 /// caps callers at ~1 request/second and requires an identifying
 /// `User-Agent`; fine for low-volume dev/demo use, not for production
 /// traffic. Both responses share the same JSON shape, so only the request
-/// side branches. Results are cached per query string for the lifetime of the
-/// provider so reopening a screen doesn't re-hit the service.
+/// side branches. What the service answered, found or not, is cached per query
+/// string for the lifetime of the provider so reopening a screen doesn't re-hit
+/// it. A failed request (offline, rate limit, server error) is not cached.
 class GeocodingService {
-  GeocodingService({http.Client? client, this.apiKey = _locationIqApiKey})
-    : _client = client ?? http.Client();
+  GeocodingService({
+    http.Client? client,
+    this.apiKey = _locationIqApiKey,
+    Future<void> Function(Duration)? pause,
+  }) : _client = client ?? http.Client(),
+       _pause = pause ?? Future<void>.delayed;
 
   final http.Client _client;
   final String apiKey;
+  final Future<void> Function(Duration) _pause;
   final Map<String, LatLng?> _cache = {};
+
+  /// The gap between two requests that keeps within the free rate limits:
+  /// LocationIQ allows two a second, Nominatim one.
+  Duration get requestSpacing =>
+      Duration(milliseconds: apiKey.isNotEmpty ? 600 : 1100);
 
   static final Uri _locationIqBase = Uri.parse(
     'https://us1.locationiq.com/v1/search',
@@ -38,6 +49,48 @@ class GeocodingService {
   static final Uri _nominatimBase = Uri.parse(
     'https://nominatim.openstreetmap.org/search',
   );
+
+  /// Finds a delivery address. A full street address often matches nothing, so
+  /// wider forms of it are tried in turn ([addressQueries]). Stops at the first
+  /// match, or when a request fails.
+  Future<LatLng?> locate(String address) async {
+    var requested = false;
+    for (final query in addressQueries(address)) {
+      if (_cache.containsKey(query)) {
+        final cached = _cache[query];
+        if (cached != null) return cached;
+        continue;
+      }
+      if (requested) await _pause(requestSpacing);
+      requested = true;
+      final point = await search(query);
+      if (point != null) return point;
+      // Not cached means the request failed: wider forms would fail too.
+      if (!_cache.containsKey(query)) return null;
+    }
+    return null;
+  }
+
+  /// The forms of a one-line address to look up, narrowest first: the whole
+  /// line, its last four parts, its last three, then its PIN code. Parts that
+  /// repeat (a city that is also the district) are dropped.
+  static List<String> addressQueries(String address) {
+    final seen = <String>{};
+    final parts = [
+      for (final part in address.split(','))
+        if (part.trim().isNotEmpty && seen.add(part.trim().toLowerCase()))
+          part.trim(),
+    ];
+    if (parts.isEmpty) return const [];
+    String last(int count) => parts.sublist(parts.length - count).join(', ');
+    final pin = RegExp(r'\b[1-9]\d{5}\b').allMatches(address).lastOrNull?[0];
+    return {
+      parts.join(', '),
+      if (parts.length > 4) last(4),
+      if (parts.length > 3) last(3),
+      if (pin != null) '$pin, India',
+    }.toList();
+  }
 
   Future<LatLng?> search(String query) async {
     final trimmed = query.trim();
@@ -71,7 +124,9 @@ class GeocodingService {
                     ))
               .timeout(const Duration(seconds: 8));
 
-      if (res.statusCode != 200) return _cache[trimmed] = null;
+      // LocationIQ answers 404 when it finds nothing.
+      if (res.statusCode == 404) return _cache[trimmed] = null;
+      if (res.statusCode != 200) return null;
 
       final body = jsonDecode(res.body);
       if (body is! List || body.isEmpty) return _cache[trimmed] = null;
@@ -83,7 +138,7 @@ class GeocodingService {
 
       return _cache[trimmed] = LatLng(lat, lon);
     } catch (_) {
-      return _cache[trimmed] = null;
+      return null;
     }
   }
 

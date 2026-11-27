@@ -1,10 +1,6 @@
 <div class="cdp">
-  <div class="cdp__header">
-    @if (heading(); as title) {
-    <h4 class="cdp__title">{{ title }}</h4>
-    } @else {
-    <span aria-hidden="true"></span>
-    } @if (mode() === 'list') {
+  <ng-template lpgCardActions>
+    @if (mode() === 'list') {
     <button
       *lpgHasPermission="managePermission()"
       pButton
@@ -17,7 +13,7 @@
       <span>Add document</span>
     </button>
     }
-  </div>
+  </ng-template>
 
   @if (mode() === 'list') { @if (loading()) {
   <p class="cdp__empty">Loading documents…</p>
@@ -38,19 +34,19 @@
       </div>
 
       <dl class="cdp__facts">
-        <div class="cdp__fact">
-          <dt>Number</dt>
-          <dd>{{ doc.document_number }}</dd>
+        <div class="cdp__fact detail-item">
+          <dt class="detail-label">Number</dt>
+          <dd class="detail-value">{{ doc.document_number }}</dd>
         </div>
         @if (doc.issue_date) {
-        <div class="cdp__fact">
-          <dt>Issue date</dt>
-          <dd>{{ formatDate(doc.issue_date) }}</dd>
+        <div class="cdp__fact detail-item">
+          <dt class="detail-label">Issue date</dt>
+          <dd class="detail-value">{{ formatDate(doc.issue_date) }}</dd>
         </div>
         }
-        <div class="cdp__fact">
-          <dt>Expiry date</dt>
-          <dd>
+        <div class="cdp__fact detail-item">
+          <dt class="detail-label">Expiry date</dt>
+          <dd class="detail-value">
             {{ doc.expiry_date ? formatDate(doc.expiry_date) : '—' }} @if (expiryBadge(doc); as
             badge) {
             <p-tag [value]="badge.label" [severity]="badge.severity" />
@@ -169,6 +165,8 @@
       [messages]="fieldMessages.doc_type"
     >
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         inputId="cdp-doc-type"
         formControlName="doc_type"
         [options]="docTypeOptions()"

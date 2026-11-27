@@ -12,7 +12,7 @@ import { RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { DrawerA11yDirective, SectionCardComponent, DetailListComponent } from '@lpg/shared/ui';
 import { AgencyModules } from '../agency-modules/agency-modules';
 import {
   AgencyService,
@@ -72,6 +72,8 @@ interface SetupLinkView {
   selector: 'lpg-agency-management-page',
   standalone: true,
   imports: [
+    DetailListComponent,
+    SectionCardComponent,
     PageActionsDirective,
     AgencyModules,
     HeaderTitlePortalDirective,
@@ -126,7 +128,7 @@ interface SetupLinkView {
         [modal]="true"
         [closeOnEscape]="true"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         <form
           id="createAgencyForm"
@@ -240,7 +242,7 @@ interface SetupLinkView {
         [modal]="true"
         [closeOnEscape]="true"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         @if (setupLink(); as result) {
           <div class="detail-view">
@@ -295,27 +297,25 @@ interface SetupLinkView {
         position="right"
         [modal]="true"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         @if (selectedAgency(); as agency) {
           <div class="detail-view">
             <div class="detail-view__fields">
-              <section class="details" aria-labelledby="agency-details-heading">
-                <div class="section-header">
-                  <h3 id="agency-details-heading" class="detail-heading">Details</h3>
-                  @if (agency.status !== 'closed' && !editing()) {
-                    <button
-                      pButton
-                      type="button"
-                      size="small"
-                      severity="secondary"
-                      class="details__edit"
-                      (click)="startEdit(agency)"
-                    >
-                      <i class="pi pi-pencil"></i><span>Edit details</span>
-                    </button>
-                  }
-                </div>
+              <lpg-section-card heading="Details" [hasHeaderActions]="true">
+                @if (agency.status !== 'closed' && !editing()) {
+                  <button
+                    headerActions
+                    pButton
+                    type="button"
+                    size="small"
+                    severity="secondary"
+                    class="details__edit"
+                    (click)="startEdit(agency)"
+                  >
+                    <i class="pi pi-pencil"></i><span>Edit details</span>
+                  </button>
+                }
 
                 @if (editing()) {
                   <form
@@ -382,31 +382,33 @@ interface SetupLinkView {
                     </div>
                   </form>
                 } @else {
-                  <div class="detail-item">
-                    <span class="detail-label">Name</span>
-                    <span class="detail-value">{{ agency.name }}</span>
-                  </div>
-                  <lpg-detail-item label="Agency code" info="Used to sign in to the mobile apps.">
-                    {{ agency.slug }}
-                  </lpg-detail-item>
-                  <div class="detail-item">
-                    <span class="detail-label">Status</span>
-                    <span class="detail-value">{{ statusLabel(agency.status) }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Plan</span>
-                    <span class="detail-value">{{ planLabel(agency.subscription_plan) }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Primary contact</span>
-                    <span class="detail-value">{{ agency.primary_contact_email }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Country</span>
-                    <span class="detail-value">{{ agency.country }}</span>
-                  </div>
+                  <lpg-detail-list>
+                    <div class="detail-item">
+                      <span class="detail-label">Name</span>
+                      <span class="detail-value">{{ agency.name }}</span>
+                    </div>
+                    <lpg-detail-item label="Agency code" info="Used to sign in to the mobile apps.">
+                      {{ agency.slug }}
+                    </lpg-detail-item>
+                    <div class="detail-item">
+                      <span class="detail-label">Status</span>
+                      <span class="detail-value">{{ statusLabel(agency.status) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Plan</span>
+                      <span class="detail-value">{{ planLabel(agency.subscription_plan) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Primary contact</span>
+                      <span class="detail-value">{{ agency.primary_contact_email }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Country</span>
+                      <span class="detail-value">{{ agency.country }}</span>
+                    </div>
+                  </lpg-detail-list>
                 }
-              </section>
+              </lpg-section-card>
               <!-- Modules and users share the details' one scrolling area, so
                    neither can squeeze the details out of view. -->
               <lpg-agency-modules
@@ -415,21 +417,19 @@ interface SetupLinkView {
                 [readonly]="agency.status === 'closed'"
               />
 
-              <section class="users" aria-labelledby="agency-users-heading">
-                <div class="section-header">
-                  <h3 id="agency-users-heading" class="detail-heading">Users</h3>
-                  @if (agency.status !== 'closed') {
-                    <button
-                      pButton
-                      type="button"
-                      size="small"
-                      severity="secondary"
-                      (click)="toggleAddAdmin()"
-                    >
-                      <i class="pi pi-user-plus"></i><span>Add admin</span>
-                    </button>
-                  }
-                </div>
+              <lpg-section-card heading="Users" [hasHeaderActions]="true">
+                @if (agency.status !== 'closed') {
+                  <button
+                    headerActions
+                    pButton
+                    type="button"
+                    size="small"
+                    severity="secondary"
+                    (click)="toggleAddAdmin()"
+                  >
+                    <i class="pi pi-user-plus"></i><span>Add admin</span>
+                  </button>
+                }
 
                 @if (addAdminOpen()) {
                   <form
@@ -509,7 +509,7 @@ interface SetupLinkView {
                     }
                   </ul>
                 }
-              </section>
+              </lpg-section-card>
             </div>
 
             <div class="modal-actions">
@@ -577,21 +577,6 @@ interface SetupLinkView {
         block-size: 100%;
       }
 
-      .detail-view {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-      }
-
-      .details,
-      .users {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-      }
-
-      .section-header,
       .users__item {
         display: flex;
         align-items: center;
@@ -627,15 +612,6 @@ interface SetupLinkView {
         flex-wrap: wrap;
         justify-content: flex-end;
         gap: var(--spacing-sm);
-      }
-
-      .detail-heading {
-        margin: 0;
-        font-size: var(--typography-caption-font-size);
-        font-weight: var(--typography-label-font-weight);
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
       }
 
       .detail-note {

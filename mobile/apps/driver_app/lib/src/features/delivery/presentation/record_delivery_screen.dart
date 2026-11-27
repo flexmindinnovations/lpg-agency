@@ -14,8 +14,9 @@ import '../../cash_handover/data/cash_handover_provider.dart';
 import '../../../api_provider.dart';
 import '../../../dev_otp_provider.dart';
 import '../../../offline/delivery_mutations.dart';
-import '../../../offline/pending_sync.dart';
+import '../../van_load/data/van_load_provider.dart';
 import '../data/active_route_provider.dart';
+import '../data/held_empties_provider.dart';
 import '../data/image_picker_provider.dart';
 import '../data/location_sharing.dart';
 import '../data/stop_order_provider.dart';
@@ -51,8 +52,12 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   final _dacController = TextEditingController();
   final _amountController = TextEditingController();
 
-  // cylinderTypeId -> (delivered, collectedEmpty)
-  final _quantities = <String, (int, int)>{};
+  // cylinderTypeId -> cylinders delivered
+  final _delivered = <String, int>{};
+
+  /// cylinderTypeId -> empties the driver entered. A size the driver has not
+  /// touched follows [_emptiesFor].
+  final _empties = <String, int>{};
   String _paymentMethod = 'cash';
 
   /// Only what the agency has set up: a UPI ID for UPI, a connected gateway
@@ -156,8 +161,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     if (_prefilled) return;
     _prefilled = true;
     for (final line in order.lines) {
-      final ordered = line.quantityOrdered;
-      _quantities[line.cylinderTypeId] = (ordered, ordered);
+      _delivered[line.cylinderTypeId] = line.quantityOrdered;
     }
     // What the customer pays: the price plus GST.
     if (order.amountToPay != null) {
@@ -198,10 +202,22 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     if (mounted) setState(() => _photoBytes = bytes);
   }
 
-  /// The quantities delivered, as the settlement endpoint wants them.
-  Map<String, int> _deliveredQuantities() => {
-    for (final e in _quantities.entries) e.key: e.value.$1,
-  };
+  /// The empties to take back for one size, and the most that can be.
+  ///
+  /// [held] is what the customer was holding before this delivery, by size;
+  /// that is the limit, and one empty per cylinder delivered is filled in.
+  /// While it is `null` (not loaded) the limit is what is delivered here and
+  /// nothing is filled in, so the server never refuses a number the driver
+  /// did not enter.
+  ({int value, int max}) _emptiesFor(
+    String cylinderTypeId, {
+    required Map<String, int>? held,
+    required int delivered,
+  }) {
+    final max = held == null ? delivered : held[cylinderTypeId] ?? 0;
+    final value = _empties[cylinderTypeId] ?? (held == null ? 0 : delivered);
+    return (value: value.clamp(0, max), max: max);
+  }
 
   /// The balance still to collect: the server's answer when there is one
   /// (it knows what was paid online), otherwise an estimate from the order.
@@ -213,7 +229,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     var deliveredValue = 0.0;
     var allDelivered = true;
     for (final line in order.lines) {
-      final delivered = _quantities[line.cylinderTypeId]?.$1 ?? 0;
+      final delivered = _delivered[line.cylinderTypeId] ?? 0;
       if (delivered != line.quantityOrdered) allDelivered = false;
       final price = line.unitPrice ?? 1;
       orderedValue += price * line.quantityOrdered;
@@ -251,6 +267,8 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   Future<void> _submit(
     OrderResponse order, {
     required double? balanceDue,
+    required Map<String, int> collected,
+    required List<CollectedEmptyRequest> otherEmpties,
   }) async {
     if (_done || _submitting) return;
     setState(() {
@@ -284,10 +302,11 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
               for (final line in order.lines)
                 DeliveredLineRequest(
                   cylinderTypeId: line.cylinderTypeId,
-                  quantityDelivered: _quantities[line.cylinderTypeId]!.$1,
-                  quantityCollectedEmpty: _quantities[line.cylinderTypeId]!.$2,
+                  quantityDelivered: _delivered[line.cylinderTypeId]!,
+                  quantityCollectedEmpty: collected[line.cylinderTypeId]!,
                 ),
             ],
+            otherEmpties: otherEmpties,
             otpCode: _otpController.text.trim(),
             gpsLat: position.latitude,
             gpsLng: position.longitude,
@@ -308,6 +327,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
 
       switch (outcome) {
         case DeliverFailed(:final message):
+          // The refusal may be that the customer holds fewer empties than
+          // this screen was told: read the figures again.
+          ref.invalidate(heldEmptiesProvider(order.id));
           _showError(message);
         case DeliverSynced() || DeliverQueued():
           _done = true;
@@ -352,18 +374,42 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
         ),
         data: (order) {
           _prefill(order);
-          // The van's load manifest is a whole-route budget for empties: you
-          // can't hand back more empties of a type than the office loaded.
-          // Soft — a warning, never a block (a broken check must not strand a
-          // driver). `null` for a type means "no manifest", so don't warn.
-          final manifest = <String, int>{
-            for (final l
-                in ref.watch(activeRouteProvider).value?.loadedLines ??
-                    const [])
-              l.cylinderTypeId: l.quantity,
+          final heldAsync = ref.watch(heldEmptiesProvider(order.id));
+          final heldList = heldAsync.value;
+          final held = heldList == null
+              ? null
+              : {for (final h in heldList) h.cylinderTypeId: h.quantityHeld};
+          // The held figures carry the size names; without them, use the list
+          // the van-load screen caches.
+          final names = heldList == null
+              ? ref.watch(cylinderTypeNamesProvider).value ??
+                    const <String, String>{}
+              : {
+                  for (final h in heldList)
+                    h.cylinderTypeId: h.cylinderTypeName,
+                };
+          final lineEmpties = {
+            for (final line in order.lines)
+              line.cylinderTypeId: _emptiesFor(
+                line.cylinderTypeId,
+                held: held,
+                delivered: _delivered[line.cylinderTypeId] ?? 0,
+              ),
           };
-          final queuedEmpties =
-              ref.watch(queuedEmptiesByTypeProvider).value ?? const {};
+          // Sizes the customer holds that are not on this order.
+          final otherSizes = [
+            for (final h in heldList ?? const <HeldEmpties>[])
+              if (!lineEmpties.containsKey(h.cylinderTypeId) &&
+                  h.quantityHeld > 0)
+                (
+                  size: h,
+                  empties: _emptiesFor(
+                    h.cylinderTypeId,
+                    held: held,
+                    delivered: 0,
+                  ),
+                ),
+          ];
           ref.watch(paymentMethodsProvider); // rebuild when it arrives
           final offered = _offeredMethods;
           final method = _method;
@@ -372,8 +418,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 _settlementProvider((
                   orderId: order.id,
                   delivered: [
-                    for (final e in _deliveredQuantities().entries)
-                      '${e.key}:${e.value}',
+                    for (final e in _delivered.entries) '${e.key}:${e.value}',
                   ].join(','),
                 )),
               )
@@ -400,17 +445,43 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
               for (final line in order.lines)
                 Padding(
                   padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
-                  child: _QuantityRow(
-                    ordered: line.quantityOrdered,
-                    delivered: _quantities[line.cylinderTypeId]?.$1 ?? 0,
-                    collected: _quantities[line.cylinderTypeId]?.$2 ?? 0,
-                    loadedForType: manifest[line.cylinderTypeId],
-                    emptiesQueuedElsewhere:
-                        queuedEmpties[line.cylinderTypeId] ?? 0,
-                    onChanged: (d, c) => setState(
-                      () => _quantities[line.cylinderTypeId] = (d, c),
+                  child: _QuantityCard(
+                    name: names[line.cylinderTypeId] ?? 'Cylinder',
+                    note: held == null
+                        ? 'Ordered: ${line.quantityOrdered}'
+                        : 'Ordered: ${line.quantityOrdered} · '
+                              '${_holding(held[line.cylinderTypeId] ?? 0)}',
+                    delivered: (
+                      value: _delivered[line.cylinderTypeId] ?? 0,
+                      max: line.quantityOrdered,
                     ),
+                    onDelivered: (v) =>
+                        setState(() => _delivered[line.cylinderTypeId] = v),
+                    empties: lineEmpties[line.cylinderTypeId]!,
+                    onEmpties: (v) =>
+                        setState(() => _empties[line.cylinderTypeId] = v),
                   ),
+                ),
+              for (final other in otherSizes)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
+                  child: _QuantityCard(
+                    name: other.size.cylinderTypeName,
+                    note:
+                        'Not on this order · '
+                        '${_holding(other.size.quantityHeld)}',
+                    empties: other.empties,
+                    onEmpties: (v) =>
+                        setState(() => _empties[other.size.cylinderTypeId] = v),
+                  ),
+                ),
+              if (held == null && !heldAsync.isLoading)
+                const LpgBanner(
+                  tone: LpgTone.info,
+                  message:
+                      "This customer's empties could not be checked. Enter "
+                      'only what you take back; the server checks it when '
+                      'the delivery is sent.',
                 ),
               const _Section(step: 2, icon: LpgIcons.payment, title: 'Payment'),
               if (balance != null || (settlement?.paidOnline ?? 0) > 0)
@@ -622,7 +693,22 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 isLoading: _submitting,
                 onPressed: _submitting || _done || !settled
                     ? null
-                    : () => _submit(order, balanceDue: balance),
+                    : () => _submit(
+                        order,
+                        balanceDue: balance,
+                        collected: {
+                          for (final e in lineEmpties.entries)
+                            e.key: e.value.value,
+                        },
+                        otherEmpties: [
+                          for (final other in otherSizes)
+                            if (other.empties.value > 0)
+                              CollectedEmptyRequest(
+                                cylinderTypeId: other.size.cylinderTypeId,
+                                quantity: other.empties.value,
+                              ),
+                        ],
+                      ),
               ),
             ],
           );
@@ -633,6 +719,10 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
 
   /// Height of the signature pad and the photo preview.
   static const _padHeight = 160.0;
+
+  static String _holding(int held) => held == 0
+      ? 'no earlier empties to collect'
+      : 'up to $held ${held == 1 ? 'empty' : 'empties'} to collect';
 }
 
 /// A form section heading with its icon.
@@ -676,7 +766,7 @@ class _Section extends StatelessWidget {
             ],
             Icon(icon, size: LpgSizes.iconSm, color: colors.textSecondary),
             const SizedBox(width: LpgSpacing.sm),
-            Text(title, style: context.lpgText.titleSmall),
+            Flexible(child: Text(title, style: context.lpgText.titleSmall)),
           ],
         ),
       ),
@@ -684,63 +774,55 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _QuantityRow extends StatelessWidget {
-  const _QuantityRow({
-    required this.ordered,
-    required this.delivered,
-    required this.collected,
-    required this.onChanged,
-    this.loadedForType,
-    this.emptiesQueuedElsewhere = 0,
+/// One cylinder size: what is delivered (sizes on the order) and the empties
+/// taken back.
+class _QuantityCard extends StatelessWidget {
+  const _QuantityCard({
+    required this.name,
+    required this.note,
+    required this.empties,
+    required this.onEmpties,
+    this.delivered,
+    this.onDelivered,
   });
 
-  final int ordered;
-  final int delivered;
-  final int collected;
+  final String name;
+  final String note;
 
-  /// How many of this cylinder type the office loaded onto the van, or `null`
-  /// when there's no manifest to check against.
-  final int? loadedForType;
+  /// `null` for a size that is not on the order.
+  final ({int value, int max})? delivered;
+  final ValueChanged<int>? onDelivered;
 
-  /// Empties of this type already recorded (and queued) at other stops on the
-  /// route — added to this stop's figure before checking the manifest.
-  final int emptiesQueuedElsewhere;
-
-  final void Function(int delivered, int collected) onChanged;
+  final ({int value, int max}) empties;
+  final ValueChanged<int> onEmpties;
 
   @override
   Widget build(BuildContext context) {
-    final loaded = loadedForType;
-    final overLoaded =
-        loaded != null && emptiesQueuedElsewhere + collected > loaded;
     return LpgCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Ordered: $ordered', style: context.lpgText.bodySmall),
-          const SizedBox(height: LpgSpacing.sm),
-          _Stepper(
-            label: 'Delivered',
-            value: delivered,
-            max: ordered,
-            onChanged: (v) => onChanged(v, collected.clamp(0, v)),
-          ),
+          Text(name, style: context.lpgText.titleSmall),
+          const SizedBox(height: LpgSpacing.xs),
+          Text(note, style: context.lpgText.bodySmall),
+          if (delivered case final quantity?) ...[
+            const SizedBox(height: LpgSpacing.sm),
+            _Stepper(
+              label: 'Delivered',
+              size: name,
+              value: quantity.value,
+              max: quantity.max,
+              onChanged: onDelivered!,
+            ),
+          ],
           const SizedBox(height: LpgSpacing.sm),
           _Stepper(
             label: 'Empties collected',
-            value: collected,
-            max: delivered,
-            onChanged: (v) => onChanged(delivered, v),
+            size: name,
+            value: empties.value,
+            max: empties.max,
+            onChanged: onEmpties,
           ),
-          if (overLoaded) ...[
-            const SizedBox(height: LpgSpacing.smd),
-            LpgBanner(
-              tone: LpgTone.warning,
-              message:
-                  'That is more empties than the van was loaded with for '
-                  'this type ($loaded loaded). Recheck before you submit.',
-            ),
-          ],
         ],
       ),
     );
@@ -750,12 +832,16 @@ class _QuantityRow extends StatelessWidget {
 class _Stepper extends StatelessWidget {
   const _Stepper({
     required this.label,
+    required this.size,
     required this.value,
     required this.max,
     required this.onChanged,
   });
 
   final String label;
+
+  /// The cylinder size, so a screen reader can tell the cards apart.
+  final String size;
   final int value;
   final int max;
   final ValueChanged<int> onChanged;
@@ -768,7 +854,7 @@ class _Stepper extends StatelessWidget {
         LpgQuantityStepper(
           value: value,
           max: max,
-          semanticLabel: label,
+          semanticLabel: '$label, $size',
           onChanged: onChanged,
         ),
       ],

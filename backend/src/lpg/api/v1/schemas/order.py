@@ -115,6 +115,29 @@ class OrderCustomerResponse(BaseModel):
     customer_type: str
 
 
+class OrderLineEstimateResponse(BaseModel):
+    line_id: uuid.UUID
+    unit_price: Decimal
+
+
+class OrderPriceEstimateResponse(BaseModel):
+    """What a not-yet-confirmed order would cost at today's prices. Nothing
+    is saved; the price is fixed when the agency confirms the order."""
+
+    lines: list[OrderLineEstimateResponse]
+    #: Price times quantity, on the same basis as `total_amount`.
+    total_amount: Decimal
+    #: `null` (with `payable_amount`) while a cylinder type has no GST rate.
+    tax_amount: Decimal | None = None
+    payable_amount: Decimal | None = None
+    prices_include_gst: bool | None = None
+
+
+class CollectedEmptyResponse(BaseModel):
+    cylinder_type_id: uuid.UUID
+    quantity: int
+
+
 class OrderResponse(BaseModel):
     id: uuid.UUID
     order_number: str | None = None
@@ -139,11 +162,26 @@ class OrderResponse(BaseModel):
     #: GST recorded. This is the amount to collect and the amount on the QR.
     payable_amount: Decimal | None = None
     lines: list[OrderLineResponse]
+    #: Empties collected of sizes that are not on the order. Empties of an
+    #: ordered size are on its line.
+    other_empties: list[CollectedEmptyResponse] = Field(default_factory=list)
     #: Filled on the order list and order detail reads; `null` elsewhere.
     customer: OrderCustomerResponse | None = None
     #: A post-dispatch cancellation request is waiting for a Manager (CA-07).
     #: Filled on the order list and order detail reads; `false` elsewhere.
     cancellation_pending: bool = False
+    #: Only on the order detail read of a draft or booked order whose lines
+    #: all have a price in effect; `null` otherwise.
+    price_estimate: OrderPriceEstimateResponse | None = None
+
+
+class HeldEmptiesResponse(BaseModel):
+    """One cylinder size a driver may take empties of at this delivery."""
+
+    cylinder_type_id: uuid.UUID
+    cylinder_type_name: str
+    #: What the customer held before this delivery; the most that can come back.
+    quantity_held: int
 
 
 class OrderPageResponse(BaseModel):
@@ -258,8 +296,15 @@ class ProofOfDeliverySubmission(BaseModel):
     balance_on_account: bool = False
 
 
+class CollectedEmptyRequest(BaseModel):
+    cylinder_type_id: uuid.UUID
+    quantity: int = Field(gt=0)
+
+
 class DeliverOrderRequest(BaseModel):
     lines: list[DeliveredLineRequest] = Field(min_length=1)
+    #: Empties from earlier deliveries of sizes that are not on this order.
+    other_empties: list[CollectedEmptyRequest] = Field(default_factory=list)
     otp_code: str = Field(min_length=1)
     proof_of_delivery: ProofOfDeliverySubmission
 

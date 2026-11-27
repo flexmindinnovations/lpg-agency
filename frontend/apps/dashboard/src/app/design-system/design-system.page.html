@@ -146,6 +146,8 @@
 
       <lpg-form-field label="Select" for="ds-role" [control]="roleCtrl">
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           inputId="ds-role"
           [formControl]="roleCtrl"
           [options]="roleOptions"

@@ -9,6 +9,7 @@ import {
   computed,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { forkJoin } from 'rxjs';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -16,11 +17,17 @@ import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { Select } from 'primeng/select';
+import { selectableByName } from '@lpg/shared/util';
 import {
+  AdminBranchService,
   AdminCylinderTypeService,
+  AdminPriceListService,
+  AdminTenantConfigurationService,
   NotifyService,
+  type BranchResponse,
   type CylinderSizeResponse,
   type CylinderTypeResponse,
+  type PriceListEntryResponse,
   errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
@@ -30,8 +37,10 @@ import {
   HeaderTitlePortalDirective,
   PageActionsDirective,
   PageHeaderComponent,
+  StatusChipCell,
+  formatCurrencyInr,
 } from '@lpg/shared/ui';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
+import { DataGridComponent, rowActionsColumn, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { CylinderTypeDrawer } from './cylinder-type-drawer';
 import {
   GST_RATE_HINT,
@@ -43,31 +52,28 @@ import {
   sizesIn,
   sizesNotTaken,
 } from './cylinder-type-fields';
+import {
+  defaultCustomerType,
+  gstRateWarning,
+  includesGstFrom,
+  priceHeadline,
+  priceHeadlineText,
+  priceHint,
+  usualGstRate,
+} from './price-book';
+import { PriceDrawer } from './price-drawer';
+import { RateProposalsCard } from './rate-proposals-card';
 
-/** AG Grid renders a boolean-valued column with its own checkbox cell by
- * default, ignoring `valueFormatter` (same issue fixed for Platform
- * Flags' "Default" column and Linked Devices' "Status" column) — this
- * swaps that for plain "Active"/"Inactive" text. */
-@Component({
-  selector: 'lpg-cylinder-type-status-cell',
-  standalone: true,
-  template: `{{ label() }}`,
-})
-class CylinderTypeStatusCell {
-  protected readonly label = signal('');
+/** A cylinder with the price the list shows for it. */
+type CylinderRow = CylinderTypeResponse & {
+  readonly price_text: string;
+  readonly has_price: boolean;
+};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
-  agInit(params: any): void {
-    this.label.set(params.value ? 'Active' : 'Inactive');
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  refresh(params: any): boolean {
-    this.agInit(params);
-    return true;
-  }
-}
-
-/** Cylinder types picked from the standard size list — `tenant:configure`. */
+/**
+ * The cylinders an agency sells: picked from the standard size list, each with
+ * its price and GST on the one screen — `tenant:configure`.
+ */
 @Component({
   selector: 'lpg-cylinder-types-page',
   standalone: true,
@@ -87,6 +93,8 @@ class CylinderTypeStatusCell {
     InputIcon,
     Select,
     CylinderTypeDrawer,
+    PriceDrawer,
+    RateProposalsCard,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -94,8 +102,8 @@ class CylinderTypeStatusCell {
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
           <lpg-page-header
-            title="Cylinder Types"
-            subtitle="The LPG cylinder sizes your agency deals in, and their GST."
+            title="Cylinders & Prices"
+            subtitle="The cylinders you sell, what they cost and their GST."
           />
         </ng-template>
       </div>
@@ -111,6 +119,22 @@ class CylinderTypeStatusCell {
         </div>
       }
 
+      @if (rateWarnings().length > 0) {
+        <div class="gst-warning" role="status">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <span>
+            @for (item of rateWarnings(); track item.id) {
+              <span class="gst-warning__item">
+                <strong>{{ item.name }}</strong
+                >: {{ item.warning }}
+              </span>
+            }
+          </span>
+        </div>
+      }
+
+      <lpg-rate-proposals-card [cylinderTypes]="cylinderTypes()" (accepted)="reload()" />
+
       @if (offList().length > 0) {
         <div class="gst-warning" role="status">
           <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
@@ -123,7 +147,7 @@ class CylinderTypeStatusCell {
       @if (cylinderTypes().length > 0) {
         <ng-template lpgPageActions>
           <button pButton (click)="openCreateDrawer()">
-            <i class="pi pi-plus"></i><span>Add Cylinder Type</span>
+            <i class="pi pi-plus"></i><span>Add cylinder</span>
           </button>
         </ng-template>
         <div class="data-toolbar">
@@ -133,7 +157,7 @@ class CylinderTypeStatusCell {
               <input
                 pInputText
                 type="text"
-                placeholder="Search cylinder types..."
+                placeholder="Search cylinders..."
                 class="w-full"
                 [value]="searchQuery()"
                 (input)="searchQuery.set($any($event.target).value)"
@@ -148,37 +172,35 @@ class CylinderTypeStatusCell {
       @if (!loading() && !loadError() && cylinderTypes().length === 0) {
         <div class="empty-state">
           <i class="pi pi-box empty-state__icon"></i>
-          <p class="empty-state__title">No cylinder types found</p>
-          <p class="empty-state__description">
-            Get started by adding the first cylinder size you deal in.
-          </p>
+          <p class="empty-state__title">No cylinders yet</p>
+          <p class="empty-state__description">Add the first cylinder you sell, with its price.</p>
           <button pButton class="mt-4" (click)="openCreateDrawer()">
-            <i class="pi pi-plus"></i><span>Add Cylinder Type</span>
+            <i class="pi pi-plus"></i><span>Add cylinder</span>
           </button>
         </div>
       } @else {
         <section class="grid-section">
           <lpg-data-grid
-            [rows]="cylinderTypes()"
-            [columns]="columns()"
+            [rows]="rows()"
+            [columns]="columns"
             [loading]="loading()"
             [error]="loadError()"
             (retry)="reload()"
             [searchQuery]="searchQuery()"
-            ariaLabel="Cylinder Types"
+            ariaLabel="Cylinders and prices"
           />
         </section>
       }
 
-      <!-- Create Cylinder Type Drawer -->
+      <!-- Add a cylinder, with its price -->
       <p-drawer
         [(visible)]="createDrawerVisible"
         position="right"
         [modal]="true"
         [closeOnEscape]="true"
-        header="Add a cylinder type"
+        header="Add a cylinder"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         <form
           id="addCylinderTypeForm"
@@ -188,7 +210,7 @@ class CylinderTypeStatusCell {
           class="dialog-form"
         >
           <div class="dialog-form__fields">
-            <p class="page-lede">Pick from the standard LPG cylinder sizes.</p>
+            <p class="page-lede">Pick the cylinder and set its price.</p>
 
             @if (sizesError(); as error) {
               <div class="inline-note" role="alert">
@@ -216,6 +238,8 @@ class CylinderTypeStatusCell {
               [messages]="{ required: 'Choose a cylinder type.' }"
             >
               <p-select
+                [filter]="true"
+                [resetFilterOnHide]="true"
                 inputId="cylinder-category"
                 formControlName="category"
                 [options]="availableCategories()"
@@ -235,6 +259,8 @@ class CylinderTypeStatusCell {
               [messages]="{ required: 'Choose a cylinder size.' }"
             >
               <p-select
+                [filter]="true"
+                [resetFilterOnHide]="true"
                 inputId="cylinder-size"
                 formControlName="sizeCode"
                 [options]="sizesOfChosenType()"
@@ -247,11 +273,48 @@ class CylinderTypeStatusCell {
               />
             </lpg-form-field>
 
-            <div class="gst-fields">
+            <lpg-form-field
+              label="Price (₹)"
+              for="cylinder-price"
+              [control]="form.controls.price"
+              [hint]="newPriceHint()"
+              [messages]="{ required: 'Enter the price.', min: 'The price must be above 0.' }"
+            >
+              <input
+                pInputText
+                id="cylinder-price"
+                type="number"
+                step="0.01"
+                inputmode="decimal"
+                formControlName="price"
+                [fluid]="true"
+              />
+            </lpg-form-field>
+
+            <lpg-form-field
+              label="GST rate (%)"
+              for="cylinder-gst"
+              [control]="form.controls.gstRatePercent"
+              [hint]="newGstHint()"
+              [messages]="gstMessages"
+            >
+              <input
+                pInputText
+                id="cylinder-gst"
+                type="number"
+                step="0.01"
+                formControlName="gstRatePercent"
+                [fluid]="true"
+              />
+            </lpg-form-field>
+
+            <details class="more-options">
+              <summary>More options</summary>
               <lpg-form-field
                 label="HSN code"
                 for="cylinder-hsn"
                 [control]="form.controls.hsnCode"
+                hint="The GST code for LPG. Change it only if your accountant says so."
                 [messages]="hsnMessages"
               >
                 <input
@@ -262,23 +325,7 @@ class CylinderTypeStatusCell {
                   [fluid]="true"
                 />
               </lpg-form-field>
-              <lpg-form-field
-                label="GST rate (%)"
-                for="cylinder-gst"
-                [control]="form.controls.gstRatePercent"
-                [hint]="gstHint"
-                [messages]="gstMessages"
-              >
-                <input
-                  pInputText
-                  id="cylinder-gst"
-                  type="number"
-                  step="0.01"
-                  formControlName="gstRatePercent"
-                  [fluid]="true"
-                />
-              </lpg-form-field>
-            </div>
+            </details>
           </div>
 
           <div class="modal-actions">
@@ -294,7 +341,7 @@ class CylinderTypeStatusCell {
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
-              Save cylinder type
+              Save cylinder
             </button>
           </div>
         </form>
@@ -309,7 +356,7 @@ class CylinderTypeStatusCell {
         [closeOnEscape]="true"
         header="Set GST"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         <form [formGroup]="gstForm" (ngSubmit)="saveGst()" novalidate class="dialog-form">
           <div class="dialog-form__fields">
@@ -366,10 +413,23 @@ class CylinderTypeStatusCell {
         [cylinderType]="details()"
         [allTypes]="cylinderTypes()"
         [sizes]="sizes()"
+        [prices]="prices()"
+        [branches]="branches()"
+        (priceRequested)="openPriceDrawer($event)"
         (closed)="detailsId.set(null)"
         (saved)="reload()"
         (deleted)="onDeleted()"
         (activeToggled)="toggleActive($event)"
+      />
+
+      <lpg-price-drawer
+        [cylinderType]="priceTarget()"
+        [suggestedPrice]="suggestedPrice()"
+        [prices]="prices()"
+        [branches]="selectableBranches()"
+        [includesGst]="pricesIncludeGst()"
+        (closed)="priceTarget.set(null)"
+        (saved)="onPriceSaved()"
       />
     </div>
   `,
@@ -396,6 +456,10 @@ class CylinderTypeStatusCell {
         border-radius: var(--radius-md);
       }
 
+      .gst-warning__item {
+        display: block;
+      }
+
       .gst-warning > .pi {
         color: var(--color-status-warning);
       }
@@ -414,10 +478,14 @@ class CylinderTypeStatusCell {
         font-size: var(--typography-body-small-font-size);
       }
 
-      .gst-fields {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-        gap: var(--spacing-md);
+      .more-options summary {
+        cursor: pointer;
+        color: var(--color-text-secondary);
+        font-size: var(--typography-body-small-font-size);
+      }
+
+      .more-options[open] summary {
+        margin-block-end: var(--spacing-sm);
       }
     `,
   ],
@@ -427,15 +495,35 @@ export class CylinderTypesPage implements OnInit {
 
   /** DA-14: the grid as shown (filtered, sorted, formatted) as a CSV file. */
   protected exportCsv(): void {
-    this.grid()?.exportCsv('cylinder-types');
+    this.grid()?.exportCsv('cylinders-and-prices');
   }
 
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
+  private readonly priceListService = inject(AdminPriceListService);
+  private readonly branchService = inject(AdminBranchService);
+  private readonly configurationService = inject(AdminTenantConfigurationService);
   private readonly notify = inject(NotifyService);
   private readonly confirmation = inject(ConfirmationService);
 
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
+  protected readonly prices = signal<PriceListEntryResponse[]>([]);
+  protected readonly branches = signal<BranchResponse[]>([]);
+  /** Only active, named branches can be given a price of their own (DA-19). */
+  protected readonly selectableBranches = computed(() => selectableByName(this.branches()));
+  protected readonly pricesIncludeGst = signal(false);
+  protected readonly rows = computed<CylinderRow[]>(() =>
+    this.cylinderTypes().map((type) => {
+      const headline = priceHeadline(this.prices(), type.id, type.category);
+      return {
+        ...type,
+        price_text: priceHeadlineText(headline),
+        has_price: !!headline.entry,
+      };
+    }),
+  );
+  protected readonly priceTarget = signal<CylinderTypeResponse | null>(null);
+  protected readonly suggestedPrice = signal<number | null>(null);
   protected readonly loading = signal(false);
   /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
   protected readonly loadError = signal<string | null>(null);
@@ -445,6 +533,14 @@ export class CylinderTypesPage implements OnInit {
   protected readonly gstTarget = signal<CylinderTypeResponse | null>(null);
   protected readonly unclassifiedCount = computed(
     () => this.cylinderTypes().filter((c) => c.is_active && c.gst_rate_percent == null).length,
+  );
+
+  /** Cylinders on sale whose saved rate is not the usual one for their type. */
+  protected readonly rateWarnings = computed(() =>
+    this.cylinderTypes().flatMap((c) => {
+      const warning = c.is_active ? gstRateWarning(c.category, c.gst_rate_percent) : null;
+      return warning ? [{ id: c.id, name: c.name, warning }] : [];
+    }),
   );
 
   protected readonly sizes = signal<CylinderSizeResponse[]>([]);
@@ -471,55 +567,76 @@ export class CylinderTypesPage implements OnInit {
   protected readonly hsnMessages = HSN_MESSAGES;
   protected readonly gstMessages = GST_RATE_MESSAGES;
 
-  protected readonly columns = computed<DataGridColumn<CylinderTypeResponse>[]>(() => {
-    // "Set GST" is a first-time shortcut; later changes are made in the drawer.
-    const needsGst = this.cylinderTypes().some((c) => c.gst_rate_percent == null);
-    const setGst: DataGridColumn<CylinderTypeResponse> = {
-      field: 'gst_action',
-      header: '',
-      valueFormatter: (_value, row) => (row.gst_rate_percent == null ? 'Set GST' : ''),
-      onLinkClick: (row) => this.openGstDrawer(row),
-    };
-    return [
-      {
-        field: 'name',
-        header: 'Name',
-        sortable: true,
-        filterable: true,
-        // Wide enough for the longest standard size name.
-        minWidth: 230,
-        onLinkClick: (row) => this.detailsId.set(row.id),
+  protected readonly columns: DataGridColumn<CylinderRow>[] = [
+    {
+      field: 'name',
+      header: 'Name',
+      sortable: true,
+      filterable: true,
+      // Wide enough for the longest standard size name.
+      minWidth: 200,
+      onLinkClick: (row) => this.detailsId.set(row.id),
+    },
+    {
+      field: 'weight_kg',
+      header: 'Weight (kg)',
+      sortable: true,
+      numeric: true,
+      priority: 'low',
+    },
+    {
+      field: 'price_text',
+      header: 'Price',
+      sortable: true,
+      numeric: true,
+      minWidth: 150,
+      cellClass: (value) => (value === 'Not set' ? 'cell--warning' : ''),
+    },
+    {
+      field: 'gst_rate_percent',
+      header: 'GST',
+      sortable: true,
+      numeric: true,
+      valueFormatter: (value) => (value == null ? 'Not set' : `${Number(value)}%`),
+      cellClass: (value) => (value == null ? 'cell--warning' : ''),
+    },
+    {
+      field: 'is_active',
+      header: 'Status',
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        labelMap: { true: 'Active', false: 'Inactive' },
+        severityMap: { true: 'success', false: 'secondary' },
       },
-      { field: 'weight_kg', header: 'Weight (kg)', sortable: true, numeric: true },
+      // What the quick search matches and a CSV download holds.
+      valueFormatter: (value) => (value ? 'Active' : 'Inactive'),
+    },
+    rowActionsColumn<CylinderRow>([
       {
-        field: 'hsn_code',
-        header: 'HSN',
-        sortable: true,
-        valueFormatter: (value) => (value as string | null) ?? '—',
+        icon: 'pi pi-indian-rupee',
+        text: (row) => (row.has_price ? 'Change price' : 'Set price'),
+        label: (row) => `${row.has_price ? 'Change' : 'Set'} price of ${row.name}`,
+        visible: (row) => row.is_active,
+        onAction: (row) => this.openPriceDrawer(row),
+      },
+      // A first-time shortcut; later changes are made in the drawer.
+      {
+        icon: 'pi pi-percentage',
+        text: 'Set GST',
+        label: (row) => `Set GST for ${row.name}`,
+        visible: (row) => row.gst_rate_percent == null,
+        onAction: (row) => this.openGstDrawer(row),
       },
       {
-        field: 'gst_rate_percent',
-        header: 'GST',
-        sortable: true,
-        numeric: true,
-        valueFormatter: (value) => (value == null ? 'Not set' : `${Number(value)}%`),
-        cellClass: (value) => (value == null ? 'cell--warning' : ''),
+        icon: (row) => (row.is_active ? 'pi pi-ban' : 'pi pi-check-circle'),
+        text: (row) => (row.is_active ? 'Deactivate' : 'Activate'),
+        severity: (row) => (row.is_active ? 'danger' : 'primary'),
+        label: (row) => `${row.is_active ? 'Deactivate' : 'Activate'} ${row.name}`,
+        onAction: (row) => this.toggleActive(row),
       },
-      ...(needsGst ? [setGst] : []),
-      {
-        field: 'is_active',
-        header: 'Status',
-        sortable: true,
-        cellRenderer: CylinderTypeStatusCell,
-      },
-      {
-        field: 'id',
-        header: '',
-        valueFormatter: (_value, row) => (row.is_active ? 'Deactivate' : 'Activate'),
-        onLinkClick: (row) => this.toggleActive(row),
-      },
-    ];
-  });
+    ]),
+  ];
 
   protected readonly form = this.formBuilder.group({
     category: [null as string | null, [Validators.required]],
@@ -529,6 +646,19 @@ export class CylinderTypesPage implements OnInit {
       null as number | null,
       [Validators.required, Validators.min(0), Validators.max(28)],
     ],
+    price: [null as number | null, [Validators.required, Validators.min(0.01)]],
+  });
+
+  private readonly formValues = toSignal(this.form.valueChanges, { initialValue: this.form.value });
+  protected readonly newPriceHint = computed(() => {
+    const { gstRatePercent, price, category } = this.formValues();
+    const customer = defaultCustomerType(category);
+    return `For ${customer} customers. ${priceHint(this.pricesIncludeGst(), gstRatePercent, price)}`;
+  });
+
+  protected readonly newGstHint = computed(() => {
+    const { gstRatePercent, category } = this.formValues();
+    return gstRateWarning(category, gstRatePercent) ?? GST_RATE_HINT;
   });
 
   private readonly chosenCategory = toSignal(this.form.controls.category.valueChanges, {
@@ -544,10 +674,13 @@ export class CylinderTypesPage implements OnInit {
   });
 
   constructor() {
-    // A size belongs to one type, so changing the type clears the size.
-    this.form.controls.category.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => this.form.controls.sizeCode.reset(null));
+    // A size belongs to one type, so changing the type clears the size. The
+    // type also decides the usual GST rate, unless the admin typed their own.
+    this.form.controls.category.valueChanges.pipe(takeUntilDestroyed()).subscribe((category) => {
+      this.form.controls.sizeCode.reset(null);
+      const rate = this.form.controls.gstRatePercent;
+      if (rate.pristine) rate.setValue(usualGstRate(category));
+    });
   }
 
   protected readonly gstForm = this.formBuilder.group({
@@ -561,6 +694,15 @@ export class CylinderTypesPage implements OnInit {
   ngOnInit(): void {
     this.reload();
     this.loadSizes();
+    this.branchService.listBranches().subscribe({
+      next: (branches) => this.branches.set(branches),
+      // Without branches, prices are still set for all of them.
+      error: () => this.branches.set([]),
+    });
+    this.configurationService.getEffectiveConfiguration('prices_include_gst').subscribe({
+      next: (config) => this.pricesIncludeGst.set(includesGstFrom(config?.config_value)),
+      error: () => this.pricesIncludeGst.set(false),
+    });
   }
 
   protected loadSizes(): void {
@@ -579,9 +721,13 @@ export class CylinderTypesPage implements OnInit {
   protected reload(): void {
     this.loading.set(true);
     this.loadError.set(null);
-    this.cylinderTypeService.listCylinderTypes().subscribe({
-      next: (cylinderTypes) => {
+    forkJoin({
+      cylinderTypes: this.cylinderTypeService.listCylinderTypes(),
+      prices: this.priceListService.listPrices(),
+    }).subscribe({
+      next: ({ cylinderTypes, prices }) => {
         this.cylinderTypes.set(cylinderTypes);
+        this.prices.set(prices);
         this.loading.set(false);
       },
       error: (error: unknown) => {
@@ -602,14 +748,25 @@ export class CylinderTypesPage implements OnInit {
       sizeCode: null,
       hsnCode: LPG_HSN_CODE,
       gstRatePercent: null,
+      price: null,
     });
+  }
+
+  protected openPriceDrawer(cylinderType: CylinderTypeResponse, suggested: number | null = null) {
+    this.suggestedPrice.set(suggested);
+    this.priceTarget.set(cylinderType);
+  }
+
+  protected onPriceSaved(): void {
+    this.priceTarget.set(null);
+    this.reload();
   }
 
   protected submit(): void {
     if (this.submitting()) {
       return;
     }
-    const { sizeCode, hsnCode, gstRatePercent } = this.form.getRawValue();
+    const { category, sizeCode, hsnCode, gstRatePercent, price } = this.form.getRawValue();
     if (this.form.invalid || !sizeCode) {
       this.form.markAllAsTouched();
       return;
@@ -619,15 +776,31 @@ export class CylinderTypesPage implements OnInit {
     this.cylinderTypeService
       .createCylinderType(sizeCode, { hsnCode, gstRatePercent: Number(gstRatePercent) })
       .subscribe({
-        next: (created) => {
-          this.submitting.set(false);
-          this.notify.success(`Cylinder type "${created.name}" added.`);
-          this.createDrawerVisible.set(false);
-          this.resetCreateForm();
-          this.reload();
-        },
+        next: (created) =>
+          this.savePrice(created, defaultCustomerType(created.category ?? category), Number(price)),
         error: () => this.submitting.set(false),
       });
+  }
+
+  /** The cylinder exists by now. If its price cannot be saved, the price
+   * drawer opens with it filled in, so nothing has to be added twice. */
+  private savePrice(created: CylinderTypeResponse, customerType: string, price: number): void {
+    const close = (): void => {
+      this.submitting.set(false);
+      this.createDrawerVisible.set(false);
+      this.resetCreateForm();
+      this.reload();
+    };
+    this.priceListService.setPrice(created.id, customerType, price).subscribe({
+      next: () => {
+        close();
+        this.notify.success(`"${created.name}" added at ${formatCurrencyInr(price)}.`);
+      },
+      error: () => {
+        close();
+        this.openPriceDrawer(created, price);
+      },
+    });
   }
 
   protected openGstDrawer(cylinderType: CylinderTypeResponse): void {

@@ -61,7 +61,7 @@ describe('NotificationFeatureNotifications', () => {
 
   it('lists notifications grouped by day with unread ones marked', () => {
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('.inbox__day-label')?.textContent).toContain('Today');
+    expect(el.querySelector('lpg-section-card h2')?.textContent).toContain('Today');
     expect(el.querySelectorAll('.inbox__item')).toHaveLength(2);
     expect(el.querySelectorAll('.inbox__item--unread')).toHaveLength(1);
     expect(el.textContent).toContain('ORD000009 for Meena Iyer');

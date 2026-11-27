@@ -126,28 +126,8 @@
 
 .review-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--spacing-sm);
-}
-
-.review-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  font-size: var(--typography-body-small-font-size);
-  color: var(--color-text-primary);
-}
-
-.review-item span {
-  font-size: var(--typography-caption-font-size);
-  font-weight: var(--typography-label-font-weight, 500);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.review-item.full-width {
-  grid-column: 1 / -1;
+  grid-template-columns: var(--detail-columns);
+  gap: var(--spacing-sm) var(--spacing-xl);
 }
 
 .resume-banner {

@@ -40,7 +40,7 @@ class SetTenantConfigurationUseCase:
         if command.config_key == DEVICE_CONTROL_CONFIG_KEY and not DeviceControlMode.is_valid(
             command.config_value
         ):
-            msg = "Device control must be 'off', 'observe' or 'enforce'."
+            msg = "Device control must be 'observe' or 'enforce'."
             raise ValidationError(msg, config_key=command.config_key)
         config = TenantConfiguration(
             uuid.uuid4(),

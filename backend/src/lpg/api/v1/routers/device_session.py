@@ -23,10 +23,9 @@ from lpg.api.v1.dependencies.tenant import get_tenant_context_any_device_state
 from lpg.api.v1.schemas.devices import MyDeviceResponse, NameMyDeviceRequest
 from lpg.application.common.ports import TenantContext
 from lpg.application.identity.ports import AuthenticatedPrincipal
-from lpg.application.license.device_access import DRIVER_ROLE, DeviceAccessGate
+from lpg.application.license.device_access import DRIVER_ROLE, DeviceAccessGate, refuses
 from lpg.application.license.manage_devices import NameOwnDeviceCommand
 from lpg.application.license.ports import DeviceNamer
-from lpg.domain.license.linked_device import DeviceStatus
 
 router = APIRouter(prefix="/devices", tags=["Device session"])
 
@@ -58,13 +57,16 @@ async def get_my_device(
     )
     status = access.status if access else None
     controlled = access is not None or principal.role == DRIVER_ROLE
-    allowed = (not mode.enforces) or (not controlled) or status is DeviceStatus.APPROVED
+    # A session with no phone yet only matters for a driver, under `enforce`.
+    allowed = not refuses(mode, status) if status else not (mode.enforces and controlled)
     return MyDeviceResponse(
         control=mode.value,
         status=status.value if status else None,
         display_name=access.display_name if access else None,
         allowed=allowed,
-        needs_name=access is not None and not access.name_confirmed,
+        # A name helps the admin tell phones apart when approving them. With no
+        # approval to give, it would only be one more screen for the driver.
+        needs_name=mode.enforces and access is not None and not access.name_confirmed,
     )
 
 

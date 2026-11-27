@@ -1,5 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { DataGridComponent, DataGridLinkCell, type DataGridColumn } from './data-grid.component';
+import {
+  DataGridComponent,
+  DataGridLinkCell,
+  rowActionsColumn,
+  type DataGridColumn,
+} from './data-grid.component';
+import { RowActionCell } from '../row-action-cell/row-action-cell';
 
 interface Row {
   readonly id: string;
@@ -218,6 +224,78 @@ describe('DataGridComponent', () => {
     sized(1000);
     expect(setColumnsVisible).toHaveBeenNthCalledWith(1, ['quantity'], false);
     expect(setColumnsVisible).toHaveBeenNthCalledWith(2, ['quantity'], true);
+  });
+
+  it('drops only as many low-priority columns as it takes to fit', () => {
+    const fixture = TestBed.createComponent(DataGridComponent<Row>);
+    fixture.componentRef.setInput('rows', rows);
+    fixture.componentRef.setInput('columns', [
+      { field: 'name', header: 'Name', minWidth: 400 },
+      { field: 'first', header: 'First', width: 200, priority: 'low' },
+      { field: 'second', header: 'Second', minWidth: 200, priority: 'low' },
+      { field: 'actions', header: 'Actions', width: 150 },
+    ]);
+    fixture.componentRef.setInput('ariaLabel', 'Test grid');
+    fixture.detectChanges();
+    const setColumnsVisible = jest.fn();
+    const sized = (clientWidth: number) => {
+      setColumnsVisible.mockClear();
+      (
+        fixture.componentInstance as unknown as {
+          onGridSizeChanged: (e: unknown) => void;
+        }
+      ).onGridSizeChanged({ clientWidth, api: { setColumnsVisible } });
+      return setColumnsVisible.mock.calls;
+    };
+
+    // All 950px fit.
+    expect(sized(960)).toEqual([[['first', 'second'], true]]);
+    // Wider than the narrow limit, but not wide enough: the last one goes.
+    expect(sized(800)).toEqual([
+      [['first'], true],
+      [['second'], false],
+    ]);
+    expect(sized(740)).toEqual([[['first', 'second'], false]]);
+  });
+});
+
+describe('rowActionsColumn', () => {
+  const action = {
+    icon: 'pi pi-trash',
+    text: 'Delete',
+    label: (row: Row) => `Delete ${row.id}`,
+    onAction: () => undefined,
+  };
+
+  it('is an "Actions" column of buttons that cannot be sorted', () => {
+    expect(rowActionsColumn<Row>([action])).toMatchObject({
+      field: 'actions',
+      header: 'Actions',
+      sortable: false,
+      cellRenderer: RowActionCell,
+      cellRendererParams: { actions: [action] },
+    });
+  });
+
+  it('leaves the buttons out of a CSV download', () => {
+    const fixture = TestBed.createComponent(DataGridComponent<Row>);
+    fixture.componentRef.setInput('rows', rows);
+    fixture.componentRef.setInput('columns', [...columns, rowActionsColumn<Row>([action])]);
+    fixture.componentRef.setInput('ariaLabel', 'Test grid');
+    fixture.detectChanges();
+    const exportDataAsCsv = jest.fn();
+    const shown = ['id', 'quantity', 'actions'].map((id) => ({ getColId: () => id }));
+    (fixture.componentInstance as unknown as { gridApi: unknown }).gridApi = {
+      exportDataAsCsv,
+      getAllDisplayedColumns: () => shown,
+    };
+
+    fixture.componentInstance.exportCsv('stock');
+
+    expect(exportDataAsCsv.mock.calls[0][0]).toMatchObject({
+      fileName: 'stock.csv',
+      columnKeys: ['id', 'quantity'],
+    });
   });
 });
 

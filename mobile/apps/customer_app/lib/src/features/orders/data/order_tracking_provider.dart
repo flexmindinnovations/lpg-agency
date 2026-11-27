@@ -68,7 +68,7 @@ final orderTrackingProvider = FutureProvider.autoDispose
       } else {
         final geocoded = await ref
             .watch(geocodingServiceProvider)
-            .search(tracking.destinationLabel);
+            .locate(tracking.destinationLabel);
         destination = geocoded;
         approximate = geocoded != null;
       }

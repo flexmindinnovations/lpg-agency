@@ -24,6 +24,8 @@ import {
   PageHeaderComponent,
   formatReportDate,
   toSentenceCase,
+  SectionCardComponent,
+  DetailListComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ButtonDirective } from 'primeng/button';
@@ -115,6 +117,8 @@ export function testDueLabel(
   selector: 'lpg-feature-cylinder-units',
   standalone: true,
   imports: [
+    DetailListComponent,
+    SectionCardComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
     PageHeaderComponent,

@@ -121,6 +121,34 @@ void main() {
     return ops.isEmpty ? null : ops.single;
   }
 
+  for (final online in [true, false]) {
+    test('recordDelivery ${online ? 'sends' : 'queues'} the empties of sizes '
+        'not on the order', () async {
+      adapter.offline = !online;
+
+      await build(online: online).recordDelivery(
+        orderId: 'o4',
+        lines: _lines,
+        otherEmpties: const [
+          CollectedEmptyRequest(cylinderTypeId: 'ct2', quantity: 3),
+        ],
+        otpCode: '123456',
+        gpsLat: 17.4,
+        gpsLng: 78.4,
+        paymentMethod: 'cash',
+        amountCollected: 100,
+      );
+
+      final body = online
+          ? adapter.lastDeliverBody! as Map<String, dynamic>
+          : jsonDecode((await onlyOpOrNull())!.payload)['body']
+                as Map<String, dynamic>;
+      expect(body['other_empties'], [
+        {'cylinder_type_id': 'ct2', 'quantity': 3},
+      ]);
+    });
+  }
+
   test(
     'departStop moves the cached order optimistically and queues the op',
     () async {

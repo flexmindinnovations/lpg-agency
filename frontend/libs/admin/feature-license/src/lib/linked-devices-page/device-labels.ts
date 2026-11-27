@@ -21,33 +21,14 @@ export const APP_LABELS: Record<string, string> = {
   admin_app: 'Admin app',
 };
 
-export type DeviceControlMode = 'off' | 'observe' | 'enforce';
+/** `enforce`: a new phone waits for approval. `observe`: it works at once.
+ * Phones are listed, and a blocked one is refused, either way (ADR-071). */
+export type DeviceControlMode = 'observe' | 'enforce';
 
-export const CONTROL_MODES: readonly {
-  readonly value: DeviceControlMode;
-  readonly label: string;
-  readonly icon: string;
-  readonly help: string;
-}[] = [
-  {
-    value: 'off',
-    label: 'Off',
-    icon: 'pi pi-power-off',
-    help: 'Any phone can use the Driver and Admin apps. Nothing is recorded.',
-  },
-  {
-    value: 'observe',
-    label: 'Watch only',
-    icon: 'pi pi-eye',
-    help: 'Phones are listed here as they sign in, and nobody is blocked. Use this first to build your list.',
-  },
-  {
-    value: 'enforce',
-    label: 'Approve phones',
-    icon: 'pi pi-shield',
-    help: 'Only approved phones can use the apps. A new phone waits here until you approve it, and a blocked phone is signed out.',
-  },
-];
+export const CONTROL_HELP: Record<DeviceControlMode, string> = {
+  observe: 'Every phone that signs in is listed here and can use the apps, unless you block it.',
+  enforce: 'A new phone cannot use the apps until you approve it here.',
+};
 
 export function statusLabel(status: string): string {
   return STATUS_LABELS[status as DeviceStatus] ?? status;

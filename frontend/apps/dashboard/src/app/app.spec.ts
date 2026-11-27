@@ -64,7 +64,7 @@ describe('Routing foundation', () => {
     }
   });
 
-  it('redirects every pre-Settings URL to its new home', () => {
+  it('redirects every moved URL to its new home', () => {
     const shellRoute = appRoutes.find((route) => route.path === '');
     const redirects = Object.fromEntries(
       (shellRoute?.children ?? [])
@@ -78,6 +78,7 @@ describe('Routing foundation', () => {
       'admin/feature-flags': 'settings/feature-flags',
       'admin/license': 'settings/license',
       'admin/license/devices': 'settings/license/devices',
+      'admin/price-lists': 'admin/cylinder-types',
     });
   });
 });

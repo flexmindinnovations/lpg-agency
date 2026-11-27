@@ -1,19 +1,19 @@
-<h2 class="section-heading">Driver Performance</h2>
+<lpg-section-card heading="Driver Performance">
+  <lib-report-filters (apply)="load($event)" (exportCsv)="exportCsv()" />
 
-<lib-report-filters (apply)="load($event)" (exportCsv)="exportCsv()" />
-
-@if (store.error()) {
-<lpg-empty-state
-  tone="error"
-  title="Couldn't load driver performance"
-  [description]="store.error() ?? ''"
-/>
-} @else {
-<lpg-data-grid
-  [rows]="store.driverPerformance()"
-  [columns]="columns"
-  [loading]="store.loading()"
-  [autoHeight]="true"
-  ariaLabel="Driver performance by driver and day"
-/>
-}
+  @if (store.error()) {
+  <lpg-empty-state
+    tone="error"
+    title="Couldn't load driver performance"
+    [description]="store.error() ?? ''"
+  />
+  } @else {
+  <lpg-data-grid
+    [rows]="store.driverPerformance()"
+    [columns]="columns"
+    [loading]="store.loading()"
+    [autoHeight]="true"
+    ariaLabel="Driver performance by driver and day"
+  />
+  }
+</lpg-section-card>

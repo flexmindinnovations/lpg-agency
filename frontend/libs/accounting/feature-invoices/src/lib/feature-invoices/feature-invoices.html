@@ -40,6 +40,8 @@
           />
         </p-iconfield>
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           [options]="statusOptions"
           [ngModel]="statusFilter()"
           (ngModelChange)="onStatusChange($event)"
@@ -64,7 +66,7 @@
         }
         <span class="data-toolbar__spacer"></span>
         <lpg-export-button
-          label="Export this page as CSV"
+          label="Export page as CSV"
           [disabled]="invoices().length === 0"
           (export)="exportCsv()"
         />
@@ -94,7 +96,7 @@
   [style]="{ width: '40rem', maxWidth: '95vw' }"
 >
   <p class="held-dialog__hint">
-    Set the HSN code and GST rate in Admin › Cylinder Types, then issue each invoice here.
+    Set the HSN code and GST rate in Admin › Cylinders & Prices, then issue each invoice here.
   </p>
   <ul class="held-list">
     @for (order of heldOrders(); track order.order_id) {

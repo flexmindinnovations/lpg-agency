@@ -141,6 +141,7 @@ class DeliveryMutations {
   Future<DeliverOutcome> recordDelivery({
     required String orderId,
     required List<DeliveredLineRequest> lines,
+    List<CollectedEmptyRequest> otherEmpties = const [],
     required String otpCode,
     required double gpsLat,
     required double gpsLng,
@@ -156,6 +157,7 @@ class DeliveryMutations {
       final inline = await _deliverInline(
         orderId: orderId,
         lines: lines,
+        otherEmpties: otherEmpties,
         otpCode: otpCode,
         gpsLat: gpsLat,
         gpsLng: gpsLng,
@@ -175,6 +177,7 @@ class DeliveryMutations {
     await _queueDelivery(
       orderId: orderId,
       lines: lines,
+      otherEmpties: otherEmpties,
       otpCode: otpCode,
       gpsLat: gpsLat,
       gpsLng: gpsLng,
@@ -201,6 +204,7 @@ class DeliveryMutations {
   Future<DeliverOutcome?> _deliverInline({
     required String orderId,
     required List<DeliveredLineRequest> lines,
+    List<CollectedEmptyRequest> otherEmpties = const [],
     required String otpCode,
     required double gpsLat,
     required double gpsLng,
@@ -246,6 +250,7 @@ class DeliveryMutations {
       orderId,
       DeliverOrderRequest(
         lines: lines,
+        otherEmpties: otherEmpties,
         otpCode: otpCode,
         proofOfDelivery: ProofOfDeliverySubmission(
           signatureBlobRef: signatureRef,
@@ -277,6 +282,7 @@ class DeliveryMutations {
   Future<void> _queueDelivery({
     required String orderId,
     required List<DeliveredLineRequest> lines,
+    List<CollectedEmptyRequest> otherEmpties = const [],
     required String otpCode,
     required double gpsLat,
     required double gpsLng,
@@ -329,6 +335,9 @@ class DeliveryMutations {
         ],
         'body': {
           'lines': [for (final l in lines) l.toJson()],
+          // As in DeliverOrderRequest.toJson(): this map is the HTTP body.
+          if (otherEmpties.isNotEmpty)
+            'other_empties': [for (final e in otherEmpties) e.toJson()],
           'otp_code': otpCode,
           'proof_of_delivery': {
             'gps_lat': gpsLat,

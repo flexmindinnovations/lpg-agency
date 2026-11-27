@@ -58,11 +58,13 @@ from fastapi import (
 )
 
 from lpg.api.v1.dependencies.admin import (
+    get_cylinder_type_repository,
     get_employee_repository,
     get_price_list_repository,
     get_tenant_configuration_repository,
 )
 from lpg.api.v1.dependencies.customer import get_customer_repository
+from lpg.api.v1.dependencies.cylinder_ledger import get_cylinder_ledger_repository
 from lpg.api.v1.dependencies.delivery import (
     get_driver_repository,
     get_route_repository,
@@ -104,16 +106,20 @@ from lpg.api.v1.schemas.order import (
     BulkCancelOrdersResponse,
     CancelOrderRequest,
     CancelOrderResponse,
+    CollectedEmptyResponse,
     CreateOrderRequest,
     DeliverOrderRequest,
     DeliverOrderResponse,
     DeliveryAddressPayload,
     DeliveryCodeResponse,
     DriverLocationSnapshot,
+    HeldEmptiesResponse,
     OrderableCylinderTypeResponse,
     OrderCustomerResponse,
+    OrderLineEstimateResponse,
     OrderLineResponse,
     OrderPageResponse,
+    OrderPriceEstimateResponse,
     OrderResponse,
     OrderStatus,
     OrderStatusHistoryEntryResponse,
@@ -134,6 +140,7 @@ from lpg.application.accounting.ports import OnlinePaymentRepository
 from lpg.application.common.errors import NotFoundError, PermissionDeniedError, ValidationError
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
+from lpg.application.cylinder_ledger.ports import CylinderLedgerRepository
 from lpg.application.delivery.ports import (
     DriverRepository,
     RouteRepository,
@@ -161,6 +168,7 @@ from lpg.application.order.ports import (
     ProofOfDeliveryEntry,
     ProofOfDeliveryRepository,
 )
+from lpg.application.order.price_estimate import EstimateOrderPrice, OrderPriceEstimate
 from lpg.application.order.settlement import compute_settlement
 from lpg.application.order.use_cases import (
     AmendOrderCommand,
@@ -189,6 +197,7 @@ from lpg.application.order.use_cases import (
     GetCancellationRequestUseCase,
     GetDeliveryCodeQuery,
     GetDeliveryCodeUseCase,
+    GetOrderEmptiesUseCase,
     GetOrderQuery,
     GetOrderUseCase,
     ListOrdersQuery,
@@ -205,12 +214,13 @@ from lpg.application.order.use_cases import (
     ResendDeliveryOtpUseCase,
 )
 from lpg.application.tenant.ports import (
+    CylinderTypeRepository,
     PriceListRepository,
     TenantConfigurationRepository,
 )
 from lpg.application.tenant_admin.ports import EmployeeRepository
 from lpg.config.settings import Settings, get_settings
-from lpg.domain.order.order import DeliveredLine, Order
+from lpg.domain.order.order import CollectedEmpty, DeliveredLine, Order
 from lpg.infrastructure.idempotency.service import (
     IdempotencyService,
     fingerprint,
@@ -268,6 +278,10 @@ def _order_to_response(
             )
             for line in order.lines
         ],
+        other_empties=[
+            CollectedEmptyResponse(cylinder_type_id=empty.cylinder_type_id, quantity=empty.quantity)
+            for empty in order.other_empties
+        ],
         customer=(
             OrderCustomerResponse(
                 id=customer.customer_id,
@@ -280,6 +294,23 @@ def _order_to_response(
             else None
         ),
         cancellation_pending=cancellation_pending,
+    )
+
+
+def _estimate_to_response(
+    estimate: OrderPriceEstimate | None,
+) -> OrderPriceEstimateResponse | None:
+    if estimate is None:
+        return None
+    return OrderPriceEstimateResponse(
+        lines=[
+            OrderLineEstimateResponse(line_id=line_id, unit_price=price)
+            for line_id, price in estimate.unit_prices.items()
+        ],
+        total_amount=estimate.total_amount,
+        tax_amount=estimate.tax_amount,
+        payable_amount=estimate.payable_amount,
+        prices_include_gst=estimate.prices_include_gst,
     )
 
 
@@ -647,6 +678,8 @@ async def get_order(
     cancellation_repository: Annotated[
         CancellationRecordRepository, Depends(get_cancellation_record_repository)
     ],
+    price_lists: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    gst_snapshotter: Annotated[OrderGstSnapshotter, Depends(get_order_gst_snapshotter)],
 ) -> OrderResponse:
     scope = await _resolve_scope(
         principal, customer_repository, driver_repository, route_repository
@@ -665,6 +698,11 @@ async def get_order(
         )
     )
     [response] = await _orders_with_customers([order], customer_directory, cancellation_repository)
+    if response.customer is not None:
+        estimate = await EstimateOrderPrice(price_lists, gst_snapshotter).execute(
+            order, customer_type=response.customer.customer_type
+        )
+        response.price_estimate = _estimate_to_response(estimate)
     return response
 
 
@@ -1302,6 +1340,10 @@ async def deliver_order(
     ],
     customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
+    ledger_repository: Annotated[CylinderLedgerRepository, Depends(get_cylinder_ledger_repository)],
+    cylinder_type_repository: Annotated[
+        CylinderTypeRepository, Depends(get_cylinder_type_repository)
+    ],
 ) -> DeliverOrderResponse:
     """`out_for_delivery -> delivered`. Idempotency-Key required (offline-
     sync retries). Missing POD fields are a 422 (see `ProofOfDeliverySubmission`);
@@ -1327,6 +1369,8 @@ async def deliver_order(
         pod_repository,
         otp_store,
         unit_of_work,
+        ledger_repository,
+        cylinder_type_repository,
         online_payment_repository,
         customer_repository,
         credit_limit_evaluator,
@@ -1343,6 +1387,10 @@ async def deliver_order(
                         quantity_collected_empty=line.quantity_collected_empty,
                     )
                     for line in body.lines
+                ],
+                other_empties=[
+                    CollectedEmpty(cylinder_type_id=empty.cylinder_type_id, quantity=empty.quantity)
+                    for empty in body.other_empties
                 ],
                 otp_code=body.otp_code,
                 signature_blob_ref=body.proof_of_delivery.signature_blob_ref,
@@ -1368,6 +1416,40 @@ async def deliver_order(
         operation=_operation,
     )
     return DeliverOrderResponse.model_validate(result)
+
+
+@router.get(
+    "/orders/{order_id}/empties",
+    response_model=list[HeldEmptiesResponse],
+    dependencies=[Depends(require_permission("orders:deliver"))],
+)
+async def get_order_empties(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    ledger_repository: Annotated[CylinderLedgerRepository, Depends(get_cylinder_ledger_repository)],
+    cylinder_type_repository: Annotated[
+        CylinderTypeRepository, Depends(get_cylinder_type_repository)
+    ],
+) -> list[HeldEmptiesResponse]:
+    """The empties the driver may take back at this delivery: for each
+    cylinder size, what the customer was holding before it. Lists every size
+    held and every size on the order.
+    """
+    await _require_own_driver_order(
+        order_id, principal, order_repository, driver_repository, route_repository
+    )
+    use_case = GetOrderEmptiesUseCase(order_repository, ledger_repository, cylinder_type_repository)
+    return [
+        HeldEmptiesResponse(
+            cylinder_type_id=held.cylinder_type_id,
+            cylinder_type_name=held.cylinder_type_name,
+            quantity_held=held.quantity_held,
+        )
+        for held in await use_case.execute(order_id)
+    ]
 
 
 @router.get(

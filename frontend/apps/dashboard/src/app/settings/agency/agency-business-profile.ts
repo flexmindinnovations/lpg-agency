@@ -120,6 +120,7 @@ const GSTIN_PATTERN = /^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][Zz][0-9A-
             [messages]="{ required: 'Choose the state.' }"
           >
             <p-select
+              [resetFilterOnHide]="true"
               inputId="bp-state"
               formControlName="state_code"
               [options]="states()"

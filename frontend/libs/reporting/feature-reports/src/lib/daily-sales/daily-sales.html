@@ -1,38 +1,38 @@
-<h2 class="section-heading">Daily Sales</h2>
+<lpg-section-card heading="Daily Sales">
+  <lib-report-filters (apply)="load($event)" (exportCsv)="exportCsv()" />
 
-<lib-report-filters (apply)="load($event)" (exportCsv)="exportCsv()" />
-
-@if (store.error()) {
-<lpg-empty-state
-  tone="error"
-  title="Couldn't load daily sales"
-  [description]="store.error() ?? ''"
-/>
-} @else {
-<lpg-data-grid
-  [rows]="store.dailySales()"
-  [columns]="columns"
-  [loading]="store.loading()"
-  [autoHeight]="true"
-  ariaLabel="Daily sales by day and branch"
-/>
-@if (store.dailySales().length > 0) {
-<dl class="report-totals" aria-label="Totals for the period">
-  <div>
-    <dt>Invoices</dt>
-    <dd>{{ totals().invoices }}</dd>
-  </div>
-  <div>
-    <dt>Taxable value</dt>
-    <dd>{{ formatCurrencyInr(totals().taxable) }}</dd>
-  </div>
-  <div>
-    <dt>GST</dt>
-    <dd>{{ formatCurrencyInr(totals().tax) }}</dd>
-  </div>
-  <div>
-    <dt>Revenue</dt>
-    <dd>{{ formatCurrencyInr(totals().revenue) }}</dd>
-  </div>
-</dl>
-} }
+  @if (store.error()) {
+  <lpg-empty-state
+    tone="error"
+    title="Couldn't load daily sales"
+    [description]="store.error() ?? ''"
+  />
+  } @else {
+  <lpg-data-grid
+    [rows]="store.dailySales()"
+    [columns]="columns"
+    [loading]="store.loading()"
+    [autoHeight]="true"
+    ariaLabel="Daily sales by day and branch"
+  />
+  @if (store.dailySales().length > 0) {
+  <dl class="report-totals" aria-label="Totals for the period">
+    <div>
+      <dt>Invoices</dt>
+      <dd>{{ totals().invoices }}</dd>
+    </div>
+    <div>
+      <dt>Taxable value</dt>
+      <dd>{{ formatCurrencyInr(totals().taxable) }}</dd>
+    </div>
+    <div>
+      <dt>GST</dt>
+      <dd>{{ formatCurrencyInr(totals().tax) }}</dd>
+    </div>
+    <div>
+      <dt>Revenue</dt>
+      <dd>{{ formatCurrencyInr(totals().revenue) }}</dd>
+    </div>
+  </dl>
+  } }
+</lpg-section-card>

@@ -59,6 +59,15 @@ class AppendLedgerTransactionsFromOrderUseCase:
                     reference_id=order.id,
                 )
 
+        # Empties of sizes that were not on the order.
+        for empty in order.other_empties:
+            ledger.record_collection(
+                cylinder_type_id=empty.cylinder_type_id,
+                quantity=empty.quantity,
+                performed_by=performed_by,
+                reference_id=order.id,
+            )
+
         # A brand-new ledger with nothing recorded against it has nothing
         # worth persisting; anything else does.
         if ledger.version == 1 and not ledger.pending_transactions:

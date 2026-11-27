@@ -21,7 +21,7 @@ from lpg.application.order.ports import (
     OrderStatusHistoryEntry,
     ProofOfDeliveryEntry,
 )
-from lpg.domain.order.order import DeliveryAddress, Order, OrderLine
+from lpg.domain.order.order import CollectedEmpty, DeliveryAddress, Order, OrderLine
 from lpg.infrastructure.persistence.models.customer import CustomerModel
 from lpg.infrastructure.persistence.models.delivery import (
     RouteModel,
@@ -57,6 +57,13 @@ if TYPE_CHECKING:
 
 def _to_decimal(value: float | None) -> Decimal | None:
     return Decimal(str(value)) if value is not None else None
+
+
+def _other_empties_json(order: Order) -> list[dict[str, Any]]:
+    return [
+        {"cylinder_type_id": str(empty.cylinder_type_id), "quantity": empty.quantity}
+        for empty in order.other_empties
+    ]
 
 
 def _order_search_clause(search: str | None) -> ColumnElement[bool] | None:
@@ -268,6 +275,13 @@ class SqlAlchemyOrderRepository:
             route_stop_id=row.route_stop_id,
             total_amount=row.total_amount,
             prices_include_gst=row.prices_include_gst,
+            other_empties=[
+                CollectedEmpty(
+                    cylinder_type_id=uuid.UUID(entry["cylinder_type_id"]),
+                    quantity=int(entry["quantity"]),
+                )
+                for entry in row.other_empties or []
+            ],
             version=row.version,
         )
         self._uow.register_aggregate(order)
@@ -301,6 +315,7 @@ class SqlAlchemyOrderRepository:
                 route_stop_id=order.route_stop_id,
                 total_amount=order.total_amount,
                 prices_include_gst=order.prices_include_gst,
+                other_empties=_other_empties_json(order),
             )
             self._uow.session.add(row)
             # Flush now so the order row is INSERTed before any line/history
@@ -312,6 +327,7 @@ class SqlAlchemyOrderRepository:
             row.route_stop_id = order.route_stop_id
             row.total_amount = order.total_amount
             row.prices_include_gst = order.prices_include_gst
+            row.other_empties = _other_empties_json(order)
             row.metadata_json = order.metadata
             # Editable before the order is put on a trip (`Order.amend()`,
             # `Order.reschedule_to()`).

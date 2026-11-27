@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
-import { ApiConfiguration, type InvoiceResponse } from '@lpg/shared/data-access';
+import { ApiConfiguration, PrintingService, type InvoiceResponse } from '@lpg/shared/data-access';
 import { PERMISSION_CHECKER } from '@lpg/shared/util';
 import { InvoiceDetailDrawer } from './invoice-detail-drawer';
 import { invoiceStatusLabel } from './invoice-status';
@@ -67,6 +67,47 @@ describe('InvoiceDetailDrawer', () => {
     expect(form.controls.reference.hasError('required')).toBe(true);
     form.controls.reference.setValue('000451');
     expect(form.valid).toBe(true);
+  });
+
+  it('keeps every action in one footer below the scrolling details', async () => {
+    component.invoice.set(INVOICE);
+    await fixture.whenStable();
+    http.expectOne((req) => req.url.endsWith('/credit-notes')).flush([]);
+
+    const body = document.querySelector('.detail-view');
+    expect(body?.querySelector('.detail-view__fields .modal-actions')).toBeNull();
+    const footers = body?.querySelectorAll(':scope > .modal-actions') ?? [];
+    expect(footers).toHaveLength(1);
+    const labels = Array.from(footers[0].querySelectorAll('button'), (button) =>
+      button.textContent?.trim(),
+    );
+    expect(labels).toEqual([
+      'Pay by UPI QR',
+      'Send payment link',
+      'Print Thermal',
+      'Print PDF',
+      'Download PDF',
+      'Send to customer',
+      'Record payment',
+    ]);
+  });
+
+  it('downloads the PDF under the invoice number and the time', async () => {
+    const download = jest
+      .spyOn(TestBed.inject(PrintingService), 'download')
+      .mockImplementation(() => undefined);
+    component.invoice.set(INVOICE);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- protected member under test
+    (component as any).downloadPdf();
+    http
+      .expectOne((req) => req.url.endsWith('/api/v1/print-jobs/document'))
+      .flush(new Blob(['%PDF']));
+
+    expect(download).toHaveBeenCalledWith(
+      expect.any(Blob),
+      expect.stringMatching(/^INV-2026-000001_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.pdf$/),
+    );
   });
 
   it('calls an issued invoice unpaid', () => {

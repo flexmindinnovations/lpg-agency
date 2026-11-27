@@ -15,13 +15,6 @@
   margin-block-end: var(--spacing-xs);
 }
 
-.section-title {
-  font-size: var(--typography-heading3-font-size);
-  font-weight: var(--typography-heading3-font-weight);
-  margin: 0;
-  margin-block-end: var(--spacing-xs);
-}
-
 .empty-hint {
   font-size: var(--typography-caption-font-size);
   color: var(--color-text-secondary);
@@ -34,7 +27,7 @@
   gap: var(--spacing-sm);
 }
 
-.pending-counts {
+.card-stack {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -71,14 +64,6 @@
 
 .pending-counts__variance--loss {
   color: var(--color-status-danger);
-}
-
-.register-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
 }
 
 .register-range {

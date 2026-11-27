@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from lpg.application.accounting.payment_profile import (
     GetPaymentProfileUseCase,
@@ -36,6 +38,14 @@ if TYPE_CHECKING:
     from lpg.domain.tenant.tenant import Tenant
 
 _logger = get_logger(__name__)
+
+_IST = ZoneInfo("Asia/Kolkata")
+
+
+def document_name(stem: str, at: datetime) -> str:
+    """`INV-2026-000001_2026-11-27_14-30-05`: what the document is and when it
+    was produced (India time). No colons, which Windows does not allow."""
+    return f"{stem}_{at.astimezone(_IST):%Y-%m-%d_%H-%M-%S}"
 
 
 class PrintFormat(StrEnum):
@@ -140,8 +150,10 @@ class GeneratePrintJobUseCase:
         )
         tenant = await self._tenant_repo.get(invoice.tenant_id)
         split = invoice.tax_split()
+        name = document_name(invoice.invoice_number or str(invoice.id), datetime.now(UTC))
         payload = InvoicePrintPayload(
             invoice_number=invoice.invoice_number or "Not numbered",
+            document_name=name,
             tenant_header=self._build_tenant_header(tenant),
             customer=customer_info,
             line_items=await self._build_line_items(invoice),
@@ -161,13 +173,12 @@ class GeneratePrintJobUseCase:
             issued_at=invoice.issued_at,
             qr_code_data=f"lpg-invoice:{invoice.id}",
         )
-        stem = invoice.invoice_number or str(invoice.id)
 
         if command.output_format == PrintFormat.PDF:
             return RenderedDocument(
                 content=self._engine.render_invoice_pdf(payload),
                 content_type="application/pdf",
-                filename=f"{stem}.pdf",
+                filename=f"{name}.pdf",
                 key=f"print-jobs/{invoice.id}.pdf",
             )
         if command.output_format == PrintFormat.THERMAL:
@@ -179,7 +190,7 @@ class GeneratePrintJobUseCase:
             return RenderedDocument(
                 content=self._engine.render_invoice_thermal_html(payload),
                 content_type="text/html; charset=utf-8",
-                filename=f"{stem}.html",
+                filename=f"{name}.html",
                 key=f"print-jobs/{invoice.id}.html",
             )
         msg = f"Unsupported format: {command.output_format}"  # type: ignore[unreachable]

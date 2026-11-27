@@ -33,6 +33,8 @@ import { FormFieldComponent } from './form-field.component';
 
       <lpg-form-field label="Role" for="sb-role" [control]="role">
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           inputId="sb-role"
           [formControl]="role"
           [options]="roles"

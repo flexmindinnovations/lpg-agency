@@ -166,14 +166,25 @@ describe('OrderQueue', () => {
       expect(component.cylinderTypeOptions()).toEqual([]);
     });
 
-    it('asks for nothing while a customer is still being typed', () => {
+    it('searches customers on the server, from the first character', () => {
       const fixture = TestBed.createComponent(OrderQueue);
-      const component = fixture.componentInstance as unknown as Internals;
+      const component = fixture.componentInstance as unknown as {
+        searchCustomers: (query: string) => import('rxjs').Observable<{ id: string }[]>;
+      };
       const http = TestBed.inject(HttpTestingController);
+      const isList = (url: string) => /\/api\/v1\/customers(\?|$)/.test(url);
+      let found: { id: string }[] = [];
 
-      component.createForm.controls.customer.setValue('Meen');
+      component.searchCustomers('').subscribe();
+      const first = http.expectOne((req) => isList(req.url));
+      expect(first.request.urlWithParams).not.toContain('search=');
+      expect(first.request.urlWithParams).toContain('limit=20');
 
-      http.expectNone((req) => req.url.endsWith('orderable-cylinder-types'));
+      component.searchCustomers('m').subscribe((items) => (found = items));
+      const typed = http.expectOne((req) => isList(req.url));
+      expect(typed.request.urlWithParams).toContain('search=m');
+      typed.flush({ items: [{ id: 'cust-1' }], total: 1 });
+      expect(found).toEqual([{ id: 'cust-1' }]);
     });
 
     it('picks the primary address so a booking needs no extra step', () => {

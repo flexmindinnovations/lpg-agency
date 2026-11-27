@@ -12,6 +12,7 @@ import { ButtonDirective } from 'primeng/button';
 import { Select } from 'primeng/select';
 import { AdminBranchService } from '@lpg/shared/data-access';
 import {
+  CardActionsDirective,
   DateRangeFilterComponent,
   ExportButtonComponent,
   type DateRangeValue,
@@ -31,7 +32,14 @@ interface BranchOption {
 @Component({
   selector: 'lib-report-filters',
   standalone: true,
-  imports: [DateRangeFilterComponent, ExportButtonComponent, FormsModule, ButtonDirective, Select],
+  imports: [
+    CardActionsDirective,
+    DateRangeFilterComponent,
+    ExportButtonComponent,
+    FormsModule,
+    ButtonDirective,
+    Select,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="report-filters" role="group" aria-label="Report filters">
@@ -76,6 +84,8 @@ interface BranchOption {
       </div>
       @if (showBranch()) {
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           [options]="branches()"
           [ngModel]="store.filter().branchId"
           (ngModelChange)="update({ branchId: $event })"
@@ -86,9 +96,10 @@ interface BranchOption {
           ariaLabel="Branch"
         />
       }
-      <span class="report-filters__spacer"></span>
-      <lpg-export-button (export)="exportCsv.emit()" />
     </div>
+    <ng-template lpgCardActions>
+      <lpg-export-button (export)="exportCsv.emit()" />
+    </ng-template>
   `,
   styles: [
     `
@@ -101,9 +112,6 @@ interface BranchOption {
       }
       .report-filters__presets {
         display: inline-flex;
-      }
-      .report-filters__spacer {
-        flex: 1;
       }
     `,
   ],

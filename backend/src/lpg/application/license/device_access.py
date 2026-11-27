@@ -4,10 +4,14 @@ and refresh, and checking that phone on every request and realtime connection.
 Two small services, both driven by the agency's `device_control` mode:
 
 - `DeviceSessionBinder` runs when a Driver or Admin app user signs in or
-  refreshes. It records the phone (in `observe` and `enforce`), refuses a
-  blocked phone under `enforce`, and returns the binding the tokens carry.
+  refreshes. It records the phone, refuses a blocked one, and returns the
+  binding the tokens carry. Without `enforce`, a phone that cannot be recorded
+  still signs in.
 - `DeviceAccessGate` runs on every authenticated request. It checks the
   phone the token was issued to against the cached status.
+
+A blocked phone is refused in both modes: the agency chose that phone. The
+mode only decides whether a phone needs approval before it can be used.
 
 Who is controlled: a *driver* login is always the Driver app (so it cannot
 dodge the check by leaving headers out); a staff login is the Admin app only
@@ -29,6 +33,7 @@ from lpg.application.common.errors import (
     DeviceRequiredError,
 )
 from lpg.application.license.manage_devices import RegisterDeviceCommand
+from lpg.config.logging import get_logger
 from lpg.domain.license.device_control import CONTROLLED_APP_TYPES, DeviceControlMode
 from lpg.domain.license.linked_device import DeviceDetails, DeviceStatus
 
@@ -41,6 +46,8 @@ if TYPE_CHECKING:
         DeviceRegistrar,
     )
     from lpg.domain.identity.user import IdentityUser
+
+_logger = get_logger(__name__)
 
 DRIVER_ROLE = "driver"
 _CUSTOMER_ROLE = "customer"
@@ -113,6 +120,13 @@ def raise_for_status(status: DeviceStatus) -> None:
         raise DeviceRemovedError(msg)
 
 
+def refuses(mode: DeviceControlMode, status: DeviceStatus) -> bool:
+    """Whether the agency keeps a phone in this state out of the app."""
+    if status is DeviceStatus.BLOCKED:
+        return True
+    return mode.enforces and status is not DeviceStatus.APPROVED
+
+
 def _matches(install_id: str | None, identifier_hash: str) -> bool:
     return bool(install_id) and hmac.compare_digest(fingerprint(install_id or ""), identifier_hash)
 
@@ -124,8 +138,8 @@ class DeviceSessionBinder:
 
     async def bind(self, user: IdentityUser, context: DeviceContext | None) -> DeviceBinding | None:
         """Record the phone and return its binding, or `None` when this login
-        is not under device control. Raises under `enforce` for a phone that
-        cannot be identified or is blocked."""
+        is not under device control. Raises for a blocked phone, and under
+        `enforce` for one that cannot be identified or was removed."""
         tenant_id = user.tenant_id
         if tenant_id is None:  # super admin: above any one agency
             return None
@@ -134,31 +148,34 @@ class DeviceSessionBinder:
             return None
 
         mode = await self._modes.get(tenant_id)
-        if not mode.records_devices:
-            return None
-
         if context is None or not (context.install_id or "").strip():
             if mode.enforces:
                 msg = "This app did not identify its phone. Please update the app."
                 raise DeviceRequiredError(msg)
             return None
 
-        details = context.details
-        registration = await self._registrar.register(
-            RegisterDeviceCommand(
-                tenant_id=tenant_id,
-                app_type=app_type,
-                device_identifier=fingerprint(context.install_id or ""),
-                display_name=context.name,
-                details=details,
-                hardware_ref=fingerprint(context.hardware_id) if context.hardware_id else None,
-                user_id=user.id,
-                user_name=user.display_name or user.email or user.phone_number,
-                mode=mode,
-            )
+        command = RegisterDeviceCommand(
+            tenant_id=tenant_id,
+            app_type=app_type,
+            device_identifier=fingerprint(context.install_id or ""),
+            display_name=context.name,
+            details=context.details,
+            hardware_ref=fingerprint(context.hardware_id) if context.hardware_id else None,
+            user_id=user.id,
+            user_name=user.display_name or user.email or user.phone_number,
+            mode=mode,
         )
+        try:
+            registration = await self._registrar.register(command)
+        except Exception as exc:
+            if mode.enforces:
+                raise
+            # Only keeping a list: that must never keep somebody out.
+            _logger.warning("device_record_failed", error_type=type(exc).__name__)
+            return None
         device = registration.device
-        if mode.enforces and device.status in (DeviceStatus.BLOCKED, DeviceStatus.REMOVED):
+        # A waiting phone may sign in: that is how it learns it was approved.
+        if device.status is not DeviceStatus.PENDING and refuses(mode, device.status):
             raise_for_status(device.status)
         return DeviceBinding(device.id, app_type)
 
@@ -198,8 +215,8 @@ class DeviceAccessGate:
 
         Returns the phone's cached access record (or `None` when the session
         is not under device control). Raises `DeviceRequiredError` (401) when
-        the session is not tied to this phone, and — under `enforce` and when
-        `enforce_status` is set — the pending / blocked / removed errors (403).
+        the session is not tied to this phone and, when `enforce_status` is set,
+        the blocked error (403) — plus pending and removed under `enforce`.
         `enforce_status=False` is for the one endpoint a waiting or blocked
         phone must still reach to learn its own state.
         """
@@ -207,9 +224,6 @@ class DeviceAccessGate:
             return None  # web dashboard, customer, super admin: no I/O at all
 
         mode = await self._modes.get(tenant_id)
-        if not mode.records_devices:
-            return None
-
         if device_id is None:
             # A driver session opened before control was switched on (or by an
             # old build). 401 so the app refreshes and binds itself.
@@ -224,7 +238,7 @@ class DeviceAccessGate:
                 msg = "This session was opened on a different phone."
                 raise DeviceRequiredError(msg)
             return access
-        if mode.enforces and enforce_status:
+        if enforce_status and refuses(mode, access.status):
             raise_for_status(access.status)
         return access
 

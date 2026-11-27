@@ -89,11 +89,9 @@ function buttonWithLabel(page: Page, label: string) {
   return page.locator(`button:has(span:text-is("${label}"))`);
 }
 
-/** Opens a PrimeNG `p-select`/`p-autocomplete` trigger and picks the option
- * matching `name`. Works for both — the option list is a `role="option"`
- * item either way, and Playwright's accessible-name computation falls back
- * to visible text when there's no explicit `aria-label` (true for `p-select`
- * options; `p-autocomplete` options do carry one). */
+/** Opens a PrimeNG `p-select` trigger and picks the option matching `name`.
+ * Options are `role="option"` items; with no explicit `aria-label`, Playwright's
+ * accessible name falls back to their visible text. */
 async function choosePrimeOption(
   page: Page,
   trigger: string,
@@ -121,16 +119,13 @@ test.describe('Order to delivery — full workflow', () => {
     await page.goto(`${BASE_URL}/orders`);
     await page.getByRole('button', { name: 'New Booking' }).click();
 
-    // `lpg-customer-autocomplete`'s `inputId="create_customer"` is a plain
-    // (non-bound) HTML attribute, not the component's `[inputId]` — the
-    // real rendered input keeps the component's own default id.
-    await page.locator('#customer_autocomplete').fill('Meena');
+    // The customer dropdown searches on the server as you type in its search box.
+    await page.locator('#create_customer').click();
+    await page.locator('input.p-select-filter').fill('Meena');
     await page.getByRole('option', { name: CUSTOMER_NAME }).click();
 
-    // Match the address text itself, not a catch-all regex — the customer
-    // autocomplete's own just-selected suggestion option can still linger in
-    // the DOM/accessibility tree at this point, and `/./ ` would ambiguously
-    // match both it and the real address option.
+    // Match the address text itself, not a catch-all regex, so only the real
+    // address option can match.
     await choosePrimeOption(page, '#create_address', /Basheerbagh/);
     await choosePrimeOption(page, '.line-row__type', CYLINDER_TYPE);
     // Booking source (defaults to "Staff") and requested date (defaults to

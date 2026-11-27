@@ -44,7 +44,7 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
   prices_include_gst: {
     label: 'Prices Include GST',
     description:
-      'Whether the amounts on the Pricing page already include GST — defaults to off (absent = exclusive): prices are before GST and invoices, payment links and cancellation charges add GST on top. Set to true if your prices already include GST; the invoice then works out the taxable value and CGST/SGST or IGST inside the price, so the customer pays exactly the listed price.',
+      'Whether the prices under Cylinders & Prices already include GST — defaults to off (absent = exclusive): prices are before GST and invoices, payment links and cancellation charges add GST on top. Set to true if your prices already include GST; the invoice then works out the taxable value and CGST/SGST or IGST inside the price, so the customer pays exactly the listed price.',
   },
   cancellation_fee_amount: {
     label: 'Cancellation Fee Amount',
@@ -294,7 +294,7 @@ class ConfigKeyCell {
         [closeOnEscape]="true"
         header="Set a configuration value"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         <form
           id="setConfigForm"
@@ -315,6 +315,8 @@ class ConfigKeyCell {
               [messages]="{ required: 'Configuration key is required.' }"
             >
               <p-select
+                [filter]="true"
+                [resetFilterOnHide]="true"
                 inputId="config-key"
                 formControlName="configKey"
                 [options]="recognizedKeys"

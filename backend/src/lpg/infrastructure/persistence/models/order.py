@@ -77,6 +77,11 @@ class OrderModel(Base):
     # Whether the unit prices included GST when the order was priced;
     # NULL for an order priced before this was recorded.
     prices_include_gst: Mapped[bool | None] = mapped_column(Boolean(), nullable=True)
+    # Empties collected of sizes that are not on the order (a size that is on
+    # it keeps its count on the line).
+    other_empties: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB(), server_default=text("'[]'::jsonb")
+    )
     # Dedupe timestamp for the hourly stale-unassigned-order alert cron
     # (`infrastructure/jobs/stale_order_jobs.py`) -- same shape as
     # `compliance.compliance_document.last_expiry_notified_at`. Set only

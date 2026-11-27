@@ -1,5 +1,5 @@
 import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
-import { HasPermissionDirective } from '@lpg/shared/ui';
+import { HasPermissionDirective, SectionCardComponent } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -60,7 +60,8 @@ import {
   StatusChipCell,
   toSentenceCase,
 } from '@lpg/shared/ui';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
+import { PERMISSION_CHECKER } from '@lpg/shared/util';
+import { rowActionsColumn, DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 
 const CYLINDER_STATUSES = [
   'filled',
@@ -92,6 +93,10 @@ type TransitionKind = keyof StatusTransitionsResponse;
 /** A cylinder status as the API types it; form values come from these options. */
 type CylinderStatus = (typeof CYLINDER_STATUSES)[number];
 
+function isCylinderStatus(status: string): status is CylinderStatus {
+  return (CYLINDER_STATUSES as readonly string[]).includes(status);
+}
+
 function errorMessageFor(error: unknown): string {
   switch (isAppError(error) ? error.errorCode : null) {
     case 'INSUFFICIENT_STOCK':
@@ -117,6 +122,7 @@ function toIsoDate(date: Date): string {
   selector: 'lpg-feature-inventory',
   standalone: true,
   imports: [
+    SectionCardComponent,
     PageActionsDirective,
     PageHeaderComponent,
     HeaderTitlePortalDirective,
@@ -147,6 +153,7 @@ export class FeatureInventory implements OnInit {
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly weighmentService = inject(WeighmentService);
   private readonly modules = inject(ModuleAccessStore);
+  private readonly permissions = inject(PERMISSION_CHECKER);
   // Inventory requires neither module: while one is off, its parts of this
   // screen are hidden and its API is not called.
   protected readonly hasVehicles = computed(() => this.modules.isEnabled('vehicles'));
@@ -269,17 +276,41 @@ export class FeatureInventory implements OnInit {
   protected readonly omcReturnTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('omcReturnTriggerEl');
 
-  protected readonly balanceColumns: DataGridColumn<InventoryBalanceLine>[] = [
-    {
-      field: 'cylinder_type_id',
-      header: 'Cylinder Type',
-      sortable: true,
-      valueFormatter: (value) =>
-        this.cylinderTypeNameById().get(value as string) ?? (value as string),
-    },
-    { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
-    { field: 'quantity', header: 'Quantity', sortable: true, numeric: true, width: 140 },
-  ];
+  /** What is in stock here. A line counted down to zero leaves the table;
+   * the stock register and the history still show it. */
+  protected readonly balanceRows = computed(() =>
+    (this.balance()?.balances ?? []).filter((line) => line.quantity !== 0),
+  );
+
+  protected readonly balanceColumns = computed<DataGridColumn<InventoryBalanceLine>[]>(() => {
+    const columns: DataGridColumn<InventoryBalanceLine>[] = [
+      {
+        field: 'cylinder_type_id',
+        header: 'Cylinder Type',
+        sortable: true,
+        valueFormatter: (value) =>
+          this.cylinderTypeNameById().get(value as string) ?? (value as string),
+      },
+      { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
+      { field: 'quantity', header: 'Quantity', sortable: true, numeric: true, width: 140 },
+    ];
+    if (this.permissions()?.permissions?.has('inventory:load')) {
+      columns.push(
+        rowActionsColumn<InventoryBalanceLine>([
+          {
+            icon: 'pi pi-pencil',
+            text: 'Correct count',
+            label: (row) =>
+              `Correct count: ${this.cylinderTypeNameById().get(row.cylinder_type_id) ?? 'cylinder'}, ${row.status}`,
+            // Only a physical cylinder status can be counted.
+            visible: (row) => isCylinderStatus(row.status),
+            onAction: (row) => this.openReconcileModal(row),
+          },
+        ]),
+      );
+    }
+    return columns;
+  });
 
   protected readonly transactionColumns: DataGridColumn<InventoryTransactionResponse>[] = [
     { field: 'transaction_type', header: 'Type', sortable: true, cellRenderer: StatusChipCell },
@@ -834,12 +865,22 @@ export class FeatureInventory implements OnInit {
   // Reconciliation
   // ---------------------------------------------------------------------------
 
-  protected openReconcileModal(): void {
-    const preselectedCt = this.selectedCylinderTypeId() ?? '';
+  /** What the books show for the type and status being counted. */
+  protected recordedQuantityHint(): string {
+    const { cylinder_type_id, status } = this.reconcileForm.getRawValue();
+    if (!cylinder_type_id) return '';
+    const line = this.balance()?.balances.find(
+      (l) => l.cylinder_type_id === cylinder_type_id && l.status === status,
+    );
+    return `On record now: ${line?.quantity ?? 0}. Enter what is physically there (0 if none).`;
+  }
+
+  /** Opened from a balance row, the form starts from that row. */
+  protected openReconcileModal(line?: InventoryBalanceLine): void {
     this.reconcileForm.reset({
-      cylinder_type_id: preselectedCt,
-      status: 'filled',
-      actual_quantity: 0,
+      cylinder_type_id: line?.cylinder_type_id ?? this.selectedCylinderTypeId() ?? '',
+      status: line?.status ?? 'filled',
+      actual_quantity: line?.quantity ?? 0,
     });
     this.lastReconciliationRecordId.set(null);
     this.drawerError.set(null);

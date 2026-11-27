@@ -619,6 +619,22 @@ class _Fixtures:
     warehouse_id: uuid.UUID
 
 
+async def _record_cylinders_held(
+    client: AsyncClient, fixtures: _Fixtures, cylinder_type_id: uuid.UUID, quantity: int
+) -> None:
+    """Cylinders the customer already had, as the office records them."""
+    response = await client.post(
+        f"/api/v1/customers/{fixtures.customer_id}/ledger/adjust",
+        json={
+            "cylinder_type_id": str(cylinder_type_id),
+            "delta": quantity,
+            "reason": "Opening balance",
+        },
+        headers={"Authorization": f"Bearer {fixtures.admin_token}"},
+    )
+    assert response.status_code == 200, response.text
+
+
 async def _seed_full_fixture_set(
     client: AsyncClient, engine: AsyncEngine, *, unit_price: Decimal = Decimal("950.00")
 ) -> _Fixtures:
@@ -898,6 +914,46 @@ class TestOrderFullLifecycle:
         assert upload_response.status_code == 201, upload_response.text
         blob_ref = upload_response.json()["blob_ref"]
 
+        # A first delivery has nothing to take back: today's cylinders are
+        # full. Refused before the delivery code is used up.
+        empties_url = f"/api/v1/orders/{order_id}/empties"
+        nothing_held = await client.get(empties_url, headers=driver_headers)
+        assert nothing_held.status_code == 200, nothing_held.text
+        assert [(e["cylinder_type_id"], e["quantity_held"]) for e in nothing_held.json()] == [
+            (str(fixtures.cylinder_type_id), 0)
+        ]
+        too_many = await client.post(
+            f"/api/v1/orders/{order_id}/deliver",
+            json={
+                "lines": [
+                    {
+                        "cylinder_type_id": str(fixtures.cylinder_type_id),
+                        "quantity_delivered": 2,
+                        "quantity_collected_empty": 1,
+                    }
+                ],
+                "otp_code": otp_code,
+                "proof_of_delivery": {
+                    "gps_lat": "12.9716",
+                    "gps_lng": "77.5946",
+                    "payment_method": "cash",
+                    "amount_collected": "1900.00",
+                },
+            },
+            headers={**driver_headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert too_many.status_code == 409, too_many.text
+        assert too_many.json()["error_code"] == "EMPTIES_EXCEED_HELD"
+
+        # Three from earlier, recorded by the office: now they can come back.
+        await _record_cylinders_held(client, fixtures, fixtures.cylinder_type_id, 3)
+        not_yours_empties = await client.get(
+            empties_url, headers={"Authorization": f"Bearer {other_driver_token}"}
+        )
+        assert not_yours_empties.status_code == 404, not_yours_empties.text
+        held = await client.get(empties_url, headers=driver_headers)
+        assert held.json()[0]["quantity_held"] == 3
+
         deliver_idempotency_key = str(uuid.uuid4())
         deliver_response = await client.post(
             f"/api/v1/orders/{order_id}/deliver",
@@ -906,7 +962,8 @@ class TestOrderFullLifecycle:
                     {
                         "cylinder_type_id": str(fixtures.cylinder_type_id),
                         "quantity_delivered": 2,
-                        "quantity_collected_empty": 1,
+                        # More than today's two: they are from earlier.
+                        "quantity_collected_empty": 3,
                     }
                 ],
                 "otp_code": otp_code,
@@ -929,6 +986,15 @@ class TestOrderFullLifecycle:
         assert deliver_response.status_code == 200, deliver_response.text
         deliver_body = deliver_response.json()
         assert deliver_body["order"]["status"] == "delivered"
+        assert deliver_body["order"]["lines"][0]["quantity_collected_empty"] == 3
+        assert deliver_body["order"]["other_empties"] == []
+        # 3 held before, 2 delivered, 3 taken back.
+        after = await client.get(
+            f"/api/v1/customers/{fixtures.customer_id}/ledger", headers=admin_headers
+        )
+        assert after.json()["balances"] == [
+            {"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 2}
+        ]
         assert deliver_body["proof_of_delivery"]["dac_code"] == "445566"
         assert "invoice_id" not in deliver_body
         assert "ledger_transaction_id" not in deliver_body
@@ -944,7 +1010,7 @@ class TestOrderFullLifecycle:
         assert pod_response.json()["signature_url"]
 
         # Reserve-then-deliver-in-full must not double-count: balance is
-        # unchanged since step 3b's load (99), only the +1 collected empty
+        # unchanged since step 3b's load (99), only the +3 collected empty
         # is new — filled stays 99.
         balance_after_deliver = await _vehicle_filled_balance(
             admin_engine_lpg_test,
@@ -2142,6 +2208,62 @@ class TestDeliveryWithoutAttachments:
         )
 
         assert response.status_code == 422, response.text
+
+
+class TestBookedOrderPriceEstimate:
+    async def test_booked_order_shows_an_estimate_that_confirmation_then_saves(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        customer_headers = {"Authorization": f"Bearer {fixtures.customer_token}"}
+        async with admin_engine_lpg_test.begin() as conn:
+            await conn.execute(
+                text(
+                    "UPDATE tenant.cylinder_type SET hsn_code = '27111900', "
+                    "gst_rate_percent = 18 WHERE id = :id"
+                ),
+                {"id": str(fixtures.cylinder_type_id)},
+            )
+        order = await _create_order(client, fixtures, admin_headers)
+        url = f"/api/v1/orders/{order['id']}"
+
+        for headers in (admin_headers, customer_headers):
+            response = await client.get(url, headers=headers)
+            assert response.status_code == 200, response.text
+            body = response.json()
+            estimate = body["price_estimate"]
+            assert Decimal(estimate["total_amount"]) == Decimal("1900.00")
+            assert [Decimal(line["unit_price"]) for line in estimate["lines"]] == [
+                Decimal("950.00")
+            ]
+            assert [line["line_id"] for line in estimate["lines"]] == [
+                line["id"] for line in body["lines"]
+            ]
+            tax = Decimal(estimate["tax_amount"])
+            assert tax > 0
+            added = Decimal("0") if estimate["prices_include_gst"] else tax
+            assert Decimal(estimate["payable_amount"]) == Decimal("1900.00") + added
+            # Reading the estimate saves nothing.
+            assert body["total_amount"] is None
+            assert body["lines"][0]["unit_price"] is None
+
+        other = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        foreign = await client.get(url, headers={"Authorization": f"Bearer {other.admin_token}"})
+        assert foreign.status_code == 404, foreign.text
+
+        confirmed = await client.post(
+            f"{url}/confirm",
+            headers={**admin_headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert confirmed.status_code == 200, confirmed.text
+
+        after = (await client.get(url, headers=admin_headers)).json()
+        assert after["price_estimate"] is None
+        assert Decimal(after["total_amount"]) == Decimal(estimate["total_amount"])
+        assert after["tax_amount"] == estimate["tax_amount"]
+        assert after["payable_amount"] == estimate["payable_amount"]
 
 
 class TestRoleScopedReads:

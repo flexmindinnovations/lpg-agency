@@ -20,6 +20,8 @@
   <div class="data-toolbar">
     <div class="filters-row data-toolbar__filters">
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         ariaLabel="Branch"
         inputId="filter_branch"
         [options]="branches()"
@@ -259,7 +261,7 @@
   [(visible)]="showTripSheet"
   position="right"
   [modal]="true"
-  styleClass="!w-full md:!w-[44rem]"
+  styleClass="!w-full md:!w-[var(--drawer-width-wide)]"
   [header]="tripRoute() ? 'Load & dispatch trip' : 'New trip'"
   (onHide)="newTripTrigger()?.nativeElement?.focus()"
 >
@@ -269,204 +271,214 @@
       <p-message severity="error">{{ msg }}</p-message>
       }
 
-      <h3 class="section-title">1. Driver and van</h3>
-      @if (tripRoute(); as route) {
-      <div class="detail-grid">
-        <div class="detail-field">
-          <span class="detail-field__label">Driver</span>
-          <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+      <lpg-section-card heading="1. Driver and van">
+        @if (tripRoute(); as route) {
+        <div class="detail-grid">
+          <div class="detail-field">
+            <span class="detail-field__label">Driver</span>
+            <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Vehicle</span>
+            <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Date</span>
+            <span>{{ route.date | date: 'mediumDate' }}</span>
+          </div>
         </div>
-        <div class="detail-field">
-          <span class="detail-field__label">Vehicle</span>
-          <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+        } @else {
+        <div class="trip-grid">
+          <p-select
+            [resetFilterOnHide]="true"
+            ariaLabel="Driver"
+            inputId="trip_driver"
+            name="trip_driver"
+            optionDisabled="disabled"
+            [options]="driverOptions()"
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Select a driver"
+            [filter]="true"
+            [ngModel]="tripDriverId()"
+            (ngModelChange)="onTripDriverChange($event)"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+          <p-select
+            [resetFilterOnHide]="true"
+            ariaLabel="Vehicle"
+            inputId="trip_vehicle"
+            name="trip_vehicle"
+            optionDisabled="disabled"
+            [options]="vehicleOptions()"
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Select a vehicle"
+            [filter]="true"
+            [ngModel]="tripVehicleId()"
+            (ngModelChange)="onTripVehicleChange($event)"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+          <p-datepicker
+            ariaLabel="Date"
+            inputId="trip_date"
+            name="trip_date"
+            iconDisplay="input"
+            [showIcon]="true"
+            [showOnFocus]="false"
+            appendTo="body"
+            [ngModel]="tripDate()"
+            (ngModelChange)="tripDate.set($event ?? tripDate())"
+            [fluid]="true"
+          />
+          @if (branches().length > 1) {
+          <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
+            ariaLabel="Branch"
+            inputId="trip_branch"
+            name="trip_branch"
+            ariaLabel="Branch"
+            [options]="branches()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Select a branch"
+            ariaLabel="Branch"
+            [ngModel]="tripBranchId()"
+            (ngModelChange)="onTripBranchChange($event)"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+          }
         </div>
-        <div class="detail-field">
-          <span class="detail-field__label">Date</span>
-          <span>{{ route.date | date: 'mediumDate' }}</span>
-        </div>
-      </div>
-      } @else {
-      <div class="trip-grid">
-        <p-select
-          ariaLabel="Driver"
-          inputId="trip_driver"
-          name="trip_driver"
-          optionDisabled="disabled"
-          [options]="driverOptions()"
-          optionLabel="label"
-          optionValue="id"
-          placeholder="Select a driver"
-          [filter]="true"
-          [ngModel]="tripDriverId()"
-          (ngModelChange)="onTripDriverChange($event)"
-          [fluid]="true"
-          [appendTo]="'body'"
-        />
-        <p-select
-          ariaLabel="Vehicle"
-          inputId="trip_vehicle"
-          name="trip_vehicle"
-          optionDisabled="disabled"
-          [options]="vehicleOptions()"
-          optionLabel="label"
-          optionValue="id"
-          placeholder="Select a vehicle"
-          [filter]="true"
-          [ngModel]="tripVehicleId()"
-          (ngModelChange)="onTripVehicleChange($event)"
-          [fluid]="true"
-          [appendTo]="'body'"
-        />
-        <p-datepicker
-          ariaLabel="Date"
-          inputId="trip_date"
-          name="trip_date"
-          iconDisplay="input"
-          [showIcon]="true"
-          [showOnFocus]="false"
-          appendTo="body"
-          [ngModel]="tripDate()"
-          (ngModelChange)="tripDate.set($event ?? tripDate())"
-          [fluid]="true"
-        />
-        @if (branches().length > 1) {
-        <p-select
-          ariaLabel="Branch"
-          inputId="trip_branch"
-          name="trip_branch"
-          ariaLabel="Branch"
-          [options]="branches()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="Select a branch"
-          ariaLabel="Branch"
-          [ngModel]="tripBranchId()"
-          (ngModelChange)="onTripBranchChange($event)"
-          [fluid]="true"
-          [appendTo]="'body'"
-        />
         }
-      </div>
-      }
+      </lpg-section-card>
 
-      <h3 class="section-title">2. Orders on this trip</h3>
-      @if (tripWaitingOrders().length > 0) {
-      <p class="empty-hint">
-        Already on this trip and going out with it: @for (order of tripWaitingOrders(); track
-        order.id) {<strong>{{ order.order_number ?? shortId(order.id) }}</strong>@if (!$last) {, } }
-      </p>
-      }
-      <div class="trip-orders">
-        @if (tripCandidateOrders().length > 0) {
-        <div class="trip-order trip-order--all">
-          <p-checkbox
-            [binary]="true"
-            inputId="trip_all"
-            name="trip_all"
-            [ngModel]="tripOrderIds().size === tripCandidateOrders().length"
-            (ngModelChange)="toggleAllTripOrders($event)"
-          />
-          <label for="trip_all">Select all ({{ tripCandidateOrders().length }})</label>
-        </div>
-        } @for (order of tripCandidateOrders(); track order.id) {
-        <div class="trip-order">
-          <p-checkbox
-            [binary]="true"
-            [inputId]="'trip_order_' + order.id"
-            [name]="'trip_order_' + order.id"
-            [ngModel]="isTripOrderPicked(order.id)"
-            (ngModelChange)="toggleTripOrder(order.id, $event)"
-          />
-          <label class="trip-order__info" [for]="'trip_order_' + order.id">
-            <span class="trip-order__number">{{ order.order_number ?? shortId(order.id) }}</span>
-            <span class="trip-order__addr">{{ order.delivery_address.address_line }}</span>
-          </label>
-          <span class="trip-order__qty">{{ orderCylinders(order) }}</span>
-        </div>
-        } @empty {
-        <p class="empty-hint trip-orders__empty">
-          @if (tripBranchId()) { No confirmed orders for this branch are waiting for a trip. } @else
-          { Choose a branch to see its orders. }
+      <lpg-section-card heading="2. Orders on this trip">
+        @if (tripWaitingOrders().length > 0) {
+        <p class="empty-hint">
+          Already on this trip and going out with it: @for (order of tripWaitingOrders(); track
+          order.id) {<strong>{{ order.order_number ?? shortId(order.id) }}</strong>@if (!$last) {, }
+          }
         </p>
         }
-      </div>
+        <div class="trip-orders">
+          @if (tripCandidateOrders().length > 0) {
+          <div class="trip-order trip-order--all">
+            <p-checkbox
+              [binary]="true"
+              inputId="trip_all"
+              name="trip_all"
+              [ngModel]="tripOrderIds().size === tripCandidateOrders().length"
+              (ngModelChange)="toggleAllTripOrders($event)"
+            />
+            <label for="trip_all">Select all ({{ tripCandidateOrders().length }})</label>
+          </div>
+          } @for (order of tripCandidateOrders(); track order.id) {
+          <div class="trip-order">
+            <p-checkbox
+              [binary]="true"
+              [inputId]="'trip_order_' + order.id"
+              [name]="'trip_order_' + order.id"
+              [ngModel]="isTripOrderPicked(order.id)"
+              (ngModelChange)="toggleTripOrder(order.id, $event)"
+            />
+            <label class="trip-order__info" [for]="'trip_order_' + order.id">
+              <span class="trip-order__number">{{ order.order_number ?? shortId(order.id) }}</span>
+              <span class="trip-order__addr">{{ order.delivery_address.address_line }}</span>
+            </label>
+            <span class="trip-order__qty">{{ orderCylinders(order) }}</span>
+          </div>
+          } @empty {
+          <p class="empty-hint trip-orders__empty">
+            @if (tripBranchId()) { No confirmed orders for this branch are waiting for a trip. }
+            @else { Choose a branch to see its orders. }
+          </p>
+          }
+        </div>
+      </lpg-section-card>
 
-      <h3 class="section-title">3. Load the van</h3>
-      <p-select
-        ariaLabel="Load from godown"
-        inputId="trip_warehouse"
-        name="trip_warehouse"
-        [options]="tripWarehouseOptions()"
-        optionLabel="name"
-        optionValue="id"
-        placeholder="Select a godown"
-        ariaLabel="Load from godown"
-        [ngModel]="tripWarehouseId()"
-        (ngModelChange)="onTripWarehouseChange($event)"
-        [fluid]="true"
-        [appendTo]="'body'"
-      />
-      <div class="load-sheet-wrap">
-        <table class="load-sheet">
-          <thead>
-            <tr>
-              <th scope="col">Cylinder</th>
-              <th scope="col">For orders</th>
-              @if (hasInventory()) {
-              <th scope="col">Already on van</th>
-              }
-              <th scope="col">Spare</th>
-              <th scope="col">To load</th>
-              @if (hasInventory()) {
-              <th scope="col">In godown</th>
-              }
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of loadSheet(); track row.id) {
-            <tr [class.load-sheet__row--short]="row.short">
-              <th scope="row">{{ row.name }}</th>
-              <td>{{ row.forOrders }}</td>
-              @if (hasInventory()) {
-              <td>{{ row.onVan }}</td>
-              }
-              <td>
-                <p-inputnumber
-                  [inputId]="'trip_spare_' + row.id"
-                  [name]="'trip_spare_' + row.id"
-                  [ariaLabel]="'Spare ' + row.name"
-                  [min]="0"
-                  inputStyleClass="load-sheet__spare"
-                  [ngModel]="row.spare"
-                  (ngModelChange)="setTripSpare(row.id, $event)"
-                />
-              </td>
-              <td><strong>{{ row.toLoad }}</strong></td>
-              @if (hasInventory()) {
-              <td>
-                {{ row.inGodown ?? '—' }} @if (row.short) {
-                <span class="load-sheet__short"
-                  >Short by {{ row.toLoad - (row.inGodown ?? 0) }}</span
-                >
+      <lpg-section-card heading="3. Load the van">
+        <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
+          ariaLabel="Load from godown"
+          inputId="trip_warehouse"
+          name="trip_warehouse"
+          [options]="tripWarehouseOptions()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select a godown"
+          ariaLabel="Load from godown"
+          [ngModel]="tripWarehouseId()"
+          (ngModelChange)="onTripWarehouseChange($event)"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
+        <div class="load-sheet-wrap">
+          <table class="load-sheet">
+            <thead>
+              <tr>
+                <th scope="col">Cylinder</th>
+                <th scope="col">For orders</th>
+                @if (hasInventory()) {
+                <th scope="col">Already on van</th>
                 }
-              </td>
+                <th scope="col">Spare</th>
+                <th scope="col">To load</th>
+                @if (hasInventory()) {
+                <th scope="col">In godown</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of loadSheet(); track row.id) {
+              <tr [class.load-sheet__row--short]="row.short">
+                <th scope="row">{{ row.name }}</th>
+                <td>{{ row.forOrders }}</td>
+                @if (hasInventory()) {
+                <td>{{ row.onVan }}</td>
+                }
+                <td>
+                  <p-inputnumber
+                    [inputId]="'trip_spare_' + row.id"
+                    [name]="'trip_spare_' + row.id"
+                    [ariaLabel]="'Spare ' + row.name"
+                    [min]="0"
+                    inputStyleClass="load-sheet__spare"
+                    [ngModel]="row.spare"
+                    (ngModelChange)="setTripSpare(row.id, $event)"
+                  />
+                </td>
+                <td><strong>{{ row.toLoad }}</strong></td>
+                @if (hasInventory()) {
+                <td>
+                  {{ row.inGodown ?? '—' }} @if (row.short) {
+                  <span class="load-sheet__short"
+                    >Short by {{ row.toLoad - (row.inGodown ?? 0) }}</span
+                  >
+                  }
+                </td>
+                }
+              </tr>
               }
-            </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      @if (tripShort()) {
-      <p-message severity="error">
-        The godown doesn't have enough filled cylinders. Remove some orders or spares, or receive
-        stock first.
-      </p-message>
-      } @if (tripOverCapacity()) {
-      <p-message severity="warn">
-        {{ tripTotals().onVanAfter }} cylinders is more than this van carries ({{
-        tripVehicle()?.capacity_units }}).
-      </p-message>
-      }
+            </tbody>
+          </table>
+        </div>
+        @if (tripShort()) {
+        <p-message severity="error">
+          The godown doesn't have enough filled cylinders. Remove some orders or spares, or receive
+          stock first.
+        </p-message>
+        } @if (tripOverCapacity()) {
+        <p-message severity="warn">
+          {{ tripTotals().onVanAfter }} cylinders is more than this van carries ({{
+          tripVehicle()?.capacity_units }}).
+        </p-message>
+        }
+      </lpg-section-card>
     </div>
 
     <div class="modal-actions">
@@ -486,29 +498,31 @@
   [(visible)]="showRouteDetail"
   position="right"
   [modal]="true"
-  styleClass="!w-full md:!w-[36rem]"
+  styleClass="!w-full md:!w-[var(--drawer-width)]"
   header="Trip"
 >
   @if (selectedRoute(); as route) {
   <div class="route-detail">
-    <div class="detail-grid">
-      <div class="detail-field">
-        <span class="detail-field__label">Status</span>
-        <p-tag [severity]="statusSeverity(route.status)" [value]="statusLabel(route.status)" />
+    <lpg-section-card heading="Trip details">
+      <div class="detail-grid">
+        <div class="detail-field">
+          <span class="detail-field__label">Status</span>
+          <p-tag [severity]="statusSeverity(route.status)" [value]="statusLabel(route.status)" />
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Date</span>
+          <span>{{ route.date | date: 'mediumDate' }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Driver</span>
+          <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Vehicle</span>
+          <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+        </div>
       </div>
-      <div class="detail-field">
-        <span class="detail-field__label">Date</span>
-        <span>{{ route.date | date: 'mediumDate' }}</span>
-      </div>
-      <div class="detail-field">
-        <span class="detail-field__label">Driver</span>
-        <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
-      </div>
-      <div class="detail-field">
-        <span class="detail-field__label">Vehicle</span>
-        <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
-      </div>
-    </div>
+    </lpg-section-card>
 
     @if (route.status === 'planned') {
     <p-message severity="info">
@@ -573,8 +587,7 @@
     </div>
 
     @if ((route.loaded_lines ?? []).length > 0) {
-    <div class="load-form">
-      <h3 class="section-title">Loaded from godown</h3>
+    <lpg-section-card heading="Loaded from godown">
       <ul class="weighment-record-list">
         @for (line of route.loaded_lines; track line.cylinder_type_id) {
         <li>
@@ -592,7 +605,7 @@
         The driver hasn't checked the van yet.
       </p-message>
       }
-    </div>
+    </lpg-section-card>
     } @if (route.status === 'completed') {
     <p-message severity="warn" styleClass="reconciliation-banner">
       <div class="reconciliation-banner__content">
@@ -617,8 +630,7 @@
       </div>
     </p-message>
     } @if (showLoadOutWeighmentForm()) {
-    <div class="load-form">
-      <h3 class="section-title">Log Load-Out Weighment</h3>
+    <lpg-section-card heading="Log Load-Out Weighment">
       <p-message severity="info">
         MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before dispatch.
         Log one record per cylinder type; this only blocks loading for agencies that have opted into
@@ -647,6 +659,8 @@
       >
         <div class="dialog-form__fields">
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             ariaLabel="Cylinder type"
             inputId="wt_cylinder_type"
             formControlName="cylinder_type_id"
@@ -657,6 +671,8 @@
             [appendTo]="'body'"
           />
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             ariaLabel="Scale used"
             inputId="wt_scale"
             formControlName="scale_id"
@@ -700,10 +716,9 @@
           </button>
         </div>
       </form>
-    </div>
+    </lpg-section-card>
     } @if (showCashHandoverForm()) {
-    <div class="load-form">
-      <h3 class="section-title">Declare Cash Handover</h3>
+    <lpg-section-card heading="Declare Cash Handover">
       <form
         [formGroup]="cashHandoverForm"
         (ngSubmit)="onSubmitCashHandover()"
@@ -735,7 +750,7 @@
           </button>
         </div>
       </form>
-    </div>
+    </lpg-section-card>
     } @if (lastCashHandover(); as handover) {
     <p-message
       [severity]="handover.shortfall === '0' || handover.shortfall === '0.00' ? 'success' : 'warn'"
@@ -749,67 +764,68 @@
     </p-message>
     }
 
-    <div class="stops-header">
-      <h3 class="section-title">Orders</h3>
-      <div class="stops-header__actions">
-        @if (canOptimizeSelectedRoute()) {
-        <button
-          pButton
-          type="button"
-          severity="secondary"
-          text
-          [disabled]="loading()"
-          (click)="onOptimizeRoute()"
-          pTooltip="Reorder stops for a shorter total distance (AI-estimated)"
-          tooltipPosition="top"
-        >
-          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-sparkles'"></i>
-          <span>Optimise stop order</span>
-        </button>
-        }
-      </div>
-    </div>
+    <lpg-section-card heading="Orders" [hasHeaderActions]="true">
+      @if (canOptimizeSelectedRoute()) {
+      <button
+        headerActions
+        pButton
+        type="button"
+        severity="secondary"
+        text
+        [disabled]="loading()"
+        (click)="onOptimizeRoute()"
+        pTooltip="Reorder stops for a shorter total distance (AI-estimated)"
+        tooltipPosition="top"
+      >
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-sparkles'"></i>
+        <span>Optimise stop order</span>
+      </button>
+      }
 
-    <div class="stops-list">
-      @for (stop of route.stops ?? []; track stop.id) {
-      <div class="stop-card">
-        <div class="stop-card__row">
-          <span class="stop-card__seq">#{{ stop.sequence_number }}</span>
-          <a
-            class="stop-card__order stop-card__order--link"
-            [routerLink]="['/orders', stop.order_id]"
-            [pTooltip]="'View details for order ' + (orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id))"
-            tooltipPosition="top"
-          >
-            <span
-              >Order {{ orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id)
-              }}</span
+      <div class="stops-list">
+        @for (stop of route.stops ?? []; track stop.id) {
+        <div class="stop-card">
+          <div class="stop-card__row">
+            <span class="stop-card__seq">#{{ stop.sequence_number }}</span>
+            <a
+              class="stop-card__order stop-card__order--link"
+              [routerLink]="['/orders', stop.order_id]"
+              [pTooltip]="'View details for order ' + (orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id))"
+              tooltipPosition="top"
             >
-          </a>
-          <p-tag [severity]="statusSeverity(stop.status)" [value]="stopStatusLabel(stop.status)" />
-        </div>
-        @if (orderById().get(stop.order_id); as order) {
-        <span class="stop-card__failure">
-          {{ order.delivery_address.address_line }} · {{ orderCylinders(order) }}
-        </span>
-        } @if (stop.failure_reason) {
-        <span class="stop-card__failure">{{ stop.failure_reason }}</span>
-        } @if (stop.proof_of_delivery; as pod) {
-        <div class="stop-card__pod">
-          <span>POD:</span>
-          <span>{{ pod.otp_verified ? 'OTP verified' : 'OTP not verified' }}</span>
-          @if (pod.signature_url) {
-          <span>Signature captured</span>
-          } @if (pod.photo_url) {
-          <span>Photo captured</span>
+              <span
+                >Order {{ orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id)
+                }}</span
+              >
+            </a>
+            <p-tag
+              [severity]="statusSeverity(stop.status)"
+              [value]="stopStatusLabel(stop.status)"
+            />
+          </div>
+          @if (orderById().get(stop.order_id); as order) {
+          <span class="stop-card__failure">
+            {{ order.delivery_address.address_line }} · {{ orderCylinders(order) }}
+          </span>
+          } @if (stop.failure_reason) {
+          <span class="stop-card__failure">{{ stop.failure_reason }}</span>
+          } @if (stop.proof_of_delivery; as pod) {
+          <div class="stop-card__pod">
+            <span>POD:</span>
+            <span>{{ pod.otp_verified ? 'OTP verified' : 'OTP not verified' }}</span>
+            @if (pod.signature_url) {
+            <span>Signature captured</span>
+            } @if (pod.photo_url) {
+            <span>Photo captured</span>
+            }
+          </div>
           }
         </div>
+        } @empty {
+        <p class="empty-hint">No orders on this trip yet.</p>
         }
       </div>
-      } @empty {
-      <p class="empty-hint">No orders on this trip yet.</p>
-      }
-    </div>
+    </lpg-section-card>
   </div>
   } @else {
   <p class="empty-hint">Loading trip…</p>

@@ -32,6 +32,8 @@ import {
   type ChipSeverity,
   PageHeaderComponent,
   toSentenceCase,
+  SectionCardComponent,
+  DetailListComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ButtonDirective } from 'primeng/button';
@@ -99,6 +101,8 @@ type DriverRow = DriverResponse & {
   selector: 'lpg-feature-drivers',
   standalone: true,
   imports: [
+    DetailListComponent,
+    SectionCardComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
     PageHeaderComponent,

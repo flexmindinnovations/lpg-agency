@@ -24,10 +24,3 @@
   color: var(--color-text-secondary);
   margin: 0;
 }
-
-.detail-view {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}

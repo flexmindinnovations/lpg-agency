@@ -19,6 +19,7 @@ from lpg.domain.order.order import (
     BookingCancelled,
     BookingConfirmed,
     BookingCreated,
+    CollectedEmpty,
     DeliveredLine,
     DeliveryAddress,
     InsufficientVehicleStockError,
@@ -344,6 +345,35 @@ class TestOrderAssign:
 
 
 class TestOrderDeliver:
+    def _out_for_delivery(self) -> tuple[Order, DeliveredLine]:
+        order = _make_order(lines=[_make_line(quantity_ordered=2)])
+        _advance(order, "out_for_delivery")
+        line = DeliveredLine(cylinder_type_id=order.lines[0].cylinder_type_id, quantity_delivered=2)
+        return order, line
+
+    def test_keeps_empties_of_sizes_that_are_not_on_the_order(self) -> None:
+        order, line = self._out_for_delivery()
+        other = CollectedEmpty(cylinder_type_id=uuid.uuid4(), quantity=3)
+
+        order.deliver(lines=[line], other_empties=[other], changed_by=uuid.uuid4())
+
+        assert order.other_empties == (other,)
+
+    @pytest.mark.parametrize("problem", ["zero", "twice", "ordered size"])
+    def test_other_empties_name_each_other_size_once(self, problem: str) -> None:
+        order, line = self._out_for_delivery()
+        other = CollectedEmpty(
+            cylinder_type_id=(line.cylinder_type_id if problem == "ordered size" else uuid.uuid4()),
+            quantity=0 if problem == "zero" else 1,
+        )
+        others = [other, other] if problem == "twice" else [other]
+
+        with pytest.raises(InvariantViolation):
+            order.deliver(lines=[line], other_empties=others, changed_by=uuid.uuid4())
+
+        assert order.status == "out_for_delivery"
+        assert order.lines[0].quantity_delivered == 0
+
     def test_full_delivery_sets_quantity_delivered(self) -> None:
         order = _make_order(lines=[_make_line(quantity_ordered=4)])
         _advance(order, "out_for_delivery")

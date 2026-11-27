@@ -6,8 +6,9 @@ import {
   PageHeaderComponent,
   StatusChipCell,
   shortId,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
+import { rowActionsColumn, DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -154,6 +155,7 @@ function toDateOnlyString(date: Date): string {
   selector: 'lpg-feature-dispatch',
   standalone: true,
   imports: [
+    SectionCardComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
     PageHeaderComponent,
@@ -309,13 +311,15 @@ export class FeatureDispatch implements OnInit {
       numeric: true,
       valueFormatter: (_v, row) => String(row.stops?.length ?? 0),
     },
-    {
-      field: 'id',
-      header: 'Action',
-      width: 110,
-      onLinkClick: (row) => this.openRouteDetail(row),
-      valueFormatter: () => 'Open Trip',
-    },
+    rowActionsColumn<RouteResponse>([
+      {
+        icon: 'pi pi-arrow-right',
+        text: 'Open trip',
+        label: (row) =>
+          `Open trip ${row.date}, ${this.vehicleNameById().get(row.vehicle_id) ?? row.vehicle_id}`,
+        onAction: (row) => this.openRouteDetail(row),
+      },
+    ]),
   ];
 
   // ---------------------------------------------------------------------------

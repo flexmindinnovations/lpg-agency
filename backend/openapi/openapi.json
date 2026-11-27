@@ -1658,6 +1658,45 @@
         "title": "ClassifyCylinderTypeForGstRequest",
         "type": "object"
       },
+      "CollectedEmptyRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity"
+        ],
+        "title": "CollectedEmptyRequest",
+        "type": "object"
+      },
+      "CollectedEmptyResponse": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity"
+        ],
+        "title": "CollectedEmptyResponse",
+        "type": "object"
+      },
       "ComplaintAssigneeResponse": {
         "description": "A staff member a complaint can be assigned to (DO-18).",
         "properties": {
@@ -3115,6 +3154,13 @@
             "title": "Allowed Size Codes",
             "type": "array"
           },
+          "delete_blocked_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Delete Blocked By",
+            "type": "array"
+          },
           "used_in": {
             "items": {
               "type": "string"
@@ -3125,6 +3171,7 @@
         },
         "required": [
           "used_in",
+          "delete_blocked_by",
           "allowed_size_codes"
         ],
         "title": "CylinderTypeUsageResponse",
@@ -3535,6 +3582,13 @@
             },
             "minItems": 1,
             "title": "Lines",
+            "type": "array"
+          },
+          "other_empties": {
+            "items": {
+              "$ref": "#/components/schemas/CollectedEmptyRequest"
+            },
+            "title": "Other Empties",
             "type": "array"
           },
           "otp_code": {
@@ -5024,6 +5078,31 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HeldEmptiesResponse": {
+        "description": "One cylinder size a driver may take empties of at this delivery.",
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "cylinder_type_name": {
+            "title": "Cylinder Type Name",
+            "type": "string"
+          },
+          "quantity_held": {
+            "title": "Quantity Held",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "cylinder_type_name",
+          "quantity_held"
+        ],
+        "title": "HeldEmptiesResponse",
         "type": "object"
       },
       "IfscCheckResponse": {
@@ -6534,12 +6613,12 @@
       "MyDeviceResponse": {
         "properties": {
           "allowed": {
-            "description": "Whether the agency lets this phone use the app right now. Under 'observe' and 'off' this is always true.",
+            "description": "Whether the agency lets this phone use the app right now. Under 'observe' only a blocked phone is refused.",
             "title": "Allowed",
             "type": "boolean"
           },
           "control": {
-            "description": "The agency's device control mode: off, observe or enforce.",
+            "description": "The agency's device control mode: observe or enforce.",
             "title": "Control",
             "type": "string"
           },
@@ -7338,6 +7417,26 @@
         "title": "OrderCustomerResponse",
         "type": "object"
       },
+      "OrderLineEstimateResponse": {
+        "properties": {
+          "line_id": {
+            "format": "uuid",
+            "title": "Line Id",
+            "type": "string"
+          },
+          "unit_price": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Unit Price",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_id",
+          "unit_price"
+        ],
+        "title": "OrderLineEstimateResponse",
+        "type": "object"
+      },
       "OrderLineResponse": {
         "properties": {
           "cylinder_type_id": {
@@ -7465,6 +7564,64 @@
         "title": "OrderPipelineResponse",
         "type": "object"
       },
+      "OrderPriceEstimateResponse": {
+        "description": "What a not-yet-confirmed order would cost at today's prices. Nothing\nis saved; the price is fixed when the agency confirms the order.",
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLineEstimateResponse"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "payable_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payable Amount"
+          },
+          "prices_include_gst": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prices Include Gst"
+          },
+          "tax_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Amount"
+          },
+          "total_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lines",
+          "total_amount"
+        ],
+        "title": "OrderPriceEstimateResponse",
+        "type": "object"
+      },
       "OrderResponse": {
         "properties": {
           "address_id": {
@@ -7540,6 +7697,13 @@
             ],
             "title": "Order Number"
           },
+          "other_empties": {
+            "items": {
+              "$ref": "#/components/schemas/CollectedEmptyResponse"
+            },
+            "title": "Other Empties",
+            "type": "array"
+          },
           "payable_amount": {
             "anyOf": [
               {
@@ -7569,6 +7733,16 @@
               }
             ],
             "title": "Payment Method Preference"
+          },
+          "price_estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderPriceEstimateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "requested_date": {
             "format": "date-time",
@@ -13894,21 +14068,22 @@
             }
           },
           {
-            "description": "create, update or delete",
+            "description": "An action as recorded, e.g. update or auth.login",
             "in": "query",
             "name": "action",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "pattern": "^(create|update|delete)$",
+                  "maxLength": 64,
+                  "pattern": "^[a-z_]+(\\.[a-z_]+)?$",
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "create, update or delete",
+              "description": "An action as recorded, e.g. update or auth.login",
               "title": "Action"
             }
           },
@@ -23045,6 +23220,54 @@
           }
         },
         "summary": "Dispatch Order",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/empties": {
+      "get": {
+        "description": "The empties the driver may take back at this delivery: for each\ncylinder size, what the customer was holding before it. Lists every size\nheld and every size on the order.",
+        "operationId": "get_order_empties_api_v1_orders__order_id__empties_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HeldEmptiesResponse"
+                  },
+                  "title": "Response Get Order Empties Api V1 Orders  Order Id  Empties Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Order Empties",
         "tags": [
           "Orders"
         ]

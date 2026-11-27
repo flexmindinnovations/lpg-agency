@@ -77,6 +77,8 @@ function errorMessageFor(error: unknown): string {
           <form [formGroup]="form" novalidate>
             <lpg-form-field label="Flag" for="flag-key" [control]="form.controls.key">
               <p-select
+                [filter]="true"
+                [resetFilterOnHide]="true"
                 inputId="flag-key"
                 formControlName="key"
                 [options]="flagOptions()"

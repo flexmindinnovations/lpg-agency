@@ -457,7 +457,7 @@ SPECS: dict[str, NotificationSpec] = {
         body=lambda f: (
             f"{f.get('proposal_count') or 'New'} LPG rate proposal"
             f"{'' if f.get('proposal_count') == '1' else 's'} for next month are ready for "
-            "review on the Price List page."
+            "review on the Cylinders & Prices page."
         ),
         audience=Audience.STAFF,
         push=True,

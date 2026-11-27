@@ -24,6 +24,8 @@ import {
   StatusChipCell,
   type ChipSeverity,
   toSentenceCase,
+  SectionCardComponent,
+  DetailListComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ButtonDirective } from 'primeng/button';
@@ -78,6 +80,8 @@ const MAX_LEAST_COUNT_GRAMS = 10;
   selector: 'lpg-feature-scales',
   standalone: true,
   imports: [
+    DetailListComponent,
+    SectionCardComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
     PageHeaderComponent,

@@ -207,7 +207,7 @@ export class NotificationService {
       case 'compliance_document':
         return { commands: ['/compliance-calendar'] };
       case 'price_list_proposal':
-        return { commands: ['/admin/price-lists'] };
+        return { commands: ['/admin/cylinder-types'] };
       case 'device':
         return { commands: ['/settings/license/devices'] };
       default:

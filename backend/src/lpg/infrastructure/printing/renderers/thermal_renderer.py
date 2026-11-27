@@ -129,13 +129,13 @@ def render_invoice_thermal_html(
     """
     receipt_text = render_invoice_thermal(payload, width=width).decode("utf-8")
     escaped_text = html.escape(receipt_text)
-    escaped_title = html.escape(payload.invoice_number)
+    escaped_title = html.escape(payload.document_name or f"Receipt {payload.invoice_number}")
 
     document = f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Receipt {escaped_title}</title>
+<title>{escaped_title}</title>
 <style>
   :root {{ color-scheme: light; }}
   * {{ box-sizing: border-box; }}

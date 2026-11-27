@@ -175,324 +175,391 @@
   } @if (failedReason(); as reason) {
   <p-message severity="warn">Delivery failed: {{ reason }}.</p-message>
   } @if (order(); as o) { @if (progressIndex() !== null) {
-  <section class="progress" aria-label="Order progress">
-    <ol class="progress__steps">
-      @for (step of progressSteps; track step; let i = $index) {
-      <li
-        class="progress__step"
-        [class.progress__step--done]="i < (progressIndex() ?? 0)"
-        [class.progress__step--current]="i === progressIndex()"
-        [attr.aria-current]="i === progressIndex() ? 'step' : null"
+  <lpg-section-card>
+    <section class="progress" aria-label="Order progress">
+      <ol class="progress__steps">
+        @for (step of progressSteps; track step; let i = $index) {
+        <li
+          class="progress__step"
+          [class.progress__step--done]="i < (progressIndex() ?? 0)"
+          [class.progress__step--current]="i === progressIndex()"
+          [attr.aria-current]="i === progressIndex() ? 'step' : null"
+        >
+          <span class="progress__marker" aria-hidden="true">
+            @if (i < (progressIndex() ?? 0) || (i === progressIndex() && i === progressSteps.length
+            - 1)) {
+            <i class="pi pi-check"></i>
+            } @else { {{ i + 1 }} }
+          </span>
+          <span class="progress__label">{{ step }}</span>
+        </li>
+        }
+      </ol>
+      @if (progressNote(); as note) {
+      <p-message
+        class="progress__note"
+        [severity]="o.status === 'failed_delivery' ? 'warn' : 'info'"
+        [icon]="o.status === 'failed_delivery' ? 'pi pi-exclamation-triangle' : 'pi pi-info-circle'"
+        >{{ note }}</p-message
       >
-        <span class="progress__marker" aria-hidden="true">
-          @if (i < (progressIndex() ?? 0) || (i === progressIndex() && i === progressSteps.length -
-          1)) {
-          <i class="pi pi-check"></i>
-          } @else { {{ i + 1 }} }
-        </span>
-        <span class="progress__label">{{ step }}</span>
-      </li>
       }
-    </ol>
-    @if (progressNote(); as note) {
-    <p-message
-      class="progress__note"
-      [severity]="o.status === 'failed_delivery' ? 'warn' : 'info'"
-      [icon]="o.status === 'failed_delivery' ? 'pi pi-exclamation-triangle' : 'pi pi-info-circle'"
-      >{{ note }}</p-message
-    >
-    }
-  </section>
+    </section>
+  </lpg-section-card>
   }
-  <div class="detail-grid">
-    @if (o.customer; as customer) {
-    <div class="detail-field">
-      <span class="detail-field__label">Customer</span>
-      <span>{{ customer.full_name }}</span>
-      <span class="detail-field__hint"
-        >{{ customer.phone_number }}@if (customer.consumer_number) { · {{ customer.consumer_number
-        }} }</span
-      >
-      <span class="detail-field__links">
-        <a [routerLink]="['/customers']" [queryParams]="{ id: customer.id }">Profile</a>
-        <a *lpgHasPermission="'ledger:read'" [routerLink]="['/ledger', customer.id]">Ledger</a>
-      </span>
+  <lpg-section-card heading="Order summary">
+    <div class="detail-grid">
+      @if (o.customer; as customer) {
+      <div class="detail-field">
+        <span class="detail-field__label">Customer</span>
+        <span>{{ customer.full_name }}</span>
+        <span class="detail-field__hint"
+          >{{ customer.phone_number }}@if (customer.consumer_number) { · {{ customer.consumer_number
+          }} }</span
+        >
+        <span class="detail-field__links">
+          <a [routerLink]="['/customers']" [queryParams]="{ id: customer.id }">Profile</a>
+          <a *lpgHasPermission="'ledger:read'" [routerLink]="['/ledger', customer.id]">Ledger</a>
+        </span>
+      </div>
+      }
+      <div class="detail-field">
+        <span class="detail-field__label">Booking Source</span>
+        <span>{{ bookingSourceLabel(o.booking_source) }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Requested Date</span>
+        <span>{{ o.requested_date | lpgDate }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Delivery Address</span>
+        <span>{{ o.delivery_address.address_line }}</span>
+      </div>
+      @if (o.total_amount && o.tax_amount != null) {
+      <div class="detail-field">
+        <span class="detail-field__label">Price before GST</span>
+        <span>{{ formatCurrencyInr(o.total_amount) }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">GST</span>
+        <span>{{ formatCurrencyInr(o.tax_amount) }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Total to pay</span>
+        <span>{{ formatCurrencyInr(o.payable_amount ?? o.total_amount) }}</span>
+      </div>
+      } @else { @if (priceEstimate(); as estimate) { @if (estimate.payable_amount != null &&
+      estimate.tax_amount != null) {
+      <div class="detail-field">
+        <span class="detail-field__label"
+          >{{ estimate.prices_include_gst ? 'Price including GST' : 'Price before GST' }}</span
+        >
+        <span>{{ formatCurrencyInr(estimate.total_amount) }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">GST</span>
+        <span>{{ formatCurrencyInr(estimate.tax_amount) }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Estimated total to pay</span>
+        <span>{{ formatCurrencyInr(estimate.payable_amount) }}</span>
+        <span class="detail-field__hint"
+          >At today's prices. The price is fixed when the order is confirmed.</span
+        >
+      </div>
+      } @else {
+      <div class="detail-field">
+        <span class="detail-field__label">Estimated price</span>
+        <span>{{ formatCurrencyInr(estimate.total_amount) }}</span>
+        <span class="detail-field__hint"
+          >At today's prices, without GST details: set the GST rate under Cylinders & Prices. The
+          price is fixed when the order is confirmed.</span
+        >
+      </div>
+      } } @else {
+      <div class="detail-field">
+        <span class="detail-field__label">Total Amount</span>
+        <span
+          >{{ o.total_amount ? formatCurrencyInr(o.total_amount) + ' + GST' : 'Not confirmed yet'
+          }}</span
+        >
+      </div>
+      } } @if (o.payment_method_preference) {
+      <div class="detail-field">
+        <span class="detail-field__label">Payment Method</span>
+        <span>{{ statusLabel(o.payment_method_preference) }}</span>
+      </div>
+      }
     </div>
-    }
-    <div class="detail-field">
-      <span class="detail-field__label">Booking Source</span>
-      <span>{{ bookingSourceLabel(o.booking_source) }}</span>
-    </div>
-    <div class="detail-field">
-      <span class="detail-field__label">Requested Date</span>
-      <span>{{ o.requested_date | lpgDate }}</span>
-    </div>
-    <div class="detail-field">
-      <span class="detail-field__label">Delivery Address</span>
-      <span>{{ o.delivery_address.address_line }}</span>
-    </div>
-    @if (o.total_amount && o.tax_amount != null) {
-    <div class="detail-field">
-      <span class="detail-field__label">Price before GST</span>
-      <span>{{ formatCurrencyInr(o.total_amount) }}</span>
-    </div>
-    <div class="detail-field">
-      <span class="detail-field__label">GST</span>
-      <span>{{ formatCurrencyInr(o.tax_amount) }}</span>
-    </div>
-    <div class="detail-field">
-      <span class="detail-field__label">Total to pay</span>
-      <span>{{ formatCurrencyInr(o.payable_amount ?? o.total_amount) }}</span>
-    </div>
-    } @else {
-    <div class="detail-field">
-      <span class="detail-field__label">Total Amount</span>
-      <span
-        >{{ o.total_amount ? formatCurrencyInr(o.total_amount) + ' + GST' : 'Not confirmed yet'
-        }}</span
-      >
-    </div>
-    } @if (o.payment_method_preference) {
-    <div class="detail-field">
-      <span class="detail-field__label">Payment Method</span>
-      <span>{{ statusLabel(o.payment_method_preference) }}</span>
-    </div>
-    }
-  </div>
+  </lpg-section-card>
 
   @if (tracking(); as t) { @if (t.driver; as driver) {
-  <section class="driver-card" aria-labelledby="order-driver-title">
-    <h2 id="order-driver-title" class="section-title">Driver and vehicle</h2>
-    <div class="detail-grid">
-      <div class="detail-field">
-        <span class="detail-field__label">Driver</span>
-        <span>{{ driver.name }}</span>
-        @if (driver.phone_number) {
-        <span class="detail-field__hint"
-          ><a [href]="'tel:' + driver.phone_number">{{ driver.phone_number }}</a></span
-        >
-        }
-      </div>
-      <div class="detail-field">
-        <span class="detail-field__label">Vehicle</span>
-        <span>{{ driver.vehicle_number ?? 'Not recorded' }}</span>
-        @if (driver.vehicle_model) {
-        <span class="detail-field__hint">{{ driver.vehicle_model }}</span>
-        }
-      </div>
-      @if (t.route_id) {
-      <div class="detail-field">
-        <span class="detail-field__label">Trip</span>
-        <span>{{ routeStatusLabel(t.route_status) }}</span>
-        @if (hasDispatch()) {
-        <span class="detail-field__links" *lpgHasPermission="'routes:manage'">
-          <a [routerLink]="['/dispatch']" [queryParams]="{ trip: t.route_id }">Open trip</a>
-        </span>
-        }
-      </div>
-      }
-    </div>
-    @if (isOutForDelivery()) { @if (t.driver_location; as location) {
-    <div class="driver-card__live">
-      <div class="driver-card__live-head">
-        <span class="detail-field__label">Live location</span>
-        <span class="detail-field__hint"
-          >Updated {{ locationAgeLabel() }}@if (location.speed_kph !== null && location.speed_kph
-          !== undefined) { · {{ location.speed_kph | number: '1.0-0' }} km/h }</span
-        >
-        @if (directionsUrl(); as url) {
-        <a [href]="url" target="_blank" rel="noopener">Open in Maps</a>
-        }
-      </div>
-      @if ((locationAgeSeconds() ?? 0) > 120) {
-      <p-message severity="warn" icon="pi pi-exclamation-triangle"
-        >The driver's phone has not reported for a while. This is the last known
-        position.</p-message
-      >
-      } @if (mapEmbedUrl(); as src) {
-      <iframe
-        class="driver-card__map"
-        title="Driver location"
-        loading="lazy"
-        referrerpolicy="no-referrer"
-        [src]="src"
-      ></iframe>
-      }
-    </div>
-    } @else {
-    <p-message severity="info" icon="pi pi-map-marker"
-      >No location yet. It appears once the driver turns on "Share live location" in the Driver
-      App.</p-message
-    >
-    } }
-  </section>
-  } } @if (canSeeInvoices() && invoiceExpected()) {
-  <section class="invoice-card" aria-labelledby="order-invoice-title">
-    <h2 id="order-invoice-title" class="section-title">Invoice</h2>
-    @for (invoice of invoices(); track invoice.invoice_id) {
-    <div class="invoice-card__row">
-      <div class="invoice-card__heading">
-        <button
-          type="button"
-          class="order-link invoice-card__number"
-          (click)="openInvoice(invoice)"
-        >
-          {{ invoice.invoice_number ?? 'Draft invoice' }}
-        </button>
-        <p-tag
-          [value]="invoiceStatusLabel(invoice.status)"
-          [severity]="invoiceStatusSeverity(invoice.status)"
-        />
-      </div>
-      <div class="invoice-card__summary">
+  <lpg-section-card heading="Driver and vehicle">
+    <div class="driver-card">
+      <div class="detail-grid">
         <div class="detail-field">
-          <span class="detail-field__label">Issued</span>
-          <span>{{ invoice.issued_at | lpgDate }}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-field__label">Total (incl. GST)</span>
-          <span>{{ formatCurrencyInr(invoice.total_amount) }}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-field__label">Paid</span>
-          <span>{{ formatCurrencyInr(invoice.amount_paid ?? 0) }}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-field__label">Balance due</span>
-          <span [class.invoice-card__due]="hasBalance(invoice)"
-            >{{ formatCurrencyInr(invoice.balance_due ?? 0) }}</span
+          <span class="detail-field__label">Driver</span>
+          <span>{{ driver.name }}</span>
+          @if (driver.phone_number) {
+          <span class="detail-field__hint"
+            ><a [href]="'tel:' + driver.phone_number">{{ driver.phone_number }}</a></span
           >
+          }
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Vehicle</span>
+          <span>{{ driver.vehicle_number ?? 'Not recorded' }}</span>
+          @if (driver.vehicle_model) {
+          <span class="detail-field__hint">{{ driver.vehicle_model }}</span>
+          }
+        </div>
+        @if (t.route_id) {
+        <div class="detail-field">
+          <span class="detail-field__label">Trip</span>
+          <span>{{ routeStatusLabel(t.route_status) }}</span>
+          @if (hasDispatch()) {
+          <span class="detail-field__links" *lpgHasPermission="'routes:manage'">
+            <a [routerLink]="['/dispatch']" [queryParams]="{ trip: t.route_id }">Open trip</a>
+          </span>
+          }
+        </div>
+        }
+      </div>
+      @if (isOutForDelivery()) { @if (t.driver_location; as location) {
+      <div class="driver-card__live">
+        <div class="driver-card__live-head">
+          <span class="detail-field__label">Live location</span>
+          <span class="detail-field__hint"
+            >Updated {{ locationAgeLabel() }}@if (location.speed_kph !== null && location.speed_kph
+            !== undefined) { · {{ location.speed_kph | number: '1.0-0' }} km/h }</span
+          >
+          @if (directionsUrl(); as url) {
+          <a [href]="url" target="_blank" rel="noopener">Open in Maps</a>
+          }
+        </div>
+        @if ((locationAgeSeconds() ?? 0) > 120) {
+        <p-message severity="warn" icon="pi pi-exclamation-triangle"
+          >The driver's phone has not reported for a while. This is the last known
+          position.</p-message
+        >
+        } @if (mapEmbedUrl(); as src) {
+        <iframe
+          class="driver-card__map"
+          title="Driver location"
+          loading="lazy"
+          referrerpolicy="no-referrer"
+          [src]="src"
+        ></iframe>
+        }
+      </div>
+      } @else {
+      <p-message severity="info" icon="pi pi-map-marker"
+        >No location yet. It appears once the driver turns on "Share live location" in the Driver
+        App.</p-message
+      >
+      } }
+    </div>
+  </lpg-section-card>
+  } } @if (canSeeInvoices() && invoiceExpected()) {
+  <lpg-section-card heading="Invoice">
+    <div class="invoice-card">
+      @for (invoice of invoices(); track invoice.invoice_id) {
+      <div class="invoice-card__row">
+        <div class="invoice-card__heading">
+          <button
+            type="button"
+            class="order-link invoice-card__number"
+            (click)="openInvoice(invoice)"
+          >
+            {{ invoice.invoice_number ?? 'Draft invoice' }}
+          </button>
+          <p-tag
+            [value]="invoiceStatusLabel(invoice.status)"
+            [severity]="invoiceStatusSeverity(invoice.status)"
+          />
+        </div>
+        <div class="invoice-card__summary">
+          <div class="detail-field">
+            <span class="detail-field__label">Issued</span>
+            <span>{{ invoice.issued_at | lpgDate }}</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Total (incl. GST)</span>
+            <span>{{ formatCurrencyInr(invoice.total_amount) }}</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Paid</span>
+            <span>{{ formatCurrencyInr(invoice.amount_paid ?? 0) }}</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Balance due</span>
+            <span [class.invoice-card__due]="hasBalance(invoice)"
+              >{{ formatCurrencyInr(invoice.balance_due ?? 0) }}</span
+            >
+          </div>
         </div>
       </div>
-    </div>
-    } @empty {
-    <div class="invoice-card__row">
-      <p class="invoice-card__empty">No invoice has been issued for this order yet.</p>
-      <div class="invoice-card__actions" *lpgHasPermission="'invoices:issue'">
-        <button pButton type="button" [disabled]="invoiceBusy()" (click)="issueInvoice()">
-          <i [class]="invoiceBusy() ? 'pi pi-spin pi-spinner' : 'pi pi-file'"></i>
-          <span>Issue invoice</span>
-        </button>
+      } @empty {
+      <div class="invoice-card__row">
+        <p class="invoice-card__empty">No invoice has been issued for this order yet.</p>
+        <div class="invoice-card__actions" *lpgHasPermission="'invoices:issue'">
+          <button pButton type="button" [disabled]="invoiceBusy()" (click)="issueInvoice()">
+            <i [class]="invoiceBusy() ? 'pi pi-spin pi-spinner' : 'pi pi-file'"></i>
+            <span>Issue invoice</span>
+          </button>
+        </div>
       </div>
+      }
     </div>
-    }
-  </section>
+  </lpg-section-card>
   }
 
-  <h2 class="section-title">Lines</h2>
-  <table class="lines-table">
-    <thead>
-      <tr>
-        <th>Cylinder Type</th>
-        <th>Ordered</th>
-        <th>Delivered</th>
-        <th>Pending</th>
-        <th>Empties Collected</th>
-        <th>Backordered</th>
-        <th>Unit Price</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (line of o.lines; track line.id) {
-      <tr>
-        <td>{{ cylinderTypeNameById().get(line.cylinder_type_id) ?? line.cylinder_type_id }}</td>
-        <td>{{ line.quantity_ordered }}</td>
-        <td>{{ line.quantity_delivered }}</td>
-        <td>{{ line.quantity_pending }}</td>
-        <td>{{ line.quantity_collected_empty }}</td>
-        <td>{{ line.is_backordered ? 'Yes' : 'No' }}</td>
-        <td>{{ line.unit_price ? formatCurrencyInr(line.unit_price) : '—' }}</td>
-      </tr>
-      }
-    </tbody>
-  </table>
+  <lpg-section-card heading="Lines">
+    <div class="table-scroll">
+      <table class="lines-table">
+        <thead>
+          <tr>
+            <th>Cylinder Type</th>
+            <th>Ordered</th>
+            <th>Delivered</th>
+            <th>Pending</th>
+            <th>Empties Collected</th>
+            <th>Backordered</th>
+            <th>Unit Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of o.lines; track line.id) {
+          <tr>
+            <td>
+              {{ cylinderTypeNameById().get(line.cylinder_type_id) ?? line.cylinder_type_id }}
+            </td>
+            <td>{{ line.quantity_ordered }}</td>
+            <td>{{ line.quantity_delivered }}</td>
+            <td>{{ line.quantity_pending }}</td>
+            <td>{{ line.quantity_collected_empty }}</td>
+            <td>
+              <p-tag
+                [severity]="line.is_backordered ? 'warn' : 'secondary'"
+                [value]="line.is_backordered ? 'Yes' : 'No'"
+              />
+            </td>
+            <td>
+              @if (line.unit_price) { {{ formatCurrencyInr(line.unit_price) }} } @else if
+              (estimatedUnitPrices().get(line.id)) { {{
+              formatCurrencyInr(estimatedUnitPrices().get(line.id)!) }}
+              <span class="lines-table__note">estimate</span>
+              } @else { — }
+            </td>
+          </tr>
+          } @for (empty of o.other_empties ?? []; track empty.cylinder_type_id) {
+          <tr>
+            <td>
+              {{ cylinderTypeNameById().get(empty.cylinder_type_id) ?? empty.cylinder_type_id }}
+              <span class="lines-table__note">not on this order</span>
+            </td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>{{ empty.quantity }}</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </lpg-section-card>
 
   @if (proofOfDelivery(); as pod) {
-  <h2 class="section-title">Proof of delivery</h2>
-  <div class="detail-grid">
-    <div class="detail-field">
-      <span class="detail-field__label">Delivered</span>
-      <span>{{ pod.recorded_at | lpgDateTime }}</span>
-    </div>
-    <div class="detail-field">
-      <span class="detail-field__label">Collected</span>
-      <span
-        >{{ formatCurrencyInr(pod.amount_collected) }} · {{ statusLabel(pod.payment_method) }}</span
-      >
-    </div>
-    <div class="detail-field">
-      <span class="detail-field__label">OTP checked</span>
-      <span>{{ pod.otp_verified_at | lpgDateTime }}</span>
-    </div>
-    <div class="detail-field">
-      <span class="detail-field__label">Location</span>
-      <a
-        [href]="'https://www.google.com/maps?q=' + pod.gps_lat + ',' + pod.gps_lng"
-        target="_blank"
-        rel="noopener"
-        >{{ pod.gps_lat }}, {{ pod.gps_lng }}</a
-      >
+  <lpg-section-card heading="Proof of delivery">
+    <div class="detail-grid">
+      <div class="detail-field">
+        <span class="detail-field__label">Delivered</span>
+        <span>{{ pod.recorded_at | lpgDateTime }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Collected</span>
+        <span
+          >{{ formatCurrencyInr(pod.amount_collected) }} · {{ statusLabel(pod.payment_method)
+          }}</span
+        >
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">OTP checked</span>
+        <span>{{ pod.otp_verified_at | lpgDateTime }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Location</span>
+        <a
+          [href]="'https://www.google.com/maps?q=' + pod.gps_lat + ',' + pod.gps_lng"
+          target="_blank"
+          rel="noopener"
+          >{{ pod.gps_lat }}, {{ pod.gps_lng }}</a
+        >
+      </div>
+      @if (podMedia().length > 0) {
+      <div class="detail-field">
+        <span class="detail-field__label">Photos</span>
+        <button type="button" class="order-link" (click)="openPhotoViewer(0)">
+          <i class="pi pi-images" aria-hidden="true"></i>
+          {{ podMedia().length === 1 ? 'View photo' : 'View photos (' + podMedia().length + ')' }}
+        </button>
+      </div>
+      }
     </div>
     @if (podMedia().length > 0) {
-    <div class="detail-field">
-      <span class="detail-field__label">Photos</span>
-      <button type="button" class="order-link" (click)="openPhotoViewer(0)">
-        <i class="pi pi-images" aria-hidden="true"></i>
-        {{ podMedia().length === 1 ? 'View photo' : 'View photos (' + podMedia().length + ')' }}
-      </button>
+    <div class="pod-media">
+      @for (media of podMedia(); track media.url; let i = $index) {
+      <figure class="pod-media__item">
+        <button
+          type="button"
+          class="pod-media__thumb"
+          [attr.aria-label]="'View ' + media.label.toLowerCase()"
+          (click)="openPhotoViewer(i)"
+        >
+          @if (brokenMedia().has(media.url)) {
+          <span class="pod-media__missing"
+            ><i class="pi pi-image" aria-hidden="true"></i>Not available</span
+          >
+          } @else {
+          <img [src]="media.url" [alt]="media.alt" (error)="markMediaBroken(media.url)" />
+          }
+        </button>
+        <figcaption>{{ media.label }}</figcaption>
+      </figure>
+      }
     </div>
     }
-  </div>
-  @if (podMedia().length > 0) {
-  <div class="pod-media">
-    @for (media of podMedia(); track media.url; let i = $index) {
-    <figure class="pod-media__item">
-      <button
-        type="button"
-        class="pod-media__thumb"
-        [attr.aria-label]="'View ' + media.label.toLowerCase()"
-        (click)="openPhotoViewer(i)"
-      >
-        @if (brokenMedia().has(media.url)) {
-        <span class="pod-media__missing"
-          ><i class="pi pi-image" aria-hidden="true"></i>Not available</span
-        >
-        } @else {
-        <img [src]="media.url" [alt]="media.alt" (error)="markMediaBroken(media.url)" />
-        }
-      </button>
-      <figcaption>{{ media.label }}</figcaption>
-    </figure>
-    }
-  </div>
-  } }
+  </lpg-section-card>
+  }
 
-  <h2 class="section-title">Timeline</h2>
-  <ol class="timeline">
-    @for (item of timeline(); track item.entry.id) {
-    <li class="timeline__entry" [class.timeline__entry--reminder]="item.kind === 'reminder'">
-      @if (item.kind === 'status') {
-      <span class="timeline__transition">
-        {{ item.entry.from_status ? statusLabel(item.entry.from_status) : 'Created' }}
-        <i class="pi pi-arrow-right"></i>
-        {{ statusLabel(item.entry.to_status) }}
-      </span>
-      <span class="timeline__when">{{ item.at | lpgDateTime }}</span>
-      @if (item.entry.reason) {
-      <span class="timeline__reason">{{ item.entry.reason }}</span>
-      } } @else {
-      <span class="timeline__transition"
-        ><i class="pi pi-bell"></i> Reminder sent to the {{ item.entry.audience === 'driver' ?
-        'driver' : 'customer' }}</span
-      >
-      <span class="timeline__when">{{ item.at | lpgDateTime }}</span>
-      <span class="timeline__reason">{{ item.entry.message }}</span>
+  <lpg-section-card heading="Timeline">
+    <ol class="timeline">
+      @for (item of timeline(); track item.entry.id) {
+      <li class="timeline__entry" [class.timeline__entry--reminder]="item.kind === 'reminder'">
+        @if (item.kind === 'status') {
+        <span class="timeline__transition">
+          {{ item.entry.from_status ? statusLabel(item.entry.from_status) : 'Created' }}
+          <i class="pi pi-arrow-right"></i>
+          {{ statusLabel(item.entry.to_status) }}
+        </span>
+        <span class="timeline__when">{{ item.at | lpgDateTime }}</span>
+        @if (item.entry.reason) {
+        <span class="timeline__reason">{{ item.entry.reason }}</span>
+        } } @else {
+        <span class="timeline__transition"
+          ><i class="pi pi-bell"></i> Reminder sent to the {{ item.entry.audience === 'driver' ?
+          'driver' : 'customer' }}</span
+        >
+        <span class="timeline__when">{{ item.at | lpgDateTime }}</span>
+        <span class="timeline__reason">{{ item.entry.message }}</span>
+        }
+      </li>
+      } @empty {
+      <p class="empty-hint">No history yet.</p>
       }
-    </li>
-    } @empty {
-    <p class="empty-hint">No history yet.</p>
-    }
-  </ol>
+    </ol>
+  </lpg-section-card>
   }
 
   <!-- Cancel Order Drawer -->
@@ -502,7 +569,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '28rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     <form [formGroup]="cancelForm" (ngSubmit)="onSubmitCancel()" class="dialog-form">
       <div class="dialog-form__fields">
@@ -549,7 +616,7 @@
     [(visible)]="showSendOutDrawer"
     position="right"
     [modal]="true"
-    styleClass="!w-full md:!w-[34rem]"
+    styleClass="!w-full md:!w-[var(--drawer-width)]"
     (onHide)="sendOutTrigger()?.nativeElement?.focus()"
   >
     <form class="dialog-form" (ngSubmit)="onSubmitSendOut()">
@@ -564,6 +631,8 @@
         } @else {
         <lpg-form-field label="Trip" for="send_trip">
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="send_trip"
             name="send_trip"
             [options]="sendTripOptions()"
@@ -578,6 +647,8 @@
         @if (isNewTrip()) {
         <lpg-form-field label="Driver" for="send_driver">
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="send_driver"
             name="send_driver"
             [options]="driverOptions()"
@@ -593,6 +664,8 @@
         </lpg-form-field>
         <lpg-form-field label="Van" for="send_vehicle">
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="send_vehicle"
             name="send_vehicle"
             [options]="vehicleOptions()"
@@ -609,6 +682,8 @@
         } }
         <lpg-form-field label="Load from godown" for="send_warehouse">
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="send_warehouse"
             name="send_warehouse"
             [options]="sendWarehouseOptions()"
@@ -694,7 +769,7 @@
     [(visible)]="showFailedDeliveryDrawer"
     position="right"
     [modal]="true"
-    [style]="{ width: '100%', maxWidth: '28rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="failedDeliveryTrigger()?.nativeElement?.focus()"
   >
     <form
@@ -710,6 +785,8 @@
           [messages]="fieldMessages.reason_code"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="failed_reason"
             formControlName="reason_code"
             [options]="failedDeliveryReasons"
@@ -725,6 +802,8 @@
           [messages]="fieldMessages.resolution_action"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="failed_resolution"
             formControlName="resolution_action"
             [options]="resolutionActions"
@@ -741,7 +820,7 @@
           severity="secondary"
           (click)="showFailedDeliveryDrawer.set(false)"
         >
-          Close
+          Cancel
         </button>
         <button
           pButton
@@ -749,7 +828,7 @@
           severity="warn"
           [disabled]="failedDeliveryForm.invalid || loading()"
         >
-          Record
+          Save failed delivery
         </button>
       </div>
     </form>
@@ -761,7 +840,7 @@
     [(visible)]="showDeliverDrawer"
     position="right"
     [modal]="true"
-    styleClass="!w-full md:!w-[32rem]"
+    styleClass="!w-full md:!w-[var(--drawer-width)]"
     (onHide)="deliverTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="deliverForm" (ngSubmit)="onSubmitDeliver()" class="dialog-form">
@@ -831,6 +910,8 @@
           [messages]="fieldMessages.payment_method"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="deliver_payment_method"
             formControlName="payment_method"
             [options]="paymentMethods"
@@ -945,7 +1026,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     <form [formGroup]="amendForm" (ngSubmit)="onSubmitAmend()" class="dialog-form" novalidate>
       <div class="dialog-form__fields">
@@ -979,6 +1060,8 @@
           [messages]="fieldMessages.address_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="amend_address"
             formControlName="address_id"
             [options]="amendAddresses()"
@@ -994,6 +1077,8 @@
         </lpg-form-field>
         <lpg-form-field label="Payment method" for="amend_payment">
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="amend_payment"
             formControlName="payment_method_preference"
             [options]="paymentMethods"
@@ -1044,7 +1129,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '28rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     <form [formGroup]="rescheduleForm" (ngSubmit)="onReschedule()" class="dialog-form" novalidate>
       <div class="dialog-form__fields">
@@ -1095,7 +1180,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '28rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     <form
       [formGroup]="rejectCancelForm"
@@ -1145,7 +1230,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '28rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     <form [formGroup]="reminderForm" (ngSubmit)="onSendReminder()" class="dialog-form" novalidate>
       <div class="dialog-form__fields">
@@ -1163,6 +1248,8 @@
           [control]="reminderForm.controls.preset"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="reminder_preset"
             formControlName="preset"
             [options]="reminderOptions()"

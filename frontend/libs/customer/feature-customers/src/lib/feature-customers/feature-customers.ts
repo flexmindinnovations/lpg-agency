@@ -25,7 +25,7 @@ import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective } from 'primeng/button';
 import { Dialog } from 'primeng/dialog';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { DrawerA11yDirective, SectionCardComponent } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
@@ -74,6 +74,7 @@ import { TitleCasePipe } from '@angular/common';
   selector: 'lpg-feature-customers',
   standalone: true,
   imports: [
+    SectionCardComponent,
     PageActionsDirective,
     PageHeaderComponent,
     HeaderTitlePortalDirective,

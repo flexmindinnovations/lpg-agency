@@ -17,6 +17,7 @@ import {
   errorMessageFor,
   type ModuleResponse,
 } from '@lpg/shared/data-access';
+import { SectionCardComponent } from '@lpg/shared/ui';
 
 /**
  * An agency's modules (Platform Console, super admin): a one-line summary with
@@ -28,23 +29,12 @@ import {
 @Component({
   selector: 'lpg-agency-modules',
   standalone: true,
-  imports: [FormsModule, ToggleSwitch, ButtonModule, DialogModule],
+  imports: [SectionCardComponent, FormsModule, ToggleSwitch, ButtonModule, DialogModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="summary" aria-labelledby="agency-modules-heading">
-      <div class="summary__text">
-        <h3 id="agency-modules-heading" class="summary__heading">Modules</h3>
-        <span class="summary__status" aria-live="polite">
-          @if (loading()) {
-            Loading modules…
-          } @else if (failed()) {
-            Modules could not be loaded.
-          } @else {
-            {{ savedCount() }} of {{ modules().length }} on
-          }
-        </span>
-      </div>
+    <lpg-section-card heading="Modules" [hasHeaderActions]="true">
       <button
+        headerActions
         #openButton
         pButton
         type="button"
@@ -57,7 +47,16 @@ import {
         <i class="pi pi-th-large" aria-hidden="true"></i>
         <span>{{ readonly() ? 'View modules' : 'Manage modules' }}</span>
       </button>
-    </section>
+      <span class="summary__status" aria-live="polite">
+        @if (loading()) {
+          Loading modules…
+        } @else if (failed()) {
+          Modules could not be loaded.
+        } @else {
+          {{ savedCount() }} of {{ modules().length }} on
+        }
+      </span>
+    </lpg-section-card>
 
     <p-dialog
       [visible]="dialogOpen()"
@@ -162,29 +161,6 @@ import {
   `,
   styles: [
     `
-      .summary {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: var(--spacing-md);
-      }
-
-      .summary__text {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .summary__heading {
-        margin: 0;
-        font-size: var(--typography-caption-font-size);
-        font-weight: var(--typography-label-font-weight);
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
       .summary__status {
         font-size: var(--typography-body-small-font-size);
         color: var(--color-text-primary);

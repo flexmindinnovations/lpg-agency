@@ -108,8 +108,8 @@ class RegisterDeviceUseCase:
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: RegisterDeviceCommand) -> DeviceRegistration:
-        if command.app_type not in CONTROLLED_APP_TYPES or not command.mode.records_devices:
-            msg = "Devices are only recorded for the Driver and Admin apps, and not when off."
+        if command.app_type not in CONTROLLED_APP_TYPES:
+            msg = "Devices are only recorded for the Driver and Admin apps."
             raise ValidationError(msg, app_type=command.app_type)
 
         license_ = await self._license_repository.get_by_tenant_id(command.tenant_id)

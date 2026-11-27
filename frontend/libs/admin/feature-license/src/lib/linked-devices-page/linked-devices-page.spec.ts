@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ConfirmationService, type Confirmation } from 'primeng/api';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import {
   AdminTenantConfigurationService,
   LicenseService,
@@ -105,12 +105,23 @@ describe('LinkedDevicesPage', () => {
   it.each([
     ['enforce', 'enforce'],
     ['observe', 'observe'],
-    ['bogus', 'off'],
-    [undefined, 'off'],
+    ['off', 'observe'],
+    [undefined, 'observe'],
   ])('reads the current device control mode (%s)', (stored, expected) => {
     const { page } = render({ mode: stored });
 
     expect(page.mode()).toBe(expected);
+    expect(page.approvalRequired()).toBe(expected === 'enforce');
+  });
+
+  it('shows one switch for approving new phones, and no way to stop listing them', () => {
+    const { fixture } = render();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelectorAll('p-toggleswitch')).toHaveLength(1);
+    expect(element.querySelector('label[for="device-approval"]')?.textContent).toContain(
+      'Approve new phones first',
+    );
   });
 
   it('shows the waiting count on its tab', () => {
@@ -133,19 +144,19 @@ describe('LinkedDevicesPage', () => {
     });
   });
 
-  it('saves watch-only straight away', () => {
-    const { page } = render();
+  it('stops requiring approval straight away', () => {
+    const { page } = render({ mode: 'enforce' });
 
-    page.chooseMode('observe');
+    page.setApprovalRequired(false);
 
     expect(config['setConfiguration']).toHaveBeenCalledWith('device_control', 'observe');
     expect(page.mode()).toBe('observe');
   });
 
-  it('asks before switching to approve-only, and says how many phones are waiting', () => {
+  it('asks before requiring approval, and says how many phones are waiting', () => {
     const { page } = render();
 
-    page.chooseMode('enforce');
+    page.setApprovalRequired(true);
 
     expect(config['setConfiguration']).not.toHaveBeenCalled();
     expect(confirmations[0].message).toContain('1 phone is still waiting');
@@ -154,13 +165,14 @@ describe('LinkedDevicesPage', () => {
     expect(page.mode()).toBe('enforce');
   });
 
-  it('does not change the mode when the admin says not yet', () => {
+  it('puts the switch back when the admin says not yet', () => {
     const { page } = render();
 
-    page.chooseMode('enforce');
+    page.setApprovalRequired(true);
     confirmations[0].reject?.();
 
-    expect(page.mode()).toBe('off');
+    expect(page.mode()).toBe('observe');
+    expect(page.approvalRequired()).toBe(false);
   });
 
   it('opens a phone with its history and the actions its state allows', () => {
@@ -254,8 +266,11 @@ describe('LinkedDevicesPage', () => {
     const { page } = render();
     const actions = page.columns.find((c: { header: string }) => c.header === 'Actions');
 
-    expect(actions.cellRendererParams.label(device())).toBe("Delete Ravi's phone");
-    actions.cellRendererParams.onAction(device());
+    const [remove] = actions.cellRendererParams.actions;
+    expect(remove.text).toBe('Delete');
+    expect(remove.severity).toBe('danger');
+    expect(remove.label(device())).toBe("Delete Ravi's phone");
+    remove.onAction(device());
     expect(confirmations).toHaveLength(1);
   });
 
@@ -306,9 +321,19 @@ describe('LinkedDevicesPage', () => {
     expect(license['updateDevice']).toHaveBeenCalledWith('d1', { assetNote: '' });
   });
 
-  it('tells the admin why the list is empty when control is off', () => {
+  it('tells the admin how phones get into an empty list', () => {
     const { page } = render({ devices: [] });
 
-    expect(page.emptyMessage()).toContain('Watch only');
+    expect(page.emptyMessage()).toContain('when someone signs in');
+  });
+
+  it('puts the switch back when the change cannot be saved', () => {
+    const { page } = render({ mode: 'enforce' });
+    config['setConfiguration'].mockReturnValue(throwError(() => new Error('offline')));
+
+    page.setApprovalRequired(false);
+
+    expect(page.mode()).toBe('enforce');
+    expect(page.approvalRequired()).toBe(true);
   });
 });

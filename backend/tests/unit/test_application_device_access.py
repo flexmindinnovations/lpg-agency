@@ -161,13 +161,6 @@ async def _bind(
     return await binder.bind(user, context), registrar
 
 
-async def test_off_records_nothing_and_binds_nothing() -> None:
-    binding, registrar = await _bind(DeviceControlMode.OFF, _user(), _context())
-
-    assert binding is None
-    assert registrar.commands == []
-
-
 @pytest.mark.parametrize("mode", [DeviceControlMode.OBSERVE, DeviceControlMode.ENFORCE])
 async def test_a_driver_sign_in_is_recorded_with_only_hashed_identifiers(
     mode: DeviceControlMode,
@@ -257,10 +250,39 @@ async def test_a_waiting_phone_may_sign_in_so_it_can_ask_whether_it_is_approved(
     assert binding is not None
 
 
-async def test_observe_never_blocks_even_a_blocked_phone() -> None:
-    binding, _ = await _bind(DeviceControlMode.OBSERVE, _user(), _context(), DeviceStatus.BLOCKED)
+async def test_a_blocked_phone_is_refused_even_when_approval_is_not_required() -> None:
+    with pytest.raises(DeviceBlockedError):
+        await _bind(DeviceControlMode.OBSERVE, _user(), _context(), DeviceStatus.BLOCKED)
+
+
+@pytest.mark.parametrize("status", [DeviceStatus.PENDING, DeviceStatus.APPROVED])
+async def test_without_approval_required_other_phones_sign_in(status: DeviceStatus) -> None:
+    binding, _ = await _bind(DeviceControlMode.OBSERVE, _user(), _context(), status)
 
     assert binding is not None
+
+
+class FailingRegistrar(FakeRegistrar):
+    """The agency has no licence yet, or already has too many phones waiting."""
+
+    async def register(self, command: RegisterDeviceCommand) -> DeviceRegistration:
+        self.commands.append(command)
+        msg = "no licence"
+        raise RuntimeError(msg)
+
+
+async def test_a_phone_that_cannot_be_listed_still_signs_in() -> None:
+    binder = DeviceSessionBinder(FakeModes(DeviceControlMode.OBSERVE), FailingRegistrar())
+
+    assert await binder.bind(_user(), _context()) is None
+    assert await binder.rebind(_user(), _context(), None) is None
+
+
+async def test_when_approval_is_required_a_failed_registration_refuses_the_sign_in() -> None:
+    binder = DeviceSessionBinder(FakeModes(DeviceControlMode.ENFORCE), FailingRegistrar())
+
+    with pytest.raises(RuntimeError):
+        await binder.bind(_user(), _context())
 
 
 # -- Refresh --------------------------------------------------------------------------------
@@ -285,12 +307,6 @@ async def test_a_phone_bound_refresh_token_needs_the_phone_under_enforce_even_fo
     # an unbound, dashboard-style session.
     with pytest.raises(DeviceRequiredError):
         await binder.rebind(_user("agency_admin"), None, uuid.uuid4())
-
-
-async def test_a_refresh_after_control_is_switched_off_carries_on_unbound() -> None:
-    binder = DeviceSessionBinder(FakeModes(DeviceControlMode.OFF), FakeRegistrar())
-
-    assert await binder.rebind(_user(), _context(), uuid.uuid4()) is None
 
 
 async def test_a_session_that_predates_control_is_bound_at_its_next_refresh() -> None:
@@ -338,14 +354,6 @@ async def test_unbound_non_driver_sessions_cost_nothing_and_are_never_checked(ro
     assert (modes.reads, access.reads) == (0, 0)
 
 
-async def test_off_lets_everything_through_without_reading_the_phone() -> None:
-    access = FakeAccess(_access(DeviceStatus.BLOCKED))
-    gate = DeviceAccessGate(FakeModes(DeviceControlMode.OFF), access)
-
-    assert await _check(gate, device_id=uuid.uuid4()) is None
-    assert access.reads == 0
-
-
 @pytest.mark.parametrize(
     ("status", "error"),
     [
@@ -372,12 +380,18 @@ async def test_enforce_lets_an_approved_phone_through() -> None:
     assert result.status is DeviceStatus.APPROVED
 
 
-async def test_observe_never_refuses_a_blocked_phone() -> None:
+async def test_a_blocked_phone_is_refused_on_every_request_without_approval_too() -> None:
     gate = _gate(DeviceControlMode.OBSERVE, _access(DeviceStatus.BLOCKED))
 
-    result = await _check(gate, device_id=uuid.uuid4())
+    with pytest.raises(DeviceBlockedError):
+        await _check(gate, device_id=uuid.uuid4())
 
-    assert result is not None
+
+@pytest.mark.parametrize("status", [DeviceStatus.PENDING, DeviceStatus.APPROVED])
+async def test_without_approval_required_other_phones_get_through(status: DeviceStatus) -> None:
+    gate = _gate(DeviceControlMode.OBSERVE, _access(status))
+
+    assert await _check(gate, device_id=uuid.uuid4()) is not None
 
 
 async def test_the_state_check_can_be_skipped_so_a_blocked_phone_can_learn_its_state() -> None:
@@ -429,4 +443,3 @@ async def test_a_driver_session_opened_before_control_must_bind_itself_under_enf
         await _check(_gate(DeviceControlMode.ENFORCE, None), device_id=None)
 
     assert await _check(_gate(DeviceControlMode.OBSERVE, None), device_id=None) is None
-    assert await _check(_gate(DeviceControlMode.OFF, None), device_id=None) is None

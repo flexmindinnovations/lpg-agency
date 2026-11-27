@@ -15,7 +15,7 @@ import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective } from 'primeng/button';
 import { ConfirmationService } from 'primeng/api';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { DrawerA11yDirective, SectionCardComponent } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
@@ -75,6 +75,7 @@ const STATUS_SEVERITY: Record<string, ChipSeverity> = {
   selector: 'lib-feature-employees',
   standalone: true,
   imports: [
+    SectionCardComponent,
     PageActionsDirective,
     PageHeaderComponent,
     HeaderTitlePortalDirective,
@@ -190,7 +191,13 @@ export class FeatureEmployees implements OnInit {
     { field: 'first_name', header: 'First Name', sortable: true },
     { field: 'last_name', header: 'Last Name', sortable: true },
     { field: 'role', header: 'Role', sortable: true, cellRenderer: StatusChipCell },
-    { field: 'app_login', header: 'App login', sortable: true },
+    {
+      field: 'app_login',
+      header: 'App login',
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: { severityMap: { enabled: 'success', 'not enabled': 'warn' } },
+    },
     { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
   ];
 

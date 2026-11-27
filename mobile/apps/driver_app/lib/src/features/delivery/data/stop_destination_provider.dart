@@ -18,6 +18,10 @@ class StopDestination {
   /// `true` when [point] came from geocoding the address text, not a pin —
   /// show it as "approximate".
   final bool isApproximate;
+
+  /// Where turn-by-turn should head. `null` sends the maps app the address
+  /// text instead: an approximate point may be the middle of the area.
+  LatLng? get navigationPoint => isApproximate ? null : point;
 }
 
 /// Resolves a stop's destination: the order's pinned coords when present,
@@ -39,7 +43,7 @@ final stopDestinationProvider = FutureProvider.autoDispose
 
       final geocoded = await ref
           .watch(geocodingServiceProvider)
-          .search(address.addressLine);
+          .locate(address.addressLine);
       return StopDestination(
         point: geocoded,
         label: address.addressLine,

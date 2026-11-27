@@ -11,7 +11,7 @@ import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { DrawerA11yDirective, SectionCardComponent } from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
 import { ConfirmationService } from 'primeng/api';
 import {
@@ -52,6 +52,7 @@ const VALIDITY_OPTIONS = [
   selector: 'lpg-license-issuance-page',
   standalone: true,
   imports: [
+    SectionCardComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
@@ -111,7 +112,7 @@ const VALIDITY_OPTIONS = [
         [closeOnEscape]="true"
         header="Issue a license"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         <form
           id="issueLicenseForm"
@@ -128,6 +129,8 @@ const VALIDITY_OPTIONS = [
               [messages]="{ required: 'Select an agency to issue a license for.' }"
             >
               <p-select
+                [filter]="true"
+                [resetFilterOnHide]="true"
                 inputId="issue-tenant-id"
                 formControlName="tenantId"
                 [options]="unlicensedAgencyOptions()"
@@ -161,6 +164,8 @@ const VALIDITY_OPTIONS = [
               [control]="issueForm.controls.planTier"
             >
               <p-select
+                [filter]="true"
+                [resetFilterOnHide]="true"
                 inputId="issue-plan-tier"
                 formControlName="planTier"
                 [options]="planTierOptions"
@@ -177,6 +182,8 @@ const VALIDITY_OPTIONS = [
               [control]="issueForm.controls.validityDays"
             >
               <p-select
+                [filter]="true"
+                [resetFilterOnHide]="true"
                 inputId="issue-validity-days"
                 formControlName="validityDays"
                 [options]="validityOptions"
@@ -266,120 +273,135 @@ const VALIDITY_OPTIONS = [
         position="right"
         [modal]="true"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         @if (selectedLicense(); as license) {
           <div class="detail-view">
             <div class="detail-view__fields">
-              <lpg-detail-list>
-                <lpg-detail-item label="Agency">{{ license.tenant_name ?? '—' }}</lpg-detail-item>
-                <lpg-detail-item label="Agency code">{{
-                  agencyCodeFor(license.tenant_id)
-                }}</lpg-detail-item>
-                <lpg-detail-item label="Status">{{ statusLabel(license.status) }}</lpg-detail-item>
-                <lpg-detail-item label="Plan">{{ planLabel(license.plan_tier) }}</lpg-detail-item>
-                <lpg-detail-item label="Key">{{ license.key_prefix }}-****</lpg-detail-item>
-                <lpg-detail-item label="Issued">{{
-                  formatDate(license.issued_at)
-                }}</lpg-detail-item>
-                <lpg-detail-item label="Expires">{{
-                  formatDate(license.expires_at)
-                }}</lpg-detail-item>
-              </lpg-detail-list>
+              <lpg-section-card heading="Details">
+                <lpg-detail-list>
+                  <lpg-detail-item label="Agency">{{ license.tenant_name ?? '—' }}</lpg-detail-item>
+                  <lpg-detail-item label="Agency code">{{
+                    agencyCodeFor(license.tenant_id)
+                  }}</lpg-detail-item>
+                  <lpg-detail-item label="Status">{{
+                    statusLabel(license.status)
+                  }}</lpg-detail-item>
+                  <lpg-detail-item label="Plan">{{ planLabel(license.plan_tier) }}</lpg-detail-item>
+                  <lpg-detail-item label="Key">{{ license.key_prefix }}-****</lpg-detail-item>
+                  <lpg-detail-item label="Issued">{{
+                    formatDate(license.issued_at)
+                  }}</lpg-detail-item>
+                  <lpg-detail-item label="Expires">{{
+                    formatDate(license.expires_at)
+                  }}</lpg-detail-item>
+                </lpg-detail-list>
+              </lpg-section-card>
 
-              <form
-                [formGroup]="planTierForm"
-                (ngSubmit)="savePlanTier(license.tenant_id)"
-                class="dialog-form dialog-form--inline"
-              >
-                <div class="dialog-form__fields">
-                  <lpg-form-field
-                    label="Change plan tier"
-                    for="detail-plan-tier"
-                    [control]="planTierForm.controls.planTier"
-                  >
-                    <p-select
-                      inputId="detail-plan-tier"
-                      formControlName="planTier"
-                      [options]="planTierOptions"
-                      optionLabel="label"
-                      optionValue="value"
-                      appendTo="body"
-                      [fluid]="true"
+              <lpg-section-card heading="Plan tier">
+                <form
+                  [formGroup]="planTierForm"
+                  (ngSubmit)="savePlanTier(license.tenant_id)"
+                  class="dialog-form dialog-form--inline"
+                >
+                  <div class="dialog-form__fields">
+                    <lpg-form-field
+                      label="Change plan tier"
+                      for="detail-plan-tier"
+                      [control]="planTierForm.controls.planTier"
                     >
-                    </p-select>
-                  </lpg-form-field>
-                </div>
-                <div class="modal-actions">
-                  <button pButton type="submit" severity="secondary" [disabled]="savingPlanTier()">
-                    @if (savingPlanTier()) {
-                      <i class="pi pi-spin pi-spinner"></i>
-                    }
-                    Save plan tier
-                  </button>
-                </div>
-              </form>
+                      <p-select
+                        [filter]="true"
+                        [resetFilterOnHide]="true"
+                        inputId="detail-plan-tier"
+                        formControlName="planTier"
+                        [options]="planTierOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        appendTo="body"
+                        [fluid]="true"
+                      >
+                      </p-select>
+                    </lpg-form-field>
+                  </div>
+                  <div class="modal-actions">
+                    <button
+                      pButton
+                      type="submit"
+                      severity="secondary"
+                      [disabled]="savingPlanTier()"
+                    >
+                      @if (savingPlanTier()) {
+                        <i class="pi pi-spin pi-spinner"></i>
+                      }
+                      Save plan tier
+                    </button>
+                  </div>
+                </form>
+              </lpg-section-card>
 
-              <form
-                [formGroup]="deviceCapForm"
-                (ngSubmit)="saveDeviceCap(license.tenant_id)"
-                class="dialog-form dialog-form--inline"
-              >
-                <div class="dialog-form__fields">
-                  <!-- Checkboxes, not p-multiselect: PrimeNG 22.0.0's option list reads a
+              <lpg-section-card heading="Device limit">
+                <form
+                  [formGroup]="deviceCapForm"
+                  (ngSubmit)="saveDeviceCap(license.tenant_id)"
+                  class="dialog-form dialog-form--inline"
+                >
+                  <div class="dialog-form__fields">
+                    <!-- Checkboxes, not p-multiselect: PrimeNG 22.0.0's option list reads a
                        template variable inside its @for track expression, so opening it
                        threw, showed no options and stopped other dropdowns opening. -->
-                  <fieldset class="app-choices">
-                    <legend class="app-choices__legend">Apps</legend>
-                    @for (option of appTypeOptions; track option.value) {
-                      <div class="app-choices__item">
-                        <p-checkbox
-                          [inputId]="'detail-app-' + option.value"
-                          [binary]="true"
-                          [ngModel]="deviceCapForm.controls.appTypes.value.includes(option.value)"
-                          [ngModelOptions]="{ standalone: true }"
-                          (onChange)="setAppSelected(option.value, $event.checked)"
-                        />
-                        <label [for]="'detail-app-' + option.value">{{ option.label }}</label>
-                      </div>
-                    }
-                    <span class="app-choices__hint"
-                      >Choose the apps this cap applies to. Limits are currently enforced for the
-                      Driver and Admin apps, when device control is on.</span
+                    <fieldset class="app-choices">
+                      <legend class="app-choices__legend">Apps</legend>
+                      @for (option of appTypeOptions; track option.value) {
+                        <div class="app-choices__item">
+                          <p-checkbox
+                            [inputId]="'detail-app-' + option.value"
+                            [binary]="true"
+                            [ngModel]="deviceCapForm.controls.appTypes.value.includes(option.value)"
+                            [ngModelOptions]="{ standalone: true }"
+                            (onChange)="setAppSelected(option.value, $event.checked)"
+                          />
+                          <label [for]="'detail-app-' + option.value">{{ option.label }}</label>
+                        </div>
+                      }
+                      <span class="app-choices__hint"
+                        >Choose the apps this cap applies to. Limits are currently enforced for the
+                        Driver and Admin apps, when device control is on.</span
+                      >
+                    </fieldset>
+                    <lpg-form-field
+                      label="Device cap"
+                      for="detail-max-devices"
+                      [control]="deviceCapForm.controls.maxDevices"
+                      hint="Blank = unlimited."
                     >
-                  </fieldset>
-                  <lpg-form-field
-                    label="Device cap"
-                    for="detail-max-devices"
-                    [control]="deviceCapForm.controls.maxDevices"
-                    hint="Blank = unlimited."
-                  >
-                    <input
-                      pInputText
-                      id="detail-max-devices"
-                      type="number"
-                      min="0"
-                      formControlName="maxDevices"
-                      [fluid]="true"
-                    />
-                  </lpg-form-field>
-                </div>
-                <div class="modal-actions">
-                  <button
-                    pButton
-                    type="submit"
-                    severity="secondary"
-                    [disabled]="
-                      savingDeviceCap() || deviceCapForm.controls.appTypes.value.length === 0
-                    "
-                  >
-                    @if (savingDeviceCap()) {
-                      <i class="pi pi-spin pi-spinner"></i>
-                    }
-                    Save device cap
-                  </button>
-                </div>
-              </form>
+                      <input
+                        pInputText
+                        id="detail-max-devices"
+                        type="number"
+                        min="0"
+                        formControlName="maxDevices"
+                        [fluid]="true"
+                      />
+                    </lpg-form-field>
+                  </div>
+                  <div class="modal-actions">
+                    <button
+                      pButton
+                      type="submit"
+                      severity="secondary"
+                      [disabled]="
+                        savingDeviceCap() || deviceCapForm.controls.appTypes.value.length === 0
+                      "
+                    >
+                      @if (savingDeviceCap()) {
+                        <i class="pi pi-spin pi-spinner"></i>
+                      }
+                      Save device cap
+                    </button>
+                  </div>
+                </form>
+              </lpg-section-card>
             </div>
 
             @if (license.status === 'pending_activation') {
@@ -513,13 +535,6 @@ const VALIDITY_OPTIONS = [
       .app-choices__hint {
         font-size: var(--typography-caption-font-size);
         color: var(--color-text-secondary);
-      }
-
-      .detail-view {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
       }
 
       .detail-view__fields {

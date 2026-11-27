@@ -15,7 +15,7 @@ import { InputNumber } from 'primeng/inputnumber';
 import { Select } from 'primeng/select';
 import { Message } from 'primeng/message';
 import { AdminTenantConfigurationService, NotifyService } from '@lpg/shared/data-access';
-import { FormFieldComponent, PageHeaderComponent } from '@lpg/shared/ui';
+import { FormFieldComponent, PageHeaderComponent, SectionCardComponent } from '@lpg/shared/ui';
 
 type BandGroup = FormGroup<{
   stars: FormControl<number>;
@@ -71,6 +71,7 @@ interface RawFineRule {
   selector: 'lpg-tdt-rating-config',
   standalone: true,
   imports: [
+    SectionCardComponent,
     HeaderTitlePortalDirective,
     PageHeaderComponent,
     ReactiveFormsModule,

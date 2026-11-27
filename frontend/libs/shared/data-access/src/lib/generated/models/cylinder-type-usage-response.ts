@@ -3,5 +3,6 @@
 
 export interface CylinderTypeUsageResponse {
   allowed_size_codes: Array<string>;
+  delete_blocked_by: Array<string>;
   used_in: Array<string>;
 }

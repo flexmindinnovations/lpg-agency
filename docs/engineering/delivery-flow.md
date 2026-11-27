@@ -27,7 +27,7 @@ Agency Staff (Route Planner), Warehouse Manager, Delivery Driver, Customer, Syst
 7. Driver opens the Driver App, views assigned route/stops in sequence.
 8. Driver navigates to each stop (Route Navigation).
 9. At each stop:
-   a. Driver confirms cylinders to deliver and empties to collect for that order.
+   a. Driver confirms cylinders to deliver and empties to collect for that order. The empties may include cylinders from earlier deliveries, of any size, up to what the customer held before this delivery (BR-35).
    b. Customer verifies via OTP.
    c. Customer provides digital signature.
    d. Driver captures photo proof.

@@ -83,7 +83,7 @@ async def resolve_prices_include_gst(
     """Whether the tenant's price-list amounts already include GST.
 
     Defaults to `False` (exclusive, the product owner's choice): the amount
-    on the Pricing page is before GST and the invoice adds GST on top. Only
+    under Cylinders & Prices is before GST and the invoice adds GST on top. Only
     an explicit true / "true" / "yes" / "1" / "inclusive" turns inclusive
     pricing on, where the price is what the customer pays and the invoice
     derives the taxable value and the tax inside it.
@@ -137,7 +137,7 @@ async def resolve_gst_classes(
         names = ", ".join(unconfigured)
         msg = (
             f"GST is not set up for {names}. Set the HSN code and GST rate in "
-            "Admin > Cylinder Types, then issue the invoice from the Invoices page."
+            "Admin > Cylinders & Prices, then issue the invoice from the Invoices page."
         )
         raise GstNotConfiguredError(msg, cylinder_types=unconfigured)
     return classes

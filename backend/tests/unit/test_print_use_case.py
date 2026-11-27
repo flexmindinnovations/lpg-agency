@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -17,9 +18,12 @@ from lpg.application.printing.use_cases import (
     PrintJobCommand,
     StorageNotConfiguredError,
     UnsupportedDocumentError,
+    document_name,
 )
 from lpg.domain.common.gst import GstSplit
 from lpg.infrastructure.printing.engine import Xhtml2pdfPrintingEngine
+
+_STAMP = r"\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}"
 
 
 def _invoice() -> SimpleNamespace:
@@ -83,7 +87,9 @@ async def test_pdf_renders_without_storage() -> None:
 
     assert rendered.content.startswith(b"%PDF")
     assert rendered.content_type == "application/pdf"
-    assert rendered.filename == "INV-2026-000009.pdf"
+    assert re.fullmatch(rf"INV-2026-000009_{_STAMP}\.pdf", rendered.filename)
+    # The PDF's own title matches, so a viewer offers the same name.
+    assert rendered.filename.removesuffix(".pdf").encode() in rendered.content
 
 
 async def test_thermal_renders_html_without_storage() -> None:
@@ -91,7 +97,15 @@ async def test_thermal_renders_html_without_storage() -> None:
 
     assert b"<html" in rendered.content.lower()
     assert rendered.content_type.startswith("text/html")
-    assert rendered.filename == "INV-2026-000009.html"
+    assert re.fullmatch(rf"INV-2026-000009_{_STAMP}\.html", rendered.filename)
+    title = rendered.filename.removesuffix(".html")
+    assert f"<title>{title}</title>".encode() in rendered.content
+
+
+def test_the_document_name_carries_the_time_in_india() -> None:
+    at = datetime(2026, 11, 27, 20, 0, 5, tzinfo=UTC)
+
+    assert document_name("INV-2026-000009", at) == "INV-2026-000009_2026-11-28_01-30-05"
 
 
 async def test_unknown_invoice_is_not_found() -> None:
