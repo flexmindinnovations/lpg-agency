@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import pytest
 from sqlalchemy import text
 
+from lpg.application.common.errors import ConflictError
 from lpg.application.common.tenant import RequestTenantContext
 from lpg.application.tenant.cylinder_type import (
     CreateCylinderTypeCommand,
@@ -69,9 +70,7 @@ class TestCylinderTypeRepository:
                 repository = SqlAlchemyCylinderTypeRepository(uow)
                 use_case = CreateCylinderTypeUseCase(repository, uow)
                 cylinder_type = await use_case.execute(
-                    CreateCylinderTypeCommand(
-                        tenant_id=tenant_id, name="14.2kg Domestic", weight_kg=Decimal("14.20")
-                    )
+                    CreateCylinderTypeCommand(tenant_id=tenant_id, size_code="domestic_14_2")
                 )
 
         async for verify_session in database.open_session(tenant_id=tenant_id):
@@ -79,7 +78,7 @@ class TestCylinderTypeRepository:
                 SqlAlchemyUnitOfWork(verify_session, context)
             ).get(cylinder_type.id)
             assert reloaded is not None
-            assert reloaded.name == "14.2kg Domestic"
+            assert reloaded.name == "14.2 kg Domestic"
             assert reloaded.weight_kg == Decimal("14.20")
             assert reloaded.is_active is True
 
@@ -100,27 +99,36 @@ class TestCylinderTypeRepository:
                     {"tenant_id": str(tenant_id)},
                 )
 
-    async def test_name_is_unique_per_tenant(
+    async def test_a_size_is_added_once_per_tenant(
         self, database: Database, admin_engine: AsyncEngine
     ) -> None:
         tenant_id = await _seed_tenant(admin_engine)
         context = RequestTenantContext(tenant_id=tenant_id)
+        command = CreateCylinderTypeCommand(tenant_id=tenant_id, size_code="domestic_14_2")
 
         async for session in database.open_session(tenant_id=tenant_id):
             async with SqlAlchemyUnitOfWork(session, context) as uow:
                 use_case = CreateCylinderTypeUseCase(SqlAlchemyCylinderTypeRepository(uow), uow)
-                await use_case.execute(
-                    CreateCylinderTypeCommand(
-                        tenant_id=tenant_id, name="14.2kg Domestic", weight_kg=Decimal("14.20")
-                    )
-                )
+                await use_case.execute(command)
 
-        with pytest.raises(Exception, match="uq_cylinder_type_tenant_name"):
+        with pytest.raises(ConflictError, match="already in your cylinder types"):
             async for session in database.open_session(tenant_id=tenant_id):
                 async with SqlAlchemyUnitOfWork(session, context) as uow:
                     use_case = CreateCylinderTypeUseCase(SqlAlchemyCylinderTypeRepository(uow), uow)
-                    await use_case.execute(
-                        CreateCylinderTypeCommand(
-                            tenant_id=tenant_id, name="14.2kg Domestic", weight_kg=Decimal("19.00")
-                        )
-                    )
+                    await use_case.execute(command)
+
+    async def test_the_database_keeps_names_unique_per_tenant_too(
+        self, postgres_available: bool, admin_engine: AsyncEngine
+    ) -> None:
+        if not postgres_available:
+            pytest.skip("PostgreSQL is not reachable — start it with ./scripts/dev-up.sh")
+        tenant_id = await _seed_tenant(admin_engine)
+        insert = text(
+            "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg) "
+            "VALUES (gen_random_uuid(), :tenant_id, '14.2 kg Domestic', 14.2)"
+        )
+
+        with pytest.raises(Exception, match="uq_cylinder_type_tenant_name"):
+            async with admin_engine.begin() as conn:
+                await conn.execute(insert, {"tenant_id": str(tenant_id)})
+                await conn.execute(insert, {"tenant_id": str(tenant_id)})

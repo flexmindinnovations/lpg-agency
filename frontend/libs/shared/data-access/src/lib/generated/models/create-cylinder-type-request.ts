@@ -4,6 +4,5 @@
 export interface CreateCylinderTypeRequest {
   gst_rate_percent?: (number | string | null);
   hsn_code?: (string | null);
-  name: string;
-  weight_kg: (number | string);
+  size_code: string;
 }

@@ -225,14 +225,17 @@ export class FeatureCustomers implements OnInit {
 
   // Column definitions for customer list data grid
   protected readonly columns: DataGridColumn<CustomerResponse>[] = [
-    { field: 'consumer_number', header: 'Consumer No.', sortable: true },
     {
-      field: 'full_name',
-      header: 'Name',
+      field: 'consumer_number',
+      header: 'Consumer No.',
       sortable: true,
-      filterable: true,
+      minWidth: 180,
+      // A customer still being onboarded or approved has no number yet, and
+      // this link is the only way into the profile.
+      valueFormatter: (value) => (value as string | null) || 'View (no number yet)',
       onLinkClick: (row) => this.viewCustomer(row),
     },
+    { field: 'full_name', header: 'Name', sortable: true, filterable: true },
     { field: 'phone_number', header: 'Phone', sortable: true },
     { field: 'customer_type', header: 'Type', sortable: true, cellRenderer: StatusChipCell },
     { field: 'kyc_status', header: 'KYC Status', sortable: true, cellRenderer: StatusChipCell },
@@ -339,6 +342,12 @@ export class FeatureCustomers implements OnInit {
     ]
       .filter(Boolean)
       .join(', ');
+  }
+
+  protected addressTypeLabel(address: CustomerAddressResponse): string {
+    if (address.address_type === 'billing') return 'Billing address';
+    if (address.address_type === 'both') return 'Delivery and billing address';
+    return 'Delivery address';
   }
 
   protected orderStatusLabel(status: string): string {

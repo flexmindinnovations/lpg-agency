@@ -1188,6 +1188,31 @@ class TestOrderableCylinderTypes:
         # 100 in the warehouse + 100 on the vehicle, less the 3 just booked.
         assert option["available_quantity"] == 197
 
+    async def test_staff_see_why_a_type_cannot_be_booked_and_customers_do_not(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        unpriced_id = await _seed_unpriced_cylinder_type(admin_engine_lpg_test, fixtures.tenant_id)
+        url = "/api/v1/orders/unorderable-cylinder-types"
+        params = {"customer_id": str(fixtures.customer_id)}
+
+        staff_response = await client.get(
+            url, params=params, headers={"Authorization": f"Bearer {fixtures.admin_token}"}
+        )
+        customer_response = await client.get(
+            url, params=params, headers={"Authorization": f"Bearer {fixtures.customer_token}"}
+        )
+
+        assert staff_response.status_code == 200, staff_response.text
+        [missing] = staff_response.json()
+        assert missing["cylinder_type_id"] == str(unpriced_id)
+        assert missing["reasons"] == [
+            "No price for domestic customers at this branch",
+            "No free filled stock at this branch",
+        ]
+        assert customer_response.status_code == 403, customer_response.text
+
     async def test_staff_must_name_the_customer(
         self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
     ) -> None:

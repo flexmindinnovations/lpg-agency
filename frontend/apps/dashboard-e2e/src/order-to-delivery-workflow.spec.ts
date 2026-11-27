@@ -39,7 +39,7 @@ const CUSTOMER_NAME = 'Meena Iyer';
 const CUSTOMER_PHONE = '+919848012002';
 const DRIVER_LABEL = 'EMP-E2E-DRIVER';
 const VEHICLE_REG = 'TS07UB4412';
-const CYLINDER_TYPE = 'Domestic 14.2kg';
+const CYLINDER_TYPE = '14.2 kg Domestic';
 
 // 1x1 transparent PNG — just needs to be a real, decodable image file for
 // the delivery-photo upload; content is never inspected by the backend.

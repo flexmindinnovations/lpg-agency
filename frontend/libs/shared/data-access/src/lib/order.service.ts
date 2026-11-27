@@ -24,6 +24,7 @@ import { getOrderApiV1OrdersOrderIdGet } from './generated/fn/orders/get-order-a
 import { getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet } from './generated/fn/orders/get-pending-cancellation-api-v-1-orders-order-id-cancellation-request-get';
 import { listOrderStatusHistoryApiV1OrdersOrderIdHistoryGet } from './generated/fn/orders/list-order-status-history-api-v-1-orders-order-id-history-get';
 import { listOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet } from './generated/fn/orders/list-orderable-cylinder-types-api-v-1-orders-orderable-cylinder-types-get';
+import { listUnorderableCylinderTypesApiV1OrdersUnorderableCylinderTypesGet } from './generated/fn/orders/list-unorderable-cylinder-types-api-v-1-orders-unorderable-cylinder-types-get';
 import {
   listOrdersApiV1OrdersGet,
   type ListOrdersApiV1OrdersGet$Params,
@@ -49,6 +50,7 @@ import type { DeliverOrderResponse } from './generated/models/deliver-order-resp
 import type { OrderPageResponse } from './generated/models/order-page-response';
 import type { OrderableCylinderTypeResponse } from './generated/models/orderable-cylinder-type-response';
 import type { OrderResponse } from './generated/models/order-response';
+import type { UnorderableCylinderTypeResponse } from './generated/models/unorderable-cylinder-type-response';
 import type { OrderStatusHistoryEntryResponse } from './generated/models/order-status-history-entry-response';
 import type { PendingCancellationResponse } from './generated/models/pending-cancellation-response';
 import type { PodAttachmentResponse } from './generated/models/pod-attachment-response';
@@ -101,6 +103,18 @@ export class OrderService {
    */
   listOrderableCylinderTypes(customerId: string): Observable<OrderableCylinderTypeResponse[]> {
     return listOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet(
+      this.http,
+      this.config.rootUrl,
+      { customer_id: customerId },
+    ).pipe(map((res) => res.body));
+  }
+
+  /**
+   * The active types missing from the list above for this customer, with why.
+   * Staff only: the reasons describe the agency's prices and stock.
+   */
+  listUnorderableCylinderTypes(customerId: string): Observable<UnorderableCylinderTypeResponse[]> {
+    return listUnorderableCylinderTypesApiV1OrdersUnorderableCylinderTypesGet(
       this.http,
       this.config.rootUrl,
       { customer_id: customerId },

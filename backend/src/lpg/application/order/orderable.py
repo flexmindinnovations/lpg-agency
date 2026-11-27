@@ -8,6 +8,9 @@ A cylinder type is orderable only when all of these hold:
 - the branch still has filled cylinders of it that no open order has
   already claimed (`BranchStockReader`).
 
+`unorderable()` says which of these an active type is missing, so office
+staff can fix it.
+
 The booking forms list only what `list()` returns, and `require()` is the
 server-side guard `CreateOrderUseCase` and `ConfirmOrderUseCase` run, so a
 stale form, the API or the WhatsApp assistant cannot book what the forms
@@ -44,6 +47,14 @@ class OrderableCylinderType:
     available_quantity: int
 
 
+@dataclass(frozen=True, slots=True)
+class UnorderableCylinderType:
+    cylinder_type_id: uuid.UUID
+    name: str
+    #: Everything that stops it being booked, written for office staff.
+    reasons: tuple[str, ...]
+
+
 class OrderableCylinderTypes:
     def __init__(
         self,
@@ -64,16 +75,10 @@ class OrderableCylinderTypes:
         exclude_order_id: uuid.UUID | None = None,
     ) -> list[OrderableCylinderType]:
         """Every orderable cylinder type, sorted by name."""
-        cylinder_types = await self._cylinder_types.list_for_tenant(tenant_id)
-        prices = await self._price_lists.list_for_tenant(tenant_id)
-        stock = await self._stock.available_filled_by_cylinder_type(
-            branch_id, exclude_order_id=exclude_order_id
-        )
-        now = datetime.now(UTC)
         orderable = []
-        for cylinder_type in cylinder_types:
-            price = _price(prices, cylinder_type, customer_type, branch_id, now)
-            available = stock.get(cylinder_type.id, 0)
+        for cylinder_type, price, available in await self._assess(
+            tenant_id, branch_id, customer_type, exclude_order_id
+        ):
             if cylinder_type.is_active and price is not None and available > 0:
                 orderable.append(
                     OrderableCylinderType(
@@ -85,6 +90,51 @@ class OrderableCylinderTypes:
                     )
                 )
         return sorted(orderable, key=lambda option: option.name.lower())
+
+    async def unorderable(
+        self, *, tenant_id: uuid.UUID, branch_id: uuid.UUID, customer_type: str
+    ) -> Sequence[UnorderableCylinderType]:
+        """Every active type `list()` leaves out, with why, sorted by name.
+        Inactive types are left out on purpose, so they are not reported."""
+        found = []
+        for cylinder_type, price, available in await self._assess(
+            tenant_id, branch_id, customer_type, None
+        ):
+            if not cylinder_type.is_active:
+                continue
+            reasons = []
+            if price is None:
+                reasons.append(f"No price for {customer_type} customers at this branch")
+            if available <= 0:
+                reasons.append("No free filled stock at this branch")
+            if reasons:
+                found.append(
+                    UnorderableCylinderType(cylinder_type.id, cylinder_type.name, tuple(reasons))
+                )
+        return sorted(found, key=lambda missing: missing.name.lower())
+
+    async def _assess(
+        self,
+        tenant_id: uuid.UUID,
+        branch_id: uuid.UUID,
+        customer_type: str,
+        exclude_order_id: uuid.UUID | None,
+    ) -> Sequence[tuple[CylinderType, Decimal | None, int]]:
+        """Each of the tenant's types with its price and free filled stock."""
+        cylinder_types = await self._cylinder_types.list_for_tenant(tenant_id)
+        prices = await self._price_lists.list_for_tenant(tenant_id)
+        stock = await self._stock.available_filled_by_cylinder_type(
+            branch_id, exclude_order_id=exclude_order_id
+        )
+        now = datetime.now(UTC)
+        return [
+            (
+                cylinder_type,
+                _price(prices, cylinder_type, customer_type, branch_id, now),
+                stock.get(cylinder_type.id, 0),
+            )
+            for cylinder_type in cylinder_types
+        ]
 
     async def require(
         self,

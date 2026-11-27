@@ -13,20 +13,26 @@ from typing import TYPE_CHECKING
 
 from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
 from lpg.domain.common.gst import normalize_hsn_code, validate_gst_rate
+from lpg.domain.tenant.cylinder_catalog import size_matching
 
 if TYPE_CHECKING:
     import uuid
     from decimal import Decimal
 
+    from lpg.domain.tenant.cylinder_catalog import CylinderSize
+
 
 @dataclass(frozen=True, slots=True)
-class CylinderTypeRenamed(DomainEvent):
+class CylinderTypeSizeChanged(DomainEvent):
     cylinder_type_id: uuid.UUID | None = None
     new_name: str = ""
 
 
 class CylinderType(AggregateRoot):
     """A cylinder size the agency sells, with its GST classification.
+
+    The name and weight come from the standard list (`cylinder_catalog`).
+    Older records may not match it; `size` is `None` for those.
 
     `hsn_code` and `gst_rate_percent` are the tax treatment of selling this
     product (BR-16): domestic LPG and commercial LPG attract different GST
@@ -64,6 +70,16 @@ class CylinderType(AggregateRoot):
         self._hsn_code = hsn_code
         self._gst_rate_percent = gst_rate_percent
 
+    @classmethod
+    def from_size(
+        cls, cylinder_type_id: uuid.UUID, tenant_id: uuid.UUID, size: CylinderSize
+    ) -> CylinderType:
+        return cls(cylinder_type_id, tenant_id, size.name, size.weight_kg)
+
+    @property
+    def size(self) -> CylinderSize | None:
+        return size_matching(self._name, self._weight_kg)
+
     @property
     def tenant_id(self) -> uuid.UUID:
         return self._tenant_id
@@ -100,21 +116,25 @@ class CylinderType(AggregateRoot):
         self._hsn_code = normalize_hsn_code(hsn_code)
         self._gst_rate_percent = validate_gst_rate(gst_rate_percent)
 
-    def rename(self, new_name: str) -> None:
-        stripped = new_name.strip()
-        if not stripped:
-            msg = "Cylinder type name cannot be empty."
+    def can_change_size_to(self, size: CylinderSize, *, in_use: bool) -> bool:
+        """Anything goes while nothing refers to this type. Once something
+        does, only an off-list record may take a list size, and only one of
+        the same weight, so no recorded quantity changes meaning.
+        """
+        if not in_use or size == self.size:
+            return True
+        return self.size is None and size.weight_kg == self._weight_kg
+
+    def change_size(self, size: CylinderSize, *, in_use: bool) -> None:
+        if size == self.size:
+            return
+        if not self.can_change_size_to(size, in_use=in_use):
+            msg = "This cylinder type is already in use, so its size cannot change."
             raise InvariantViolation(msg, cylinder_type_id=str(self.id))
 
-        self._name = stripped
-        self.record_event(CylinderTypeRenamed(cylinder_type_id=self.id, new_name=stripped))
-
-    def adjust_weight(self, new_weight_kg: Decimal) -> None:
-        if new_weight_kg <= 0:
-            msg = "Cylinder weight must be greater than zero."
-            raise InvariantViolation(msg, cylinder_type_id=str(self.id))
-
-        self._weight_kg = new_weight_kg
+        self._name = size.name
+        self._weight_kg = size.weight_kg
+        self.record_event(CylinderTypeSizeChanged(cylinder_type_id=self.id, new_name=size.name))
 
     def activate(self) -> None:
         self._is_active = True

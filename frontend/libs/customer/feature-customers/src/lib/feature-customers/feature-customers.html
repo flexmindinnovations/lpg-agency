@@ -109,7 +109,7 @@
   [(visible)]="showDetailDrawer"
   position="right"
   [modal]="true"
-  styleClass="!w-full md:!w-[45vw]"
+  styleClass="!w-full md:!w-[max(45vw,42rem)] md:!max-w-full"
   [closeOnEscape]="true"
   closeAriaLabel="Close dialog"
   (onHide)="selectedCustomer.set(null)"
@@ -178,7 +178,6 @@
           type="button"
           severity="danger"
           size="small"
-          [outlined]="!confirmingClose()"
           (click)="closeConnection()"
         >
           <i class="pi pi-power-off" aria-hidden="true"></i>
@@ -258,11 +257,15 @@
             </div>
             <div class="address-list">
               @for (addr of customer.addresses; track addr.id) {
-              <div class="address-item">
-                <div>
-                  <span class="text-sm">{{ addressLabel(addr) }}</span>
+              <div class="address-card">
+                <span class="address-card__icon" aria-hidden="true">
+                  <i class="pi pi-map-marker"></i>
+                </span>
+
+                <div class="address-card__title">
+                  <span>{{ addressTypeLabel(addr) }}</span>
                   @if (addr.is_primary) {
-                  <p-tag class="ml-2" severity="success" value="Primary" />
+                  <p-tag severity="success" value="Primary" />
                   }
                 </div>
                 <div class="address-actions">
@@ -307,6 +310,7 @@
                   </button>
                   }
                 </div>
+                <p class="address-card__text">{{ addressLabel(addr) }}</p>
               </div>
               } @empty {
               <p class="empty-hint">No delivery addresses registered yet.</p>

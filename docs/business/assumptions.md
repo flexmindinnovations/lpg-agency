@@ -9,7 +9,7 @@ This document lists assumptions made while transforming the blueprint into this 
 - **A-01 [SUPERSEDED by D-02]**: Originally assumed single-location/single-warehouse for Phase 1. **Decision: multi-branch, multi-warehouse, multi-delivery-hub support is now required from Phase 1.**
 - **A-02 [SUPERSEDED by D-01]**: Originally assumed single-tenant. **Decision: the platform is now confirmed as a full multi-tenant SaaS from Phase 1**, with tenant-level data isolation as a foundational architectural requirement (BR-30).
 - **A-03 [SUPERSEDED by D-03]**: Originally assumed two customer types (Domestic/Commercial). **Decision: four types are confirmed — Domestic, Commercial, Industrial, Government** — each driving pricing, cylinder limits, taxes, and payment terms.
-- **A-04 [SUPERSEDED by D-04]**: Originally assumed a small, implicit set of cylinder sizes. **Decision: cylinder types are fully configurable** (initial examples: 5kg, 10kg, 14.2kg, 19kg, 47.5kg), with inventory tracked separately per type at every location.
+- **A-04 [SUPERSEDED by D-04]**: Originally assumed a small, implicit set of cylinder sizes. **Decision: cylinder types are fully configurable** (initial examples: 5kg, 10kg, 14.2kg, 19kg, 47.5kg), with inventory tracked separately per type at every location. **Since 2026-11-26 (D-43) types are picked from a standard size list**; inventory is still tracked per type.
 
 ## 2. Actor & Process Assumptions
 

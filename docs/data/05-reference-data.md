@@ -23,8 +23,13 @@ flowchart LR
 ## 2. Customer Types (Platform-Global — D-03)
 `domestic`, `commercial`, `industrial`, `government`.
 
-## 3. Cylinder Types (Tenant-Scoped — D-04, Default Seed)
-5kg, 10kg, 14.2kg, 19kg, 47.5kg.
+## 3. Cylinder Types (Tenant-Scoped, From a Fixed Size List — D-43, ADR-079)
+Each agency adds the sizes it deals in; none are added for a new agency. The list is in `backend/src/lpg/domain/tenant/cylinder_catalog.py`.
+
+| Category | Sizes |
+|---|---|
+| Domestic | 5 kg, 10 kg composite, 14.2 kg |
+| Commercial and industrial | 2 kg, 5 kg free trade (FTL), 19 kg, 35 kg, 47.5 kg, 425 kg |
 
 ## 4. Order Status (Platform-Global — D-07)
 `draft`, `booked`, `confirmed`, `assigned`, `ready_for_dispatch`, `out_for_delivery`, `delivered`, `failed_delivery`, `cancelled`, `closed`. Full state machine `08-state-machines.md` §2.

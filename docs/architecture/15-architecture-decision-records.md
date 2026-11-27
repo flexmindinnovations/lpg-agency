@@ -1878,6 +1878,24 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Alternatives Considered:** see-through overlays with live blur (costs scroll performance, and showed text sharp through a dropdown while it faded in); see-through grid header (row text shows through the column names).
 
+## ADR-079: Cylinder Types Come From a Standard Size List
+
+**Status:** Accepted (2026-11-26, owner decision). Supersedes the "configurable sizes" part of D-04 (see D-43).
+
+**Context:** Agencies could type any cylinder name and weight, which produced records such as `19KG_Domestic`, a 19 kg cylinder labelled domestic. The owner wants only industry sizes, picked from a list.
+
+**Decision:**
+- The list lives in code (`domain/tenant/cylinder_catalog.py`) with a stable code, name, category and gas weight. It follows the sizes IndianOil and HPCL publish.
+- A type is created with a `size_code`; name and weight come from the list. Each size is added once per agency.
+- **No migration and no size column.** A record is on the list when its name and weight both match an entry; the API reports `size_code` and `category` from that match. Renaming a list entry would take existing records off the list.
+- A type that orders, stock records, prices, invoices, the cylinder ledger or compliance records refer to keeps its size and cannot be deleted; it can be deactivated. The exception is an older off-list record, which may take a list size of the same weight. Delete is a soft delete.
+- A unit test fails if a table gains a `cylinder_type_id` column without being added to the in-use check.
+- The free-text rename and weight endpoints are removed.
+
+**Consequences:** A size missing from the list needs a release. Older records keep working and the dashboard asks for them to be fixed. The in-use check and the delete are not one locked step, so a record written at the same moment could point at a deleted type. The category is not yet used to pick GST or to refuse a domestic cylinder for a commercial customer (audit TAX-1).
+
+**Alternatives Considered:** A platform-wide size table that a super admin edits (rejected for now: the sizes rarely change); a `size_code` column with a data migration (rejected: hand-typed names cannot be mapped to a category safely); keeping free text with suggestions (rejected: does not stop wrong sizes).
+
 ---
 
 ## Deferred Decisions

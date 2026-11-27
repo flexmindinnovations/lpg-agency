@@ -84,12 +84,12 @@ BRANCHES = [
     ("Gachibowli West", "Telangana"),
 ]
 
-# (name, weight_kg) — the four cylinders an Indian distributor actually carries.
+# (name, weight_kg) — four entries of the standard size list (ADR-079).
 CYLINDER_TYPES = [
-    ("Domestic 5kg", Decimal("5.0")),
-    ("Domestic 14.2kg", Decimal("14.2")),
-    ("Commercial 19kg", Decimal("19.0")),
-    ("Commercial 47.5kg", Decimal("47.5")),
+    ("5 kg Domestic", Decimal("5.0")),
+    ("14.2 kg Domestic", Decimal("14.2")),
+    ("19 kg Commercial", Decimal("19.0")),
+    ("47.5 kg Commercial", Decimal("47.5")),
 ]
 
 #: Demo GST classification (DA-06): LPG is HSN 27111900; domestic cylinders
@@ -97,7 +97,7 @@ CYLINDER_TYPES = [
 #: Applied only where a cylinder type has no rate yet, so a rate an agency
 #: set by hand is never overwritten.
 LPG_HSN_CODE = "27111900"
-GST_RATE_BY_CYLINDER_PREFIX = {"Domestic": Decimal("5"), "Commercial": Decimal("18")}
+GST_RATE_BY_CYLINDER_CATEGORY = {"Domestic": Decimal("5"), "Commercial": Decimal("18")}
 
 #: Demo agency business profile printed on tax invoices (DA-13). The GSTIN
 #: is made up but checksum-valid, with Telangana's state code (36).
@@ -113,13 +113,13 @@ AGENCY_PROFILE = {
 
 # (cylinder, customer_type, price)
 PRICES = [
-    ("Domestic 5kg", "domestic", Decimal("389.00")),
-    ("Domestic 14.2kg", "domestic", Decimal("905.50")),
-    ("Commercial 19kg", "commercial", Decimal("1755.00")),
-    ("Commercial 19kg", "industrial", Decimal("1712.00")),
-    ("Commercial 47.5kg", "commercial", Decimal("4310.00")),
-    ("Commercial 47.5kg", "industrial", Decimal("4185.00")),
-    ("Domestic 14.2kg", "government", Decimal("860.00")),
+    ("5 kg Domestic", "domestic", Decimal("389.00")),
+    ("14.2 kg Domestic", "domestic", Decimal("905.50")),
+    ("19 kg Commercial", "commercial", Decimal("1755.00")),
+    ("19 kg Commercial", "industrial", Decimal("1712.00")),
+    ("47.5 kg Commercial", "commercial", Decimal("4310.00")),
+    ("47.5 kg Commercial", "industrial", Decimal("4185.00")),
+    ("14.2 kg Domestic", "government", Decimal("860.00")),
 ]
 
 # (code, first, last, phone, role, branch)
@@ -294,17 +294,17 @@ LOGIN_USERS = [
 
 # (customer phone, cylinder, qty, status, days_offset)
 ORDERS = [
-    ("+919848012001", "Domestic 14.2kg", 1, "delivered", -6),
-    ("+919848012002", "Domestic 14.2kg", 1, "delivered", -5),
-    ("+919848012003", "Commercial 19kg", 4, "delivered", -4),
-    ("+919848012005", "Commercial 19kg", 6, "closed", -4),
-    ("+919848012007", "Commercial 47.5kg", 3, "delivered", -3),
-    ("+919848012009", "Commercial 19kg", 5, "out_for_delivery", 0),
-    ("+919848012010", "Domestic 14.2kg", 8, "assigned", 0),
-    ("+919848012011", "Domestic 14.2kg", 1, "confirmed", 0),
-    ("+919848012006", "Domestic 14.2kg", 2, "booked", 1),
-    ("+919848012004", "Domestic 5kg", 1, "booked", 1),
-    ("+919848012001", "Domestic 5kg", 2, "cancelled", -2),
+    ("+919848012001", "14.2 kg Domestic", 1, "delivered", -6),
+    ("+919848012002", "14.2 kg Domestic", 1, "delivered", -5),
+    ("+919848012003", "19 kg Commercial", 4, "delivered", -4),
+    ("+919848012005", "19 kg Commercial", 6, "closed", -4),
+    ("+919848012007", "47.5 kg Commercial", 3, "delivered", -3),
+    ("+919848012009", "19 kg Commercial", 5, "out_for_delivery", 0),
+    ("+919848012010", "14.2 kg Domestic", 8, "assigned", 0),
+    ("+919848012011", "14.2 kg Domestic", 1, "confirmed", 0),
+    ("+919848012006", "14.2 kg Domestic", 2, "booked", 1),
+    ("+919848012004", "5 kg Domestic", 1, "booked", 1),
+    ("+919848012001", "5 kg Domestic", 2, "cancelled", -2),
 ]
 
 
@@ -516,7 +516,7 @@ async def main() -> None:
                 {
                     "id": cylinder_ids[name],
                     "hsn": LPG_HSN_CODE,
-                    "rate": GST_RATE_BY_CYLINDER_PREFIX[name.split()[0]],
+                    "rate": GST_RATE_BY_CYLINDER_CATEGORY[name.split()[-1]],
                 },
             )
         gst_rate_by_cylinder = {
@@ -732,10 +732,10 @@ async def main() -> None:
 
         # Warehouses hold the bulk; heavier cylinders stock more thinly.
         warehouse_stock = {
-            "Domestic 5kg": (120, 40),
-            "Domestic 14.2kg": (450, 160),
-            "Commercial 19kg": (180, 70),
-            "Commercial 47.5kg": (60, 25),
+            "5 kg Domestic": (120, 40),
+            "14.2 kg Domestic": (450, 160),
+            "19 kg Commercial": (180, 70),
+            "47.5 kg Commercial": (60, 25),
         }
         for branch_name, _ in BRANCHES:
             warehouse_id = (
@@ -748,14 +748,14 @@ async def main() -> None:
             for cyl, (filled, empty) in warehouse_stock.items():
                 await _balance(loc, cyl, "filled", filled)
                 await _balance(loc, cyl, "empty", empty)
-            await _balance(loc, "Domestic 14.2kg", "damaged", 3)
+            await _balance(loc, "14.2 kg Domestic", "damaged", 3)
 
         # Vehicles carry a day's load.
         for _, _, reg, _, _, _ in FLEET:
             loc = await _location("vehicle", reg, vehicle_ids[reg])
-            await _balance(loc, "Domestic 14.2kg", "filled", 30)
-            await _balance(loc, "Commercial 19kg", "filled", 10)
-            await _balance(loc, "Domestic 14.2kg", "empty", 12)
+            await _balance(loc, "14.2 kg Domestic", "filled", 30)
+            await _balance(loc, "19 kg Commercial", "filled", 10)
+            await _balance(loc, "14.2 kg Domestic", "empty", 12)
 
         # --- Customers and addresses ----------------------------------------
         customer_ids: dict[str, uuid.UUID] = {}
@@ -1130,9 +1130,9 @@ async def main() -> None:
         # consumption history is meant to be long-range.
         CONSUMPTION = [
             # (phone, cylinder, day_offsets)
-            ("+919848012001", "Domestic 14.2kg", (-95, -65, -35, -8)),
-            ("+919848012002", "Domestic 14.2kg", (-80, -50, -22)),
-            ("+919848012003", "Commercial 19kg", (-70, -42, -18)),
+            ("+919848012001", "14.2 kg Domestic", (-95, -65, -35, -8)),
+            ("+919848012002", "14.2 kg Domestic", (-80, -50, -22)),
+            ("+919848012003", "19 kg Commercial", (-70, -42, -18)),
         ]
         for phone, cyl, offsets in CONSUMPTION:
             ledger_id = await ensure(
@@ -1200,7 +1200,7 @@ async def main() -> None:
     for key, value in row.items():
         print(f"         {key:<16} {value}")
     print(f"\n[seed] demo logins (password: {DEMO_PASSWORD}):")
-    for email, role, _, _ in LOGIN_USERS:
+    for email, role, *_ in LOGIN_USERS:
         print(f"         {email:<28} {role}")
 
 

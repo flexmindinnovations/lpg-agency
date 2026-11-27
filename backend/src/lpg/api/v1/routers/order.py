@@ -127,6 +127,7 @@ from lpg.api.v1.schemas.order import (
     RescheduleOrderRequest,
     SettlementResponse,
     TrackingDriverInfo,
+    UnorderableCylinderTypeResponse,
 )
 from lpg.api.v1.uploads import read_upload
 from lpg.application.accounting.ports import OnlinePaymentRepository
@@ -520,6 +521,47 @@ async def list_orderable_cylinder_types(
             available_quantity=option.available_quantity,
         )
         for option in options
+    ]
+
+
+@router.get(
+    "/orders/unorderable-cylinder-types",
+    response_model=list[UnorderableCylinderTypeResponse],
+    dependencies=[Depends(require_permission("orders:create"))],
+    summary="Explain why a customer cannot book some cylinder types (staff only)",
+)
+async def list_unorderable_cylinder_types(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    orderable_cylinder_types: Annotated[
+        OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
+    ],
+    customer_id: uuid.UUID,
+    branch_id: uuid.UUID | None = None,
+) -> list[UnorderableCylinderTypeResponse]:
+    """The active types the booking list leaves out for this customer, with
+    what each is missing, so staff can fix it. Customer logins are refused:
+    the reasons describe the agency's prices and stock.
+    """
+    if principal.role == "customer":
+        raise HTTPException(status_code=403, detail="Only agency staff can see this.")
+    customer = await customer_repository.get_by_id(customer_id)
+    if customer is None:
+        msg = "Customer not found."
+        raise NotFoundError(msg, customer_id=str(customer_id))
+
+    missing = await orderable_cylinder_types.unorderable(
+        tenant_id=principal.tenant_id,
+        branch_id=branch_id or customer.branch_id,
+        customer_type=customer.customer_type,
+    )
+    return [
+        UnorderableCylinderTypeResponse(
+            cylinder_type_id=item.cylinder_type_id,
+            name=item.name,
+            reasons=list(item.reasons),
+        )
+        for item in missing
     ]
 
 

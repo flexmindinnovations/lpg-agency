@@ -17,7 +17,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { debounceTime } from 'rxjs';
+import { catchError, debounceTime, forkJoin, of } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
@@ -34,6 +34,7 @@ import {
   type CustomerResponse,
   type OrderableCylinderTypeResponse,
   type OrderResponse,
+  type UnorderableCylinderTypeResponse,
 } from '@lpg/shared/data-access';
 
 import {
@@ -180,6 +181,8 @@ export class OrderQueue implements OnInit {
    */
   protected readonly cylinderTypes = signal<OrderableCylinderTypeResponse[]>([]);
   protected readonly cylinderTypesLoading = signal(false);
+  /** Why the other active types are not offered; `null` when not known. */
+  protected readonly unorderableTypes = signal<UnorderableCylinderTypeResponse[] | null>(null);
   protected readonly cylinderTypeOptions = computed(() =>
     this.cylinderTypes().map((type) => ({
       value: type.cylinder_type_id,
@@ -338,16 +341,24 @@ export class OrderQueue implements OnInit {
 
   private loadOrderableCylinderTypes(customer: CustomerResponse | null): void {
     this.cylinderTypes.set([]);
+    this.unorderableTypes.set(null);
     while (this.lines.length > 1) this.lines.removeAt(0);
     this.lines.at(0)?.reset({ cylinder_type_id: '', quantity: 1 });
     if (!customer) return;
 
     this.cylinderTypesLoading.set(true);
-    this.orderService.listOrderableCylinderTypes(customer.id).subscribe({
-      next: (types) => {
+    forkJoin({
+      types: this.orderService.listOrderableCylinderTypes(customer.id),
+      // Only explains the gaps, so its failure never blocks a booking.
+      missing: this.orderService
+        .listUnorderableCylinderTypes(customer.id)
+        .pipe(catchError(() => of(null))),
+    }).subscribe({
+      next: ({ types, missing }) => {
         // A late answer for a customer no longer selected is dropped.
         if (this.selectedCustomer()?.id !== customer.id) return;
         this.cylinderTypes.set(types);
+        this.unorderableTypes.set(missing);
         this.cylinderTypesLoading.set(false);
       },
       error: (err) => {

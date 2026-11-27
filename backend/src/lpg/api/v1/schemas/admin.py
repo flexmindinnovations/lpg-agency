@@ -184,6 +184,9 @@ class CylinderTypeResponse(BaseModel):
     name: str
     weight_kg: Decimal
     is_active: bool
+    #: `None` for a type typed in before the standard list existed.
+    size_code: str | None = None
+    category: str | None = None
     #: GST classification invoices use (BR-16). Both `None` until set —
     #: invoices for this cylinder type are held until then.
     hsn_code: str | None = None
@@ -191,8 +194,8 @@ class CylinderTypeResponse(BaseModel):
 
 
 class CreateCylinderTypeRequest(BaseModel):
-    name: str = Field(min_length=1)
-    weight_kg: Decimal = Field(gt=0)
+    #: A `code` from `GET /admin/cylinder-sizes`; it sets the name and weight.
+    size_code: str
     hsn_code: str | None = Field(default=None, pattern=r"^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$")
     gst_rate_percent: Decimal | None = Field(default=None, ge=0, le=28)
 
@@ -202,12 +205,30 @@ class ClassifyCylinderTypeForGstRequest(BaseModel):
     gst_rate_percent: Decimal = Field(ge=0, le=28)
 
 
-class RenameCylinderTypeRequest(BaseModel):
-    name: str = Field(min_length=1)
+class UpdateCylinderTypeRequest(BaseModel):
+    """Anything left out stays as it is. HSN and rate go together."""
+
+    size_code: str | None = None
+    hsn_code: str | None = Field(default=None, pattern=r"^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$")
+    gst_rate_percent: Decimal | None = Field(default=None, ge=0, le=28)
 
 
-class AdjustCylinderTypeWeightRequest(BaseModel):
-    weight_kg: Decimal = Field(gt=0)
+class CylinderSizeResponse(BaseModel):
+    """One entry of the standard cylinder size list."""
+
+    code: str
+    name: str
+    #: "domestic" or "commercial" (commercial and industrial supply).
+    category: str
+    weight_kg: Decimal
+
+
+class CylinderTypeUsageResponse(BaseModel):
+    #: What refers to the type ("orders", "prices"). Empty means it can be
+    #: deleted.
+    used_in: list[str]
+    #: The sizes it can be changed to.
+    allowed_size_codes: list[str]
 
 
 class SetCylinderTypeActiveRequest(BaseModel):

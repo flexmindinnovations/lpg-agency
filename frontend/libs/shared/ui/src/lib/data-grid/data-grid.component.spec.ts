@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { DataGridComponent, type DataGridColumn } from './data-grid.component';
+import { DataGridComponent, DataGridLinkCell, type DataGridColumn } from './data-grid.component';
 
 interface Row {
   readonly id: string;
@@ -77,8 +77,10 @@ describe('DataGridComponent', () => {
       field: 'quantity',
       headerName: 'Quantity',
       sortable: false,
-      type: 'numericColumn',
+      cellStyle: { fontVariantNumeric: 'tabular-nums' },
     });
+    // Every column aligns the same way, numbers included.
+    expect(columnDefs.map((def) => def['type'])).toEqual([undefined, undefined]);
   });
 
   it('defaults sortable, filterable and resizable per column when unspecified', () => {
@@ -216,5 +218,22 @@ describe('DataGridComponent', () => {
     sized(1000);
     expect(setColumnsVisible).toHaveBeenNthCalledWith(1, ['quantity'], false);
     expect(setColumnsVisible).toHaveBeenNthCalledWith(2, ['quantity'], true);
+  });
+});
+
+describe('DataGridLinkCell', () => {
+  function buttons(valueFormatted: string): number {
+    const fixture = TestBed.createComponent(DataGridLinkCell);
+    fixture.componentInstance.agInit({ valueFormatted, data: {} });
+    fixture.detectChanges();
+    return (fixture.nativeElement as HTMLElement).querySelectorAll('button').length;
+  }
+
+  it('renders no button for a row with no action', () => {
+    expect(buttons('')).toBe(0);
+  });
+
+  it('renders one for a row with an action', () => {
+    expect(buttons('Set GST')).toBe(1);
   });
 });

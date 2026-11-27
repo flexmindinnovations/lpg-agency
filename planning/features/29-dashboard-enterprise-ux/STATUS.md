@@ -158,3 +158,11 @@ Re-run uncached 2026-09-05 after Stage 4b, across every phase-touched project.
 - Source spec: `GAS Fluent Glass Enterprise Design System Prompt.md` (+ the
   reference screenshot the user supplied).
 - Component docs: [`frontend/libs/shared/ui/README.md`](../../../frontend/libs/shared/ui/README.md).
+
+## 2026-11-26 — One alignment for every table
+
+Owner request: every column header and value now aligns to the start, numeric
+columns included (they keep tabular figures). Changed in the shared
+`lpg-data-grid` wrapper, the chart data table and the counted-notes table;
+`docs/ui/11-typography.md` §5 records the rule. Frontend tests, lint and build
+pass; header and value positions were measured on the Cylinder Types grid.

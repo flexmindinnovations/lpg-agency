@@ -41,3 +41,15 @@
 .line-row__qty {
   inline-size: 6rem;
 }
+
+/* Why some cylinder types are missing from the booking list. */
+.unorderable-note {
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-secondary);
+}
+
+.unorderable {
+  margin: var(--spacing-xs) 0 0;
+  padding-inline-start: var(--spacing-md);
+  list-style: disc;
+}

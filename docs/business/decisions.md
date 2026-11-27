@@ -30,6 +30,8 @@ Where a decision changes a data model, workflow, or requirement described elsewh
 - **Impact:** Supersedes A-03 (which only anticipated Domestic/Commercial). `business-rules.md` BR-04 (holding cap) and pricing logic in `modules/accounting.md` must be parameterized by customer type, not hardcoded to two tiers.
 
 ### D-04 (resolves Q-04) — Cylinder Sizes
+> **Superseded 2026-11-26 by D-43** for which sizes can be created. Tracking inventory per cylinder type still applies.
+
 **Decision:** Support **configurable** cylinder types, with initial examples: 5kg, 10kg, 14.2kg, 19kg, 47.5kg.
 - Inventory is tracked **separately per cylinder type** at every level (Warehouse, Vehicle, Customer).
 - **Impact:** Supersedes A-04. Every inventory/ledger entity in `modules/inventory-management.md` and `workflows/cylinder-ledger.md` requires a `cylinderTypeId` dimension — this is not a single filled/empty counter pair per location, but one pair **per cylinder type per location**.
@@ -203,6 +205,15 @@ Confirms `requirements/non-functional.md` §6 in full: thermal (58mm/80mm specif
 Business rules — GST rates, cylinder holding limits, cancellation policies, reminder intervals, credit limits — must be **configurable per tenant**, not hardcoded. This is a direct consequence of D-01 (multi-tenancy) and should be treated as a cross-cutting design constraint across every module.
 
 ---
+
+## Later Decisions
+
+### D-43 (supersedes D-04 in part) — Standard Cylinder Sizes Only
+**Decision (owner, 2026-11-26):** An agency picks its cylinder types from the sizes IndianOil and HPCL publish. It cannot type its own name or weight.
+- Domestic: 5 kg, 10 kg composite, 14.2 kg.
+- Commercial and industrial: 2 kg, 5 kg free trade (FTL), 19 kg, 35 kg, 47.5 kg, 425 kg.
+- BPCL's list was not checked, and private-brand sizes are not offered. Adding a size is a code change.
+- **Impact:** See ADR-079.
 
 ## Cross-Reference Summary
 
