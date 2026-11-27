@@ -141,8 +141,8 @@ async def _devices(
     return body
 
 
-class TestOffByDefault:
-    async def test_nothing_is_enforced_or_recorded_until_an_admin_switches_it_on(
+class TestByDefault:
+    async def test_phones_are_listed_without_anyone_switching_anything_on(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
         agency = await seed_agency(admin_engine, hasher)
@@ -158,10 +158,13 @@ class TestOffByDefault:
         assert new.status_code == 200, new.text
         assert (await client.get(_ME, headers=_bearer(old, None))).status_code == 200
         assert (await client.get(_ME, headers=_bearer(new, install_id))).status_code == 200
-        assert await _devices(client, admin) == []
+        [device] = await _devices(client, admin)
+        assert device["status"] == "approved"
+        assert device["model"] == "Redmi 12"
         mine = await client.get("/api/v1/devices/me", headers=_bearer(new, install_id))
-        assert mine.json()["control"] == "off"
+        assert mine.json()["control"] == "observe"
         assert mine.json()["allowed"] is True
+        assert mine.json()["needs_name"] is False
 
 
 class TestObserve:
@@ -188,10 +191,14 @@ class TestObserve:
         assert install_id not in str(device)  # only a short reference is exposed
         assert (await client.get(_ME, headers=_bearer(signed_in, install_id))).status_code == 200
 
-        # Even a phone the admin then blocks is not stopped while only observing.
+        # A phone the admin blocks is stopped, with or without approval required.
         block = await client.post(f"{_DEVICES}/{device['id']}/block", headers=admin)
         assert block.status_code == 200
-        assert (await client.get(_ME, headers=_bearer(signed_in, install_id))).status_code == 200
+        refused = await client.get(_ME, headers=_bearer(signed_in, install_id))
+        assert refused.status_code in (401, 403), refused.text
+        again = await _sign_in(client, driver, install_id)
+        assert again.status_code == 403, again.text
+        assert again.json()["error_code"] == "DEVICE_BLOCKED"
 
     async def test_a_full_plan_leaves_the_extra_phone_waiting_but_still_not_blocked(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
@@ -433,7 +440,7 @@ class TestEnforce:
         assert waiting.status_code == 403
         assert waiting.json()["error_code"] == "DEVICE_PENDING"
 
-    async def test_going_back_to_off_lets_everyone_in_again_at_once(
+    async def test_no_longer_requiring_approval_lets_everyone_in_at_once(
         self, client: AsyncClient, admin_engine: AsyncEngine, hasher: Argon2PasswordHasher
     ) -> None:
         _agency, driver, admin = await self._enforcing(client, admin_engine, hasher)
@@ -442,7 +449,7 @@ class TestEnforce:
         mine = _bearer(signed_in, install_id)
         assert (await client.get(_ME, headers=mine)).status_code == 403
 
-        await _set_mode(client, admin, "off")
+        await _set_mode(client, admin, "observe")
 
         assert (await client.get(_ME, headers=mine)).status_code == 200
 

@@ -12,6 +12,7 @@ import {
   type DriverResponse,
   type EmployeeResponse,
 } from '@lpg/shared/data-access';
+import { StatusChipCell } from '@lpg/shared/ui';
 import { FeatureEmployees } from './feature-employees';
 
 const employee = (id: string, role: string, status = 'active'): EmployeeResponse =>
@@ -50,7 +51,12 @@ describe('FeatureEmployees', () => {
     enablingLogin: () => boolean;
     selectedEmployee: { set: (e: EmployeeResponse | null) => void };
     enableLogin: () => void;
-    columns: { field: string; header: string }[];
+    columns: {
+      field: string;
+      header: string;
+      cellRenderer?: unknown;
+      cellRendererParams?: Record<string, unknown>;
+    }[];
   };
   const internals = () => component as unknown as Internals;
 
@@ -132,6 +138,16 @@ describe('FeatureEmployees', () => {
         'without-login': 'Not enabled',
         'no-profile': 'Not enabled',
         manager: '—',
+      });
+    });
+
+    it('is a chip: green when enabled, amber when a driver still needs it', () => {
+      create({ employees: [], drivers: [] });
+      const column = internals().columns.find((c) => c.field === 'app_login');
+
+      expect(column?.cellRenderer).toBe(StatusChipCell);
+      expect(column?.cellRendererParams).toEqual({
+        severityMap: { enabled: 'success', 'not enabled': 'warn' },
       });
     });
 

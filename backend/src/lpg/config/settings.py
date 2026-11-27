@@ -27,15 +27,13 @@ def _os_environ() -> dict[str, str]:
     return dict(os.environ)
 
 
-def _generate_ephemeral_rs256_keypair() -> tuple[str, str]:
-    """A throwaway RS256 keypair for local development only.
+def generate_rs256_keypair() -> tuple[str, str]:
+    """A new RS256 keypair as `(private_pem, public_pem)`; never logged.
 
-    Never persisted, never logged, regenerated on every process start —
-    which is exactly why every other environment must supply its own
-    (`model_post_init` raises rather than doing this outside `is_local`).
-    2048 bits matches the minimum RS256 key size PyJWT's `cryptography`
-    backend expects; there is no production key-rotation story here since
-    this keypair is never meant to outlive the process.
+    A `local` run with no keys configured uses one for the life of the
+    process. Every other environment must supply its own, which
+    `scripts/generate_jwt_keys.py` writes into an env file. 2048 bits matches
+    the minimum RS256 key size PyJWT's `cryptography` backend expects.
     """
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
@@ -236,9 +234,9 @@ class Settings(BaseSettings):
     # (tokens stop verifying across a restart — acceptable there, nowhere
     # else). Every other environment (including `dev`/`uat`, which run
     # against the same local docker Postgres but are *not* `is_local`) must
-    # supply real PEM values — `.env.dev.example`/`.env.uat.example` do,
-    # `.env.prod.example` deliberately leaves them empty, the same pattern
-    # `LPG_DB_PASSWORD` already uses. A PEM's embedded newlines don't survive
+    # supply real PEM values. No committed file carries any: the example files
+    # leave them empty and `scripts/generate_jwt_keys.py` writes a pair into
+    # the copied `.env`. A PEM's embedded newlines don't survive
     # a single-line env var, so both fields accept `\n`-escaped input and
     # unescape it — see the validator below.
     jwt_private_key: SecretStr | None = None
@@ -391,6 +389,8 @@ class Settings(BaseSettings):
         "whatsapp_app_secret",
         "whatsapp_verify_token",
         "storage_url_signing_key",
+        "jwt_private_key",
+        "jwt_public_key",
         mode="before",
     )
     @classmethod
@@ -508,7 +508,7 @@ class Settings(BaseSettings):
         # with `None` keys), the same place a missing `db_password` fails at
         # connection time rather than here.
         if self.jwt_private_key is None and self.jwt_public_key is None and self.is_local:
-            private_pem, public_pem = _generate_ephemeral_rs256_keypair()
+            private_pem, public_pem = generate_rs256_keypair()
             self.jwt_private_key = SecretStr(private_pem)
             self.jwt_public_key = public_pem
 

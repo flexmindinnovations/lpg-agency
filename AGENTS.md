@@ -295,6 +295,41 @@ Always use:
 
 Never create custom styling if a reusable component already exists.
 
+## Follow project conventions — every time
+
+Before building or changing any screen, find how an existing screen already
+does the same thing and do it that way. Search `libs/shared/ui` first. If the
+convention is missing or wrong, change it in the shared component so every
+screen gets it; never add a second way of doing the same thing. Extending a
+component that already breaks a convention is not following it: fix it.
+
+## Dashboard UI conventions (mandatory)
+
+| Need | Use | Never |
+|---|---|---|
+| Choosing from a list | `p-select` with `[filter]="true"` and `[resetFilterOnHide]="true"` — **every** dropdown is searchable | `p-autocomplete`, `p-dropdown`, a native `<select>`, a dropdown without search |
+| Choosing from a list searched on the server (e.g. customers) | `lpg-search-select` from `@lpg/shared/ui` | A hand-built search box |
+| A status or state in a table row (active, enabled, paid, role, source …) | `StatusChipCell` in grids, `p-tag` in plain tables; pass `labelMap` / `severityMap` | Plain text, or a page's own `…StatusCell` component |
+| Read-only details of a record (page, drawer or dialog) | `lpg-detail-list` / `lpg-detail-item` (or the global `.detail-item`): label on the left, value beside it; several columns with `var(--detail-columns)`. A totals strip above a table is not a record | A label stacked over its value, a page's own label/value styles, fixed `1fr 1fr` columns |
+| Width of a side drawer | `var(--drawer-width)`, or `var(--drawer-width-wide)` when it holds a table or several columns | A width written out on the drawer |
+| Save/Cancel and record actions of a side drawer | One `.modal-actions` footer after the scrolling `.detail-view__fields` or `.dialog-form__fields`, so it stays in view | Buttons inside the scrolling content |
+| A section of a page or side drawer (details, lines, history, a chart, a form group) | `lpg-section-card` with a `heading`; a button for the section goes on its heading line (the `headerActions` slot, or `<ng-template lpgCardActions>` from a component inside the card); a table in it runs edge to edge and, with nothing under it, down to the card's bottom edge (the card does both itself); no line follows the last row; rows inside a card are plain rows divided by lines | A bare heading over loose content, a hand-made bordered panel, a boxed row inside a card |
+| Actions on a table row | One `rowActionsColumn(...)` column: "Actions" heading, an icon button tinted like a chip for each action, with its words as a `pTooltip`; `severity: 'danger'` for delete, deactivate and remove | Buttons with text, underlined text as a button, an icon without a tooltip, a column without a heading, several action columns |
+| Opening a record from a table | A link cell (`onLinkClick`) on its number or name | An "Open"/"View" link in an action column |
+
+Rules a machine can check are checked by
+`frontend/apps/dashboard/src/app/ui-conventions.spec.ts`, which runs in CI.
+When you add a convention here, add its check there.
+
+## Finish with unit tests
+
+When the features asked for are done, and before reporting them as done: add or
+update unit tests for what changed, then run the tests, lint and build
+(`npx nx run-many -t test lint` and `npx nx build dashboard` for the
+dashboard; `pytest`, `ruff`, `mypy` and `lint-imports` for the backend).
+A screen change is also checked in a browser against a faked API, never live
+data.
+
 ---
 
 # Backend Rules

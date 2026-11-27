@@ -32,6 +32,7 @@ from lpg.application.common.errors import (
     CreditLimitExceededError,
     CylinderCapExceededError,
     CylinderNotOrderableError,
+    EmptiesExceedHeldError,
     IncompletePodError,
     NotFoundError,
     OtpExpiredError,
@@ -65,6 +66,7 @@ from lpg.application.order.use_cases import (
     GetCancellationRequestUseCase,
     GetDeliveryCodeQuery,
     GetDeliveryCodeUseCase,
+    GetOrderEmptiesUseCase,
     GetOrderQuery,
     RecordFailedDeliveryCommand,
     RecordFailedDeliveryUseCase,
@@ -81,9 +83,11 @@ from lpg.domain.customer.customer import (
     Customer,
     CustomerNotEligibleToOrderError,
 )
+from lpg.domain.cylinder_ledger.cylinder_ledger import CylinderLedger
 from lpg.domain.delivery.route import Route, RoutePlanned
 from lpg.domain.inventory.inventory_location import InventoryLocation
 from lpg.domain.order.order import (
+    CollectedEmpty,
     DeliveredLine,
     DeliveryAddress,
     InsufficientVehicleStockError,
@@ -855,7 +859,155 @@ class TestCreateOrderUseCase:
         mock_order_repo.save.assert_not_called()
 
 
+def _ledger_holding(held: dict[uuid.UUID, int]) -> CylinderLedger:
+    return CylinderLedger(
+        cylinder_ledger_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        balances=dict(held),
+    )
+
+
 class TestDeliverOrderUseCase:
+    #: What the customer was holding before the delivery under test.
+    held: dict[uuid.UUID, int]
+
+    @pytest.fixture(autouse=True)
+    def _nothing_held(self) -> None:
+        self.held = {}
+
+    async def _deliver_with_empties(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+        *,
+        on_line: int = 0,
+        other: tuple[uuid.UUID, int] | None = None,
+        other_is_ordered_size: bool = False,
+    ) -> tuple[Order, InventoryLocation, MagicMock, uuid.UUID]:
+        cylinder_type_id = uuid.uuid4()
+        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        vehicle_location = _make_vehicle_location(location_ref_id=route.vehicle_id)
+        mock_inventory_repo.get_by_location_ref.return_value = vehicle_location
+        use_case, _pod_repo, otp_store = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+        # The test names the ordered size before it knows its id.
+        if None in self.held:
+            self.held[cylinder_type_id] = self.held.pop(None)  # type: ignore[call-overload]
+        others = []
+        if other is not None:
+            others.append(CollectedEmpty(cylinder_type_id=other[0], quantity=other[1]))
+        if other_is_ordered_size:
+            others.append(CollectedEmpty(cylinder_type_id=cylinder_type_id, quantity=1))
+        self.otp_store = otp_store
+        await use_case.execute(
+            DeliverOrderCommand(
+                order_id=order.id,
+                lines=[
+                    DeliveredLine(
+                        cylinder_type_id=cylinder_type_id,
+                        quantity_delivered=4,
+                        quantity_collected_empty=on_line,
+                    )
+                ],
+                other_empties=others,
+                otp_code="123456",
+                signature_blob_ref=None,
+                photo_blob_ref=None,
+                gps_lat=Decimal("12.9"),
+                gps_lng=Decimal("77.6"),
+                payment_method="cash",
+                amount_collected=Decimal("3600"),
+                changed_by=uuid.uuid4(),
+            )
+        )
+        return order, vehicle_location, otp_store, cylinder_type_id
+
+    async def test_empties_up_to_what_was_held_are_collected_even_beyond_todays_quantity(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        other_size = uuid.uuid4()
+        self.held = {None: 10, other_size: 2}  # type: ignore[dict-item]
+
+        order, vehicle, _otp, ordered = await self._deliver_with_empties(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            on_line=10,
+            other=(other_size, 2),
+        )
+
+        assert order.lines[0].quantity_collected_empty == 10
+        assert order.other_empties == (CollectedEmpty(cylinder_type_id=other_size, quantity=2),)
+        assert vehicle.balance_of(ordered, "empty") == 10
+        assert vehicle.balance_of(other_size, "empty") == 2
+        mock_uow.commit.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("held", "on_line", "other_quantity"),
+        [
+            (0, 1, 0),  # a first delivery: today's cylinders are full
+            (3, 4, 0),
+            (4, 4, 1),  # a size the customer never had
+        ],
+    )
+    async def test_more_empties_than_held_are_refused_before_the_code_is_used(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+        held: int,
+        on_line: int,
+        other_quantity: int,
+    ) -> None:
+        self.held = {None: held}  # type: ignore[dict-item]
+
+        with pytest.raises(EmptiesExceedHeldError, match=r"14.2KG_Domestic"):
+            await self._deliver_with_empties(
+                mock_order_repo,
+                mock_route_repo,
+                mock_inventory_repo,
+                mock_uow,
+                on_line=on_line,
+                other=(uuid.uuid4(), other_quantity) if other_quantity else None,
+            )
+
+        self.otp_store.verify.assert_not_called()
+        mock_order_repo.save.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
+    async def test_an_ordered_size_cannot_also_be_listed_as_another_size(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        self.held = {None: 9}  # type: ignore[dict-item]
+
+        with pytest.raises(ValidationError):
+            await self._deliver_with_empties(
+                mock_order_repo,
+                mock_route_repo,
+                mock_inventory_repo,
+                mock_uow,
+                other_is_ordered_size=True,
+            )
+
+        self.otp_store.verify.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
     def _deps(
         self,
         mock_order_repo: MagicMock,
@@ -883,8 +1035,23 @@ class TestDeliverOrderUseCase:
         )
         otp_store = MagicMock()
         otp_store.verify = AsyncMock(return_value=True)
+        ledger_repo = MagicMock()
+        ledger_repo.get_by_customer_id = AsyncMock(
+            side_effect=lambda *_: _ledger_holding(self.held)
+        )
+        cylinder_type = MagicMock()
+        cylinder_type.name = "14.2KG_Domestic"
+        cylinder_types = MagicMock()
+        cylinder_types.get = AsyncMock(return_value=cylinder_type)
         use_case = DeliverOrderUseCase(
-            mock_order_repo, mock_route_repo, mock_inventory_repo, pod_repo, otp_store, mock_uow
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            pod_repo,
+            otp_store,
+            mock_uow,
+            ledger_repo,
+            cylinder_types,
         )
         return use_case, pod_repo, otp_store
 
@@ -1523,6 +1690,48 @@ class TestDeliverOrderUseCase:
         pod_repo.create.assert_not_called()
         mock_uow.commit.assert_not_called()
         assert route.stops[0].status == "pending"
+
+
+class TestGetOrderEmptiesUseCase:
+    async def test_lists_every_size_on_the_order_then_the_other_sizes_held(
+        self, mock_order_repo: MagicMock
+    ) -> None:
+        ordered, small, large, returned = (uuid.uuid4() for _ in range(4))
+        order = _make_order(lines=[OrderLine(uuid.uuid4(), ordered, 2)])
+        mock_order_repo.get_by_id.return_value = order
+        ledger_repo = MagicMock()
+        ledger_repo.get_by_customer_id = AsyncMock(
+            return_value=_ledger_holding({small: 3, large: 1, returned: 0})
+        )
+        types = []
+        for type_id, name in [(ordered, "14.2KG"), (small, "5KG"), (large, "19KG")]:
+            cylinder_type = MagicMock()
+            cylinder_type.id = type_id
+            cylinder_type.name = name
+            types.append(cylinder_type)
+        type_repo = MagicMock()
+        type_repo.list_for_tenant = AsyncMock(return_value=types)
+
+        held = await GetOrderEmptiesUseCase(mock_order_repo, ledger_repo, type_repo).execute(
+            order.id
+        )
+
+        # The ordered size is listed although none of it is held; a size that
+        # has all come back is not.
+        assert [(h.cylinder_type_name, h.quantity_held) for h in held] == [
+            ("14.2KG", 0),
+            ("19KG", 1),
+            ("5KG", 3),
+        ]
+        ledger_repo.get_by_customer_id.assert_awaited_once_with(order.tenant_id, order.customer_id)
+
+    async def test_unknown_order_is_not_found(self, mock_order_repo: MagicMock) -> None:
+        mock_order_repo.get_by_id.return_value = None
+
+        with pytest.raises(NotFoundError):
+            await GetOrderEmptiesUseCase(mock_order_repo, MagicMock(), MagicMock()).execute(
+                uuid.uuid4()
+            )
 
 
 class TestCancelOrderUseCase:

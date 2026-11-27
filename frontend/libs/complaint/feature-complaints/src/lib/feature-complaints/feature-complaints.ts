@@ -18,11 +18,9 @@ import { of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { AutoComplete } from 'primeng/autocomplete';
-import type { AutoCompleteCompleteEvent } from 'primeng/types/autocomplete';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { DrawerA11yDirective, SectionCardComponent } from '@lpg/shared/ui';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { Textarea } from 'primeng/textarea';
@@ -57,6 +55,8 @@ import {
   PreviewDialog,
   type PreviewData,
   StatusChipCell,
+  SearchSelect,
+  customerFacts,
   type ChipSeverity,
   shortId,
   toSentenceCase,
@@ -96,6 +96,7 @@ function lowerKeys(record: Record<string, string>): Record<string, string> {
 @Component({
   selector: 'lib-feature-complaints',
   imports: [
+    SectionCardComponent,
     Message,
     PageActionsDirective,
     DatePipe,
@@ -105,7 +106,7 @@ function lowerKeys(record: Record<string, string>): Record<string, string> {
     ButtonDirective,
     Drawer,
     DrawerA11yDirective,
-    AutoComplete,
+    SearchSelect,
     Select,
     Tag,
     Textarea,
@@ -359,27 +360,15 @@ export class FeatureComplaints implements OnInit {
     return FINISHED_STATUSES.has(complaint.status);
   }
 
+  protected readonly searchCustomers = (query: string) =>
+    this.customerService.list(0, 20, query || undefined).pipe(map((page) => page.items));
+  protected readonly customerName = (customer: CustomerResponse) => customer.full_name;
+  protected readonly customerFacts = customerFacts;
+
   /** The picked customer's recent orders, for linking the complaint (DO-17). */
-  protected readonly customerSuggestions = signal<CustomerResponse[]>([]);
   protected readonly customerOrders = signal<{ label: string; value: string }[]>([]);
   protected readonly assignees = signal<ComplaintAssignee[]>([]);
   protected readonly isSafetyCategory = signal(false);
-  private latestCustomerQuery = '';
-
-  protected searchCustomers(event: AutoCompleteCompleteEvent): void {
-    const query = event.query?.replace(/\s+/g, ' ').trim() ?? '';
-    this.latestCustomerQuery = query;
-    if (query.length < 2) {
-      this.customerSuggestions.set([]);
-      return;
-    }
-    this.customerService.list(0, 20, query).subscribe({
-      next: (page) => {
-        if (query === this.latestCustomerQuery) this.customerSuggestions.set(page.items);
-      },
-      error: () => this.customerSuggestions.set([]),
-    });
-  }
 
   readonly priorityOptions = [
     { label: 'Critical', value: 'Critical' },
@@ -398,9 +387,8 @@ export class FeatureComplaints implements OnInit {
     this.raiseForm.controls.customer.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
       this.raiseForm.controls.order_id.setValue('');
       this.customerOrders.set([]);
-      const customer = value && typeof value === 'object' ? value : null;
-      if (!customer || !this.canReadOrders()) return;
-      this.orderService.listOrders({ customerId: customer.id, limit: 20 }).subscribe({
+      if (!value || !this.canReadOrders()) return;
+      this.orderService.listOrders({ customerId: value.id, limit: 20 }).subscribe({
         next: (page) => this.customerOrders.set(page.items.map(orderOption)),
         error: () => this.customerOrders.set([]),
       });
@@ -604,7 +592,7 @@ export class FeatureComplaints implements OnInit {
 
   submitRaise() {
     const val = this.raiseForm.getRawValue();
-    const customer = val.customer && typeof val.customer === 'object' ? val.customer : null;
+    const customer = val.customer;
     if (this.raiseForm.invalid || !customer || !val.category) {
       this.raiseForm.markAllAsTouched();
       return;

@@ -41,8 +41,8 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
     );
   }
 
-  /// Opens turn-by-turn to [point], or — for an address nobody pinned and
-  /// the geocoder couldn't place — lets the maps app search the address text.
+  /// Opens turn-by-turn to [point], or — for an address nobody pinned — lets
+  /// the maps app search the address text.
   Future<void> _navigate(LatLng? point, String address) async {
     final q = point != null
         ? '${point.latitude},${point.longitude}'
@@ -174,7 +174,8 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
                   label: 'Navigate',
                   icon: LpgIcons.navigate,
                   expand: true,
-                  onPressed: () => _navigate(point, destination.label),
+                  onPressed: () =>
+                      _navigate(destination.navigationPoint, destination.label),
                 ),
               ),
             ],

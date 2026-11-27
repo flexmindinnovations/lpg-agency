@@ -14,12 +14,6 @@
   overflow: hidden;
 }
 
-.section-title {
-  font-size: var(--typography-heading3-font-size);
-  font-weight: var(--typography-heading3-font-weight);
-  margin: 0;
-}
-
 .empty-hint,
 .route-column__count,
 .stop-card__order,
@@ -601,36 +595,6 @@
   flex-wrap: wrap;
 }
 
-.stops-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-}
-
-.stops-header .section-title {
-  margin: 0;
-}
-
-.stops-header__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-/* A bordered panel with its own heading: `--spacing-md` inner padding, the
-   same breathing room as the drawer body around it (at `--spacing-sm` the
-   heading and list rows sat almost on the panel border). */
-.load-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-overlay);
-}
-
 .weighment-record-list {
   display: flex;
   flex-direction: column;
@@ -645,20 +609,26 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--surface-inset);
+  padding-block: var(--spacing-xs);
+  border-block-end: var(--border-width) solid var(--color-border-default);
   font-size: var(--typography-secondary-font-size);
+}
+
+.weighment-record-list li:last-child {
+  border-block-end: 0;
 }
 
 .stop-card {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  padding: var(--spacing-sm);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
+  padding-block-end: var(--spacing-sm);
+  border-block-end: var(--border-width) solid var(--color-border-default);
+}
+
+.stop-card:last-of-type {
+  padding-block-end: 0;
+  border-block-end: 0;
 }
 
 .stop-card__row,

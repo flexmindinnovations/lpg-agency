@@ -17,6 +17,7 @@ import {
   type ReplaceComplianceDocumentCmd,
   type VerifyComplianceDocumentCmd,
   PageHeaderComponent,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { Message } from 'primeng/message';
@@ -99,6 +100,7 @@ export function expiryUrgency(isoDate: string, today: Date = new Date()): Expiry
   selector: 'lpg-feature-compliance-calendar',
   standalone: true,
   imports: [
+    SectionCardComponent,
     HeaderTitlePortalDirective,
     PageHeaderComponent,
     FormsModule,

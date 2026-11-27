@@ -12,7 +12,16 @@ LPG Agency Management Platform
 
 **2026-11-01 update:** the dashboard Settings area (Tenant Config, Feature Flags, License and Linked Devices consolidated under `/settings` with My Profile) was built and deployed 2026-10-16 but never recorded; it is now: [`planning/features/60-dashboard-settings-area/`](./features/60-dashboard-settings-area/STATUS.md), ADR-070, `MODULE_STATUS.md` row 34.
 
-**2026-11-26 update:** cylinder types are now picked from a standard size list, with a details drawer to edit, deactivate or delete them: [`planning/features/68-cylinder-size-catalog/`](./features/68-cylinder-size-catalog/STATUS.md), ADR-079, D-43. Built and checked on a branch; not yet merged or deployed.
+**2026-11-26 update:** cylinder types are now picked from a standard size list, with a details drawer to edit, deactivate or delete them: [`planning/features/68-cylinder-size-catalog/`](./features/68-cylinder-size-catalog/STATUS.md), ADR-079, D-43. Merged in PR #218 and deployed 2026-11-27.
+
+**2026-11-27 update:** booking, order price estimate and stock correction fixes, and dashboard UI conventions applied to every screen (searchable dropdowns, status chips, action buttons; checked in CI): [`planning/features/69-order-inventory-ui-fixes/`](./features/69-order-inventory-ui-fixes/STATUS.md). Built and checked; not yet committed, merged or deployed.
+
+**2026-11-27 update (2):** section cards on dashboard pages and drawers, icon-only row actions, collecting empties from earlier orders (BR-35, D-44, migration `f5c8d1a4b926`), and the Driver and Customer app address lookup behind the missing map: [`planning/features/70-cards-empties-map-row-actions/`](./features/70-cards-empties-map-row-actions/STATUS.md). Built and checked; not yet committed, merged or deployed. **The new Driver APK has to go out with the backend:** the old one fills "Empties collected" with the number ordered, which the server now refuses for a customer holding fewer.
+
+**2026-11-27 update (3):** simpler screens: pinned invoice actions with Download PDF, one label-and-value format, tables that fit, linked phones that appear without any setup (ADR-071 amended), and one **Cylinders & Prices** screen: [`planning/features/71-simplify-ui-pricing-devices/`](./features/71-simplify-ui-pricing-devices/STATUS.md). Built and checked; not yet committed, merged or deployed. **No new migration.** Dashboard and backend must go out together.
+
+**2026-11-27 sign-in keys:** the repository holds no sign-in keys. Each
+environment generates its own with `backend/scripts/generate_jwt_keys.py`.
 
 **2026-11-19 update:** the Home dashboard revamp (animated charts and an answers-first layout, built on existing data) is under way: [`planning/features/65-dashboard-revamp/`](./features/65-dashboard-revamp/STATUS.md), ADR-075, research in `docs/research/dashboard-revamp.md`.
 

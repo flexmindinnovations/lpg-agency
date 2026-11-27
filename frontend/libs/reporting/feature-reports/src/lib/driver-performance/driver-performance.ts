@@ -4,6 +4,7 @@ import {
   formatCurrencyInr,
   formatPercent,
   formatReportDate,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
@@ -16,7 +17,7 @@ import { ReportFilters } from '../report-filters/report-filters';
 @Component({
   selector: 'lib-driver-performance',
   standalone: true,
-  imports: [DataGridComponent, EmptyStateComponent, ReportFilters],
+  imports: [SectionCardComponent, DataGridComponent, EmptyStateComponent, ReportFilters],
   templateUrl: './driver-performance.html',
   styleUrl: './driver-performance.css',
 })

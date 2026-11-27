@@ -26,7 +26,7 @@ export const adminFeatureCylinderTypesRoutes: Route[] = [
     path: '',
     loadComponent: () =>
       import('./cylinder-types-page/cylinder-types-page').then((m) => m.CylinderTypesPage),
-    title: 'Cylinder Types',
+    title: 'Cylinders & Prices',
   },
 ];
 
@@ -38,13 +38,5 @@ export const adminFeatureTenantConfigurationRoutes: Route[] = [
         (m) => m.TenantConfigurationPage,
       ),
     title: 'Tenant Configuration',
-  },
-];
-
-export const adminFeaturePriceListRoutes: Route[] = [
-  {
-    path: '',
-    loadComponent: () => import('./price-list-page/price-list-page').then((m) => m.PriceListPage),
-    title: 'Price List',
   },
 ];

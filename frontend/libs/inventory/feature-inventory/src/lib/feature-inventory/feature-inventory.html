@@ -57,7 +57,7 @@
       (click)="openTransferModal()"
     >
       <i class="pi pi-arrow-right-arrow-left"></i>
-      <span>Load Transfer</span>
+      <span>Move stock</span>
     </button>
     } @if (locationType() === 'vehicle') {
     <button
@@ -95,7 +95,7 @@
       (click)="openAdjustModal()"
     >
       <i class="pi pi-pencil"></i>
-      <span>Adjust</span>
+      <span>Correct stock</span>
     </button>
     <button
       *lpgHasPermission="'inventory:load'"
@@ -107,7 +107,7 @@
       (click)="openReconcileModal()"
     >
       <i class="pi pi-check-square"></i>
-      <span>Reconcile</span>
+      <span>Stock count</span>
     </button>
     <button
       *lpgHasPermission="'inventory:adjust'"
@@ -124,6 +124,8 @@
   <div class="data-toolbar">
     <div class="location-picker data-toolbar__filters">
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         ariaLabel="Location Type"
         inputId="location_type"
         [options]="locationTypeOptions()"
@@ -133,6 +135,8 @@
         (ngModelChange)="onLocationTypeChange($event)"
       ></p-select>
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         [ariaLabel]="locationType() === 'warehouse' ? 'Godown' : 'Vehicle'"
         inputId="location_ref"
         [options]="locationOptions()"
@@ -146,116 +150,128 @@
   </div>
 
   @if (locationRefId()) {
-  <h2 class="section-title">Balance</h2>
-  <lpg-data-grid
-    [rows]="balance()?.balances ?? []"
-    [columns]="balanceColumns"
-    [loading]="loading()"
-    [autoHeight]="true"
-    ariaLabel="Inventory balance"
-  />
+  <lpg-section-card heading="Balance">
+    <div class="card-stack">
+      @if (balanceRows().length > 0) {
+      <p class="empty-hint" *lpgHasPermission="'inventory:load'">
+        Wrong figure? Choose Correct count and enter what is physically there. Entries are never
+        deleted: the correction is added to the history.
+      </p>
+      }
+      <lpg-data-grid
+        [rows]="balanceRows()"
+        [columns]="balanceColumns()"
+        [loading]="loading()"
+        [autoHeight]="true"
+        emptyMessage="No cylinders in stock here."
+        ariaLabel="Inventory balance"
+      />
+    </div>
+  </lpg-section-card>
 
   @if (pendingCounts().length > 0) {
-  <section class="pending-counts" aria-labelledby="pending-counts-title">
-    <h2 id="pending-counts-title" class="section-title">Counts awaiting approval</h2>
-    <p class="empty-hint">
-      Stock is corrected only when someone other than the counter approves the count.
-    </p>
-    @if (countsError(); as msg) {
-    <p-message severity="error" role="alert">{{ msg }}</p-message>
-    }
-    <ul class="pending-counts__list">
-      @for (count of pendingCounts(); track count.id) {
-      <li class="pending-counts__item">
-        <span class="pending-counts__what">
-          <strong>{{ cylinderTypeNameById().get(count.cylinder_type_id) ?? 'Cylinder' }}</strong>
-          · {{ count.status }} · counted {{ count.actual_quantity }}, book {{
-          count.expected_quantity }}
-          <span
-            [class.pending-counts__variance--loss]="count.variance < 0"
-            class="pending-counts__variance"
-            >({{ count.variance > 0 ? '+' : '' }}{{ count.variance }})</span
-          >
-        </span>
-        <span class="pending-counts__actions">
-          <button
-            *lpgHasPermission="'reconciliation:approve'"
-            pButton
-            type="button"
-            size="small"
-            [disabled]="loading()"
-            (click)="onApproveCount(count)"
-          >
-            Approve
-          </button>
-          <button
-            *lpgHasPermission="'reconciliation:approve'"
-            pButton
-            type="button"
-            size="small"
-            severity="secondary"
-            [disabled]="loading()"
-            (click)="openRejectCount(count)"
-          >
-            Reject
-          </button>
-        </span>
-      </li>
+  <lpg-section-card heading="Counts awaiting approval">
+    <div class="card-stack">
+      <p class="empty-hint">
+        Stock changes only when a count is approved. An agency admin can approve their own count;
+        anyone else needs a second person.
+      </p>
+      @if (countsError(); as msg) {
+      <p-message severity="error" role="alert">{{ msg }}</p-message>
       }
-    </ul>
-  </section>
+      <ul class="pending-counts__list">
+        @for (count of pendingCounts(); track count.id) {
+        <li class="pending-counts__item">
+          <span class="pending-counts__what">
+            <strong>{{ cylinderTypeNameById().get(count.cylinder_type_id) ?? 'Cylinder' }}</strong>
+            · {{ count.status }} · counted {{ count.actual_quantity }}, book {{
+            count.expected_quantity }}
+            <span
+              [class.pending-counts__variance--loss]="count.variance < 0"
+              class="pending-counts__variance"
+              >({{ count.variance > 0 ? '+' : '' }}{{ count.variance }})</span
+            >
+          </span>
+          <span class="pending-counts__actions">
+            <button
+              *lpgHasPermission="'reconciliation:approve'"
+              pButton
+              type="button"
+              size="small"
+              [disabled]="loading()"
+              (click)="onApproveCount(count)"
+            >
+              Approve
+            </button>
+            <button
+              *lpgHasPermission="'reconciliation:approve'"
+              pButton
+              type="button"
+              size="small"
+              severity="secondary"
+              [disabled]="loading()"
+              (click)="openRejectCount(count)"
+            >
+              Reject
+            </button>
+          </span>
+        </li>
+        }
+      </ul>
+    </div>
+  </lpg-section-card>
   }
 
-  <section aria-labelledby="stock-register-title">
-    <div class="register-header">
-      <h2 id="stock-register-title" class="section-title">Stock register</h2>
-      <div class="register-range">
-        <label for="register_from">From</label>
-        <p-datepicker
-          inputId="register_from"
-          dateFormat="yy-mm-dd"
-          [showIcon]="true"
-          iconDisplay="input"
-          appendTo="body"
-          [maxDate]="registerTo()"
-          [ngModel]="registerFrom()"
-          (ngModelChange)="onRegisterRangeChange('from', $event)"
-        />
-        <label for="register_to">To</label>
-        <p-datepicker
-          inputId="register_to"
-          dateFormat="yy-mm-dd"
-          [showIcon]="true"
-          iconDisplay="input"
-          appendTo="body"
-          [minDate]="registerFrom()"
-          [ngModel]="registerTo()"
-          (ngModelChange)="onRegisterRangeChange('to', $event)"
-        />
-      </div>
+  <lpg-section-card heading="Stock register" [hasHeaderActions]="true">
+    <div headerActions class="register-range">
+      <label for="register_from">From</label>
+      <p-datepicker
+        inputId="register_from"
+        dateFormat="yy-mm-dd"
+        [showIcon]="true"
+        iconDisplay="input"
+        appendTo="body"
+        [maxDate]="registerTo()"
+        [ngModel]="registerFrom()"
+        (ngModelChange)="onRegisterRangeChange('from', $event)"
+      />
+      <label for="register_to">To</label>
+      <p-datepicker
+        inputId="register_to"
+        dateFormat="yy-mm-dd"
+        [showIcon]="true"
+        iconDisplay="input"
+        appendTo="body"
+        [minDate]="registerFrom()"
+        [ngModel]="registerTo()"
+        (ngModelChange)="onRegisterRangeChange('to', $event)"
+      />
     </div>
-    <p class="empty-hint">
-      Opening, receipts, issues and closing per cylinder type and status for each day (up to 92
-      days).
-    </p>
-    <lpg-data-grid
-      [rows]="registerLines()"
-      [columns]="registerColumns"
-      [loading]="registerLoading()"
-      [autoHeight]="true"
-      ariaLabel="Stock register"
-    />
-  </section>
+    <div class="card-stack">
+      <p class="empty-hint">
+        Opening, receipts, issues and closing per cylinder type and status for each day (up to 92
+        days).
+      </p>
+      <lpg-data-grid
+        [rows]="registerLines()"
+        [columns]="registerColumns"
+        [loading]="registerLoading()"
+        [autoHeight]="true"
+        ariaLabel="Stock register"
+      />
+    </div>
+  </lpg-section-card>
 
-  <h2 class="section-title">Transaction History</h2>
-  <lpg-data-grid
-    style="min-block-size: 320px"
-    [rows]="transactions()"
-    [columns]="transactionColumns"
-    [loading]="loading()"
-    emptyMessage="No inventory transactions recorded yet."
-    ariaLabel="Inventory transaction history"
-  />
+  <lpg-section-card heading="Transaction History">
+    <lpg-data-grid
+      style="min-block-size: 320px"
+      [rows]="transactions()"
+      [columns]="transactionColumns"
+      [loading]="loading()"
+      emptyMessage="No inventory transactions recorded yet."
+      ariaLabel="Inventory transaction history"
+    />
+  </lpg-section-card>
   } @else {
   <p class="empty-hint">Select a godown or vehicle to view its inventory.</p>
   }
@@ -267,7 +283,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="grnTrigger()?.nativeElement?.focus()"
   >
     @if (drawerError(); as msg) {
@@ -282,6 +298,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="grn_cylinder_type"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -310,6 +328,8 @@
           [optional]="true"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="grn_source_omc"
             formControlName="source_omc"
             [options]="omcOptions"
@@ -379,6 +399,8 @@
         "
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="wt_scale"
             formControlName="scale_id"
             [options]="activeScalesForWarehouse()"
@@ -438,12 +460,12 @@
 
   <!-- Load Transfer Modal -->
   <p-drawer
-    header="Load Transfer"
+    header="Move stock"
     [(visible)]="showTransferModal"
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="transferTrigger()?.nativeElement?.focus()"
   >
     @if (drawerError(); as msg) {
@@ -458,6 +480,8 @@
           [messages]="fieldMessages.warehouse_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="transfer_warehouse"
             formControlName="warehouse_id"
             [options]="warehouses()"
@@ -473,6 +497,8 @@
           [messages]="fieldMessages.vehicle_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="transfer_vehicle"
             formControlName="vehicle_id"
             [options]="vehicles()"
@@ -488,6 +514,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="transfer_cylinder_type"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -503,6 +531,8 @@
           [messages]="fieldMessages.status"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="transfer_status"
             formControlName="status"
             [options]="statusOptions"
@@ -543,7 +573,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="deliveryCollectionTrigger()?.nativeElement?.focus()"
   >
     @if (drawerError(); as msg) {
@@ -562,6 +592,8 @@
           [messages]="fieldMessages.mode"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="dc_mode"
             formControlName="mode"
             [options]="[
@@ -580,6 +612,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="dc_cylinder_type"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -625,7 +659,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="statusChangeTrigger()?.nativeElement?.focus()"
   >
     @if (drawerError(); as msg) {
@@ -640,6 +674,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="sc_cylinder_type"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -655,6 +691,8 @@
           [messages]="fieldMessages.from_status"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="sc_from_status"
             formControlName="from_status"
             [options]="fromStatusOptions('status_change')"
@@ -670,6 +708,8 @@
           [messages]="fieldMessages.to_status"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="sc_to_status"
             formControlName="to_status"
             [options]="toStatusOptions('status_change', statusChangeForm.controls.from_status.value)"
@@ -711,12 +751,12 @@
 
   <!-- Adjust Modal -->
   <p-drawer
-    header="Adjust Inventory"
+    header="Correct stock"
     [(visible)]="showAdjustModal"
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="adjustTrigger()?.nativeElement?.focus()"
   >
     @if (drawerError(); as msg) {
@@ -731,6 +771,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="adj_cylinder_type"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -746,6 +788,8 @@
           [messages]="fieldMessages.from_status"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="adj_from_status"
             formControlName="from_status"
             [options]="fromStatusOptions('adjustment')"
@@ -761,6 +805,8 @@
           [messages]="fieldMessages.to_status"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="adj_to_status"
             formControlName="to_status"
             [options]="toStatusOptions('adjustment', adjustForm.controls.from_status.value)"
@@ -809,12 +855,12 @@
 
   <!-- Reconcile Modal -->
   <p-drawer
-    header="Reconcile"
+    header="Stock count"
     [(visible)]="showReconcileModal"
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="reconcileTrigger()?.nativeElement?.focus()"
   >
     @if (drawerError(); as msg) {
@@ -829,6 +875,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="rec_cylinder_type"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -844,6 +892,8 @@
           [messages]="fieldMessages.status"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="rec_status"
             formControlName="status"
             [options]="statusOptions"
@@ -857,6 +907,7 @@
           for="rec_actual_quantity"
           [control]="reconcileForm.controls.actual_quantity"
           [messages]="fieldMessages.actual_quantity"
+          [hint]="recordedQuantityHint()"
         >
           <p-inputnumber
             inputId="rec_actual_quantity"
@@ -878,8 +929,8 @@
       } @else {
       <div class="reconcile-approve-hint">
         <p-message severity="info">
-          Count recorded. Stock is unchanged until someone else approves it under "Counts awaiting
-          approval".
+          Count recorded. Stock changes once it is approved under "Counts awaiting approval". An
+          agency admin can approve their own count; anyone else needs a second person.
         </p-message>
       </div>
       <div class="modal-actions">
@@ -898,7 +949,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="omcReturnTrigger()?.nativeElement?.focus()"
   >
     @if (drawerError(); as msg) {
@@ -913,6 +964,8 @@
           [messages]="fieldMessages.destination_omc"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="ret_omc"
             formControlName="destination_omc"
             [options]="omcOptions"
@@ -930,6 +983,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="ret_cylinder_type"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -948,6 +1003,8 @@
           hint="Defective cylinders go back to the bottling plant too."
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="ret_status"
             formControlName="status"
             [options]="omcReturnStatusOptions"
@@ -1005,7 +1062,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     @if (drawerError(); as msg) {
     <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
@@ -1046,7 +1103,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '36rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="reorderPolicyTrigger()?.nativeElement?.focus()"
   >
     @if (drawerError(); as msg) {
@@ -1065,6 +1122,8 @@
           [messages]="fieldMessages.warehouse_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="rp_warehouse"
             formControlName="warehouse_id"
             [options]="warehouses()"
@@ -1080,6 +1139,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="rp_cylinder_type"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -1133,13 +1194,14 @@
     </form>
 
     @if (reorderPolicies().length > 0) {
-    <h2 class="section-title">Current Policies</h2>
-    <lpg-data-grid
-      style="min-block-size: 220px"
-      [rows]="reorderPolicies()"
-      [columns]="reorderPolicyColumns"
-      ariaLabel="Reorder policies"
-    />
+    <lpg-section-card heading="Current Policies">
+      <lpg-data-grid
+        style="min-block-size: 220px"
+        [rows]="reorderPolicies()"
+        [columns]="reorderPolicyColumns"
+        ariaLabel="Reorder policies"
+      />
+    </lpg-section-card>
     }
   </p-drawer>
 </div>

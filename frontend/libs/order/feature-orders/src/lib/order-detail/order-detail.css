@@ -65,10 +65,16 @@
   gap: var(--spacing-sm) var(--spacing-xl);
 }
 
-.section-title {
-  font-size: var(--typography-heading3-font-size);
-  font-weight: var(--typography-heading3-font-weight);
-  margin: 0;
+/* Marks a unit price that is not fixed yet. */
+.lines-table__note {
+  margin-inline-start: var(--spacing-xs);
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+}
+
+/* A card clips what overflows it, so a wide table scrolls inside. */
+.table-scroll {
+  overflow-x: auto;
 }
 
 .lines-table {
@@ -368,10 +374,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
 }
 
 .invoice-card__row {
@@ -398,8 +400,8 @@
 
 .invoice-card__summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: var(--spacing-md);
+  grid-template-columns: var(--detail-columns);
+  gap: var(--spacing-sm) var(--spacing-xl);
 }
 
 .invoice-card__actions {
@@ -418,19 +420,11 @@
   color: var(--color-text-secondary);
 }
 
-/* Driver and vehicle card, with the live-location map while out for delivery. */
+/* Driver and vehicle, with the live-location map while out for delivery. */
 .driver-card {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-}
-
-.driver-card .section-title {
-  margin: 0;
 }
 
 .driver-card__live {

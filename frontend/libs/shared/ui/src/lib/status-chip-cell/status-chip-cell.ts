@@ -73,7 +73,14 @@ const DEFAULT_SEVERITY_BY_VALUE: Record<string, ChipSeverity> = {
   selector: 'lpg-status-chip-cell',
   standalone: true,
   imports: [Tag],
-  template: `<p-tag [severity]="severity()" [value]="label()" />`,
+  // A dash means "no state for this row": a plain dash, not an empty chip.
+  template: `
+    @if (label() === '—') {
+      —
+    } @else {
+      <p-tag [severity]="severity()" [value]="label()" />
+    }
+  `,
   styles: [
     `
       :host {
@@ -90,7 +97,9 @@ export class StatusChipCell {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
   agInit(params: any): void {
     const raw = params.value;
-    const key = typeof raw === 'string' ? raw.toLowerCase() : '';
+    // On/off fields are keyed 'true' / 'false' in the label and severity maps.
+    const key =
+      typeof raw === 'string' || typeof raw === 'boolean' ? String(raw).toLowerCase() : '';
     const labelMap: Record<string, string> | undefined = params.labelMap;
     this.label.set(labelMap?.[key] ?? toSentenceCase(raw));
     const map: Record<string, ChipSeverity> | undefined = params.severityMap;

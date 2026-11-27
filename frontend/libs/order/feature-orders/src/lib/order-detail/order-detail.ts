@@ -2,6 +2,7 @@ import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui
 import {
   FormFieldComponent,
   HasPermissionDirective,
+  SectionCardComponent,
   bookingSourceLabel,
   formatCurrencyInr,
   shortId,
@@ -192,6 +193,7 @@ const PAYMENT_METHODS = [
     Textarea,
     Tooltip,
     FormFieldComponent,
+    SectionCardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './order-detail.html',
@@ -462,6 +464,18 @@ export class OrderDetail implements OnInit {
   protected readonly failedDeliveryTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('failedDeliveryTriggerEl');
   protected readonly deliverTrigger = viewChild<ElementRef<HTMLButtonElement>>('deliverTriggerEl');
+
+  /** What a not-yet-confirmed order would cost today; `null` once it has
+   * its own price, or while a line has no price. */
+  protected readonly priceEstimate = computed(() => {
+    const order = this.order();
+    return order && !order.total_amount ? (order.price_estimate ?? null) : null;
+  });
+
+  protected readonly estimatedUnitPrices = computed(
+    () =>
+      new Map((this.priceEstimate()?.lines ?? []).map((line) => [line.line_id, line.unit_price])),
+  );
 
   protected readonly cylinderTypeNameById = computed(() => {
     const map = new Map<string, string>();

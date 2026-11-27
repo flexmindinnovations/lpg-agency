@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import (
     ConflictError,
+    EmptiesExceedHeldError,
     NotFoundError,
     OtpExpiredError,
     OtpMismatchError,
@@ -45,7 +46,14 @@ from lpg.application.order.settlement import SETTLEMENT_TOLERANCE, compute_settl
 from lpg.domain.delivery.route import ProofOfDelivery as RouteProofOfDelivery
 from lpg.domain.delivery.route import Route
 from lpg.domain.order.cancellation_fee import CancellationFeeCalculator
-from lpg.domain.order.order import ORDER_STATUSES, DeliveredLine, DeliveryAddress, Order, OrderLine
+from lpg.domain.order.order import (
+    ORDER_STATUSES,
+    CollectedEmpty,
+    DeliveredLine,
+    DeliveryAddress,
+    Order,
+    OrderLine,
+)
 from lpg.domain.tenant.price_list import EffectivePriceResolver
 from lpg.domain.tenant.tenant_configuration import TenantConfigurationResolver
 
@@ -57,6 +65,7 @@ if TYPE_CHECKING:
     from lpg.application.accounting.ports import OnlinePaymentRepository
     from lpg.application.common.ports import JobQueuePort, UnitOfWork
     from lpg.application.customer.ports import CustomerRepository
+    from lpg.application.cylinder_ledger.ports import CylinderLedgerRepository
     from lpg.application.delivery.ports import RouteRepository
     from lpg.application.identity.ports import OtpDeliveryPort, OtpStore
     from lpg.application.inventory.ports import InventoryLocationRepository
@@ -74,7 +83,11 @@ if TYPE_CHECKING:
         ProofOfDeliveryEntry,
         ProofOfDeliveryRepository,
     )
-    from lpg.application.tenant.ports import PriceListRepository, TenantConfigurationRepository
+    from lpg.application.tenant.ports import (
+        CylinderTypeRepository,
+        PriceListRepository,
+        TenantConfigurationRepository,
+    )
     from lpg.domain.customer.customer import Customer
 
 
@@ -871,6 +884,8 @@ class DeliverOrderCommand(Command):
     dac_code: str | None = None
     #: The balance not collected now stays on the customer's account.
     balance_on_account: bool = False
+    #: Empties from earlier deliveries of sizes that are not on this order.
+    other_empties: Sequence[CollectedEmpty] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -894,10 +909,14 @@ class DeliverOrderUseCase:
         pod_repository: ProofOfDeliveryRepository,
         otp_store: OtpStore,
         unit_of_work: UnitOfWork,
+        ledger_repository: CylinderLedgerRepository,
+        cylinder_type_repository: CylinderTypeRepository,
         online_payment_repository: OnlinePaymentRepository | None = None,
         customer_repository: CustomerRepository | None = None,
         credit_limit_evaluator: CreditLimitEvaluator | None = None,
     ) -> None:
+        self._ledger_repository = ledger_repository
+        self._cylinder_type_repository = cylinder_type_repository
         self._customer_repository = customer_repository
         self._credit_limit_evaluator = credit_limit_evaluator
         self._order_repository = order_repository
@@ -935,7 +954,9 @@ class DeliverOrderUseCase:
         _require_loaded_route(route, order.id)
 
         # Before the code is checked: verifying uses the code up, and a driver
-        # sent back to collect the money must still be able to use it.
+        # sent back to correct the empties or collect the money must still be
+        # able to use it.
+        await self._require_empties_within_held(order, command)
         amount_collected = await self._require_payment_settled(order, command)
 
         key = order_delivery_otp_key(order.tenant_id, order.id)
@@ -975,8 +996,18 @@ class DeliverOrderUseCase:
                         delivered.quantity_collected_empty,
                         performed_by=command.changed_by,
                     )
+            for empty in command.other_empties:
+                vehicle_location.record_collection(
+                    empty.cylinder_type_id,
+                    empty.quantity,
+                    performed_by=command.changed_by,
+                )
 
-        order.deliver(lines=command.lines, changed_by=command.changed_by)
+        order.deliver(
+            lines=command.lines,
+            changed_by=command.changed_by,
+            other_empties=command.other_empties,
+        )
         if route is not None and order.route_stop_id is not None:
             route.record_proof_of_delivery(
                 order.route_stop_id,
@@ -1010,6 +1041,50 @@ class DeliverOrderUseCase:
         )
         await self._unit_of_work.commit()
         return DeliverOrderResult(order=order, proof_of_delivery=pod)
+
+    async def _require_empties_within_held(
+        self, order: Order, command: DeliverOrderCommand
+    ) -> None:
+        """A driver takes back at most what the customer was holding before
+        this delivery, as the cylinder ledger records it. Today's cylinders are
+        full, so they do not count.
+        """
+        on_order = {line.cylinder_type_id for line in order.lines}
+        other_ids = [empty.cylinder_type_id for empty in command.other_empties]
+        if on_order.intersection(other_ids) or len(other_ids) != len(set(other_ids)):
+            msg = "Each cylinder size reports its empties once."
+            raise ValidationError(msg, order_id=str(order.id))
+
+        collected: dict[uuid.UUID, int] = {}
+        for cylinder_type_id, quantity in [
+            *((line.cylinder_type_id, line.quantity_collected_empty) for line in command.lines),
+            *((empty.cylinder_type_id, empty.quantity) for empty in command.other_empties),
+        ]:
+            if quantity > 0:
+                collected[cylinder_type_id] = collected.get(cylinder_type_id, 0) + quantity
+        if not collected:
+            return
+
+        ledger = await self._ledger_repository.get_by_customer_id(
+            order.tenant_id, order.customer_id
+        )
+        for cylinder_type_id, quantity in collected.items():
+            held = max(ledger.balance_of(cylinder_type_id), 0)
+            if quantity <= held:
+                continue
+            cylinder_type = await self._cylinder_type_repository.get(cylinder_type_id)
+            size = cylinder_type.name if cylinder_type is not None else "this size of"
+            msg = (
+                f"This customer had {held} empty {size} cylinder(s) to give back before "
+                f"this delivery, so {quantity} can't be collected."
+            )
+            raise EmptiesExceedHeldError(
+                msg,
+                order_id=str(order.id),
+                cylinder_type_id=str(cylinder_type_id),
+                quantity_held=str(held),
+                quantity_requested=str(quantity),
+            )
 
     async def _require_payment_settled(self, order: Order, command: DeliverOrderCommand) -> Decimal:
         """The order is only completed once the money is dealt with (ADR-069):
@@ -1095,6 +1170,61 @@ class DeliverOrderUseCase:
         if not (Decimal("-180") <= command.gps_lng <= Decimal("180")):
             msg = f"GPS longitude out of range: {command.gps_lng}."
             raise IncompletePodError(msg, order_id=str(command.order_id))
+
+
+# ==========================================================================
+# Empties the customer can give back
+# ==========================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class HeldEmpties:
+    cylinder_type_id: uuid.UUID
+    cylinder_type_name: str
+    quantity_held: int
+
+
+class GetOrderEmptiesUseCase:
+    """What a driver may take back at this order's delivery: every size the
+    customer holds, and every size on the order (which may be none).
+    """
+
+    def __init__(
+        self,
+        order_repository: OrderRepository,
+        ledger_repository: CylinderLedgerRepository,
+        cylinder_type_repository: CylinderTypeRepository,
+    ) -> None:
+        self._order_repository = order_repository
+        self._ledger_repository = ledger_repository
+        self._cylinder_type_repository = cylinder_type_repository
+
+    async def execute(self, order_id: uuid.UUID) -> list[HeldEmpties]:
+        order = await self._order_repository.get_by_id(order_id)
+        if order is None:
+            msg = "Order not found."
+            raise NotFoundError(msg, order_id=str(order_id))
+
+        ledger = await self._ledger_repository.get_by_customer_id(
+            order.tenant_id, order.customer_id
+        )
+        held = {key: quantity for key, quantity in ledger.balances.items() if quantity > 0}
+        on_order = [line.cylinder_type_id for line in order.lines]
+        names = {
+            cylinder_type.id: cylinder_type.name
+            for cylinder_type in await self._cylinder_type_repository.list_for_tenant(
+                order.tenant_id
+            )
+        }
+        others = sorted(set(held) - set(on_order), key=lambda key: names.get(key, ""))
+        return [
+            HeldEmpties(
+                cylinder_type_id=key,
+                cylinder_type_name=names.get(key, "Cylinder"),
+                quantity_held=held.get(key, 0),
+            )
+            for key in [*on_order, *others]
+        ]
 
 
 # ==========================================================================

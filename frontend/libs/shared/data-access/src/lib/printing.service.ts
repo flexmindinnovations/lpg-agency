@@ -51,11 +51,26 @@ export class PrintingService {
     if (tab && !tab.closed) {
       tab.location.href = url;
     } else {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.click();
+      this.saveUrl(url, filename);
     }
+    this.releaseLater(url);
+  }
+
+  /** Save a rendered document to the device under `filename`. */
+  download(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    this.saveUrl(url, filename);
+    this.releaseLater(url);
+  }
+
+  private saveUrl(url: string, filename: string): void {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+  }
+
+  private releaseLater(url: string): void {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }

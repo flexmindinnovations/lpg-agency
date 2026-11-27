@@ -1,8 +1,10 @@
 import type { AuditLogEntryResponse } from '@lpg/shared/data-access';
 import {
+  ACTION_LABELS,
   actorLabel,
   auditChanges,
   auditLogCsv,
+  hasEarlierValues,
   orderIdForEntry,
   recordLabel,
   technicalIdentifiersOf,
@@ -33,6 +35,29 @@ describe('audit log formatting', () => {
     ).toBe('Order Status History');
   });
 
+  it('has words for every action the server records besides sign-in events', () => {
+    const recorded = [
+      'create',
+      'update',
+      'delete',
+      'deactivate',
+      'reactivate',
+      'password_change',
+      'platform.agency_admin_added',
+      'platform.setup_link_issued',
+      'device.registered',
+      'device.named',
+      'device.updated',
+      'device.approved',
+      'device.blocked',
+      'device.unblocked',
+      'device.removed',
+      'device.deleted',
+    ];
+
+    expect(recorded.filter((action) => !ACTION_LABELS[action])).toEqual([]);
+  });
+
   it('shows who did it, or System for background jobs', () => {
     expect(actorLabel(entry({}))).toBe('admin@agency.in');
     expect(actorLabel(entry({ actor_id: null, actor_display_name: null }))).toBe('System');
@@ -46,6 +71,19 @@ describe('audit log formatting', () => {
       }),
     );
     expect(changes).toEqual([{ field: 'Status', before: 'Booked', after: 'Confirmed' }]);
+  });
+
+  it('shows a "Before" column only when there is an earlier value', () => {
+    const signIn = auditChanges(
+      entry({ action: 'auth.login', after_state: { client_ip: '192.0.2.1', user_agent: 'x' } }),
+    );
+    const edit = auditChanges(
+      entry({ before_state: { status: 'booked' }, after_state: { status: 'confirmed' } }),
+    );
+
+    expect(signIn.map((change) => change.field)).toEqual(['IP address', 'Browser or app']);
+    expect(hasEarlierValues(signIn)).toBe(false);
+    expect(hasEarlierValues(edit)).toBe(true);
   });
 
   it('lists the created values for a create', () => {

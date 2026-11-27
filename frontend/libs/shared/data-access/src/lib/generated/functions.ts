@@ -465,6 +465,8 @@ export type { DepartOrderApiV1OrdersOrderIdDepartPost$Params as DepartOrderApiV1
 export { departOrderApiV1OrdersOrderIdDepartPost as departOrderApiV1OrdersOrderIdDepartPost } from './fn/orders/depart-order-api-v-1-orders-order-id-depart-post';
 export type { DispatchOrderApiV1OrdersOrderIdDispatchPost$Params as DispatchOrderApiV1OrdersOrderIdDispatchPost$Params } from './fn/orders/dispatch-order-api-v-1-orders-order-id-dispatch-post';
 export { dispatchOrderApiV1OrdersOrderIdDispatchPost as dispatchOrderApiV1OrdersOrderIdDispatchPost } from './fn/orders/dispatch-order-api-v-1-orders-order-id-dispatch-post';
+export type { GetOrderEmptiesApiV1OrdersOrderIdEmptiesGet$Params as GetOrderEmptiesApiV1OrdersOrderIdEmptiesGet$Params } from './fn/orders/get-order-empties-api-v-1-orders-order-id-empties-get';
+export { getOrderEmptiesApiV1OrdersOrderIdEmptiesGet as getOrderEmptiesApiV1OrdersOrderIdEmptiesGet } from './fn/orders/get-order-empties-api-v-1-orders-order-id-empties-get';
 export type { RecordFailedDeliveryApiV1OrdersOrderIdFailedDeliveryPost$Params as RecordFailedDeliveryApiV1OrdersOrderIdFailedDeliveryPost$Params } from './fn/orders/record-failed-delivery-api-v-1-orders-order-id-failed-delivery-post';
 export { recordFailedDeliveryApiV1OrdersOrderIdFailedDeliveryPost as recordFailedDeliveryApiV1OrdersOrderIdFailedDeliveryPost } from './fn/orders/record-failed-delivery-api-v-1-orders-order-id-failed-delivery-post';
 export type { ListOrderStatusHistoryApiV1OrdersOrderIdHistoryGet$Params as ListOrderStatusHistoryApiV1OrdersOrderIdHistoryGet$Params } from './fn/orders/list-order-status-history-api-v-1-orders-order-id-history-get';

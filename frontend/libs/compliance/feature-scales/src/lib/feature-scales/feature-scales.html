@@ -25,6 +25,8 @@
     <div class="data-toolbar__filters">
       @if (scales().length > 0) {
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         [options]="expiryFilterOptions"
         optionLabel="label"
         optionValue="value"
@@ -52,7 +54,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '36rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form
@@ -69,6 +71,8 @@
           [messages]="fieldMessages.warehouse_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="warehouse_id"
             formControlName="warehouse_id"
             [options]="warehouses()"
@@ -168,52 +172,59 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     @if (selectedScale(); as scale) { @if (!editMode()) {
     <div class="detail-view">
       <div class="detail-view__fields">
-        <div class="detail-item">
-          <span class="detail-label">Asset Tag</span>
-          <span class="detail-value">{{ scale.asset_tag }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Godown</span>
-          <span class="detail-value"
-            >{{ warehouseNameById().get(scale.warehouse_id) ?? scale.warehouse_id }}</span
-          >
-        </div>
-        @if (scale.make || scale.model) {
-        <div class="detail-item">
-          <span class="detail-label">Make / Model</span>
-          <span class="detail-value">{{ scale.make }} {{ scale.model }}</span>
-        </div>
-        }
-        <div class="detail-item">
-          <span class="detail-label">Least Count</span>
-          <span class="detail-value">{{ scale.least_count_grams }}g</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Certificate</span>
-          <span class="detail-value">
-            {{ scale.certificate_expiry_date }} @if (scale.is_expired) {
-            <p-tag value="EXPIRED" severity="danger" />
-            } @if (scale.certificate_url) {
-            <a
-              [href]="scale.certificate_url"
-              target="_blank"
-              rel="noopener"
-              aria-label="View certificate"
-            >
-              <i class="pi pi-external-link" aria-hidden="true"></i>
-            </a>
+        <lpg-section-card heading="Details">
+          <lpg-detail-list>
+            <div class="detail-item">
+              <span class="detail-label">Asset Tag</span>
+              <span class="detail-value">{{ scale.asset_tag }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Godown</span>
+              <span class="detail-value"
+                >{{ warehouseNameById().get(scale.warehouse_id) ?? scale.warehouse_id }}</span
+              >
+            </div>
+            @if (scale.make || scale.model) {
+            <div class="detail-item">
+              <span class="detail-label">Make / Model</span>
+              <span class="detail-value">{{ scale.make }} {{ scale.model }}</span>
+            </div>
             }
-          </span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Status</span>
-          <p-tag [value]="toSentenceCase(scale.status)" [severity]="statusSeverity(scale.status)" />
-        </div>
+            <div class="detail-item">
+              <span class="detail-label">Least Count</span>
+              <span class="detail-value">{{ scale.least_count_grams }}g</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Certificate</span>
+              <span class="detail-value">
+                {{ scale.certificate_expiry_date }} @if (scale.is_expired) {
+                <p-tag value="EXPIRED" severity="danger" />
+                } @if (scale.certificate_url) {
+                <a
+                  [href]="scale.certificate_url"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="View certificate"
+                >
+                  <i class="pi pi-external-link" aria-hidden="true"></i>
+                </a>
+                }
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Status</span>
+              <p-tag
+                [value]="toSentenceCase(scale.status)"
+                [severity]="statusSeverity(scale.status)"
+              />
+            </div>
+          </lpg-detail-list>
+        </lpg-section-card>
       </div>
 
       <div class="modal-actions">

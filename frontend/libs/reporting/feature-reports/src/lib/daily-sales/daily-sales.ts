@@ -1,5 +1,10 @@
 import { Component, computed, inject, viewChild } from '@angular/core';
-import { EmptyStateComponent, formatCurrencyInr, formatReportDate } from '@lpg/shared/ui';
+import {
+  EmptyStateComponent,
+  formatCurrencyInr,
+  formatReportDate,
+  SectionCardComponent,
+} from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
   ReportingStore,
@@ -11,7 +16,7 @@ import { ReportFilters } from '../report-filters/report-filters';
 @Component({
   selector: 'lib-daily-sales',
   standalone: true,
-  imports: [DataGridComponent, EmptyStateComponent, ReportFilters],
+  imports: [SectionCardComponent, DataGridComponent, EmptyStateComponent, ReportFilters],
   templateUrl: './daily-sales.html',
   styleUrl: './daily-sales.css',
 })

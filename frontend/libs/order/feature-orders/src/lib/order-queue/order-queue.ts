@@ -17,7 +17,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, debounceTime, forkJoin, of } from 'rxjs';
+import { catchError, debounceTime, forkJoin, map, of } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
@@ -44,6 +44,8 @@ import {
   BOOKING_SOURCE_LABELS,
   EmptyStateComponent,
   StatusChipCell,
+  SearchSelect,
+  customerFacts,
   formatCurrencyInr,
   formatReportDate,
   shortId,
@@ -51,7 +53,6 @@ import {
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { InputText } from 'primeng/inputtext';
 import { Subject } from 'rxjs';
-import { CustomerAutocomplete } from '../customer-autocomplete/customer-autocomplete';
 import {
   DATE_INPUT_FORMAT,
   DATE_INPUT_PLACEHOLDER,
@@ -76,11 +77,6 @@ const STATUS_OPTIONS = (
     'closed',
   ] as const
 ).map((value) => ({ value, label: STATUS_LABELS[value] }));
-
-/** A typed search term only, never a half-typed string, counts as a customer. */
-function isCustomer(value: unknown): value is CustomerResponse {
-  return typeof value === 'object' && value !== null && 'id' in value;
-}
 
 // What staff can record on a dashboard booking. The server fills in `staff` ("Dashboard") when
 // nothing is chosen and sets `mobile_app` itself for the Customer App, so neither a staff user
@@ -109,7 +105,7 @@ const BOOKING_SOURCE_OPTIONS = (['staff', 'phone', 'walk_in', 'whatsapp'] as con
     InputNumber,
     DatePicker,
     DataGridComponent,
-    CustomerAutocomplete,
+    SearchSelect,
     FormFieldComponent,
     HasPermissionDirective,
     EmptyStateComponent,
@@ -140,21 +136,19 @@ export class OrderQueue implements OnInit {
       .pipe(debounceTime(500), takeUntilDestroyed())
       .subscribe(() => this.loadOrders({ silent: true }));
 
-    // The customer is a real form control now (`lpg-customer-autocomplete` is
-    // a CVA); mirror it into the signal the address-dependent template blocks
-    // read, and clear the address whenever the customer changes.
-    // While the user is still typing, the control holds the search text,
-    // not a customer: nothing is loaded and no error shows until a customer
-    // is actually picked (DO-09).
-    this.createForm.controls.customer.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
-      const customer = isCustomer(value) ? value : null;
-      if (customer?.id === this.selectedCustomer()?.id) return;
-      this.selectedCustomer.set(customer);
-      this.selectedAddress.set(null);
-      this.createForm.controls.address_id.setValue('');
-      this.loadOrderableCylinderTypes(customer);
-      if (customer) this.preselectAddress(customer);
-    });
+    // Mirror the picked customer into the signal the address-dependent
+    // template blocks read, and clear the address whenever it changes. The
+    // picker gives the form a customer or nothing, never typed text (DO-09).
+    this.createForm.controls.customer.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((customer) => {
+        if (customer?.id === this.selectedCustomer()?.id) return;
+        this.selectedCustomer.set(customer);
+        this.selectedAddress.set(null);
+        this.createForm.controls.address_id.setValue('');
+        this.loadOrderableCylinderTypes(customer);
+        if (customer) this.preselectAddress(customer);
+      });
 
     this.searchChanges
       .pipe(debounceTime(350), takeUntilDestroyed())
@@ -202,6 +196,11 @@ export class OrderQueue implements OnInit {
 
   protected readonly selectedCustomer = signal<CustomerResponse | null>(null);
   protected readonly selectedAddress = signal<CustomerAddressResponse | null>(null);
+
+  protected readonly searchCustomers = (query: string) =>
+    this.customerService.list(0, 20, query || undefined).pipe(map((page) => page.items));
+  protected readonly customerName = (customer: CustomerResponse) => customer.full_name;
+  protected readonly customerFacts = customerFacts;
 
   /** Validator-key → message for the create-booking fields. */
   protected readonly fieldMessages = {

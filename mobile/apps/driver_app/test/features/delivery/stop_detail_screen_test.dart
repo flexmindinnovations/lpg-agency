@@ -6,6 +6,7 @@ import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/features/delivery/data/driver_position_provider.dart';
+import 'package:driver_app/src/features/delivery/data/held_empties_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_customer_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_destination_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
@@ -98,8 +99,12 @@ class _RecordingAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// What the stop screen is told the customer is holding.
+List<HeldEmpties>? _heldEmpties;
+
 /// Keeps the stop-detail map card off the network/geolocator in these tests.
 final _mapOverrides = [
+  heldEmptiesProvider.overrideWith((ref, id) async => _heldEmpties),
   stopDestinationProvider.overrideWith(
     (ref, id) async => const StopDestination(
       point: LatLng(51.52, -0.15),
@@ -144,6 +149,59 @@ Future<void> _pump(WidgetTester tester, ProviderContainer container) async {
 
 void main() {
   group('StopDetailScreen', () {
+    setUp(() => _heldEmpties = null);
+
+    testWidgets('says how many empties the customer has to give back', (
+      tester,
+    ) async {
+      _heldEmpties = const [
+        HeldEmpties(
+          cylinderTypeId: 'ct1',
+          cylinderTypeName: '14.2 kg',
+          quantityHeld: 10,
+        ),
+        HeldEmpties(
+          cylinderTypeId: 'ct2',
+          cylinderTypeName: '19 kg',
+          quantityHeld: 3,
+        ),
+      ];
+      final container = ProviderContainer(
+        overrides: [
+          ..._mapOverrides,
+          stopOrderProvider.overrideWith((ref, id) async => _order()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      expect(find.text('Up to 13 empties to collect'), findsOneWidget);
+    });
+
+    testWidgets('says nothing about empties when there are none', (
+      tester,
+    ) async {
+      _heldEmpties = const [
+        HeldEmpties(
+          cylinderTypeId: 'ct1',
+          cylinderTypeName: '14.2 kg',
+          quantityHeld: 0,
+        ),
+      ];
+      final container = ProviderContainer(
+        overrides: [
+          ..._mapOverrides,
+          stopOrderProvider.overrideWith((ref, id) async => _order()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      expect(find.textContaining('to collect'), findsNothing);
+    });
+
     testWidgets('tells the driver to collect the price plus GST', (
       tester,
     ) async {

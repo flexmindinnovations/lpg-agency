@@ -13,7 +13,7 @@ import { ButtonDirective } from 'primeng/button';
 import { Select } from 'primeng/select';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { DrawerA11yDirective, SectionCardComponent } from '@lpg/shared/ui';
 
 import {
   EmptyStateComponent,
@@ -43,6 +43,7 @@ interface EnrichedBalance {
   selector: 'lpg-feature-ledger',
   standalone: true,
   imports: [
+    SectionCardComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
     PageHeaderComponent,

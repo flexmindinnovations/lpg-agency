@@ -309,6 +309,14 @@ class TestQaFixesThroughTheRealStack:
         actions = {item["action"] for item in audit["items"] if item["entity_id"] == str(user_id)}
         assert {"deactivate", "reactivate"} <= actions
 
+        # The page's Action filter offers every action, dotted names included.
+        for action in ("deactivate", "auth.login"):
+            filtered = await real_lifespan_client.get(
+                f"/api/v1/admin/audit-log?action={action}", headers=headers
+            )
+            assert filtered.status_code == 200, filtered.text
+            assert {item["action"] for item in filtered.json()["items"]} <= {action}
+
     async def test_my_profile_round_trip(
         self,
         real_lifespan_client: AsyncClient,

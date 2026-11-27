@@ -58,8 +58,7 @@
       description="Alerts about orders, cancellation requests, complaints, failed deliveries, payments and stock appear here as they happen."
     />
     } @else { @for (group of groups(); track group.label) {
-    <section class="inbox__day" [attr.aria-label]="group.label">
-      <h2 class="inbox__day-label">{{ group.label }}</h2>
+    <lpg-section-card [heading]="group.label">
       <ul class="inbox__list">
         @for (n of group.items; track n.id) {
         <li
@@ -103,7 +102,7 @@
         </li>
         }
       </ul>
-    </section>
+    </lpg-section-card>
     } }
   </section>
 </div>

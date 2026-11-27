@@ -1,5 +1,10 @@
 import { Component, computed, inject, viewChildren } from '@angular/core';
-import { EmptyStateComponent, formatCurrencyInr, formatReportDate } from '@lpg/shared/ui';
+import {
+  EmptyStateComponent,
+  formatCurrencyInr,
+  formatReportDate,
+  SectionCardComponent,
+} from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
   ReportingStore,
@@ -32,7 +37,7 @@ const rate = (v: unknown): string => `${Number(v)}%`;
 @Component({
   selector: 'lib-gst-filing',
   standalone: true,
-  imports: [DataGridComponent, EmptyStateComponent, ReportFilters],
+  imports: [SectionCardComponent, DataGridComponent, EmptyStateComponent, ReportFilters],
   templateUrl: './gst-filing.html',
   styleUrl: './gst-filing.css',
 })

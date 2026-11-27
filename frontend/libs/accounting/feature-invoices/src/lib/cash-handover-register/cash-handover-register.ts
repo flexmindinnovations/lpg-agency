@@ -27,6 +27,7 @@ import {
   type DateRangeValue,
   PageActionsDirective,
   PageHeaderComponent,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
@@ -56,6 +57,7 @@ function istDate(offsetDays = 0): string {
   selector: 'lpg-cash-handover-register',
   standalone: true,
   imports: [
+    SectionCardComponent,
     DateRangeFilterComponent,
     ExportButtonComponent,
     FormsModule,

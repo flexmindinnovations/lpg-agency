@@ -25,8 +25,21 @@ import {
   type CylinderSizeResponse,
   type CylinderTypeResponse,
   type CylinderTypeUsageResponse,
+  type BranchResponse,
+  type PriceListEntryResponse,
 } from '@lpg/shared/data-access';
-import { DrawerA11yDirective, FormFieldComponent, validateForSubmit } from '@lpg/shared/ui';
+import {
+  DetailItemComponent,
+  DetailListComponent,
+  DrawerA11yDirective,
+  FormFieldComponent,
+  SectionCardComponent,
+  formatCurrencyInr,
+  formatTimestamp,
+  toSentenceCase,
+  validateForSubmit,
+} from '@lpg/shared/ui';
+import { currentPrices, gstRateWarning, otherPrices } from './price-book';
 import {
   GST_RATE_HINT,
   GST_RATE_MESSAGES,
@@ -42,20 +55,24 @@ import {
 } from './cylinder-type-fields';
 
 /**
- * One cylinder type: its details, and editing, deactivating and deleting it.
- * A type that something refers to keeps its size and cannot be deleted — the
- * API says which applies (ADR-079).
+ * One cylinder type: its details and prices, and editing, deactivating and
+ * deleting it.
+ * A type that something refers to keeps its size, and one with orders, stock or
+ * invoices cannot be deleted — the API says which applies (ADR-079).
  */
 @Component({
   selector: 'lpg-cylinder-type-drawer',
   standalone: true,
   imports: [
+    DetailListComponent,
+    DetailItemComponent,
     ReactiveFormsModule,
     ButtonDirective,
     Drawer,
     DrawerA11yDirective,
     FormFieldComponent,
     InputText,
+    SectionCardComponent,
     Select,
     Tag,
   ],
@@ -69,15 +86,15 @@ import {
       [closeOnEscape]="true"
       [header]="editing() ? 'Edit cylinder type' : 'Cylinder type'"
       styleClass="w-full"
-      [style]="{ width: '100%', maxWidth: '32rem' }"
+      [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     >
       @if (cylinderType(); as type) {
         @if (editing()) {
           <form [formGroup]="form" (ngSubmit)="save()" novalidate class="dialog-form">
             <div class="dialog-form__fields">
               <p class="page-lede">
-                Changes to <strong>{{ type.name }}</strong> apply from now on. Invoices already
-                issued are not changed.
+                Changes to <strong>{{ type.name }}</strong> apply from now on. Orders already
+                confirmed and invoices already issued keep their GST rate.
               </p>
               <lpg-form-field
                 label="Cylinder type"
@@ -85,6 +102,8 @@ import {
                 [control]="form.controls.category"
               >
                 <p-select
+                  [filter]="true"
+                  [resetFilterOnHide]="true"
                   inputId="edit-cylinder-category"
                   formControlName="category"
                   [options]="editCategories()"
@@ -104,6 +123,8 @@ import {
                 [messages]="{ required: 'Choose a cylinder size.' }"
               >
                 <p-select
+                  [filter]="true"
+                  [resetFilterOnHide]="true"
                   inputId="edit-cylinder-size"
                   formControlName="sizeCode"
                   [options]="editSizes()"
@@ -133,7 +154,7 @@ import {
                 label="GST rate (%)"
                 for="edit-cylinder-gst"
                 [control]="form.controls.gstRatePercent"
-                [hint]="gstHint"
+                [hint]="editGstHint()"
                 [messages]="gstMessages"
               >
                 <input
@@ -159,36 +180,116 @@ import {
             </div>
           </form>
         } @else {
-          <div class="detail">
-            <div>
-              <h2 class="detail__name">{{ type.name }}</h2>
-              <div class="detail__tags">
-                <p-tag
-                  [severity]="type.is_active ? 'success' : 'warn'"
-                  [value]="type.is_active ? 'Active' : 'Inactive'"
-                />
-                @if (!type.size_code) {
-                  <p-tag severity="warn" value="Not a standard size" />
-                }
+          <div class="detail-view">
+            <div class="detail-view__fields">
+              <div>
+                <h2 class="detail__name">{{ type.name }}</h2>
+                <div class="detail__tags">
+                  <p-tag
+                    [severity]="type.is_active ? 'success' : 'warn'"
+                    [value]="type.is_active ? 'Active' : 'Inactive'"
+                  />
+                  @if (!type.size_code) {
+                    <p-tag severity="warn" value="Not a standard size" />
+                  }
+                </div>
               </div>
+
+              @if (usageError(); as error) {
+                <div class="detail__note" role="alert">
+                  <span>Couldn't check where this type is used. {{ error }}</span>
+                  <button pButton type="button" size="small" severity="secondary" (click)="retry()">
+                    Retry
+                  </button>
+                </div>
+              }
+              @if (offListAdvice(); as advice) {
+                <p class="detail__warning" role="status">
+                  <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                  <span>{{ advice }}</span>
+                </p>
+              }
+              @if (rateWarning(); as warning) {
+                <p class="detail__warning" role="status">
+                  <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                  <span>{{ warning }}</span>
+                </p>
+              }
+
+              <lpg-section-card heading="Price" [hasHeaderActions]="type.is_active">
+                @if (type.is_active) {
+                  <button
+                    headerActions
+                    pButton
+                    type="button"
+                    size="small"
+                    data-action="price"
+                    (click)="priceRequested.emit(type)"
+                  >
+                    <i class="pi pi-indian-rupee" aria-hidden="true"></i>
+                    <span>{{ priceRows().length > 0 ? 'Change price' : 'Set price' }}</span>
+                  </button>
+                }
+                @if (priceRows().length > 0) {
+                  <lpg-detail-list>
+                    @for (row of priceRows(); track row.id) {
+                      <lpg-detail-item [label]="row.label">
+                        {{ row.amount }}
+                        <span class="detail__since">since {{ row.since }}</span>
+                      </lpg-detail-item>
+                    }
+                  </lpg-detail-list>
+                } @else {
+                  <p class="detail__note">No price yet.</p>
+                }
+                @if (historyRows().length > 0) {
+                  <details class="detail__history">
+                    <summary>Other prices ({{ historyRows().length }})</summary>
+                    <lpg-detail-list>
+                      @for (row of historyRows(); track row.id) {
+                        <lpg-detail-item [label]="row.label">
+                          {{ row.amount }}
+                          <span class="detail__since">from {{ row.since }}</span>
+                        </lpg-detail-item>
+                      }
+                    </lpg-detail-list>
+                  </details>
+                }
+              </lpg-section-card>
+
+              <lpg-section-card heading="Details">
+                <lpg-detail-list>
+                  <lpg-detail-item label="Category">{{ category(type.category) }}</lpg-detail-item>
+                  <lpg-detail-item label="Gas weight">{{ weight(type.weight_kg) }}</lpg-detail-item>
+                  <lpg-detail-item label="HSN code">{{
+                    type.hsn_code ?? 'Not set'
+                  }}</lpg-detail-item>
+                  <lpg-detail-item label="GST rate">{{ gstRate(type) }}</lpg-detail-item>
+                </lpg-detail-list>
+              </lpg-section-card>
+
+              @if (deleteBlockedReason(); as reason) {
+                <p class="detail__note" id="cylinder-delete-reason">{{ reason }}</p>
+              }
             </div>
 
-            <div class="detail__actions">
+            <div class="modal-actions">
               <button
                 pButton
                 type="button"
-                size="small"
-                data-action="edit"
-                [disabled]="!usage()"
-                (click)="startEdit(type)"
+                severity="danger"
+                [outlined]="true"
+                data-action="delete"
+                [disabled]="!canDelete()"
+                [attr.aria-describedby]="deleteBlockedReason() ? 'cylinder-delete-reason' : null"
+                (click)="confirmDelete(type)"
               >
-                <i class="pi pi-pencil" aria-hidden="true"></i>
-                <span>Edit</span>
+                <i class="pi pi-trash" aria-hidden="true"></i>
+                <span>Delete</span>
               </button>
               <button
                 pButton
                 type="button"
-                size="small"
                 severity="secondary"
                 data-action="toggle-active"
                 (click)="activeToggled.emit(type)"
@@ -204,54 +305,14 @@ import {
               <button
                 pButton
                 type="button"
-                size="small"
-                severity="danger"
-                data-action="delete"
-                [disabled]="!canDelete()"
-                [attr.aria-describedby]="deleteBlockedReason() ? 'cylinder-delete-reason' : null"
-                (click)="confirmDelete(type)"
+                data-action="edit"
+                [disabled]="!usage()"
+                (click)="startEdit(type)"
               >
-                <i class="pi pi-trash" aria-hidden="true"></i>
-                <span>Delete</span>
+                <i class="pi pi-pencil" aria-hidden="true"></i>
+                <span>Edit</span>
               </button>
             </div>
-
-            @if (deleteBlockedReason(); as reason) {
-              <p class="detail__note" id="cylinder-delete-reason">{{ reason }}</p>
-            }
-            @if (usageError(); as error) {
-              <div class="detail__note" role="alert">
-                <span>Couldn't check where this type is used. {{ error }}</span>
-                <button pButton type="button" size="small" severity="secondary" (click)="retry()">
-                  Retry
-                </button>
-              </div>
-            }
-            @if (offListAdvice(); as advice) {
-              <p class="detail__warning" role="status">
-                <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
-                <span>{{ advice }}</span>
-              </p>
-            }
-
-            <dl class="detail__grid">
-              <div>
-                <dt>Category</dt>
-                <dd>{{ category(type.category) }}</dd>
-              </div>
-              <div>
-                <dt>Gas weight</dt>
-                <dd>{{ weight(type.weight_kg) }}</dd>
-              </div>
-              <div>
-                <dt>HSN code</dt>
-                <dd>{{ type.hsn_code ?? 'Not set' }}</dd>
-              </div>
-              <div>
-                <dt>GST rate</dt>
-                <dd>{{ gstRate(type) }}</dd>
-              </div>
-            </dl>
           </div>
         }
       }
@@ -259,20 +320,13 @@ import {
   `,
   styles: [
     `
-      .detail {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-md);
-      }
-
       .detail__name {
         margin: 0 0 var(--spacing-xs);
         font-size: var(--typography-heading2-font-size);
         font-weight: var(--typography-heading2-font-weight);
       }
 
-      .detail__tags,
-      .detail__actions {
+      .detail__tags {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -304,23 +358,22 @@ import {
         color: var(--color-status-warning);
       }
 
-      .detail__grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--spacing-md) var(--spacing-xl);
-        margin: 0;
-        padding-block: var(--spacing-md);
-        border-block: var(--border-width) solid var(--color-border-default);
-      }
-
-      .detail__grid dt {
+      .detail__since {
+        margin-inline-start: var(--spacing-xs);
         color: var(--color-text-secondary);
         font-size: var(--typography-caption-font-size);
+        font-weight: 400;
       }
 
-      .detail__grid dd {
-        margin: var(--spacing-xs) 0 0;
-        color: var(--color-text-primary);
+      .detail__history {
+        margin-block-start: var(--spacing-sm);
+      }
+
+      .detail__history summary {
+        cursor: pointer;
+        padding-block: var(--spacing-xs);
+        color: var(--color-text-secondary);
+        font-size: var(--typography-body-small-font-size);
       }
     `,
   ],
@@ -330,12 +383,15 @@ export class CylinderTypeDrawer {
   readonly cylinderType = input<CylinderTypeResponse | null>(null);
   readonly allTypes = input<readonly CylinderTypeResponse[]>([]);
   readonly sizes = input<readonly CylinderSizeResponse[]>([]);
+  readonly prices = input<readonly PriceListEntryResponse[]>([]);
+  readonly branches = input<readonly BranchResponse[]>([]);
 
   readonly closed = output<void>();
   /** The record was edited; the list needs reloading. */
   readonly saved = output<void>();
   readonly deleted = output<void>();
   readonly activeToggled = output<CylinderTypeResponse>();
+  readonly priceRequested = output<CylinderTypeResponse>();
 
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
@@ -349,7 +405,6 @@ export class CylinderTypeDrawer {
   private readonly usageVersion = signal(0);
   private readonly typeId = computed(() => this.cylinderType()?.id ?? null);
 
-  protected readonly gstHint = GST_RATE_HINT;
   protected readonly hsnMessages = HSN_MESSAGES;
   protected readonly gstMessages = GST_RATE_MESSAGES;
   protected readonly category = categoryLabel;
@@ -375,6 +430,20 @@ export class CylinderTypeDrawer {
   private readonly chosenCategory = toSignal(this.form.controls.category.valueChanges, {
     initialValue: null,
   });
+  private readonly typedRate = toSignal(this.form.controls.gstRatePercent.valueChanges, {
+    initialValue: null,
+  });
+  protected readonly editGstHint = computed(
+    () =>
+      gstRateWarning(this.chosenCategory() ?? this.cylinderType()?.category, this.typedRate()) ??
+      GST_RATE_HINT,
+  );
+  /** What is wrong with the saved rate, if anything. */
+  protected readonly rateWarning = computed(() => {
+    const type = this.cylinderType();
+    return type?.is_active ? gstRateWarning(type.category, type.gst_rate_percent) : null;
+  });
+
   protected readonly editSizes = computed(() =>
     sizesIn(this.selectableSizes(), this.chosenCategory()),
   );
@@ -390,10 +459,39 @@ export class CylinderTypeDrawer {
     return `This cylinder type is in use, so only ${weightLabel(type.weight_kg)} sizes can be chosen.`;
   });
 
-  protected readonly canDelete = computed(() => this.usage()?.used_in.length === 0);
+  protected readonly priceRows = computed(() => {
+    const id = this.typeId();
+    return id ? currentPrices(this.prices(), id).map((entry) => this.priceRow(entry)) : [];
+  });
+  /** Earlier prices, and any that start later. */
+  protected readonly historyRows = computed(() => {
+    const id = this.typeId();
+    return id ? otherPrices(this.prices(), id).map((entry) => this.priceRow(entry)) : [];
+  });
+
+  private priceRow(entry: PriceListEntryResponse) {
+    const branch = entry.branch_id
+      ? (this.branches().find((b) => b.id === entry.branch_id)?.name ?? 'One branch')
+      : 'All branches';
+    return {
+      id: entry.id,
+      label: `${toSentenceCase(entry.customer_type)} · ${branch}`,
+      amount: formatCurrencyInr(entry.price),
+      since: formatTimestamp(entry.effective_from),
+    };
+  }
+
+  /** What stops a delete; `null` until the server has answered. */
+  private readonly deleteBlockers = computed(() => {
+    const usage = this.usage();
+    // A server older than this dashboard sends only `used_in`.
+    return usage ? (usage.delete_blocked_by ?? usage.used_in) : null;
+  });
+
+  protected readonly canDelete = computed(() => this.deleteBlockers()?.length === 0);
 
   protected readonly deleteBlockedReason = computed(() => {
-    const usedIn = this.usage()?.used_in ?? [];
+    const usedIn = this.deleteBlockers() ?? [];
     if (usedIn.length === 0) return null;
     const reason = `It is used in ${joinWithAnd(usedIn)}, so it cannot be deleted.`;
     return this.cylinderType()?.is_active ? `${reason} Deactivate it instead.` : reason;
@@ -409,9 +507,13 @@ export class CylinderTypeDrawer {
       return `${problem} Choose Edit and pick its size.`;
     }
     if (usage.allowed_size_codes.length === 0) {
-      return `${problem} No standard size weighs ${weightLabel(type.weight_kg)} and this record is in use, so deactivate it and add a standard size.`;
+      const next = type.is_active
+        ? 'deactivate it and add a standard size'
+        : 'keep it inactive and add a standard size';
+      return `${problem} No standard size weighs ${weightLabel(type.weight_kg)} and this record is in use, so ${next}.`;
     }
-    return `${problem} The matching standard size is already in your list, so deactivate this one and use that.`;
+    const next = type.is_active ? 'so deactivate this one and use that' : 'so use that one';
+    return `${problem} The matching standard size is already in your list, ${next}.`;
   });
 
   constructor() {

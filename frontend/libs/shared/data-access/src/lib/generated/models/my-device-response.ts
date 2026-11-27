@@ -4,12 +4,12 @@
 export interface MyDeviceResponse {
 
   /**
-   * Whether the agency lets this phone use the app right now. Under 'observe' and 'off' this is always true.
+   * Whether the agency lets this phone use the app right now. Under 'observe' only a blocked phone is refused.
    */
   allowed: boolean;
 
   /**
-   * The agency's device control mode: off, observe or enforce.
+   * The agency's device control mode: observe or enforce.
    */
   control: string;
   display_name: (string | null);

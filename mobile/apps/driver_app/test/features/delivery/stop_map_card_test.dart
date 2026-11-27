@@ -30,6 +30,22 @@ Widget _host({required StopDestination destination, LatLng? driver}) =>
     );
 
 void main() {
+  test('navigates to a pin, but by address when the point is approximate', () {
+    const pinned = StopDestination(
+      point: _dest,
+      label: '12 Baker Street',
+      isApproximate: false,
+    );
+    const approximate = StopDestination(
+      point: _dest,
+      label: '12 Baker Street',
+      isApproximate: true,
+    );
+
+    expect(pinned.navigationPoint, _dest);
+    expect(approximate.navigationPoint, isNull);
+  });
+
   group('StopMapCard', () {
     testWidgets('renders the map + a Navigate button for a pinned stop', (
       tester,

@@ -8,37 +8,19 @@
   gap: var(--spacing-md);
 }
 
-.cdp__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-}
-
-.cdp__header > :only-child {
-  margin-inline-start: auto;
-}
-
-.cdp__title {
-  margin: 0;
-  font-size: var(--typography-body-font-size);
-  font-weight: var(--typography-label-font-weight);
-  color: var(--color-text-primary);
-}
-
 .cdp__empty {
   margin: 0;
   font-size: var(--typography-body-small-font-size);
   color: var(--color-text-secondary);
 }
 
-/* One card per document. A table of five columns did not fit a drawer or a
-   phone; a card reads the same at every width. A drawer holds one column, and
-   a full-width page puts cards side by side. */
+/* One block per document. A table of five columns did not fit a drawer or a
+   phone; a block reads the same at every width. It sits in a section card, so
+   it has no box of its own: a line divides one document from the next. */
 .cdp__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-  gap: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -48,11 +30,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
   font-size: var(--typography-body-small-font-size);
   color: var(--color-text-primary);
+}
+
+.cdp__card + .cdp__card {
+  padding-block-start: var(--spacing-md);
+  border-block-start: var(--border-width) solid var(--color-border-default);
 }
 
 .cdp__card-head {
@@ -71,28 +55,10 @@
 
 /* Label and value side by side, with the labels in one column. */
 .cdp__facts {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--spacing-xs) var(--spacing-lg);
-  margin: 0;
-}
-
-.cdp__fact {
-  display: contents;
-}
-
-.cdp__fact dt {
-  color: var(--color-text-secondary);
-}
-
-.cdp__fact dd {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spacing-xs) var(--spacing-sm);
+  flex-direction: column;
+  gap: var(--spacing-xs);
   margin: 0;
-  font-weight: var(--typography-label-font-weight);
-  overflow-wrap: anywhere;
 }
 
 .cdp__reject-reason {
@@ -106,13 +72,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-xs);
-  /* At the foot of the card, so cards side by side line their actions up. */
-  margin-block-start: auto;
-  padding-block-start: var(--spacing-sm);
-  border-block-start: var(--border-width) solid var(--color-border-default);
 }
 
-/* A card whose actions are all hidden by permissions has no empty rule. */
+/* A document whose actions are all hidden by permissions leaves no gap. */
 .cdp__actions:not(:has(a, button)) {
   display: none;
 }

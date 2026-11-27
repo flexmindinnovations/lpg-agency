@@ -107,7 +107,7 @@ class RedisDeviceControlModeReader:
                 entries, DEVICE_CONTROL_CONFIG_KEY, datetime.now(UTC)
             )
             return DeviceControlMode.parse(effective.config_value if effective else None)
-        return DeviceControlMode.OFF  # pragma: no cover - open_session yields once
+        return DeviceControlMode.OBSERVE  # pragma: no cover - open_session yields once
 
 
 class RedisDeviceAccessReader:

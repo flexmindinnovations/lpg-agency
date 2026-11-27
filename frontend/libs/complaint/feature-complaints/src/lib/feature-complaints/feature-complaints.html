@@ -44,7 +44,7 @@
 <p-drawer
   [(visible)]="detailVisible"
   position="right"
-  styleClass="!w-full md:!w-[35rem]"
+  styleClass="!w-full md:!w-[var(--drawer-width)]"
   [modal]="true"
 >
   <ng-template #header>
@@ -58,7 +58,7 @@
 
   @if (selectedComplaint(); as complaint) {
   <div class="drawer-content">
-    <div class="info-section">
+    <lpg-section-card heading="Details">
       <div class="info-grid">
         <div class="info-item">
           <span class="info-label">Complaint #</span>
@@ -119,11 +119,9 @@
           <span class="info-value whitespace-pre-wrap">{{ complaint.description }}</span>
         </div>
       </div>
-    </div>
+    </lpg-section-card>
 
-    <!-- Assignment History -->
-    <div class="history-section">
-      <h3 class="section-title">Assignment History</h3>
+    <lpg-section-card heading="Assignment History">
       @if (complaint.assignments && complaint.assignments.length > 0) {
       <div class="history-list">
         @for (assignment of complaint.assignments; track assignment.id) {
@@ -152,11 +150,9 @@
       } @else {
       <p class="empty-hint">Not assigned yet.</p>
       }
-    </div>
+    </lpg-section-card>
 
-    <!-- Resolution -->
-    <div class="history-section">
-      <h3 class="section-title">Resolution</h3>
+    <lpg-section-card heading="Resolution">
       @if (complaint.resolution) {
       <div class="resolution-card">
         <div class="resolution-header">
@@ -182,7 +178,7 @@
       } @else {
       <p class="empty-hint">Not resolved yet.</p>
       }
-    </div>
+    </lpg-section-card>
   </div>
   }
 
@@ -211,7 +207,7 @@
 <p-drawer
   [(visible)]="registerModalVisible"
   position="right"
-  styleClass="!w-full md:!w-[30rem]"
+  styleClass="!w-full md:!w-[var(--drawer-width)]"
   [modal]="true"
 >
   <ng-template #header>
@@ -228,28 +224,16 @@
         [control]="raiseForm.controls.customer"
         [messages]="fieldMessages.customer"
       >
-        <p-autocomplete
+        <lpg-search-select
           inputId="complaint_customer"
           formControlName="customer"
-          [suggestions]="customerSuggestions()"
-          (completeMethod)="searchCustomers($event)"
-          optionLabel="full_name"
-          [delay]="300"
-          [minQueryLength]="2"
-          placeholder="Name, phone or consumer no."
-          appendTo="body"
-          [fluid]="true"
-        >
-          <ng-template let-customer #item>
-            <div>
-              <strong>{{ customer.full_name }}</strong>
-              <span class="info-sub">
-                · {{ customer.phone_number }} @if (customer.consumer_number) { · {{
-                customer.consumer_number }} }
-              </span>
-            </div>
-          </ng-template>
-        </p-autocomplete>
+          [search]="searchCustomers"
+          [itemLabel]="customerName"
+          [itemDetail]="customerFacts"
+          placeholder="Select a customer"
+          searchHint="Name, phone or consumer no."
+          noMatchMessage="No customers match"
+        />
       </lpg-form-field>
 
       @if (hasOrders()) {
@@ -260,6 +244,8 @@
         [optional]="true"
       >
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           inputId="order_id"
           formControlName="order_id"
           [options]="customerOrders()"
@@ -280,6 +266,8 @@
         [messages]="fieldMessages.category"
       >
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           inputId="category"
           formControlName="category"
           [options]="categoryOptions"
@@ -297,6 +285,8 @@
         [messages]="fieldMessages.priority"
       >
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           inputId="priority"
           formControlName="priority"
           [options]="priorityOptions"
@@ -358,7 +348,7 @@
 <p-drawer
   [(visible)]="assignModalVisible"
   position="right"
-  styleClass="!w-full md:!w-[30rem]"
+  styleClass="!w-full md:!w-[var(--drawer-width)]"
   [modal]="true"
 >
   <ng-template #header>
@@ -376,6 +366,7 @@
         [messages]="fieldMessages.assigned_to"
       >
         <p-select
+          [resetFilterOnHide]="true"
           inputId="assigned_to"
           formControlName="assigned_to"
           [options]="assignees()"
@@ -424,7 +415,7 @@
 <p-drawer
   [(visible)]="resolveModalVisible"
   position="right"
-  styleClass="!w-full md:!w-[30rem]"
+  styleClass="!w-full md:!w-[var(--drawer-width)]"
   [modal]="true"
 >
   <ng-template #header>
@@ -442,6 +433,8 @@
         [messages]="fieldMessages.outcome"
       >
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           inputId="outcome"
           formControlName="outcome"
           [options]="outcomeOptions"

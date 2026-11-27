@@ -14,11 +14,8 @@
 
 <div class="register">
   @if (inHand(); as hand) { @if (hand.drivers.length > 0) {
-  <section class="inhand" aria-label="Cash with drivers">
-    <h2 class="inhand__title">
-      Cash with drivers
-      <span class="inhand__total">{{ formatCurrencyInr(hand.total_cash) }}</span>
-    </h2>
+  <lpg-section-card heading="Cash with drivers" [hasHeaderActions]="true">
+    <span headerActions class="inhand__total">{{ formatCurrencyInr(hand.total_cash) }}</span>
     <p class="inhand__hint">Collected on routes that have no handover yet.</p>
     <ul class="inhand__list">
       @for (driver of hand.drivers; track driver.driver_id) {
@@ -32,7 +29,7 @@
       </li>
       }
     </ul>
-  </section>
+  </lpg-section-card>
   } }
 
   <div class="data-toolbar">
@@ -45,6 +42,8 @@
         (rangeChange)="setRange($event)"
       />
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         [options]="statusOptions"
         [ngModel]="status()"
         (ngModelChange)="setStatus($event)"
@@ -100,7 +99,7 @@
   position="right"
   [modal]="true"
   header="Verify cash handover"
-  [style]="{ width: '100%', maxWidth: '32rem' }"
+  [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
 >
   @if (selected(); as entry) {
   <div class="dialog-form">

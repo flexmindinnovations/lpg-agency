@@ -7,11 +7,12 @@ import 'package:dio/dio.dart';
 import 'package:driver_app/src/api_provider.dart';
 import 'package:driver_app/src/dev_otp_provider.dart';
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
+import 'package:driver_app/src/features/delivery/data/held_empties_provider.dart';
 import 'package:driver_app/src/features/delivery/data/image_picker_provider.dart';
 import 'package:driver_app/src/features/delivery/data/location_sharing.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
 import 'package:driver_app/src/features/delivery/presentation/record_delivery_screen.dart';
-import 'package:driver_app/src/offline/pending_sync.dart';
+import 'package:driver_app/src/features/van_load/data/van_load_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,6 +55,9 @@ class _RecordingAdapter implements HttpClientAdapter {
   final paths = <String>[];
   Map<String, dynamic>? deliverBody;
 
+  /// When set, `POST /deliver` answers 409 with this message.
+  String? deliverRefusal;
+
   /// The answer to `GET /orders/{id}/settlement`; `null` = not reachable.
   Map<String, dynamic>? settlement;
 
@@ -94,9 +98,14 @@ class _RecordingAdapter implements HttpClientAdapter {
     }
     if (options.path.endsWith('/deliver')) {
       deliverBody = options.data as Map<String, dynamic>;
+      final refusal = deliverRefusal;
       return ResponseBody.fromString(
-        jsonEncode({'order': _orderJson()}),
-        200,
+        jsonEncode(
+          refusal == null
+              ? {'order': _orderJson()}
+              : {'error_code': 'EMPTIES_EXCEED_HELD', 'detail': refusal},
+        ),
+        refusal == null ? 200 : 409,
         headers: {
           Headers.contentTypeHeader: [Headers.jsonContentType],
         },
@@ -200,22 +209,11 @@ Widget _host(ProviderContainer c) => UncontrolledProviderScope(
   ),
 );
 
-RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
-    RouteSummary(
-      id: 'route-1',
-      status: 'in_progress',
-      driverId: 'd1',
-      vehicleId: 'v1',
-      stops: const [
-        RouteStopSummary(
-          id: 's1',
-          orderId: 'order-1',
-          sequenceNumber: 1,
-          status: 'out_for_delivery',
-        ),
-      ],
-      loadedLines: loadedLines,
-    );
+HeldEmpties _held(String id, String name, int quantity) => HeldEmpties(
+  cylinderTypeId: id,
+  cylinderTypeName: name,
+  quantityHeld: quantity,
+);
 
 /// An agency with UPI, a gateway and a credit limit set up.
 const _agencyMethods = PaymentMethods(
@@ -232,8 +230,7 @@ const _agencyMethods = PaymentMethods(
 ({ProviderContainer container, OfflineHarness harness}) _container(
   _RecordingAdapter adapter, {
   bool online = true,
-  RouteSummary? route,
-  Map<String, int> queuedEmpties = const {},
+  List<HeldEmpties>? Function()? held,
   String? devCode,
   DriverGeolocator geolocator = const _FakeGeolocator(),
   OrderResponse? order,
@@ -250,12 +247,10 @@ const _agencyMethods = PaymentMethods(
       paymentMethodsProvider.overrideWith((ref) async => methods),
       imagePickerProvider.overrideWithValue(_FakePicker()),
       driverGeolocatorProvider.overrideWithValue(geolocator),
-      activeRouteProvider.overrideWith((ref) async => route),
-      // A plain stream — the screen watches this live drift-backed provider,
-      // and `pumpAndSettle` would hang on the coordinator's queue watch.
-      queuedEmptiesByTypeProvider.overrideWith(
-        (ref) => Stream.value(queuedEmpties),
-      ),
+      activeRouteProvider.overrideWith((ref) async => null),
+      // `null` = never loaded on this phone.
+      heldEmptiesProvider.overrideWith((ref, id) async => held?.call()),
+      cylinderTypeNamesProvider.overrideWith((ref) async => {'ct1': '14.2 kg'}),
       devDeliveryOtpLookupProvider.overrideWithValue((_) async => devCode),
     ],
   );
@@ -636,62 +631,210 @@ void main() {
       expect(find.text('482913'), findsOneWidget);
     });
 
-    testWidgets('warns when empties collected exceed the van load manifest', (
+    // The stepper in the card for one cylinder size.
+    Finder stepper(String size, String label) => find.byWidgetPredicate(
+      (w) => w is LpgQuantityStepper && w.semanticLabel == '$label, $size',
+    );
+    int valueOf(WidgetTester tester, String size, [String? label]) => tester
+        .widget<LpgQuantityStepper>(stepper(size, label ?? 'Empties collected'))
+        .value;
+    Future<void> step(
+      WidgetTester tester,
+      String size,
+      IconData button, {
+      String label = 'Empties collected',
+      int times = 1,
+    }) async {
+      for (var i = 0; i < times; i++) {
+        await tester.tap(
+          find.descendant(
+            of: stepper(size, label),
+            matching: find.byIcon(button),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+    }
+
+    Future<void> complete(WidgetTester tester) async {
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Code from the customer'),
+        '123456',
+      );
+      await tester.tap(find.text('Complete delivery'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 1)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the cylinder cards fit a small phone with long size names', (
       tester,
     ) async {
       final (:container, :harness) = _container(
         _RecordingAdapter(),
-        route: _route(
-          loadedLines: const [
-            RouteLoadLine(cylinderTypeId: 'ct1', quantity: 1),
-          ],
-        ),
+        held: () => [
+          _held('ct1', 'Commercial 47.5 kg liquid off-take cylinder', 120),
+          _held('ct2', 'Domestic 14.2 kg composite cylinder', 99),
+        ],
       );
       addTearDown(harness.dispose);
       addTearDown(container.dispose);
-      await _pump(tester, container);
+      tester.view.physicalSize = const Size(320, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-      // Prefill records 2 delivered / 2 empties for ct1; the van carried 1.
-      expect(
-        find.textContaining('more empties than the van was loaded with'),
-        findsOneWidget,
-      );
+      // A layout overflow fails the test.
+      await tester.pumpWidget(_host(container));
+      await tester.pumpAndSettle();
 
-      // Step the empties down to the loaded quantity — warning clears.
-      await tester.tap(
-        find.descendant(
-          of: find.widgetWithText(Row, 'Empties collected'),
-          matching: find.byIcon(LpgIcons.remove),
-        ),
-      );
-      await tester.pump();
-      expect(
-        find.textContaining('more empties than the van was loaded with'),
-        findsNothing,
-      );
+      expect(find.byType(LpgQuantityStepper), findsNWidgets(3));
     });
 
-    testWidgets('no manifest warning when the load covers the empties', (
+    testWidgets('collects empties from earlier deliveries, of any size held', (
       tester,
     ) async {
+      final adapter = _RecordingAdapter();
       final (:container, :harness) = _container(
-        _RecordingAdapter(),
-        route: _route(
-          loadedLines: const [
-            RouteLoadLine(cylinderTypeId: 'ct1', quantity: 5),
-          ],
-        ),
-        queuedEmpties: const {'ct1': 1},
+        adapter,
+        held: () => [
+          _held('ct1', '14.2 kg', 10),
+          _held('ct2', '19 kg', 3),
+          _held('ct3', '5 kg', 0),
+        ],
       );
       addTearDown(harness.dispose);
       addTearDown(container.dispose);
       await _pump(tester, container);
 
-      // 1 queued elsewhere + 2 this stop = 3 <= 5 loaded.
       expect(
-        find.textContaining('more empties than the van was loaded with'),
-        findsNothing,
+        find.text('Ordered: 2 · up to 10 empties to collect'),
+        findsOneWidget,
       );
+      expect(
+        find.text('Not on this order · up to 3 empties to collect'),
+        findsOneWidget,
+      );
+      // A size neither ordered nor held gets no card.
+      expect(find.text('5 kg'), findsNothing);
+      // One empty per cylinder is filled in; other sizes start at none.
+      expect(valueOf(tester, '14.2 kg'), 2);
+      expect(valueOf(tester, '19 kg'), 0);
+
+      // More than today's two, up to what was held.
+      await step(tester, '14.2 kg', LpgIcons.add, times: 8);
+      expect(valueOf(tester, '14.2 kg'), 10);
+      expect(
+        tester
+            .widget<LpgQuantityStepper>(stepper('14.2 kg', 'Empties collected'))
+            .max,
+        10,
+      );
+      await step(tester, '19 kg', LpgIcons.add, times: 2);
+      await complete(tester);
+
+      final line = (adapter.deliverBody!['lines'] as List).single as Map;
+      expect(line['quantity_delivered'], 2);
+      expect(line['quantity_collected_empty'], 10);
+      expect(adapter.deliverBody!['other_empties'], [
+        {'cylinder_type_id': 'ct2', 'quantity': 2},
+      ]);
+    });
+
+    testWidgets('delivering fewer does not limit the earlier empties', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(
+        adapter,
+        held: () => [_held('ct1', '14.2 kg', 5)],
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await step(tester, '14.2 kg', LpgIcons.add, times: 3);
+      await step(tester, '14.2 kg', LpgIcons.remove, label: 'Delivered');
+
+      expect(valueOf(tester, '14.2 kg', 'Delivered'), 1);
+      expect(valueOf(tester, '14.2 kg'), 5);
+    });
+
+    testWidgets('a customer holding nothing has nothing to give back', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(
+        adapter,
+        held: () => [_held('ct1', '14.2 kg', 0)],
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      expect(
+        find.text('Ordered: 2 · no earlier empties to collect'),
+        findsOneWidget,
+      );
+      expect(valueOf(tester, '14.2 kg'), 0);
+      await complete(tester);
+
+      final line = (adapter.deliverBody!['lines'] as List).single as Map;
+      expect(line['quantity_collected_empty'], 0);
+      expect(adapter.deliverBody!.containsKey('other_empties'), isFalse);
+    });
+
+    testWidgets('without the held figures nothing is filled in', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      expect(find.text('14.2 kg'), findsOneWidget);
+      expect(
+        find.textContaining('empties could not be checked'),
+        findsOneWidget,
+      );
+      expect(valueOf(tester, '14.2 kg'), 0);
+
+      // The old limit: no more than are delivered here.
+      await step(tester, '14.2 kg', LpgIcons.add, times: 2);
+      await step(tester, '14.2 kg', LpgIcons.remove, label: 'Delivered');
+      await complete(tester);
+
+      final line = (adapter.deliverBody!['lines'] as List).single as Map;
+      expect(line['quantity_collected_empty'], 1);
+    });
+
+    testWidgets('a refused delivery reads the held figures again', (
+      tester,
+    ) async {
+      var held = 5;
+      final adapter = _RecordingAdapter()
+        ..deliverRefusal = 'This customer had 1 empty cylinder to give back.';
+      final (:container, :harness) = _container(
+        adapter,
+        held: () => [_held('ct1', '14.2 kg', held)],
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+      expect(valueOf(tester, '14.2 kg'), 2);
+
+      held = 1;
+      await complete(tester);
+
+      expect(
+        find.widgetWithText(
+          LpgBanner,
+          'This customer had 1 empty cylinder to give back.',
+        ),
+        findsOneWidget,
+      );
+      expect(valueOf(tester, '14.2 kg'), 1);
     });
   });
 }

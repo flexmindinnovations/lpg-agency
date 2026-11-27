@@ -30,6 +30,8 @@ import {
   type ChipSeverity,
   PageHeaderComponent,
   toSentenceCase,
+  SectionCardComponent,
+  DetailListComponent,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
@@ -69,6 +71,8 @@ function formatDateForApi(value: unknown): string | undefined {
   selector: 'lpg-feature-vehicles',
   standalone: true,
   imports: [
+    DetailListComponent,
+    SectionCardComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
     PageHeaderComponent,

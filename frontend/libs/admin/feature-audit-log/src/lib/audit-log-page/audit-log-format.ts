@@ -7,6 +7,20 @@ export const ACTION_LABELS: Readonly<Record<string, string>> = {
   create: 'Created',
   update: 'Changed',
   delete: 'Deleted',
+  deactivate: 'Deactivated',
+  reactivate: 'Reactivated',
+  password_change: 'Changed password',
+  'platform.agency_admin_added': 'Admin added',
+  'platform.setup_link_issued': 'Setup link sent',
+  // Linked phones (backend `application/license/manage_devices.py`).
+  'device.registered': 'Phone added',
+  'device.named': 'Phone named',
+  'device.updated': 'Phone details changed',
+  'device.approved': 'Phone approved',
+  'device.blocked': 'Phone blocked',
+  'device.unblocked': 'Phone unblocked',
+  'device.removed': 'Phone removed',
+  'device.deleted': 'Phone deleted',
   // Sign-in security events (backend `application/audit/security_events.py`).
   'auth.login': 'Signed in',
   'auth.login_failed': 'Sign-in failed',
@@ -184,6 +198,17 @@ export function orderIdForEntry(entry: AuditLogEntryResponse): string | null {
   return null;
 }
 
+/** Field names that sentence case alone would get wrong or leave unclear. */
+const FIELD_LABELS: Readonly<Record<string, string>> = {
+  client_ip: 'IP address',
+  user_agent: 'Browser or app',
+};
+
+/** Whether a "Before" column would show anything: most events record none. */
+export function hasEarlierValues(changes: readonly AuditChange[]): boolean {
+  return changes.some((change) => change.before !== '' && change.before !== '—');
+}
+
 /**
  * The field-by-field view of one entry: for a change, only the fields that
  * changed (before → after); for a create or delete, the record's values.
@@ -199,7 +224,7 @@ export function auditChanges(entry: AuditLogEntryResponse): AuditChange[] {
   return fields
     .filter((field) => !isTechnicalIdField(field))
     .map((field) => ({
-      field: toSentenceCase(field),
+      field: FIELD_LABELS[field] ?? toSentenceCase(field),
       before: entry.action === 'create' ? '' : displayValue(before[field]),
       after: entry.action === 'delete' ? '' : displayValue(after[field]),
     }));

@@ -40,6 +40,8 @@
             <div class="filter-panel">
               <lpg-form-field label="Type" for="filter-type">
                 <p-select
+                  [filter]="true"
+                  [resetFilterOnHide]="true"
                   inputId="filter-type"
                   [options]="customerTypeOptions"
                   [(ngModel)]="filterCustomerType"
@@ -52,6 +54,8 @@
               </lpg-form-field>
               <lpg-form-field label="KYC status" for="filter-kyc">
                 <p-select
+                  [filter]="true"
+                  [resetFilterOnHide]="true"
                   inputId="filter-kyc"
                   [options]="kycStatusFilterOptions"
                   [(ngModel)]="filterKycStatus"
@@ -64,6 +68,8 @@
               </lpg-form-field>
               <lpg-form-field label="Account status" for="filter-status">
                 <p-select
+                  [filter]="true"
+                  [resetFilterOnHide]="true"
                   inputId="filter-status"
                   [options]="accountStatusFilterOptions"
                   [(ngModel)]="filterAccountStatus"
@@ -198,37 +204,39 @@
       </div>
     </div>
 
-    <div class="detail-info-grid">
-      <div class="info-item">
-        <span class="info-label">Phone Number</span>
-        <span class="info-value">{{ customer.phone_number }}</span>
+    <lpg-section-card heading="Details">
+      <div class="detail-info-grid">
+        <div class="info-item">
+          <span class="info-label">Phone Number</span>
+          <span class="info-value">{{ customer.phone_number }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Customer Type</span>
+          <span class="info-value capitalize">{{ customer.customer_type }}</span>
+        </div>
+        @if (isBusinessCustomer(customer) && customer.contact_person) {
+        <div class="info-item">
+          <span class="info-label">Contact person</span>
+          <span class="info-value">{{ customer.contact_person }}</span>
+        </div>
+        } @if (isBusinessCustomer(customer) && customer.gstin) {
+        <div class="info-item">
+          <span class="info-label">GSTIN</span>
+          <span class="info-value">{{ customer.gstin }}</span>
+        </div>
+        } @if (customer.email) {
+        <div class="info-item">
+          <span class="info-label">Email</span>
+          <span class="info-value">{{ customer.email }}</span>
+        </div>
+        } @if (customer.lpg_subsidy_id) {
+        <div class="info-item">
+          <span class="info-label">LPG ID (17-digit)</span>
+          <span class="info-value">{{ customer.lpg_subsidy_id }}</span>
+        </div>
+        }
       </div>
-      <div class="info-item">
-        <span class="info-label">Customer Type</span>
-        <span class="info-value capitalize">{{ customer.customer_type }}</span>
-      </div>
-      @if (isBusinessCustomer(customer) && customer.contact_person) {
-      <div class="info-item">
-        <span class="info-label">Contact person</span>
-        <span class="info-value">{{ customer.contact_person }}</span>
-      </div>
-      } @if (isBusinessCustomer(customer) && customer.gstin) {
-      <div class="info-item">
-        <span class="info-label">GSTIN</span>
-        <span class="info-value">{{ customer.gstin }}</span>
-      </div>
-      } @if (customer.email) {
-      <div class="info-item">
-        <span class="info-label">Email</span>
-        <span class="info-value">{{ customer.email }}</span>
-      </div>
-      } @if (customer.lpg_subsidy_id) {
-      <div class="info-item">
-        <span class="info-label">LPG ID (17-digit)</span>
-        <span class="info-value">{{ customer.lpg_subsidy_id }}</span>
-      </div>
-      }
-    </div>
+    </lpg-section-card>
 
     <p-tabs value="0">
       <p-tablist>
@@ -240,21 +248,19 @@
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="0">
-          <div class="addresses-section">
-            <div class="section-header">
-              <h3 class="section-heading">Delivery Addresses</h3>
-              <button
-                #addAddressTriggerEl
-                pButton
-                type="button"
-                severity="secondary"
-                size="small"
-                (click)="openAddAddressModal()"
-              >
-                <i class="pi pi-plus"></i>
-                <span>Add Address</span>
-              </button>
-            </div>
+          <lpg-section-card heading="Delivery Addresses" [hasHeaderActions]="true">
+            <button
+              #addAddressTriggerEl
+              headerActions
+              pButton
+              type="button"
+              severity="secondary"
+              size="small"
+              (click)="openAddAddressModal()"
+            >
+              <i class="pi pi-plus"></i>
+              <span>Add Address</span>
+            </button>
             <div class="address-list">
               @for (addr of customer.addresses; track addr.id) {
               <div class="address-card">
@@ -316,25 +322,23 @@
               <p class="empty-hint">No delivery addresses registered yet.</p>
               }
             </div>
-          </div>
+          </lpg-section-card>
         </p-tabpanel>
         <p-tabpanel value="1">
-          <div class="kyc-section">
-            <div class="section-header">
-              <h3 class="section-heading">KYC Documents</h3>
-              <button
-                *lpgHasPermission="'kyc:manage'"
-                #submitKycTriggerEl
-                pButton
-                type="button"
-                severity="secondary"
-                size="small"
-                (click)="openSubmitKycModal()"
-              >
-                <i class="pi pi-upload"></i>
-                <span>Submit KYC</span>
-              </button>
-            </div>
+          <lpg-section-card heading="KYC Documents" [hasHeaderActions]="true">
+            <button
+              *lpgHasPermission="'kyc:manage'"
+              #submitKycTriggerEl
+              headerActions
+              pButton
+              type="button"
+              severity="secondary"
+              size="small"
+              (click)="openSubmitKycModal()"
+            >
+              <i class="pi pi-upload"></i>
+              <span>Submit KYC</span>
+            </button>
             <div class="kyc-doc-list">
               @for (doc of kycDocuments(); track doc.id) {
               <div class="kyc-doc-item">
@@ -388,14 +392,11 @@
               <p class="empty-hint">No KYC documents uploaded.</p>
               }
             </div>
-          </div>
+          </lpg-section-card>
         </p-tabpanel>
         @if (hasOrders()) {
         <p-tabpanel value="2">
-          <div class="kyc-section">
-            <div class="section-header">
-              <h3 class="section-heading">Recent orders</h3>
-            </div>
+          <lpg-section-card heading="Recent orders">
             @if (customerOrdersLoading()) {
             <p class="empty-hint">Loading orders…</p>
             } @else {
@@ -424,7 +425,7 @@
               }
             </div>
             }
-          </div>
+          </lpg-section-card>
         </p-tabpanel>
         }
       </p-tabpanels>
@@ -440,7 +441,7 @@
   position="right"
   [modal]="true"
   styleClass="w-full"
-  [style]="{ width: '100%', maxWidth: '32rem' }"
+  [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   [closeOnEscape]="true"
   closeAriaLabel="Close dialog"
   (onHide)="addAddressTrigger()?.nativeElement?.focus()"
@@ -583,7 +584,7 @@
   position="right"
   [modal]="true"
   styleClass="w-full"
-  [style]="{ width: '100%', maxWidth: '32rem' }"
+  [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   [closeOnEscape]="true"
   closeAriaLabel="Close dialog"
 >
@@ -663,7 +664,7 @@
   position="right"
   [modal]="true"
   styleClass="w-full"
-  [style]="{ width: '100%', maxWidth: '32rem' }"
+  [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   [closeOnEscape]="true"
   closeAriaLabel="Close dialog"
   (onHide)="submitKycTrigger()?.nativeElement?.focus()"
@@ -683,6 +684,8 @@
         [messages]="fieldMessages.doc_type"
       >
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           inputId="kyc-type"
           formControlName="doc_type"
           [options]="kycDocTypeOptions"

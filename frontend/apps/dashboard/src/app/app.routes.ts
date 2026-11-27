@@ -429,7 +429,7 @@ export const appRoutes: Route[] = [
         data: {
           breadcrumbs: [
             { label: 'Admin' },
-            { label: 'Cylinder Types', routerLink: '/admin/cylinder-types' },
+            { label: 'Cylinders & Prices', routerLink: '/admin/cylinder-types' },
           ],
         },
         loadChildren: () =>
@@ -437,18 +437,8 @@ export const appRoutes: Route[] = [
             (m) => m.adminFeatureCylinderTypesRoutes,
           ),
       },
-      {
-        path: 'admin/price-lists',
-        canActivate: [permissionGuard('tenant:configure')],
-        data: {
-          breadcrumbs: [
-            { label: 'Admin' },
-            { label: 'Price Lists', routerLink: '/admin/price-lists' },
-          ],
-        },
-        loadChildren: () =>
-          import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeaturePriceListRoutes),
-      },
+      // Prices moved onto the cylinders screen; old links still work.
+      { path: 'admin/price-lists', redirectTo: 'admin/cylinder-types', pathMatch: 'full' },
       {
         path: 'admin/users',
         canActivate: [permissionGuard('users:manage')],

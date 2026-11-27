@@ -12,7 +12,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
-import { EmptyStateComponent, PageHeaderComponent, SkeletonComponent } from '@lpg/shared/ui';
+import {
+  EmptyStateComponent,
+  PageHeaderComponent,
+  SkeletonComponent,
+  SectionCardComponent,
+} from '@lpg/shared/ui';
 import {
   NotificationService,
   NotifyService,
@@ -30,6 +35,7 @@ type InboxFilter = 'all' | 'unread';
 @Component({
   selector: 'lib-notification-feature-notifications',
   imports: [
+    SectionCardComponent,
     TooltipModule,
     PageActionsDirective,
     DatePipe,

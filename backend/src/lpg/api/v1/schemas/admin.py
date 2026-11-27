@@ -224,9 +224,12 @@ class CylinderSizeResponse(BaseModel):
 
 
 class CylinderTypeUsageResponse(BaseModel):
-    #: What refers to the type ("orders", "prices"). Empty means it can be
-    #: deleted.
+    #: What refers to the type ("orders", "prices"). Anything here limits the
+    #: sizes it can be changed to.
     used_in: list[str]
+    #: What stops it being deleted: the same, without its own prices. Empty
+    #: means it can be deleted.
+    delete_blocked_by: list[str]
     #: The sizes it can be changed to.
     allowed_size_codes: list[str]
 

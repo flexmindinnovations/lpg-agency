@@ -10,13 +10,6 @@
   block-size: 100%;
 }
 
-.detail-view {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
 .detail-value a {
   display: inline-flex;
   color: var(--color-action-primary);

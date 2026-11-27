@@ -117,6 +117,108 @@ describe('OrderDetail', () => {
       expect(text).toContain('+ GST');
       expect(text).not.toContain('Total to pay');
     });
+
+    const bookedLine = {
+      id: 'line-1',
+      cylinder_type_id: 'type-1',
+      quantity_ordered: 1,
+      quantity_delivered: 0,
+      quantity_pending: 0,
+      quantity_collected_empty: 0,
+      is_backordered: false,
+      unit_price: null,
+    };
+
+    function show(extra: Record<string, unknown>): string {
+      const fixture = TestBed.createComponent(OrderDetail);
+      fixture.detectChanges();
+      TestBed.inject(HttpTestingController)
+        .expectOne('http://test/api/v1/orders/order-1')
+        .flush(order({ status: 'booked', total_amount: null, lines: [bookedLine], ...extra }));
+      fixture.detectChanges();
+      return (fixture.nativeElement as HTMLElement).textContent ?? '';
+    }
+
+    it('shows what a booked order would cost, marked as an estimate', () => {
+      const text = show({
+        price_estimate: {
+          lines: [{ line_id: 'line-1', unit_price: '2100.00' }],
+          total_amount: '2100.00',
+          tax_amount: '378.00',
+          payable_amount: '2478.00',
+          prices_include_gst: false,
+        },
+      });
+
+      expect(text).toContain('Price before GST');
+      expect(text).toContain('Estimated total to pay');
+      expect(text).toContain('2,478.00');
+      expect(text).toContain('378.00');
+      expect(text).toContain('2,100.00');
+      expect(text).toContain('estimate');
+      expect(text).toContain('fixed when the order is confirmed');
+      expect(text).not.toContain('Not confirmed yet');
+    });
+
+    it('says the price includes GST when the agency prices that way', () => {
+      const text = show({
+        price_estimate: {
+          lines: [{ line_id: 'line-1', unit_price: '2100.00' }],
+          total_amount: '2100.00',
+          tax_amount: '320.34',
+          payable_amount: '2100.00',
+          prices_include_gst: true,
+        },
+      });
+
+      expect(text).toContain('Price including GST');
+      expect(text).not.toContain('Price before GST');
+    });
+
+    it('shows the price alone while a GST rate is missing', () => {
+      const text = show({
+        price_estimate: {
+          lines: [{ line_id: 'line-1', unit_price: '2100.00' }],
+          total_amount: '2100.00',
+          tax_amount: null,
+          payable_amount: null,
+          prices_include_gst: null,
+        },
+      });
+
+      expect(text).toContain('Estimated price');
+      expect(text).toContain('set the GST rate under Cylinders & Prices');
+      expect(text).not.toContain('Estimated total to pay');
+    });
+
+    it('shows Backordered as a chip', () => {
+      const fixture = TestBed.createComponent(OrderDetail);
+      fixture.detectChanges();
+      TestBed.inject(HttpTestingController)
+        .expectOne('http://test/api/v1/orders/order-1')
+        .flush(order({ lines: [{ ...bookedLine, is_backordered: true }] }));
+      fixture.detectChanges();
+      const chips = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('td .p-tag-warn'),
+      );
+
+      expect(chips.map((chip) => chip.textContent?.trim())).toEqual(['Yes']);
+    });
+
+    it('keeps "Not confirmed yet" when there is no estimate', () => {
+      const text = show({ price_estimate: null });
+
+      expect(text).toContain('Not confirmed yet');
+      expect(text).not.toContain('estimate');
+    });
+
+    it('lists the empties collected of sizes that are not on the order', () => {
+      const text = show({
+        status: 'delivered',
+        other_empties: [{ cylinder_type_id: 'type-5kg', quantity: 3 }],
+      }).replace(/\s+/g, ' ');
+      expect(text).toContain('type-5kg not on this order———3——');
+    });
   });
 
   describe('Approve Cancellation', () => {

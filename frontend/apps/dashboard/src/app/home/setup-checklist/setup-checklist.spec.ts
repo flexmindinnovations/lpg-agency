@@ -57,7 +57,7 @@ describe('SetupChecklist', () => {
     expect(html.textContent).toContain('7 of 9 done');
     expect(html.querySelectorAll('.setup__item--done')).toHaveLength(7);
     const link = html.querySelector('a[href="/admin/cylinder-types"]');
-    expect(link?.textContent).toContain('Add cylinder types');
+    expect(link?.textContent).toContain('Add your cylinders');
     expect(html.querySelector('a[href="/settings/payments"]')?.textContent).toContain(
       'Set up payments',
     );

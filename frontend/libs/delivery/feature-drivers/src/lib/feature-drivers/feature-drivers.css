@@ -25,13 +25,6 @@
   margin: 0;
 }
 
-.detail-view {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
 .detail-value--with-tag {
   display: inline-flex;
   align-items: center;

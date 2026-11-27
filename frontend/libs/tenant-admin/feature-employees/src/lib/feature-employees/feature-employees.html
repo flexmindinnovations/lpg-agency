@@ -54,7 +54,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '36rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form
@@ -71,6 +71,8 @@
           [messages]="fieldMessages.branch_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="branch_id"
             formControlName="branch_id"
             [options]="branches()"
@@ -124,6 +126,8 @@
           [messages]="fieldMessages.role"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="role"
             formControlName="role"
             [options]="roleOptions"
@@ -149,7 +153,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     <ng-template #header>
       <div class="drawer-header">
@@ -161,39 +165,41 @@
     </ng-template>
 
     @if (selectedEmployee(); as e) {
-    <div class="detail-grid">
-      <div class="info-item">
-        <span class="info-label">Employee Code</span>
-        <span class="info-value">{{ e.employee_code }}</span>
+    <lpg-section-card heading="Details">
+      <div class="detail-grid">
+        <div class="info-item">
+          <span class="info-label">Employee Code</span>
+          <span class="info-value">{{ e.employee_code }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Branch</span>
+          <span class="info-value">
+            <lpg-branch-link
+              [branchId]="e.branch_id"
+              [branch]="branchById().get(e.branch_id) ?? null"
+            />
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Role</span>
+          <span class="info-value">{{ toSentenceCase(e.role) }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Phone Number</span>
+          <span class="info-value">{{ e.phone_number }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Email</span>
+          <span class="info-value">{{ e.email ?? '—' }}</span>
+        </div>
+        @if (e.role === 'driver') {
+        <div class="info-item">
+          <span class="info-label">Driver app login</span>
+          <span class="info-value">{{ appLoginLabel(e) }}</span>
+        </div>
+        }
       </div>
-      <div class="info-item">
-        <span class="info-label">Branch</span>
-        <span class="info-value">
-          <lpg-branch-link
-            [branchId]="e.branch_id"
-            [branch]="branchById().get(e.branch_id) ?? null"
-          />
-        </span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Role</span>
-        <span class="info-value">{{ toSentenceCase(e.role) }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Phone Number</span>
-        <span class="info-value">{{ e.phone_number }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Email</span>
-        <span class="info-value">{{ e.email ?? '—' }}</span>
-      </div>
-      @if (e.role === 'driver') {
-      <div class="info-item">
-        <span class="info-label">Driver app login</span>
-        <span class="info-value">{{ appLoginLabel(e) }}</span>
-      </div>
-      }
-    </div>
+    </lpg-section-card>
     }
 
     <ng-template #footer>
@@ -243,7 +249,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '36rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     <form [formGroup]="editForm" (ngSubmit)="onSubmitEdit()" class="dialog-form">
       <div class="dialog-form__fields">
@@ -254,6 +260,8 @@
           [messages]="fieldMessages.branch_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="edit_branch_id"
             formControlName="branch_id"
             [options]="branches()"
@@ -307,6 +315,8 @@
           [messages]="fieldMessages.role"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="edit_role"
             formControlName="role"
             [options]="roleOptions"

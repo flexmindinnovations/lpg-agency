@@ -33,6 +33,7 @@ import {
   bookingSourceLabel,
   formatCurrencyInr,
   toSentenceCase,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
 import { LpgDatePipe, LpgDateTimePipe, PERMISSION_CHECKER } from '@lpg/shared/util';
 import {
@@ -51,6 +52,7 @@ import {
   type StaffPaymentMethod,
   type UpiQrResponse,
 } from '@lpg/shared/data-access';
+import { invoiceFileName } from './invoice-file-name';
 import { invoiceStatusLabel, invoiceStatusSeverity } from './invoice-status';
 
 /** Methods that must carry a reference the accountant can match against
@@ -70,6 +72,7 @@ const REFERENCE_REQUIRED: ReadonlySet<StaffPaymentMethod> = new Set(['cheque', '
   selector: 'lpg-invoice-detail-drawer',
   standalone: true,
   imports: [
+    SectionCardComponent,
     DrawerA11yDirective,
     Drawer,
     Dialog,
@@ -107,7 +110,7 @@ export class InvoiceDetailDrawer implements OnInit {
   readonly invoiceUpdated = output<InvoiceResponse>();
 
   /** Which print button is working; only that one shows a spinner. */
-  protected readonly printingFormat = signal<'pdf' | 'thermal' | null>(null);
+  protected readonly printingFormat = signal<'pdf' | 'download' | 'thermal' | null>(null);
   protected readonly isSending = signal(false);
   private readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
 
@@ -145,6 +148,10 @@ export class InvoiceDetailDrawer implements OnInit {
   protected readonly canIssue = computed(() => this.can('invoices:issue'));
   protected readonly canRecordPayment = computed(() => this.can('invoices:record_payment'));
   protected readonly canApproveRefund = computed(() => this.can('credit_notes:approve'));
+  /** Money is still due and this person may collect it. */
+  protected readonly canTakePayment = computed(
+    () => this.canRecordPayment() && Number(this.invoice()?.balance_due ?? 0) > 0,
+  );
 
   protected readonly cylinderTypeNameById = computed(() => {
     const map = new Map<string, string>();
@@ -469,13 +476,28 @@ export class InvoiceDetailDrawer implements OnInit {
     this.printingService.renderInvoice(inv.invoice_id, 'pdf').subscribe({
       next: (blob) => {
         this.printingFormat.set(null);
-        this.printingService.showInTab(blob, tab, `${inv.invoice_number ?? 'invoice'}.pdf`);
+        this.printingService.showInTab(blob, tab, invoiceFileName(inv.invoice_number));
       },
       // The failed POST already toasts the server's message.
       error: () => {
         this.printingFormat.set(null);
         tab?.close();
       },
+    });
+  }
+
+  /** Saves the file under the invoice number and the time. A PDF opened in a
+   * tab is saved under a random name, so printing alone cannot do this. */
+  protected downloadPdf(): void {
+    const inv = this.invoice();
+    if (!inv || this.printingFormat()) return;
+    this.printingFormat.set('download');
+    this.printingService.renderInvoice(inv.invoice_id, 'pdf').subscribe({
+      next: (blob) => {
+        this.printingFormat.set(null);
+        this.printingService.download(blob, invoiceFileName(inv.invoice_number));
+      },
+      error: () => this.printingFormat.set(null),
     });
   }
 

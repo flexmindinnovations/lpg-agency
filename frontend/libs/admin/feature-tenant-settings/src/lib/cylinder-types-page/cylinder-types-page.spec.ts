@@ -3,13 +3,19 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ConfirmationService, type Confirmation } from 'primeng/api';
 import { of, throwError } from 'rxjs';
 import {
+  AdminBranchService,
   AdminCylinderTypeService,
+  AdminPriceListService,
+  AdminTenantConfigurationService,
   NotifyService,
   type CylinderTypeResponse,
+  type PriceListEntryResponse,
   type CylinderTypeUsageResponse,
 } from '@lpg/shared/data-access';
+import { StatusChipCell, type RowAction } from '@lpg/shared/ui';
 import { CylinderTypeDrawer } from './cylinder-type-drawer';
 import { CylinderTypesPage } from './cylinder-types-page';
+import { PriceDrawer } from './price-drawer';
 
 const SIZES = [
   { code: 'domestic_5', name: '5 kg Domestic', category: 'domestic', weight_kg: '5' },
@@ -41,18 +47,43 @@ const TYPED_BY_HAND: CylinderTypeResponse = {
 
 const UNUSED: CylinderTypeUsageResponse = {
   used_in: [],
+  delete_blocked_by: [],
   allowed_size_codes: SIZES.map((size) => size.code),
 };
 const USED: CylinderTypeUsageResponse = {
   used_in: ['stock records', 'prices'],
+  delete_blocked_by: ['stock records'],
   allowed_size_codes: ['domestic_14_2'],
 };
 
+const PRICE: PriceListEntryResponse = {
+  id: 'p1',
+  cylinder_type_id: 'c1',
+  customer_type: 'domestic',
+  branch_id: null,
+  price: '853.00',
+  effective_from: '2026-01-01T00:00:00Z',
+};
+
 let service: Record<string, jest.Mock>;
+let priceService: Record<string, jest.Mock>;
+let notify: { success: jest.Mock; error: jest.Mock };
 let confirmations: Confirmation[];
 
-function setUp(types: CylinderTypeResponse[], usage: CylinderTypeUsageResponse): void {
+function setUp(
+  types: CylinderTypeResponse[],
+  usage: CylinderTypeUsageResponse,
+  prices: PriceListEntryResponse[] = [PRICE],
+  branches: { id: string; name: string; is_active: boolean }[] = [],
+): void {
   confirmations = [];
+  notify = { success: jest.fn(), error: jest.fn() };
+  priceService = {
+    listPrices: jest.fn().mockReturnValue(of(prices)),
+    setPrice: jest.fn().mockReturnValue(of(PRICE)),
+    listProposals: jest.fn().mockReturnValue(of([])),
+    reviewProposal: jest.fn().mockReturnValue(of({})),
+  };
   service = {
     listCylinderTypes: jest.fn().mockReturnValue(of(types)),
     listCylinderSizes: jest.fn().mockReturnValue(of(SIZES)),
@@ -67,7 +98,13 @@ function setUp(types: CylinderTypeResponse[], usage: CylinderTypeUsageResponse):
     providers: [
       provideNoopAnimations(),
       { provide: AdminCylinderTypeService, useValue: service },
-      { provide: NotifyService, useValue: { success: jest.fn(), error: jest.fn() } },
+      { provide: AdminPriceListService, useValue: priceService },
+      { provide: AdminBranchService, useValue: { listBranches: () => of(branches) } },
+      {
+        provide: AdminTenantConfigurationService,
+        useValue: { getEffectiveConfiguration: () => of(null) },
+      },
+      { provide: NotifyService, useValue: notify },
       {
         provide: ConfirmationService,
         useValue: { confirm: (c: Confirmation) => confirmations.push(c) },
@@ -77,14 +114,66 @@ function setUp(types: CylinderTypeResponse[], usage: CylinderTypeUsageResponse):
 }
 
 describe('CylinderTypesPage', () => {
-  function render(types: CylinderTypeResponse[] = [DOMESTIC]) {
-    setUp(types, UNUSED);
+  function render(
+    types: CylinderTypeResponse[] = [DOMESTIC],
+    prices: PriceListEntryResponse[] = [PRICE],
+  ) {
+    setUp(types, UNUSED, prices);
     const fixture = TestBed.createComponent(CylinderTypesPage);
     fixture.detectChanges();
     return { fixture, page: fixture.componentInstance };
   }
 
-  const columnFields = (page: CylinderTypesPage) => page['columns']().map((column) => column.field);
+  it('points out a cylinder on sale with an unusual GST rate', () => {
+    const commercial = {
+      ...DOMESTIC,
+      id: 'c4',
+      name: '19 kg Commercial',
+      size_code: 'commercial_19',
+      category: 'commercial',
+    };
+
+    const { fixture } = render([DOMESTIC, commercial]);
+
+    const warnings = [...fixture.nativeElement.querySelectorAll('.gst-warning__item')].map((item) =>
+      (item as HTMLElement).textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(warnings).toEqual([
+      '19 kg Commercial: GST on commercial LPG is usually 18%, not 5%. Check with your accountant.',
+    ]);
+  });
+
+  it('does not point out a cylinder that is no longer sold', () => {
+    const { page } = render([{ ...DOMESTIC, category: 'commercial', is_active: false }]);
+
+    expect(page['rateWarnings']()).toEqual([]);
+  });
+
+  it('warns while an unusual rate is typed for a new cylinder', () => {
+    const { page } = render();
+
+    page['form'].controls.category.setValue('commercial');
+    expect(page['form'].controls.gstRatePercent.value).toBe(18);
+    expect(page['newGstHint']()).not.toContain('accountant');
+
+    page['form'].patchValue({ gstRatePercent: 5 });
+    expect(page['newGstHint']()).toContain('usually 18%, not 5%');
+  });
+
+  const columnFields = (page: CylinderTypesPage) => page['columns'].map((column) => column.field);
+  const column = (page: CylinderTypesPage, field: string) =>
+    page['columns'].find((c) => c.field === field);
+  type Row = ReturnType<CylinderTypesPage['rows']>[number];
+  const listed = (page: CylinderTypesPage, id: string) => {
+    const row = page['rows']().find((r) => r.id === id);
+    if (!row) throw new Error(`no row ${id}`);
+    return row;
+  };
+  /** The words on the buttons a row offers. */
+  const buttons = (page: CylinderTypesPage, row: Row) =>
+    (column(page, 'actions')?.cellRendererParams?.['actions'] as RowAction<Row>[])
+      .filter((a) => a.visible?.(row) ?? true)
+      .map((a) => (typeof a.text === 'function' ? a.text(row) : a.text));
 
   it('offers the sizes of the chosen type that are not added yet', () => {
     const { page } = render();
@@ -123,18 +212,77 @@ describe('CylinderTypesPage', () => {
     );
   });
 
-  it('adds a type by its size, not by a typed name or weight', () => {
+  it('adds a cylinder by its size and saves its price in the same step', () => {
     const { page } = render();
+    service['createCylinderType'].mockReturnValue(
+      of({ ...DOMESTIC, id: 'new', name: '19 kg Commercial', category: 'commercial' }),
+    );
 
     page['openCreateDrawer']();
     page['form'].controls.category.setValue('commercial');
-    page['form'].patchValue({ sizeCode: 'commercial_19', gstRatePercent: 18 });
+    page['form'].patchValue({ sizeCode: 'commercial_19', price: 1750 });
     page['submit']();
 
+    // The usual commercial rate is filled in.
     expect(service['createCylinderType']).toHaveBeenCalledWith('commercial_19', {
       hsnCode: '27111900',
       gstRatePercent: 18,
     });
+    expect(priceService['setPrice']).toHaveBeenCalledWith('new', 'commercial', 1750);
+    expect(notify.success).toHaveBeenCalled();
+    expect(page['createDrawerVisible']()).toBe(false);
+    expect(page['priceTarget']()).toBeNull();
+  });
+
+  it('fills the usual GST rate for the type, and keeps one the admin typed', () => {
+    const { page } = render();
+    const rate = page['form'].controls.gstRatePercent;
+
+    page['openCreateDrawer']();
+    page['form'].controls.category.setValue('domestic');
+    expect(rate.value).toBe(5);
+    page['form'].controls.category.setValue('commercial');
+    expect(rate.value).toBe(18);
+
+    rate.setValue(12);
+    rate.markAsDirty();
+    page['form'].controls.category.setValue('domestic');
+    expect(rate.value).toBe(12);
+  });
+
+  it('opens the price drawer, filled in, when the new cylinder price fails to save', () => {
+    const { page } = render();
+    priceService['setPrice'].mockReturnValue(throwError(() => new Error('offline')));
+
+    page['openCreateDrawer']();
+    page['form'].controls.category.setValue('commercial');
+    page['form'].patchValue({ sizeCode: 'commercial_19', price: 1750 });
+    page['submit']();
+
+    expect(page['createDrawerVisible']()).toBe(false);
+    expect(page['priceTarget']()).toEqual(DOMESTIC);
+    expect(page['suggestedPrice']()).toBe(1750);
+    expect(notify.success).not.toHaveBeenCalled();
+  });
+
+  it('does not add without a price', () => {
+    const { page } = render();
+
+    page['openCreateDrawer']();
+    page['form'].controls.category.setValue('commercial');
+    page['form'].patchValue({ sizeCode: 'commercial_19' });
+    page['submit']();
+
+    expect(service['createCylinderType']).not.toHaveBeenCalled();
+  });
+
+  it('lists each cylinder with its price, or says it is not set', () => {
+    const { page } = render([DOMESTIC, TYPED_BY_HAND]);
+
+    expect(listed(page, 'c1').price_text).toContain('853');
+    expect(listed(page, 'c2').price_text).toBe('Not set');
+    expect(column(page, 'price_text')?.cellClass).toBeDefined();
+    expect(columnFields(page)).not.toContain('hsn_code');
   });
 
   it('does not add without a size', () => {
@@ -147,24 +295,32 @@ describe('CylinderTypesPage', () => {
     expect(service['createCylinderType']).not.toHaveBeenCalled();
   });
 
-  it('drops "Set GST" once every type has a rate', () => {
-    const { page } = render([DOMESTIC]);
+  it('keeps all its row buttons in one Actions column', () => {
+    const done = render([DOMESTIC]).page;
 
-    expect(columnFields(page)).not.toContain('gst_action');
+    expect(columnFields(done)).not.toContain('gst_action');
+    expect(columnFields(done).filter((field) => field === 'actions')).toHaveLength(1);
+    expect(buttons(done, listed(done, 'c1'))).toEqual(['Change price', 'Deactivate']);
   });
 
-  it('offers "Set GST" only on the rows without a rate', () => {
+  it('offers what each row still needs', () => {
     const { page } = render([DOMESTIC, TYPED_BY_HAND]);
-    const column = page['columns']().find((c) => c.field === 'gst_action');
 
-    expect(column?.valueFormatter?.(undefined, DOMESTIC)).toBe('');
-    expect(column?.valueFormatter?.(undefined, TYPED_BY_HAND)).toBe('Set GST');
+    expect(buttons(page, listed(page, 'c2'))).toEqual(['Set price', 'Set GST', 'Deactivate']);
+    expect(buttons(page, { ...listed(page, 'c1'), is_active: false })).toEqual(['Activate']);
+  });
+
+  it('shows the status as a chip, and exports it as the same word', () => {
+    const status = column(render().page, 'is_active');
+
+    expect(status?.cellRenderer).toBe(StatusChipCell);
+    expect(status?.valueFormatter?.(false, {} as never)).toBe('Inactive');
   });
 
   it('opens the details from the name', () => {
     const { page } = render();
 
-    page['columns']()[0].onLinkClick?.(DOMESTIC);
+    page['columns'][0].onLinkClick?.(listed(page, 'c1'));
 
     expect(page['details']()).toEqual(DOMESTIC);
   });
@@ -175,6 +331,80 @@ describe('CylinderTypesPage', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'Not a standard cylinder size: 19KG_Domestic.',
     );
+  });
+});
+
+describe('PriceDrawer', () => {
+  const BRANCHES = [
+    { id: 'b1', name: 'Kukatpally', is_active: true },
+    { id: 'b2', name: 'Miyapur', is_active: true },
+  ];
+
+  function render(branches: typeof BRANCHES = [], suggested: number | null = null) {
+    setUp([DOMESTIC], UNUSED);
+    const fixture = TestBed.createComponent(PriceDrawer);
+    fixture.componentRef.setInput('prices', [PRICE]);
+    fixture.componentRef.setInput('branches', branches);
+    fixture.componentRef.setInput('suggestedPrice', suggested);
+    fixture.componentRef.setInput('cylinderType', DOMESTIC);
+    fixture.detectChanges();
+    return { fixture, drawer: fixture.componentInstance };
+  }
+
+  it('starts on the usual customer and shows the price now in force', () => {
+    const { drawer } = render();
+
+    expect(drawer['form'].getRawValue()).toEqual({
+      customerType: 'domestic',
+      branchId: null,
+      price: null,
+    });
+    expect(drawer['title']()).toBe('Change price');
+    expect(drawer['currentText']()).toContain('853');
+  });
+
+  it('says what the customer pays with GST', () => {
+    const { drawer } = render();
+
+    drawer['form'].patchValue({ price: 1000 });
+
+    expect(drawer['hint']()).toContain('The customer pays');
+    expect(drawer['hint']()).toContain('1,050');
+  });
+
+  it('asks for a branch only when there is more than one', () => {
+    render([BRANCHES[0]]);
+    expect(document.querySelector('#price-branch')).toBeNull();
+    TestBed.resetTestingModule();
+    document.body.innerHTML = '';
+
+    render(BRANCHES);
+    expect(document.querySelector('#price-branch')).not.toBeNull();
+  });
+
+  it('saves the price for all branches unless one is chosen', () => {
+    const { drawer } = render(BRANCHES, 900);
+    const saved = jest.fn();
+    drawer.saved.subscribe(saved);
+
+    drawer['save']();
+    expect(priceService['setPrice']).toHaveBeenLastCalledWith('c1', 'domestic', 900, null);
+
+    drawer['form'].patchValue({ branchId: 'b1' });
+    expect(drawer['currentText']()).toContain('all-branches price');
+    drawer['save']();
+    expect(priceService['setPrice']).toHaveBeenLastCalledWith('c1', 'domestic', 900, 'b1');
+    expect(saved).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not save without a price above zero', () => {
+    const { drawer } = render();
+
+    drawer['save']();
+    drawer['form'].patchValue({ price: 0 });
+    drawer['save']();
+
+    expect(priceService['setPrice']).not.toHaveBeenCalled();
   });
 });
 
@@ -193,6 +423,51 @@ describe('CylinderTypeDrawer', () => {
     return { fixture, drawer: fixture.componentInstance };
   }
 
+  it('points out a saved GST rate that is not the usual one', () => {
+    const { fixture } = render({ ...DOMESTIC, gst_rate_percent: '18.00' }, UNUSED);
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'GST on domestic LPG is usually 5%, not 18%.',
+    );
+  });
+
+  it('warns while an unusual rate is typed, and not for the usual one', () => {
+    const { fixture, drawer } = render(DOMESTIC, UNUSED);
+    expect(fixture.nativeElement.textContent).not.toContain('Check with your accountant');
+
+    drawer['startEdit'](DOMESTIC);
+    drawer['form'].patchValue({ gstRatePercent: 18 });
+    expect(drawer['editGstHint']()).toContain('usually 5%, not 18%');
+
+    drawer['form'].patchValue({ gstRatePercent: 5 });
+    expect(drawer['editGstHint']()).not.toContain('accountant');
+  });
+
+  it('shows the price and asks the page to change it', () => {
+    const { fixture, drawer } = render(DOMESTIC, UNUSED);
+    fixture.componentRef.setInput('prices', [PRICE]);
+    fixture.detectChanges();
+    const requested = jest.fn();
+    drawer.priceRequested.subscribe(requested);
+
+    expect(drawer['priceRows']()[0].label).toBe('Domestic · All branches');
+    expect(drawer['priceRows']()[0].amount).toContain('853');
+    const change = button(fixture.nativeElement, 'price');
+    expect(change?.textContent).toContain('Change price');
+    change?.click();
+
+    expect(requested).toHaveBeenCalledWith(DOMESTIC);
+  });
+
+  it('keeps its actions in a footer below the scrolling details', () => {
+    const { fixture } = render(DOMESTIC, UNUSED);
+    const footer = (fixture.nativeElement as HTMLElement).ownerDocument.querySelector(
+      '.detail-view > .modal-actions',
+    );
+
+    expect(footer?.querySelectorAll('button')).toHaveLength(3);
+  });
+
   const button = (host: HTMLElement, action: string) =>
     host.querySelector<HTMLButtonElement>(`[data-action="${action}"]`);
 
@@ -204,8 +479,28 @@ describe('CylinderTypeDrawer', () => {
 
     expect(button(fixture.nativeElement, 'delete')?.disabled).toBe(true);
     expect(fixture.nativeElement.textContent).toContain(
-      'It is used in stock records and prices, so it cannot be deleted. Deactivate it instead.',
+      'It is used in stock records, so it cannot be deleted. Deactivate it instead.',
     );
+  });
+
+  it('still says why with a server that does not send what blocks a delete', () => {
+    const older = { used_in: ['stock records'], allowed_size_codes: [] };
+
+    const { fixture } = render(DOMESTIC, older as unknown as CylinderTypeUsageResponse);
+
+    expect(button(fixture.nativeElement, 'delete')?.disabled).toBe(true);
+    expect(button(fixture.nativeElement, 'edit')?.disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('It is used in stock records');
+  });
+
+  it('lets a cylinder that only has a price be deleted', () => {
+    const { fixture } = render(DOMESTIC, {
+      used_in: ['prices'],
+      delete_blocked_by: [],
+      allowed_size_codes: ['domestic_14_2'],
+    });
+
+    expect(button(fixture.nativeElement, 'delete')?.disabled).toBe(false);
   });
 
   it('deletes an unused type only after confirming', () => {
@@ -262,6 +557,7 @@ describe('CylinderTypeDrawer', () => {
   it('lets a hand-typed record take the standard size of its weight', () => {
     const { drawer } = render(TYPED_BY_HAND, {
       used_in: ['prices'],
+      delete_blocked_by: [],
       allowed_size_codes: ['commercial_19'],
     });
     expect(drawer['offListAdvice']()).toContain('Choose Edit and pick its size.');
@@ -282,12 +578,26 @@ describe('CylinderTypeDrawer', () => {
 
     const { drawer } = render(
       TYPED_BY_HAND,
-      { used_in: ['prices'], allowed_size_codes: ['commercial_19'] },
+      { used_in: ['prices'], delete_blocked_by: [], allowed_size_codes: ['commercial_19'] },
       [taken],
     );
 
     expect(offeredCodes(drawer)).toEqual([]);
     expect(drawer['offListAdvice']()).toContain('already in your list');
+    expect(drawer['offListAdvice']()).toContain('deactivate this one');
+  });
+
+  it('does not ask to deactivate a record that is already inactive', () => {
+    const taken = { ...DOMESTIC, id: 'c3', name: '19 kg Commercial' };
+
+    const { drawer } = render(
+      { ...TYPED_BY_HAND, is_active: false },
+      { used_in: ['prices'], delete_blocked_by: [], allowed_size_codes: ['commercial_19'] },
+      [taken],
+    );
+
+    expect(drawer['offListAdvice']()).toContain('so use that one.');
+    expect(drawer['offListAdvice']()).not.toContain('deactivate');
   });
 
   it('shows the type and size of a record when editing starts', () => {
@@ -315,6 +625,7 @@ describe('CylinderTypeDrawer', () => {
   it('picks the type of a hand-typed record when only one is possible', () => {
     const { drawer } = render(TYPED_BY_HAND, {
       used_in: ['prices'],
+      delete_blocked_by: [],
       allowed_size_codes: ['commercial_19'],
     });
 

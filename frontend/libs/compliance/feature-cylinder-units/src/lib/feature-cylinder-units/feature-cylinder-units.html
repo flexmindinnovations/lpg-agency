@@ -28,6 +28,8 @@
   <div class="data-toolbar">
     <div class="data-toolbar__filters">
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         [options]="dueStatusOptions"
         optionLabel="label"
         optionValue="value"
@@ -54,7 +56,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '36rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form
@@ -71,6 +73,8 @@
           [messages]="fieldMessages.cylinder_type_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="cylinder_type_id"
             formControlName="cylinder_type_id"
             [options]="cylinderTypes()"
@@ -117,6 +121,8 @@
           [messages]="fieldMessages.condition_status"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="condition_status"
             formControlName="condition_status"
             [options]="conditionStatusOptions"
@@ -134,6 +140,8 @@
           [messages]="fieldMessages.custody_type"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="custody_type"
             formControlName="custody_type"
             [options]="custodyTypeOptions()"
@@ -147,6 +155,8 @@
         @if (registerForm.controls.custody_type.value === 'warehouse') {
         <lpg-form-field label="Godown" for="custody_ref_id">
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="custody_ref_id"
             formControlName="custody_ref_id"
             [options]="warehouseOptions()"
@@ -160,6 +170,7 @@
         } @else if (registerForm.controls.custody_type.value === 'vehicle') {
         <lpg-form-field label="Vehicle" for="custody_ref_id">
           <p-select
+            [resetFilterOnHide]="true"
             inputId="custody_ref_id"
             formControlName="custody_ref_id"
             [options]="vehicleOptions()"
@@ -175,6 +186,7 @@
         } @else if (registerForm.controls.custody_type.value === 'customer') {
         <lpg-form-field label="Customer" for="custody_ref_id">
           <p-select
+            [resetFilterOnHide]="true"
             inputId="custody_ref_id"
             formControlName="custody_ref_id"
             [options]="customerOptions()"
@@ -235,58 +247,63 @@
     [dismissible]="false"
     [closeOnEscape]="false"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     @if (selectedUnit(); as unit) {
     <div class="detail-view">
       <div class="detail-view__fields">
-        <div class="detail-item">
-          <span class="detail-label">Serial</span>
-          <span class="detail-value">{{ unit.serial_number }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">QR / Barcode</span>
-          <span class="detail-value font-mono">{{ unit.qr_code }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Type</span>
-          <span class="detail-value"
-            >{{ cylinderTypeNameById().get(unit.cylinder_type_id) ?? unit.cylinder_type_id }}</span
-          >
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Condition</span>
-          <p-tag
-            [value]="toSentenceCase(unit.condition_status)"
-            [severity]="conditionSeverity(unit.condition_status)"
-          />
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Custody</span>
-          <span class="detail-value"
-            >{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span
-          >
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Statutory Test</span>
-          <span class="detail-value">
-            @if (unit.test_due_date) { Due {{ formatReportDate(unit.test_due_date) }} @if
-            (unit.is_due_for_test) {
-            <p-tag value="OVERDUE" severity="danger" />
-            } } @else { Never tested }
-          </span>
-        </div>
-        @if (unit.owner_omc) {
-        <div class="detail-item">
-          <span class="detail-label">Owner OMC</span>
-          <span class="detail-value">{{ unit.owner_omc }}</span>
-        </div>
-        } @if (unit.is_retired) {
-        <div class="detail-item">
-          <span class="detail-label">Status</span>
-          <p-tag value="RETIRED" severity="secondary" />
-        </div>
-        }
+        <lpg-section-card heading="Details">
+          <lpg-detail-list>
+            <div class="detail-item">
+              <span class="detail-label">Serial</span>
+              <span class="detail-value">{{ unit.serial_number }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">QR / Barcode</span>
+              <span class="detail-value font-mono">{{ unit.qr_code }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Type</span>
+              <span class="detail-value"
+                >{{ cylinderTypeNameById().get(unit.cylinder_type_id) ?? unit.cylinder_type_id
+                }}</span
+              >
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Condition</span>
+              <p-tag
+                [value]="toSentenceCase(unit.condition_status)"
+                [severity]="conditionSeverity(unit.condition_status)"
+              />
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Custody</span>
+              <span class="detail-value"
+                >{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span
+              >
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Statutory Test</span>
+              <span class="detail-value">
+                @if (unit.test_due_date) { Due {{ formatReportDate(unit.test_due_date) }} @if
+                (unit.is_due_for_test) {
+                <p-tag value="OVERDUE" severity="danger" />
+                } } @else { Never tested }
+              </span>
+            </div>
+            @if (unit.owner_omc) {
+            <div class="detail-item">
+              <span class="detail-label">Owner OMC</span>
+              <span class="detail-value">{{ unit.owner_omc }}</span>
+            </div>
+            } @if (unit.is_retired) {
+            <div class="detail-item">
+              <span class="detail-label">Status</span>
+              <p-tag value="RETIRED" severity="secondary" />
+            </div>
+            }
+          </lpg-detail-list>
+        </lpg-section-card>
       </div>
 
       @if (!unit.is_retired) { @if (activeAction() === 'receive') {
@@ -302,6 +319,8 @@
             [control]="receiveForm.controls.warehouse_id"
           >
             <p-select
+              [filter]="true"
+              [resetFilterOnHide]="true"
               inputId="receive_warehouse_id"
               formControlName="warehouse_id"
               [options]="warehouses()"
@@ -556,6 +575,8 @@
             [control]="custodyForm.controls.custody_type"
           >
             <p-select
+              [filter]="true"
+              [resetFilterOnHide]="true"
               inputId="move_custody_type"
               formControlName="custody_type"
               [options]="custodyTypeOptions()"
@@ -569,6 +590,8 @@
           @if (custodyForm.controls.custody_type.value === 'warehouse') {
           <lpg-form-field label="Destination Godown" for="move_custody_ref_id">
             <p-select
+              [filter]="true"
+              [resetFilterOnHide]="true"
               inputId="move_custody_ref_id"
               formControlName="custody_ref_id"
               [options]="warehouseOptions()"
@@ -582,6 +605,7 @@
           } @else if (custodyForm.controls.custody_type.value === 'vehicle') {
           <lpg-form-field label="Destination Vehicle" for="move_custody_ref_id">
             <p-select
+              [resetFilterOnHide]="true"
               inputId="move_custody_ref_id"
               formControlName="custody_ref_id"
               [options]="vehicleOptions()"
@@ -597,6 +621,7 @@
           } @else if (custodyForm.controls.custody_type.value === 'customer') {
           <lpg-form-field label="Destination Customer" for="move_custody_ref_id">
             <p-select
+              [resetFilterOnHide]="true"
               inputId="move_custody_ref_id"
               formControlName="custody_ref_id"
               [options]="customerOptions()"
@@ -779,6 +804,8 @@
             [control]="conditionForm.controls.new_status"
           >
             <p-select
+              [filter]="true"
+              [resetFilterOnHide]="true"
               inputId="dialog_new_status"
               formControlName="new_status"
               [options]="allowedNextConditions()"

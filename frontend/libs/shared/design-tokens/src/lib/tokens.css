@@ -348,11 +348,18 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
-  /* Cards are the shared pane inside a single border. No fill of their own, no
-     shadow (a highlight along the top edge read as a second border), and
-     nothing blurred live: a backdrop blur on every card is redone each scroll
-     frame (measured: average frame 7.2 -> 10.8 ms). */
-  --component-card-background: var(--surface-pane);
+  /* Cards are glass: a thin, mostly clear fill with light falling across it,
+     inside a single border, so the page's colours show through. No shadow (a
+     highlight along the top edge read as a second border), and nothing blurred
+     live: a backdrop blur on every card is redone each scroll frame (measured:
+     average frame 7.2 -> 10.8 ms). */
+  --component-card-background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, #ffffff 45%, transparent),
+      color-mix(in srgb, #ffffff 12%, transparent) 60%
+    ),
+    color-mix(in srgb, #ffffff 25%, transparent);
   --component-card-border: rgba(15, 23, 42, 0.12);
   --component-data-grid-border-color: #e5e7eb;
   /* Opaque: AG Grid keeps the header in a sticky strip over the scrolling rows,
@@ -451,7 +458,13 @@ have always been hand-edited directly. Edit them here.
   --component-button-primary-background: #2864cc;
   --component-button-primary-background-hover: #1f4fa8;
   --component-button-primary-text: #ffffff;
-  --component-card-background: var(--surface-pane);
+  --component-card-background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, #ffffff 6%, transparent),
+      color-mix(in srgb, #ffffff 1%, transparent) 60%
+    ),
+    color-mix(in srgb, #101720 24%, transparent);
   --component-card-border: rgba(255, 255, 255, 0.13);
   --component-data-grid-border-color: rgba(255,255,255,0.07);
   --component-data-grid-header-background: #171e28;
@@ -602,7 +615,13 @@ have always been hand-edited directly. Edit them here.
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
-    --component-card-background: var(--surface-pane);
+    --component-card-background:
+      linear-gradient(
+        155deg,
+        color-mix(in srgb, #ffffff 6%, transparent),
+        color-mix(in srgb, #ffffff 1%, transparent) 60%
+      ),
+      color-mix(in srgb, #101720 24%, transparent);
     --component-card-border: rgba(255, 255, 255, 0.13);
     --component-data-grid-border-color: rgba(255,255,255,0.07);
     --component-data-grid-header-background: #171e28;
@@ -661,5 +680,6 @@ have always been hand-edited directly. Edit them here.
   :root[data-theme],
   :root:not([data-theme]) {
     --surface-pane: var(--color-surface-raised);
+    --component-card-background: var(--color-surface-raised);
   }
 }

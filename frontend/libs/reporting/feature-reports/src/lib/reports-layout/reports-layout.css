@@ -26,10 +26,3 @@
   color: var(--color-text-primary);
   border-bottom-color: var(--color-primary-base);
 }
-
-.reports-content {
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-lg);
-  border: var(--border-width) solid var(--color-border-default);
-  padding: var(--spacing-lg);
-}

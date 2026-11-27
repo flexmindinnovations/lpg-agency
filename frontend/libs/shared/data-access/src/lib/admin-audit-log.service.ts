@@ -6,8 +6,6 @@ import { listAuditLogApiV1AdminAuditLogGet } from './generated/fn/administration
 import { listAuditLogEntityTypesApiV1AdminAuditLogEntityTypesGet } from './generated/fn/administration/list-audit-log-entity-types-api-v-1-admin-audit-log-entity-types-get';
 import type { AuditLogPageResponse } from './generated/models/audit-log-page-response';
 
-export type AuditLogAction = 'create' | 'update' | 'delete';
-
 /** Thin wrapper over the generated `/admin/audit-log` client functions. */
 @Injectable({ providedIn: 'root' })
 export class AdminAuditLogService {
@@ -17,7 +15,7 @@ export class AdminAuditLogService {
   listAuditLog(options?: {
     entityName?: string | null;
     actorId?: string | null;
-    action?: AuditLogAction | null;
+    action?: string | null;
     /** Inclusive lower bound, ISO-8601 instant. */
     dateFrom?: string | null;
     /** Exclusive upper bound, ISO-8601 instant. */

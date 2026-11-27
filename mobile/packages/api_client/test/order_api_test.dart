@@ -34,6 +34,52 @@ Map<String, dynamic> _orderJson({String status = 'booked'}) => {
 };
 
 void main() {
+  group('earlier empties', () {
+    const proof = ProofOfDeliverySubmission(
+      gpsLat: 1,
+      gpsLng: 2,
+      paymentMethod: 'cash',
+      amountCollected: 0,
+    );
+
+    test('reads what the customer holds', () {
+      final held = HeldEmpties.fromJson(const {
+        'cylinder_type_id': 'ct1',
+        'cylinder_type_name': '14.2 kg',
+        'quantity_held': 10,
+      });
+
+      expect(held.cylinderTypeId, 'ct1');
+      expect(held.cylinderTypeName, '14.2 kg');
+      expect(held.quantityHeld, 10);
+    });
+
+    test('sends the sizes that are not on the order', () {
+      final body = const DeliverOrderRequest(
+        lines: [],
+        otpCode: '123456',
+        proofOfDelivery: proof,
+        otherEmpties: [
+          CollectedEmptyRequest(cylinderTypeId: 'ct2', quantity: 3),
+        ],
+      ).toJson();
+
+      expect(body['other_empties'], [
+        {'cylinder_type_id': 'ct2', 'quantity': 3},
+      ]);
+    });
+
+    test('leaves the field out when there are none', () {
+      final body = const DeliverOrderRequest(
+        lines: [],
+        otpCode: '123456',
+        proofOfDelivery: proof,
+      ).toJson();
+
+      expect(body.containsKey('other_empties'), isFalse);
+    });
+  });
+
   group('OrderApi', () {
     test(
       'createOrder sends an Idempotency-Key header and parses the order',

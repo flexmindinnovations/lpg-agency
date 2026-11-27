@@ -157,6 +157,15 @@ class PaymentNotSettledError(ConflictError):
     title = "Collect the payment before completing the delivery"
 
 
+class EmptiesExceedHeldError(ConflictError):
+    """A delivery reported more empties of a size than the customer was
+    holding before it. Today's cylinders are full and cannot come back yet.
+    """
+
+    error_code = "EMPTIES_EXCEED_HELD"
+    title = "More empties than the customer is holding"
+
+
 class CylinderNotOrderableError(ConflictError):
     """A booking named a cylinder type that cannot be ordered right now: it
     is inactive, has no price for the customer's type and branch, or the

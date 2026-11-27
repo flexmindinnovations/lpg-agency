@@ -42,3 +42,9 @@
   border-block-start: var(--border-width) solid var(--color-border-default);
   border-block-end: var(--border-width) solid var(--color-border-default);
 }
+
+/* A divider separates; with nothing below, there is nothing to separate. */
+.preview-grid:last-child {
+  padding-block-end: 0;
+  border-block-end: 0;
+}

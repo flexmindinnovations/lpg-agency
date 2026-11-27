@@ -43,8 +43,4 @@
   display: grid;
   grid-template-columns: var(--detail-columns);
   gap: var(--spacing-sm) var(--spacing-xl);
-  padding: var(--spacing-md);
-  background: var(--color-surface-raised);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
 }

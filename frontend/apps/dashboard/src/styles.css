@@ -544,7 +544,8 @@ body {
   overflow: hidden;
 }
 
-.dialog-form {
+.dialog-form,
+.p-drawer-content > .detail-view {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -670,6 +671,7 @@ body {
 .modal-actions,
 .card-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--spacing-sm);
   /* A fixed-size sibling *after* `.dialog-form__fields`/`.detail-view__fields`
@@ -687,6 +689,8 @@ lpg-section-card .card-actions,
 lpg-section-card .profile-form__actions {
   margin-inline: calc(-1 * var(--component-card-padding));
   margin-block-end: calc(-1 * var(--component-card-padding));
+  /* Space above the divider, or it touches the last field's hint. */
+  margin-block-start: var(--spacing-md);
   padding-inline: var(--component-card-padding);
   padding-block: var(--spacing-md);
   border-block-start: var(--border-width) solid var(--color-border-default);
@@ -703,7 +707,11 @@ lpg-section-card .profile-form__actions {
 
 :root {
   /* Narrows on a phone, so an email address still fits beside its label. */
-  --detail-label-width: minmax(0, min(9.5rem, 35%));
+  --detail-label-width: minmax(0, min(12rem, 38%));
+  /* Every side drawer is one of these two widths (full width on a phone).
+     Wide is for tables and several columns. */
+  --drawer-width: 36rem;
+  --drawer-width-wide: 48rem;
   /* A list of pairs shows two or more per line only where each still fits. */
   --detail-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
 }
@@ -1516,6 +1524,18 @@ p-confirmpopup {
   .p-steppanel-content
 ) {
   background: transparent !important;
+}
+
+/* A drawer or dialog is not part of the page that opened it. Where that page
+   shows its cards flat (Settings sets --card-border), these keep the border. */
+.p-drawer,
+.p-dialog {
+  --card-border: initial;
+}
+
+/* What is under a drawer's tabs lines up with the cards above them. */
+.p-drawer .p-tabpanels {
+  padding-inline: 0 !important;
 }
 
 /* Floating panels — the profile menu / any popover, and select dropdowns.

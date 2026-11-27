@@ -340,15 +340,9 @@ export class ShellLayout {
           condition: can('tenant:configure'),
         },
         {
-          label: 'Cylinder Types',
+          label: 'Cylinders & Prices',
           icon: 'pi pi-box',
           route: '/admin/cylinder-types',
-          condition: can('tenant:configure'),
-        },
-        {
-          label: 'Pricing',
-          icon: 'pi pi-tag',
-          route: '/admin/price-lists',
           condition: can('tenant:configure'),
         },
         {

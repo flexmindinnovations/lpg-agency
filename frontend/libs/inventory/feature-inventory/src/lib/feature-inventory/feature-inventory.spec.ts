@@ -23,6 +23,7 @@ describe('FeatureInventory', () => {
   let fixture: ComponentFixture<FeatureInventory>;
   let httpMock: HttpTestingController;
   const notify = { success: jest.fn(), error: jest.fn() };
+  const permissions = signal<{ permissions: Set<string> } | null>(null);
 
   // Protected members read through a typed view, as other specs here do.
   const c = () => component as unknown as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -41,7 +42,7 @@ describe('FeatureInventory', () => {
         MessageService,
         { provide: NotifyService, useValue: notify },
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
-        { provide: PERMISSION_CHECKER, useValue: signal(null) },
+        { provide: PERMISSION_CHECKER, useFactory: () => permissions },
       ],
     }).compileComponents();
 
@@ -129,6 +130,58 @@ describe('FeatureInventory', () => {
 
     c()['openAdjustModal']();
     expect(c()['drawerError']()).toBeNull();
+  });
+
+  describe('correcting a stock figure', () => {
+    const filled = { cylinder_type_id: 'ct1', status: 'filled', quantity: 10 };
+    const emptied = { cylinder_type_id: 'ct2', status: 'empty', quantity: 0 };
+
+    beforeEach(() => {
+      permissions.set(null);
+      c()['balance'].set({ balances: [filled, emptied] });
+    });
+
+    const actions = () =>
+      c()
+        ['balanceColumns']()
+        .find((column: { header: string }) => column.header === 'Actions');
+
+    it('leaves lines counted down to zero out of the balance table', () => {
+      expect(c()['balanceRows']()).toEqual([filled]);
+    });
+
+    it('offers no action without the permission to record a count', () => {
+      expect(actions()).toBeUndefined();
+    });
+
+    it('opens the count form filled in from the row', () => {
+      permissions.set({ permissions: new Set(['inventory:load']) });
+
+      const [correct] = actions().cellRendererParams.actions;
+      expect(correct.text).toBe('Correct count');
+      expect(correct.visible(filled)).toBe(true);
+      expect(correct.visible({ ...filled, status: 'reserved' })).toBe(false);
+      correct.onAction(filled);
+
+      expect(c()['showReconcileModal']()).toBe(true);
+      expect(c()['reconcileForm'].getRawValue()).toEqual({
+        cylinder_type_id: 'ct1',
+        status: 'filled',
+        actual_quantity: 10,
+      });
+      expect(c()['recordedQuantityHint']()).toContain('On record now: 10.');
+    });
+
+    it('starts empty from the toolbar button', () => {
+      c()['openReconcileModal']();
+
+      expect(c()['reconcileForm'].getRawValue()).toEqual({
+        cylinder_type_id: '',
+        status: 'filled',
+        actual_quantity: 0,
+      });
+      expect(c()['recordedQuantityHint']()).toBe('');
+    });
   });
 
   it('explains a refused self-approval next to the pending count (DA-04)', () => {

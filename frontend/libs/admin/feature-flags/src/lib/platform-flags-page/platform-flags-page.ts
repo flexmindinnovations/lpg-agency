@@ -5,7 +5,7 @@ import { forkJoin, of, type Observable } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { DrawerA11yDirective, SectionCardComponent } from '@lpg/shared/ui';
 import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
 import {
@@ -18,6 +18,7 @@ import {
   DetailListComponent,
   FormFieldComponent,
   PageHeaderComponent,
+  StatusChipCell,
   formatTimestamp,
 } from '@lpg/shared/ui';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
@@ -31,28 +32,6 @@ function formatDateForApi(value: unknown): string | null {
   const month = String(dateObj.getMonth() + 1).padStart(2, '0');
   const day = String(dateObj.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-/** AG Grid renders a boolean-valued column with its own checkbox cell by
- * default, ignoring `valueFormatter` — this swaps that for the plain
- * "Enabled"/"Disabled" text a flags table reads as. */
-@Component({
-  selector: 'lpg-flag-default-cell',
-  standalone: true,
-  template: `{{ label() }}`,
-})
-class FlagDefaultCell {
-  protected readonly label = signal('');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
-  agInit(params: any): void {
-    this.label.set(params.value ? 'Enabled' : 'Disabled');
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  refresh(params: any): boolean {
-    this.agInit(params);
-    return true;
-  }
 }
 
 /**
@@ -70,6 +49,7 @@ class FlagDefaultCell {
   selector: 'lpg-platform-flags-page',
   standalone: true,
   imports: [
+    SectionCardComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
     PageHeaderComponent,
@@ -120,7 +100,7 @@ class FlagDefaultCell {
         [closeOnEscape]="true"
         header="Create a flag"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         <form
           id="createFlagForm"
@@ -197,27 +177,31 @@ class FlagDefaultCell {
         position="right"
         [modal]="true"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         @if (selectedFlag(); as flag) {
           @if (!editMode()) {
             <div class="detail-view">
-              <lpg-detail-list class="detail-view__fields">
-                <lpg-detail-item label="Key">{{ flag.key }}</lpg-detail-item>
-                <lpg-detail-item label="Description">{{ flag.description }}</lpg-detail-item>
-                <lpg-detail-item label="Default">{{
-                  flag.is_enabled_by_default ? 'Enabled' : 'Disabled'
-                }}</lpg-detail-item>
-                <lpg-detail-item label="Rollout %">{{
-                  flag.rollout_percentage ?? '—'
-                }}</lpg-detail-item>
-                <lpg-detail-item label="Starts At">{{
-                  flag.starts_at ? formatTimestamp(flag.starts_at) : 'Not scheduled'
-                }}</lpg-detail-item>
-                <lpg-detail-item label="Ends At">{{
-                  flag.ends_at ? formatTimestamp(flag.ends_at) : 'Not scheduled'
-                }}</lpg-detail-item>
-              </lpg-detail-list>
+              <div class="detail-view__fields">
+                <lpg-section-card heading="Details">
+                  <lpg-detail-list>
+                    <lpg-detail-item label="Key">{{ flag.key }}</lpg-detail-item>
+                    <lpg-detail-item label="Description">{{ flag.description }}</lpg-detail-item>
+                    <lpg-detail-item label="Default">{{
+                      flag.is_enabled_by_default ? 'Enabled' : 'Disabled'
+                    }}</lpg-detail-item>
+                    <lpg-detail-item label="Rollout %">{{
+                      flag.rollout_percentage ?? '—'
+                    }}</lpg-detail-item>
+                    <lpg-detail-item label="Starts At">{{
+                      flag.starts_at ? formatTimestamp(flag.starts_at) : 'Not scheduled'
+                    }}</lpg-detail-item>
+                    <lpg-detail-item label="Ends At">{{
+                      flag.ends_at ? formatTimestamp(flag.ends_at) : 'Not scheduled'
+                    }}</lpg-detail-item>
+                  </lpg-detail-list>
+                </lpg-section-card>
+              </div>
 
               <div class="modal-actions">
                 <button pButton type="button" severity="secondary" (click)="closeDetails()">
@@ -243,6 +227,8 @@ class FlagDefaultCell {
                   [control]="editForm.controls.isEnabledByDefault"
                 >
                   <p-select
+                    [filter]="true"
+                    [resetFilterOnHide]="true"
                     inputId="edit_default"
                     formControlName="isEnabledByDefault"
                     [options]="[
@@ -329,13 +315,6 @@ class FlagDefaultCell {
         flex-direction: column;
         block-size: 100%;
       }
-
-      .detail-view {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-      }
     `,
   ],
 })
@@ -373,7 +352,13 @@ export class PlatformFlagsPage implements OnInit {
       field: 'is_enabled_by_default',
       header: 'Default',
       sortable: true,
-      cellRenderer: FlagDefaultCell,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        labelMap: { true: 'Enabled', false: 'Disabled' },
+        severityMap: { true: 'success', false: 'secondary' },
+      },
+      // What the quick search matches and a CSV download holds.
+      valueFormatter: (value) => (value ? 'Enabled' : 'Disabled'),
     },
     {
       field: 'rollout_percentage',

@@ -15,6 +15,7 @@ import {
   PageActionsDirective,
   PageHeaderComponent,
   formatCurrencyInr,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { CashHandoverService, type CashBookResponse } from '@lpg/shared/data-access';
@@ -48,6 +49,7 @@ function toIsoDay(date: Date): string {
   selector: 'lpg-cash-book',
   standalone: true,
   imports: [
+    SectionCardComponent,
     FormsModule,
     RouterLink,
     ButtonDirective,
@@ -90,8 +92,7 @@ function toIsoDay(date: Date): string {
       @if (error(); as message) {
         <lpg-empty-state tone="error" title="Couldn't load the cash book" [description]="message" />
       } @else if (book(); as b) {
-        <section class="book__section" aria-label="Collected today">
-          <h2>Collected</h2>
+        <lpg-section-card heading="Collected">
           @if (b.collections.length === 0) {
             <p class="book__muted">No payments recorded on this day.</p>
           } @else {
@@ -113,58 +114,60 @@ function toIsoDay(date: Date): string {
               </li>
             </ul>
           }
-        </section>
+        </lpg-section-card>
 
-        <section class="book__section" aria-label="Cash handed over">
-          <h2>Cash handed over</h2>
+        <lpg-section-card heading="Cash handed over">
           <dl class="book__grid">
-            <div>
-              <dt>Handovers</dt>
-              <dd>{{ b.handover_count }}</dd>
+            <div class="detail-item">
+              <dt class="detail-label">Handovers</dt>
+              <dd class="detail-value">{{ b.handover_count }}</dd>
             </div>
-            <div>
-              <dt>Expected</dt>
-              <dd>{{ money(b.expected_total) }}</dd>
+            <div class="detail-item">
+              <dt class="detail-label">Expected</dt>
+              <dd class="detail-value">{{ money(b.expected_total) }}</dd>
             </div>
-            <div>
-              <dt>Handed over</dt>
-              <dd>{{ money(b.handed_over_total) }}</dd>
+            <div class="detail-item">
+              <dt class="detail-label">Handed over</dt>
+              <dd class="detail-value">{{ money(b.handed_over_total) }}</dd>
             </div>
-            <div>
-              <dt>Short</dt>
-              <dd [class.book__danger]="+b.shortfall_total > 0">{{ money(b.shortfall_total) }}</dd>
+            <div class="detail-item">
+              <dt class="detail-label">Short</dt>
+              <dd class="detail-value" [class.book__danger]="+b.shortfall_total > 0">
+                {{ money(b.shortfall_total) }}
+              </dd>
             </div>
-            <div>
-              <dt>Excess</dt>
-              <dd>{{ money(b.excess_total) }}</dd>
+            <div class="detail-item">
+              <dt class="detail-label">Excess</dt>
+              <dd class="detail-value">{{ money(b.excess_total) }}</dd>
             </div>
           </dl>
-        </section>
+        </lpg-section-card>
 
-        <section class="book__section" aria-label="Verification">
-          <h2>Verification</h2>
+        <lpg-section-card heading="Verification">
           <dl class="book__grid">
-            <div>
-              <dt>Accepted</dt>
-              <dd>{{ money(b.accepted_total) }}</dd>
+            <div class="detail-item">
+              <dt class="detail-label">Accepted</dt>
+              <dd class="detail-value">{{ money(b.accepted_total) }}</dd>
             </div>
-            <div>
-              <dt>Disputed</dt>
-              <dd [class.book__danger]="+b.disputed_total > 0">{{ money(b.disputed_total) }}</dd>
+            <div class="detail-item">
+              <dt class="detail-label">Disputed</dt>
+              <dd class="detail-value" [class.book__danger]="+b.disputed_total > 0">
+                {{ money(b.disputed_total) }}
+              </dd>
             </div>
-            <div>
-              <dt>To verify</dt>
-              <dd>
+            <div class="detail-item">
+              <dt class="detail-label">To verify</dt>
+              <dd class="detail-value">
                 {{ money(b.pending_total) }}
                 <span class="book__muted">({{ b.pending_count }})</span>
               </dd>
             </div>
-            <div>
-              <dt>Still with drivers</dt>
-              <dd>{{ money(b.cash_in_hand_total) }}</dd>
+            <div class="detail-item">
+              <dt class="detail-label">Still with drivers</dt>
+              <dd class="detail-value">{{ money(b.cash_in_hand_total) }}</dd>
             </div>
           </dl>
-        </section>
+        </lpg-section-card>
       } @else {
         <p class="book__muted" role="status">Loading…</p>
       }
@@ -180,17 +183,6 @@ function toIsoDay(date: Date): string {
         flex-direction: column;
         gap: var(--spacing-lg);
         padding-block-end: var(--spacing-xl);
-      }
-      .book__section {
-        padding: var(--spacing-md);
-        border: 1px solid var(--color-border-default);
-        border-radius: var(--radius-md, 0.5rem);
-        background: var(--color-surface-raised);
-      }
-      .book__section h2 {
-        margin: 0 0 var(--spacing-sm);
-        font-size: var(--typography-body-font-size);
-        font-weight: var(--typography-label-font-weight);
       }
       .book__rows {
         display: flex;
@@ -222,17 +214,9 @@ function toIsoDay(date: Date): string {
       }
       .book__grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-        gap: var(--spacing-md);
+        grid-template-columns: var(--detail-columns);
+        gap: var(--spacing-sm) var(--spacing-xl);
         margin: 0;
-      }
-      .book__grid dt {
-        color: var(--color-text-secondary);
-        font-size: var(--typography-caption-font-size);
-      }
-      .book__grid dd {
-        margin: 0;
-        font-weight: var(--typography-label-font-weight);
       }
       .book__danger {
         color: var(--color-status-danger);

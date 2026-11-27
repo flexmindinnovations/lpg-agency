@@ -53,23 +53,12 @@
 .tdt-config-fields__inner {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-lg);
 }
 
 .tdt-config-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-lg);
-  background: var(--component-card-background);
-  border: var(--card-border, var(--border-width) solid var(--component-card-border));
-  border-radius: var(--radius-card);
-}
-
-.tdt-config-section__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: var(--spacing-sm);
 }
 

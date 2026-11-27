@@ -40,26 +40,28 @@
     icon="pi pi-exclamation-circle"
   />
   } @else {
-  <div class="balance-list">
-    @for (balance of enrichedBalances(); track balance.cylinder_type_id) {
-    <div class="balance-item">
-      <div>
-        <span class="text-sm font-medium">{{ balance.name }}</span>
+  <lpg-section-card heading="Cylinders with this customer">
+    <div class="balance-list">
+      @for (balance of enrichedBalances(); track balance.cylinder_type_id) {
+      <div class="balance-item">
+        <div>
+          <span class="text-sm font-medium">{{ balance.name }}</span>
+        </div>
+        <div class="balance-quantity">
+          <span [class.negative]="balance.quantity < 0" [class.positive]="balance.quantity > 0">
+            {{ balance.quantity }}
+          </span>
+        </div>
       </div>
-      <div class="balance-quantity">
-        <span [class.negative]="balance.quantity < 0" [class.positive]="balance.quantity > 0">
-          {{ balance.quantity }}
-        </span>
-      </div>
+      } @empty {
+      <lpg-empty-state
+        title="No cylinders with this customer"
+        description="Balances appear after the first delivery."
+        icon="pi pi-box"
+      />
+      }
     </div>
-    } @empty {
-    <lpg-empty-state
-      title="No cylinders with this customer"
-      description="Balances appear after the first delivery."
-      icon="pi pi-box"
-    />
-    }
-  </div>
+  </lpg-section-card>
   }
 </div>
 
@@ -69,7 +71,7 @@
   [(visible)]="adjustModalVisible"
   position="right"
   [modal]="true"
-  styleClass="w-full md:w-[30rem]"
+  styleClass="w-full md:w-[var(--drawer-width)]"
   [closeOnEscape]="true"
   closeAriaLabel="Close dialog"
   (onHide)="onDrawerHide()"
@@ -83,6 +85,8 @@
         [messages]="fieldMessages.cylinder_type_id"
       >
         <p-select
+          [filter]="true"
+          [resetFilterOnHide]="true"
           inputId="cylinder_type_id"
           formControlName="cylinder_type_id"
           [options]="cylinderTypes()"

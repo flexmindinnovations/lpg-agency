@@ -265,16 +265,6 @@ async def test_observe_mode_ignores_seats_when_the_plan_has_no_limit() -> None:
     assert result.device.status is DeviceStatus.APPROVED
 
 
-async def test_off_mode_records_nothing() -> None:
-    devices, audit, _, register, _ = _setup()
-
-    with pytest.raises(ValidationError):
-        await register.execute(_register_command(mode=DeviceControlMode.OFF))
-
-    assert devices.rows == {}
-    assert audit.entries == []
-
-
 @pytest.mark.parametrize("app_type", ["customer_app", "warehouse_app"])
 async def test_only_driver_and_admin_apps_are_registered(app_type: str) -> None:
     devices, *_, register, _ = _setup()
@@ -598,8 +588,8 @@ class _FakeConfigRepository:
         self.added.append(config)
 
 
-@pytest.mark.parametrize("mode", ["off", "observe", "enforce", " Observe "])
-async def test_device_control_accepts_the_three_modes(mode: str) -> None:
+@pytest.mark.parametrize("mode", ["observe", "enforce", " Observe "])
+async def test_device_control_accepts_both_modes(mode: str) -> None:
     from lpg.application.tenant.tenant_configuration import (
         SetTenantConfigurationCommand,
         SetTenantConfigurationUseCase,
@@ -613,7 +603,7 @@ async def test_device_control_accepts_the_three_modes(mode: str) -> None:
     assert len(repository.added) == 1
 
 
-@pytest.mark.parametrize("value", ["lockdown", "", None, True, 1])
+@pytest.mark.parametrize("value", ["lockdown", "off", "", None, True, 1])
 async def test_device_control_rejects_anything_else_so_a_typo_cannot_lock_drivers_out(
     value: object,
 ) -> None:

@@ -9,6 +9,7 @@ import '../../../i18n/driver_strings.dart';
 import '../../../offline/delivery_mutations.dart';
 import '../../../offline/pending_sync.dart';
 import '../data/active_route_provider.dart';
+import '../data/held_empties_provider.dart';
 import '../data/stop_customer_provider.dart';
 import '../data/stop_order_provider.dart';
 import 'failed_delivery_sheet.dart';
@@ -67,6 +68,7 @@ class StopDetailScreen extends ConsumerWidget {
   /// "Check again": re-reads both the route (van loaded?) and this order
   /// (now ready for dispatch?) so one tap is enough.
   void _refresh(WidgetRef ref) {
+    ref.invalidate(heldEmptiesProvider(orderId));
     ref.invalidate(activeRouteProvider);
     ref.invalidate(stopOrderProvider(orderId));
   }
@@ -281,6 +283,8 @@ class _SummaryCard extends StatelessWidget {
             icon: LpgIcons.cylinder,
             text: '$cylinders cylinder${cylinders == 1 ? '' : 's'}',
           ),
+          if (_collectStatuses.contains(order.status))
+            _EmptiesRow(orderId: order.id),
           if (order.amountToPay != null &&
               _collectStatuses.contains(order.status)) ...[
             const SizedBox(height: LpgSpacing.smd),
@@ -349,6 +353,32 @@ class _CustomerRow extends ConsumerWidget {
             icon: const Icon(LpgIcons.call),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// How many empties the customer has to give back. Reading it here also
+/// caches it for recording the delivery offline. Absent when there are none
+/// or the figures are not known.
+class _EmptiesRow extends ConsumerWidget {
+  const _EmptiesRow({required this.orderId});
+
+  final String orderId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final held = ref.watch(heldEmptiesProvider(orderId)).value;
+    final total = (held ?? const <HeldEmpties>[]).fold<int>(
+      0,
+      (sum, h) => sum + h.quantityHeld,
+    );
+    if (total == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: LpgSpacing.smd),
+      child: _DetailRow(
+        icon: LpgIcons.history,
+        text: 'Up to $total ${total == 1 ? 'empty' : 'empties'} to collect',
       ),
     );
   }

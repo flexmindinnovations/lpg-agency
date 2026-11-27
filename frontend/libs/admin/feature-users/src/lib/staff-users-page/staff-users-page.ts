@@ -31,8 +31,9 @@ import {
   PageActionsDirective,
   PageHeaderComponent,
   StatusChipCell,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
-import { DataGridComponent } from '@lpg/shared/ui/data-grid';
+import { rowActionsColumn, DataGridComponent } from '@lpg/shared/ui/data-grid';
 import type { DataGridColumn } from '@lpg/shared/ui/data-grid';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
@@ -59,6 +60,7 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
   selector: 'lpg-staff-users-page',
   standalone: true,
   imports: [
+    SectionCardComponent,
     ExportButtonComponent,
     PageActionsDirective,
     HeaderTitlePortalDirective,
@@ -143,7 +145,7 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
         [closeOnEscape]="true"
         header="Invite a staff user"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         <form
           id="inviteUserForm"
@@ -183,6 +185,8 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
               [messages]="{ required: 'Role is required.' }"
             >
               <p-select
+                [filter]="true"
+                [resetFilterOnHide]="true"
                 inputId="invite-role"
                 formControlName="role"
                 [options]="roles"
@@ -222,29 +226,31 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
         [closeOnEscape]="true"
         [header]="'Manage ' + (selected()?.name ?? '')"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         @if (selected(); as user) {
           <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
             <div class="dialog-form__fields">
-              <dl class="user-summary">
-                <div class="info-item">
-                  <dt class="info-label">Email</dt>
-                  <dd class="info-value">{{ user.email || '—' }}</dd>
-                </div>
-                <div class="info-item">
-                  <dt class="info-label">Phone</dt>
-                  <dd class="info-value">{{ user.contact_phone || '—' }}</dd>
-                </div>
-                <div class="info-item">
-                  <dt class="info-label">Role</dt>
-                  <dd class="info-value">{{ roleName(user.role) }}</dd>
-                </div>
-                <div class="info-item">
-                  <dt class="info-label">Status</dt>
-                  <dd class="info-value">{{ user.is_active ? 'Active' : 'Deactivated' }}</dd>
-                </div>
-              </dl>
+              <lpg-section-card heading="Details">
+                <dl class="user-summary">
+                  <div class="info-item">
+                    <dt class="info-label">Email</dt>
+                    <dd class="info-value">{{ user.email || '—' }}</dd>
+                  </div>
+                  <div class="info-item">
+                    <dt class="info-label">Phone</dt>
+                    <dd class="info-value">{{ user.contact_phone || '—' }}</dd>
+                  </div>
+                  <div class="info-item">
+                    <dt class="info-label">Role</dt>
+                    <dd class="info-value">{{ roleName(user.role) }}</dd>
+                  </div>
+                  <div class="info-item">
+                    <dt class="info-label">Status</dt>
+                    <dd class="info-value">{{ user.is_active ? 'Active' : 'Deactivated' }}</dd>
+                  </div>
+                </dl>
+              </lpg-section-card>
 
               @if (user.isSelf) {
                 <p class="self-note" role="note">
@@ -253,74 +259,83 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
                   status, so you can't lock yourself out by mistake.
                 </p>
               } @else {
-                <lpg-form-field
-                  label="Role"
-                  for="manage-role"
-                  hint="Changing the role resets permissions to that role's defaults."
-                  [control]="manageForm.controls.newRole"
-                >
-                  <p-select
-                    inputId="manage-role"
-                    formControlName="newRole"
-                    [options]="roles"
-                    optionLabel="label"
-                    optionValue="value"
-                    appendTo="body"
-                    [fluid]="true"
+                <lpg-section-card heading="Access">
+                  <lpg-form-field
+                    label="Role"
+                    for="manage-role"
+                    hint="Changing the role resets permissions to that role's defaults."
+                    [control]="manageForm.controls.newRole"
                   >
-                  </p-select>
-                </lpg-form-field>
-
-                <div class="manage-actions">
-                  <div class="manage-action">
-                    <div class="manage-action__text">
-                      <h4 class="manage-action__title">Permissions</h4>
-                      <p class="manage-action__description">
-                        Fine-tune what this person can do beyond their role.
-                      </p>
-                    </div>
-                    <button
-                      pButton
-                      type="button"
-                      severity="secondary"
-                      (click)="openPermissionsDialog()"
+                    <p-select
+                      [filter]="true"
+                      [resetFilterOnHide]="true"
+                      inputId="manage-role"
+                      formControlName="newRole"
+                      [options]="roles"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body"
+                      [fluid]="true"
                     >
-                      Manage
-                    </button>
-                  </div>
+                    </p-select>
+                  </lpg-form-field>
 
-                  @if (user.is_active) {
-                    <div class="manage-action manage-action--danger">
+                  <div class="manage-actions">
+                    <div class="manage-action">
                       <div class="manage-action__text">
-                        <h4 class="manage-action__title">Deactivate account</h4>
+                        <h4 class="manage-action__title">Permissions</h4>
                         <p class="manage-action__description">
-                          Signs them out everywhere and blocks sign-in. You can reactivate later.
+                          Fine-tune what this person can do beyond their role.
                         </p>
                       </div>
                       <button
                         pButton
                         type="button"
-                        severity="danger"
-                        [disabled]="busy()"
-                        (click)="confirmDeactivate(user)"
+                        severity="secondary"
+                        (click)="openPermissionsDialog()"
                       >
-                        Deactivate
+                        Manage
                       </button>
                     </div>
-                  } @else {
-                    <div class="manage-action">
-                      <div class="manage-action__text">
-                        <h4 class="manage-action__title">Reactivate account</h4>
-                        <p class="manage-action__description">
-                          Lets them sign in again with their existing password.
-                        </p>
+
+                    @if (user.is_active) {
+                      <div class="manage-action manage-action--danger">
+                        <div class="manage-action__text">
+                          <h4 class="manage-action__title">Deactivate account</h4>
+                          <p class="manage-action__description">
+                            Signs them out everywhere and blocks sign-in. You can reactivate later.
+                          </p>
+                        </div>
+                        <button
+                          pButton
+                          type="button"
+                          severity="danger"
+                          [disabled]="busy()"
+                          (click)="confirmDeactivate(user)"
+                        >
+                          Deactivate
+                        </button>
                       </div>
-                      <button pButton type="button" [disabled]="busy()" (click)="reactivate(user)">
-                        Reactivate
-                      </button>
-                    </div>
-                  }
-                </div>
+                    } @else {
+                      <div class="manage-action">
+                        <div class="manage-action__text">
+                          <h4 class="manage-action__title">Reactivate account</h4>
+                          <p class="manage-action__description">
+                            Lets them sign in again with their existing password.
+                          </p>
+                        </div>
+                        <button
+                          pButton
+                          type="button"
+                          [disabled]="busy()"
+                          (click)="reactivate(user)"
+                        >
+                          Reactivate
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </lpg-section-card>
               }
             </div>
 
@@ -382,9 +397,8 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
         align-items: center;
         justify-content: space-between;
         gap: var(--spacing-md);
-        padding: var(--spacing-md);
-        border: var(--border-width) solid var(--color-border-strong);
-        border-radius: var(--radius-md);
+        padding-block-start: var(--spacing-md);
+        border-block-start: var(--border-width) solid var(--color-border-default);
       }
 
       .manage-action__text {
@@ -405,11 +419,6 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
         margin: 0;
         font-size: var(--typography-body-small-font-size);
         color: var(--color-text-secondary);
-      }
-
-      .manage-action--danger {
-        border-color: var(--color-status-danger);
-        background: color-mix(in srgb, var(--color-status-danger) 8%, transparent);
       }
 
       .manage-action--danger .manage-action__title {
@@ -507,19 +516,25 @@ export class StaffUsersPage implements OnInit {
         severityMap: { active: 'success', inactive: 'secondary' },
       },
     },
-    {
-      field: 'id',
-      header: 'Action',
-      // Never one click: Deactivate asks first, Reactivate undoes it, and
-      // your own row offers neither (DA-01).
-      valueFormatter: (_value, row) =>
-        row.isSelf ? '' : row.is_active ? 'Deactivate…' : 'Reactivate',
-      onLinkClick: (row) => {
-        if (row.isSelf) return;
-        if (row.is_active) this.confirmDeactivate(row);
-        else this.reactivate(row);
+    // Never one click: Deactivate asks first, Reactivate undoes it, and
+    // your own row offers neither (DA-01).
+    rowActionsColumn<StaffUserRow>([
+      {
+        icon: 'pi pi-ban',
+        text: 'Deactivate',
+        severity: 'danger',
+        label: (row) => `Deactivate ${row.name}`,
+        visible: (row) => !row.isSelf && row.is_active,
+        onAction: (row) => this.confirmDeactivate(row),
       },
-    },
+      {
+        icon: 'pi pi-check-circle',
+        text: 'Reactivate',
+        label: (row) => `Reactivate ${row.name}`,
+        visible: (row) => !row.isSelf && !row.is_active,
+        onAction: (row) => this.reactivate(row),
+      },
+    ]),
   ];
 
   protected readonly form = this.formBuilder.group({

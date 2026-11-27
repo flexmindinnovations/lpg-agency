@@ -14,7 +14,7 @@ export interface ListAuditLogApiV1AdminAuditLogGet$Params {
   actor_id?: (string | null);
 
 /**
- * create, update or delete
+ * An action as recorded, e.g. update or auth.login
  */
   action?: (string | null);
 

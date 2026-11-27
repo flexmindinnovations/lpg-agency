@@ -39,7 +39,7 @@ flowchart TB
     DataLayer --> Local["Local DataSource (local_storage)"]
 ```
 
-- **Domain layer** mirrors backend DDD concepts at the client level (e.g., a lightweight `Order` entity, `CylinderBalance` value object) — not a full duplicate of backend business logic, but enough to support optimistic UI and offline validation (e.g., client-side check that a driver isn't recording more empties collected than physically loaded, before it ever reaches the server).
+- **Domain layer** mirrors backend DDD concepts at the client level (e.g., a lightweight `Order` entity, `CylinderBalance` value object) — not a full duplicate of backend business logic, but enough to support optimistic UI and offline validation (e.g., client-side check that a driver isn't recording more empties collected than the customer holds, using the figures cached when the stop was opened; if they were never loaded, the server checks when the delivery syncs — BR-35).
 - **Repositories** are the only components that decide whether to read/write local or remote — Application/Domain code is unaware of connectivity state.
 
 ## 3. Offline-First Strategy (Driver App — Mandatory per D-24)

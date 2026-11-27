@@ -13,6 +13,7 @@ import { Drawer } from 'primeng/drawer';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
+import { ToggleSwitch } from 'primeng/toggleswitch';
 import {
   AdminTenantConfigurationService,
   LicenseService,
@@ -28,15 +29,14 @@ import {
   DrawerA11yDirective,
   HeaderTitlePortalDirective,
   PageHeaderComponent,
-  RowActionCell,
   StatusChipCell,
-  ToggleGroupComponent,
   formatTimestamp,
   InfoTipComponent,
+  SectionCardComponent,
 } from '@lpg/shared/ui';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
+import { rowActionsColumn, DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 import {
-  CONTROL_MODES,
+  CONTROL_HELP,
   STATUS_LABELS,
   STATUS_SEVERITY,
   allowedActions,
@@ -58,13 +58,14 @@ const DEVICE_CONTROL_KEY = 'device_control';
 /**
  * Settings > Linked Devices (ADR-071): the phones running the Driver and
  * Admin apps, the ones waiting for approval, and the switch that decides
- * whether approval is required at all. Agency admin only
+ * whether a new phone needs approval. Agency admin only
  * (`license:manage_tenant`); the server re-checks every action.
  */
 @Component({
   selector: 'lpg-linked-devices-page',
   standalone: true,
   imports: [
+    SectionCardComponent,
     FormsModule,
     HeaderTitlePortalDirective,
     PageHeaderComponent,
@@ -76,7 +77,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
     Drawer,
     InputText,
     Select,
-    ToggleGroupComponent,
+    ToggleSwitch,
     Tag,
     InfoTipComponent,
   ],
@@ -92,24 +93,25 @@ const DEVICE_CONTROL_KEY = 'device_control';
         </ng-template>
       </div>
 
-      <!-- One line: who can use the apps, then the two list filters. The
-           explanation of the chosen mode is in the info tooltip and is
-           announced to screen readers when it changes. -->
+      <!-- One line: the approval switch, then the two list filters. What the
+           switch means right now is in the info tooltip and is announced to
+           screen readers when it changes. -->
       <div class="toolbar">
         <div class="toolbar__mode">
-          <span class="toolbar__label" id="device-control-title">Who can use the apps</span>
-          <lpg-toggle-group
-            [options]="modeOptions"
-            [value]="mode()"
-            (valueChange)="chooseMode($event)"
+          <p-toggleswitch
+            inputId="device-approval"
+            [ngModel]="approvalRequired()"
+            (onChange)="setApprovalRequired($event.checked)"
             [disabled]="savingMode()"
-            ariaLabel="Who can use the apps"
           />
+          <label class="toolbar__label" for="device-approval">Approve new phones first</label>
           <lpg-info-tip [text]="modeHelp()" position="bottom" />
           <span class="sr-only" aria-live="polite">{{ modeHelp() }}</span>
         </div>
         <div class="toolbar__filters">
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             [options]="tabOptions()"
             [ngModel]="tab()"
             (ngModelChange)="chooseTab($event)"
@@ -118,6 +120,8 @@ const DEVICE_CONTROL_KEY = 'device_control';
             ariaLabel="Show phones by state"
           />
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             [options]="appOptions"
             [ngModel]="appFilter()"
             (ngModelChange)="chooseApp($event)"
@@ -144,7 +148,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
       [(visible)]="drawerVisible"
       position="right"
       [modal]="true"
-      [style]="{ width: '100%', maxWidth: '34rem' }"
+      [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       [closeOnEscape]="true"
       closeAriaLabel="Close"
       (onHide)="closeDrawer()"
@@ -154,112 +158,125 @@ const DEVICE_CONTROL_KEY = 'device_control';
       </ng-template>
 
       @if (selected(); as device) {
-        <div class="drawer">
-          <div class="drawer__status">
-            <p-tag [value]="label(device.status)" [severity]="severity(device.status)" />
-            <span class="drawer__app">{{ appName(device.app_type) }}</span>
-          </div>
+        <div class="detail-view">
+          <div class="detail-view__fields">
+            <div class="drawer__status">
+              <p-tag [value]="label(device.status)" [severity]="severity(device.status)" />
+              <span class="drawer__app">{{ appName(device.app_type) }}</span>
+            </div>
 
-          @if (device.status === 'pending') {
-            <p class="drawer__note">
-              {{ device.last_user_name ?? 'Someone' }} signed in on this phone and is waiting for
-              you. If you do not know this phone, block it.
-            </p>
-          }
-
-          <div class="drawer__actions">
-            @for (action of actionsFor(device); track action) {
-              <button
-                pButton
-                type="button"
-                [severity]="action === 'approve' || action === 'unblock' ? 'primary' : 'danger'"
-                [outlined]="action === 'remove'"
-                [disabled]="busy()"
-                (click)="run(action, device)"
-              >
-                {{ actionLabel(action) }}
-              </button>
-            }
-          </div>
-
-          <lpg-detail-list>
-            <lpg-detail-item label="Model">{{ model(device) }}</lpg-detail-item>
-            <lpg-detail-item label="Software">{{ os(device) }}</lpg-detail-item>
-            <lpg-detail-item label="App">{{ appVersion(device) }}</lpg-detail-item>
-            <lpg-detail-item label="Last signed in">{{
-              device.last_user_name ?? '—'
-            }}</lpg-detail-item>
-            <lpg-detail-item label="First seen">{{ time(device.registered_at) }}</lpg-detail-item>
-            <lpg-detail-item label="Last seen">{{ time(device.last_seen_at) }}</lpg-detail-item>
-            <lpg-detail-item label="Phone reference"
-              ><code>{{ device.device_ref }}</code></lpg-detail-item
-            >
-            @if (device.phone_ref) {
-              <lpg-detail-item label="Hardware reference"
-                ><code>{{ device.phone_ref }}</code></lpg-detail-item
-              >
-            }
-          </lpg-detail-list>
-          <p class="drawer__hint">
-            References let you tell phones apart. The same hardware reference on two entries means
-            the app was reinstalled on the same phone.
-          </p>
-
-          @if (device.status !== 'removed') {
-            <form class="drawer__form" (ngSubmit)="saveDetails(device)">
-              <label for="device-name">Name</label>
-              <input
-                pInputText
-                id="device-name"
-                name="name"
-                maxlength="60"
-                [(ngModel)]="nameDraft"
-                [fluid]="true"
-                required
-              />
-              <label for="device-note">IMEI or serial number (optional)</label>
-              <input
-                pInputText
-                id="device-note"
-                name="note"
-                maxlength="64"
-                [(ngModel)]="noteDraft"
-                [fluid]="true"
-                autocomplete="off"
-              />
-              <p class="drawer__hint">
-                Type it from the phone's box or settings. The apps cannot read it themselves, so
-                this is a note for your records, not a check.
+            @if (device.status === 'pending') {
+              <p class="drawer__note">
+                {{ device.last_user_name ?? 'Someone' }} signed in on this phone and is waiting for
+                you. If you do not know this phone, block it.
               </p>
-              <div class="drawer__actions drawer__actions--end">
-                <button pButton type="submit" [disabled]="busy() || !nameDraft.trim()">
-                  Save details
-                </button>
-              </div>
-            </form>
-          }
-
-          <!-- Collapsible, like "Technical identifiers" in the audit log. -->
-          <details class="drawer__section" open>
-            <summary class="drawer__summary">
-              <span class="drawer__heading">History</span>
-            </summary>
-            @if (history().length === 0) {
-              <p class="drawer__hint">Nothing recorded yet.</p>
-            } @else {
-              <ol class="history">
-                @for (entry of history(); track entry.id) {
-                  <li>
-                    <strong>{{ verb(entry.action) }}</strong>
-                    @if (entry.actor_name) {
-                      <span> by {{ entry.actor_name }}</span>
-                    }
-                    <span class="history__time">{{ time(entry.performed_at) }}</span>
-                  </li>
-                }
-              </ol>
             }
-          </details>
+
+            <lpg-section-card heading="Phone details">
+              <lpg-detail-list>
+                <lpg-detail-item label="Model">{{ model(device) }}</lpg-detail-item>
+                <lpg-detail-item label="Software">{{ os(device) }}</lpg-detail-item>
+                <lpg-detail-item label="App">{{ appVersion(device) }}</lpg-detail-item>
+                <lpg-detail-item label="Last signed in">{{
+                  device.last_user_name ?? '—'
+                }}</lpg-detail-item>
+                <lpg-detail-item label="First seen">{{
+                  time(device.registered_at)
+                }}</lpg-detail-item>
+                <lpg-detail-item label="Last seen">{{ time(device.last_seen_at) }}</lpg-detail-item>
+                <lpg-detail-item label="Phone reference"
+                  ><code>{{ device.device_ref }}</code></lpg-detail-item
+                >
+                @if (device.phone_ref) {
+                  <lpg-detail-item label="Hardware reference"
+                    ><code>{{ device.phone_ref }}</code></lpg-detail-item
+                  >
+                }
+              </lpg-detail-list>
+              <p class="drawer__hint">
+                References let you tell phones apart. The same hardware reference on two entries
+                means the app was reinstalled on the same phone.
+              </p>
+            </lpg-section-card>
+
+            @if (device.status !== 'removed') {
+              <lpg-section-card heading="Name and note">
+                <form class="drawer__form" (ngSubmit)="saveDetails(device)">
+                  <label for="device-name">Name</label>
+                  <input
+                    pInputText
+                    id="device-name"
+                    name="name"
+                    maxlength="60"
+                    [(ngModel)]="nameDraft"
+                    [fluid]="true"
+                    required
+                  />
+                  <label for="device-note">IMEI or serial number (optional)</label>
+                  <input
+                    pInputText
+                    id="device-note"
+                    name="note"
+                    maxlength="64"
+                    [(ngModel)]="noteDraft"
+                    [fluid]="true"
+                    autocomplete="off"
+                  />
+                  <p class="drawer__hint">
+                    Type it from the phone's box or settings. The apps cannot read it themselves, so
+                    this is a note for your records, not a check.
+                  </p>
+                  <div class="drawer__actions drawer__actions--end">
+                    <button pButton type="submit" [disabled]="busy() || !nameDraft.trim()">
+                      Save details
+                    </button>
+                  </div>
+                </form>
+              </lpg-section-card>
+            }
+
+            <!-- Collapsible, like "Technical identifiers" in the audit log. -->
+            <lpg-section-card>
+              <details class="drawer__section" open>
+                <summary class="drawer__summary">
+                  <span class="drawer__heading">History</span>
+                </summary>
+                @if (history().length === 0) {
+                  <p class="drawer__hint">Nothing recorded yet.</p>
+                } @else {
+                  <ol class="history">
+                    @for (entry of history(); track entry.id) {
+                      <li>
+                        <strong>{{ verb(entry.action) }}</strong>
+                        @if (entry.actor_name) {
+                          <span> by {{ entry.actor_name }}</span>
+                        }
+                        <span class="history__time">{{ time(entry.performed_at) }}</span>
+                      </li>
+                    }
+                  </ol>
+                }
+              </details>
+            </lpg-section-card>
+          </div>
+
+          @if (actionsFor(device).length > 0) {
+            <!-- The main action is last, like every drawer footer. -->
+            <div class="modal-actions">
+              @for (action of footerActions(device); track action) {
+                <button
+                  pButton
+                  type="button"
+                  [severity]="action === 'approve' || action === 'unblock' ? 'primary' : 'danger'"
+                  [outlined]="action === 'remove'"
+                  [disabled]="busy()"
+                  (click)="run(action, device)"
+                >
+                  {{ actionLabel(action) }}
+                </button>
+              }
+            </div>
+          }
         </div>
       }
     </p-drawer>
@@ -311,12 +328,6 @@ const DEVICE_CONTROL_KEY = 'device_control';
         min-block-size: 0;
       }
 
-      .drawer {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-md);
-      }
-
       .drawer__status {
         display: flex;
         align-items: center;
@@ -331,6 +342,7 @@ const DEVICE_CONTROL_KEY = 'device_control';
 
       .drawer__hint {
         margin: 0;
+        padding-block-start: var(--spacing-sm);
         font-size: var(--typography-caption-font-size);
       }
 
@@ -405,12 +417,12 @@ export class LinkedDevicesPage implements OnInit {
   protected readonly appFilter = signal<string>('all');
   protected readonly pendingCount = computed(() => this.pending.count());
 
-  protected readonly mode = signal<DeviceControlMode>('off');
+  protected readonly mode = signal<DeviceControlMode>('observe');
+  /** What the switch shows. It leads `mode` while a change is being confirmed
+   * or saved, and goes back if the change does not happen. */
+  protected readonly approvalRequired = signal(false);
   protected readonly savingMode = signal(false);
-  protected readonly modeOptions = [...CONTROL_MODES];
-  protected readonly modeHelp = computed(
-    () => CONTROL_MODES.find((m) => m.value === this.mode())?.help ?? '',
-  );
+  protected readonly modeHelp = computed(() => CONTROL_HELP[this.mode()]);
 
   protected readonly selected = signal<LinkedDeviceResponse | null>(null);
   protected readonly history = signal<DeviceHistoryEntryResponse[]>([]);
@@ -437,14 +449,11 @@ export class LinkedDevicesPage implements OnInit {
     { label: 'Admin app', value: 'admin_app' },
   ];
 
-  protected readonly emptyMessage = computed(() => {
-    if (this.mode() === 'off') {
-      return 'Device control is off, so phones are not recorded. Choose "Watch only" above to start building your list.';
-    }
-    return this.tab() === 'pending'
+  protected readonly emptyMessage = computed(() =>
+    this.tab() === 'pending'
       ? 'No phone is waiting for approval.'
-      : 'Phones appear here after someone signs in to the Driver or Admin app.';
-  });
+      : 'Phones appear here when someone signs in to the Driver or Admin app.',
+  );
 
   protected readonly columns: DataGridColumn<LinkedDeviceResponse>[] = [
     {
@@ -507,19 +516,15 @@ export class LinkedDevicesPage implements OnInit {
       sortable: true,
       valueFormatter: (value) => formatTimestamp(value),
     },
-    {
-      field: 'id',
-      header: 'Actions',
-      width: 90,
-      minWidth: 90,
-      cellRenderer: RowActionCell,
-      cellRendererParams: {
+    rowActionsColumn<LinkedDeviceResponse>([
+      {
         icon: 'pi pi-trash',
+        text: 'Delete',
         severity: 'danger',
-        label: (row: LinkedDeviceResponse) => `Delete ${row.display_name}`,
-        onAction: (row: LinkedDeviceResponse) => this.confirmDelete(row),
+        label: (row) => `Delete ${row.display_name}`,
+        onAction: (row) => this.confirmDelete(row),
       },
-    },
+    ]),
   ];
 
   ngOnInit(): void {
@@ -541,6 +546,10 @@ export class LinkedDevicesPage implements OnInit {
 
   protected actionsFor(device: LinkedDeviceResponse): readonly DeviceAction[] {
     return allowedActions(device.status);
+  }
+
+  protected footerActions(device: LinkedDeviceResponse): DeviceAction[] {
+    return [...this.actionsFor(device)].reverse();
   }
 
   protected actionLabel(action: DeviceAction): string {
@@ -582,16 +591,22 @@ export class LinkedDevicesPage implements OnInit {
   private loadMode(): void {
     this.configService.getEffectiveConfiguration(DEVICE_CONTROL_KEY).subscribe({
       next: (config) => {
-        const value = config?.config_value;
-        this.mode.set(value === 'observe' || value === 'enforce' ? value : 'off');
+        this.showMode(config?.config_value === 'enforce' ? 'enforce' : 'observe');
       },
       error: () => undefined,
     });
   }
 
-  protected chooseMode(next: DeviceControlMode): void {
+  private showMode(mode: DeviceControlMode): void {
+    this.mode.set(mode);
+    this.approvalRequired.set(mode === 'enforce');
+  }
+
+  protected setApprovalRequired(required: boolean): void {
+    this.approvalRequired.set(required);
+    const next: DeviceControlMode = required ? 'enforce' : 'observe';
     if (next === this.mode()) return;
-    if (next === 'enforce') {
+    if (required) {
       const waiting = this.pendingCount();
       this.confirmation.confirm({
         header: 'Only approved phones will work?',
@@ -602,6 +617,7 @@ export class LinkedDevicesPage implements OnInit {
         acceptLabel: 'Switch on',
         rejectLabel: 'Not yet',
         accept: () => this.saveMode(next),
+        reject: () => this.showMode(this.mode()),
       });
       return;
     }
@@ -612,12 +628,15 @@ export class LinkedDevicesPage implements OnInit {
     this.savingMode.set(true);
     this.configService.setConfiguration(DEVICE_CONTROL_KEY, next).subscribe({
       next: () => {
-        this.mode.set(next);
+        this.showMode(next);
         this.savingMode.set(false);
         this.notify.success('Saved.');
         this.reload();
       },
-      error: () => this.savingMode.set(false),
+      error: () => {
+        this.showMode(this.mode());
+        this.savingMode.set(false);
+      },
     });
   }
 
@@ -640,6 +659,10 @@ export class LinkedDevicesPage implements OnInit {
   }
 
   protected run(action: DeviceAction, device: LinkedDeviceResponse): void {
+    const comingBack =
+      this.mode() === 'enforce'
+        ? 'If it signs in again it will wait for approval.'
+        : 'If it signs in again it is listed again. To keep it out, block it instead.';
     const messages: Partial<
       Record<DeviceAction, { header: string; message: string; accept: string }>
     > = {
@@ -650,7 +673,7 @@ export class LinkedDevicesPage implements OnInit {
       },
       remove: {
         header: 'Remove this phone?',
-        message: `"${device.display_name}" will be signed out and taken off your list. If it signs in again it will wait for approval.`,
+        message: `"${device.display_name}" will be signed out and taken off your list. ${comingBack}`,
         accept: 'Remove',
       },
     };

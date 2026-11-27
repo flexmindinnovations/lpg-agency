@@ -27,30 +27,9 @@ import {
   HeaderTitlePortalDirective,
   PageActionsDirective,
   PageHeaderComponent,
+  StatusChipCell,
 } from '@lpg/shared/ui';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui/data-grid';
-
-/** AG Grid renders a boolean-valued column with its own checkbox cell by
- * default, ignoring `valueFormatter` (same fix as Cylinder Types' own
- * "Status" column) — this swaps that for plain "Active"/"Inactive" text. */
-@Component({
-  selector: 'lpg-branch-status-cell',
-  standalone: true,
-  template: `{{ label() }}`,
-})
-class BranchStatusCell {
-  protected readonly label = signal('');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
-  agInit(params: any): void {
-    this.label.set(params.value ? 'Active' : 'Inactive');
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  refresh(params: any): boolean {
-    this.agInit(params);
-    return true;
-  }
-}
+import { DataGridComponent, rowActionsColumn, type DataGridColumn } from '@lpg/shared/ui/data-grid';
 
 /** Branch list + create drawer — `tenant:configure` (`permissionGuard`, route level). */
 @Component({
@@ -139,7 +118,7 @@ class BranchStatusCell {
         [closeOnEscape]="true"
         header="Add a branch"
         styleClass="w-full"
-        [style]="{ width: '100%', maxWidth: '32rem' }"
+        [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
       >
         <form
           id="addBranchForm"
@@ -250,14 +229,23 @@ export class BranchesPage implements OnInit {
       field: 'is_active',
       header: 'Status',
       sortable: true,
-      cellRenderer: BranchStatusCell,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        labelMap: { true: 'Active', false: 'Inactive' },
+        severityMap: { true: 'success', false: 'secondary' },
+      },
+      // What the quick search matches and a CSV download holds.
+      valueFormatter: (value) => (value ? 'Active' : 'Inactive'),
     },
-    {
-      field: 'id',
-      header: '',
-      valueFormatter: (_value, row) => (row.is_active ? 'Deactivate' : 'Activate'),
-      onLinkClick: (row) => this.toggleActive(row),
-    },
+    rowActionsColumn<BranchResponse>([
+      {
+        icon: (row) => (row.is_active ? 'pi pi-ban' : 'pi pi-check-circle'),
+        text: (row) => (row.is_active ? 'Deactivate' : 'Activate'),
+        severity: (row) => (row.is_active ? 'danger' : 'primary'),
+        label: (row) => `${row.is_active ? 'Deactivate' : 'Activate'} ${row.name}`,
+        onAction: (row) => this.toggleActive(row),
+      },
+    ]),
   ];
 
   protected readonly form = this.formBuilder.group({

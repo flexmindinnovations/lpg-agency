@@ -503,6 +503,22 @@ class _Fixtures:
     address_id: uuid.UUID
 
 
+async def _record_cylinders_held(
+    client: AsyncClient, fixtures: _Fixtures, cylinder_type_id: uuid.UUID, quantity: int
+) -> None:
+    """Cylinders the customer already had, as the office records them."""
+    response = await client.post(
+        f"/api/v1/customers/{fixtures.customer_id}/ledger/adjust",
+        json={
+            "cylinder_type_id": str(cylinder_type_id),
+            "delta": quantity,
+            "reason": "Opening balance",
+        },
+        headers={"Authorization": f"Bearer {fixtures.admin_token}"},
+    )
+    assert response.status_code == 200, response.text
+
+
 async def _seed_full_fixture_set(client: AsyncClient, engine: AsyncEngine) -> _Fixtures:
     hasher = Argon2PasswordHasher(_settings_for_hasher())
     tenant_id, branch_id = await _seed_tenant_and_branch(engine)
@@ -767,6 +783,7 @@ class TestRouteEndpointsThroughRealStack:
         # marks the stop delivered and, since it was the route's last
         # unresolved stop, auto-completes the route.
         driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+        await _record_cylinders_held(client, fixtures, fixtures.cylinder_type_id, 1)
         deliver_response = await client.post(
             f"/api/v1/orders/{order['id']}/deliver",
             json={
@@ -1268,6 +1285,7 @@ class TestLoadAndDispatchThroughRealStack:
             f"/api/v1/orders/{early['id']}/depart", headers=driver_headers
         )
         assert depart_response.status_code == 200, depart_response.text
+        await _record_cylinders_held(client, fixtures, fixtures.cylinder_type_id, 2)
         deliver_response = await client.post(
             f"/api/v1/orders/{early['id']}/deliver",
             json={

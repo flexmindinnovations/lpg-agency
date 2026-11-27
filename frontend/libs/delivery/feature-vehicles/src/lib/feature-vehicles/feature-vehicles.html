@@ -38,6 +38,8 @@
       </p-iconfield>
       @if (hasComplianceCalendar()) {
       <p-select
+        [filter]="true"
+        [resetFilterOnHide]="true"
         [options]="expiryFilterOptions"
         optionLabel="label"
         optionValue="value"
@@ -65,7 +67,7 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '36rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form
@@ -82,6 +84,8 @@
           [messages]="fieldMessages.branch_id"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="branch_id"
             formControlName="branch_id"
             [options]="branches()"
@@ -179,6 +183,8 @@
           [messages]="fieldMessages.ownership_type"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="ownership_type"
             formControlName="ownership_type"
             [options]="[
@@ -227,51 +233,56 @@
     position="right"
     [modal]="true"
     styleClass="w-full"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: 'var(--drawer-width)' }"
   >
     @if (selectedVehicle(); as vehicle) { @if (!editMode()) {
     <div class="detail-view">
       <div class="detail-view__fields">
-        <div class="detail-item">
-          <span class="detail-label">Registration Number</span>
-          <span class="detail-value">{{ vehicle.registration_number }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Make</span>
-          <span class="detail-value">{{ vehicle.make }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Model</span>
-          <span class="detail-value">{{ vehicle.model }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Ownership</span>
-          <span class="detail-value">{{ toSentenceCase(vehicle.ownership_type) }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Capacity (Cylinders)</span>
-          <span class="detail-value">{{ vehicle.capacity_units }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Status</span>
-          <p-tag
-            [value]="toSentenceCase(vehicle.status)"
-            [severity]="statusSeverity(vehicle.status)"
+        <lpg-section-card heading="Details">
+          <lpg-detail-list>
+            <div class="detail-item">
+              <span class="detail-label">Registration Number</span>
+              <span class="detail-value">{{ vehicle.registration_number }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Make</span>
+              <span class="detail-value">{{ vehicle.make }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Model</span>
+              <span class="detail-value">{{ vehicle.model }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Ownership</span>
+              <span class="detail-value">{{ toSentenceCase(vehicle.ownership_type) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Capacity (Cylinders)</span>
+              <span class="detail-value">{{ vehicle.capacity_units }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Status</span>
+              <p-tag
+                [value]="toSentenceCase(vehicle.status)"
+                [severity]="statusSeverity(vehicle.status)"
+              />
+            </div>
+          </lpg-detail-list>
+        </lpg-section-card>
+        <lpg-section-card heading="Compliance Documents">
+          <lpg-compliance-documents-panel
+            [documents]="vehicleDocuments()"
+            [loading]="vehicleDocumentsLoading()"
+            [docTypeOptions]="vehicleDocTypeOptions"
+            managePermission="vehicles:manage"
+            [uploader]="rcUploader"
+            [addDocument]="addVehicleDocument(vehicle)"
+            [replaceDocument]="replaceComplianceDocument"
+            [verifyDocument]="verifyComplianceDocument"
+            [reviewEnabled]="hasComplianceCalendar()"
+            (changed)="onVehicleDocumentsChanged()"
           />
-        </div>
-
-        <lpg-compliance-documents-panel
-          [documents]="vehicleDocuments()"
-          [loading]="vehicleDocumentsLoading()"
-          [docTypeOptions]="vehicleDocTypeOptions"
-          managePermission="vehicles:manage"
-          [uploader]="rcUploader"
-          [addDocument]="addVehicleDocument(vehicle)"
-          [replaceDocument]="replaceComplianceDocument"
-          [verifyDocument]="verifyComplianceDocument"
-          [reviewEnabled]="hasComplianceCalendar()"
-          (changed)="onVehicleDocumentsChanged()"
-        />
+        </lpg-section-card>
       </div>
 
       <div class="modal-actions">
@@ -310,6 +321,8 @@
           [messages]="fieldMessages.ownership_type"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="edit_vehicle_ownership_type"
             formControlName="ownership_type"
             [options]="ownershipOptions"
@@ -342,6 +355,8 @@
           [messages]="fieldMessages.status"
         >
           <p-select
+            [filter]="true"
+            [resetFilterOnHide]="true"
             inputId="edit_vehicle_status"
             formControlName="status"
             [options]="statusOptions"

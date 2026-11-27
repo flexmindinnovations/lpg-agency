@@ -262,23 +262,22 @@ def test_sign_in_updates_user_and_details_but_not_the_status() -> None:
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ("off", DeviceControlMode.OFF),
+        ("off", DeviceControlMode.OBSERVE),
         ("observe", DeviceControlMode.OBSERVE),
         (" ENFORCE ", DeviceControlMode.ENFORCE),
-        ("block-everything", DeviceControlMode.OFF),
-        (None, DeviceControlMode.OFF),
-        (True, DeviceControlMode.OFF),
+        ("block-everything", DeviceControlMode.OBSERVE),
+        (None, DeviceControlMode.OBSERVE),
+        (True, DeviceControlMode.OBSERVE),
     ],
 )
-def test_device_control_mode_reads_leniently_and_fails_to_off(
+def test_device_control_mode_reads_leniently_and_never_fails_to_enforce(
     raw: object, expected: DeviceControlMode
 ) -> None:
     assert DeviceControlMode.parse(raw) is expected
 
 
 def test_device_control_mode_flags() -> None:
-    assert not DeviceControlMode.OFF.records_devices
-    assert DeviceControlMode.OBSERVE.records_devices
     assert not DeviceControlMode.OBSERVE.enforces
     assert DeviceControlMode.ENFORCE.enforces
     assert not DeviceControlMode.is_valid("nope")
+    assert not DeviceControlMode.is_valid("off")

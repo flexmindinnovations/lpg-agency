@@ -78,6 +78,8 @@ class InvoicePrintPayload(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     invoice_number: str
+    #: The document's title, which a viewer offers as the file name.
+    document_name: str = ""
     tenant_header: TenantHeader
     customer: CustomerInfo
     line_items: list[PrintLineItem]

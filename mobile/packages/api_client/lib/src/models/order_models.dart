@@ -247,6 +247,44 @@ class DeliveredLineRequest {
   };
 }
 
+/// Empties of one size the driver may take back at a delivery: what the
+/// customer was holding before it. From `GET /orders/{id}/empties`, which
+/// lists every size held and every size on the order.
+class HeldEmpties {
+  const HeldEmpties({
+    required this.cylinderTypeId,
+    required this.cylinderTypeName,
+    required this.quantityHeld,
+  });
+
+  factory HeldEmpties.fromJson(Map<String, dynamic> json) => HeldEmpties(
+    cylinderTypeId: json['cylinder_type_id'] as String,
+    cylinderTypeName: json['cylinder_type_name'] as String,
+    quantityHeld: json['quantity_held'] as int,
+  );
+
+  final String cylinderTypeId;
+  final String cylinderTypeName;
+  final int quantityHeld;
+}
+
+/// Empties collected of a size that is not on the order — mirrors the
+/// backend's `CollectedEmptyRequest`.
+class CollectedEmptyRequest {
+  const CollectedEmptyRequest({
+    required this.cylinderTypeId,
+    required this.quantity,
+  });
+
+  final String cylinderTypeId;
+  final int quantity;
+
+  Map<String, dynamic> toJson() => {
+    'cylinder_type_id': cylinderTypeId,
+    'quantity': quantity,
+  };
+}
+
 /// Proof-of-delivery payload — mirrors the backend's
 /// `ProofOfDeliverySubmission`. GPS, payment method and amount are
 /// required; the signature and photo refs are optional and omitted when
@@ -296,14 +334,20 @@ class DeliverOrderRequest {
     required this.lines,
     required this.otpCode,
     required this.proofOfDelivery,
+    this.otherEmpties = const [],
   });
 
   final List<DeliveredLineRequest> lines;
   final String otpCode;
   final ProofOfDeliverySubmission proofOfDelivery;
 
+  /// Empties of sizes that are not on the order; the others go on [lines].
+  final List<CollectedEmptyRequest> otherEmpties;
+
   Map<String, dynamic> toJson() => {
     'lines': lines.map((l) => l.toJson()).toList(),
+    if (otherEmpties.isNotEmpty)
+      'other_empties': [for (final e in otherEmpties) e.toJson()],
     'otp_code': otpCode,
     'proof_of_delivery': proofOfDelivery.toJson(),
   };

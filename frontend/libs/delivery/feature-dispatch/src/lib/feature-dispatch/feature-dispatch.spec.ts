@@ -30,10 +30,27 @@ describe('FeatureDispatch with modules switched off', () => {
     const component = fixture.componentInstance as unknown as {
       ngOnInit: () => void;
       onTripWarehouseChange: (id: string) => void;
+      routeColumns: { header: string; cellRendererParams?: Record<string, unknown> }[];
     };
     component.ngOnInit();
     return { component, http: TestBed.inject(HttpTestingController) };
   }
+
+  it('opens a trip from a button in the Actions column', () => {
+    const { component, http } = open([]);
+    const actions = component.routeColumns.find((c) => c.header === 'Actions');
+    const [openTrip] = actions?.cellRendererParams?.['actions'] as {
+      icon: string;
+      text: string;
+      onAction: (route: { id: string }) => void;
+    }[];
+
+    openTrip.onAction({ id: 'route-9' });
+
+    expect(openTrip.text).toBe('Open trip');
+    expect(openTrip.icon).toContain('pi-');
+    expect(http.match((r) => r.url === `${API}/routes/route-9`)).toHaveLength(1);
+  });
 
   it('loads the scales while the Scales module is on', () => {
     const { http } = open([]);

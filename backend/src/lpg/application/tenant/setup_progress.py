@@ -88,6 +88,7 @@ class GetSetupProgressUseCase:
         warehouses = await self._warehouses.list_for_tenant(tenant_id)
         cylinder_types = await self._cylinder_types.list_for_tenant(tenant_id)
         gst = await self._configuration.list_for_tenant_and_key(tenant_id, "gst_rate_percent")
+        active_types = [c for c in cylinder_types if c.is_active]
         payment_profile = await GetPaymentProfileUseCase(self._configuration).execute(tenant_id)
         # The agency's first admin always exists; staff means anyone else.
         staff = await self._staff.list_for_tenant(
@@ -96,9 +97,12 @@ class GetSetupProgressUseCase:
         done = {
             "branch": any(b.is_active for b in branches),
             "warehouse": any(w.is_active for w in warehouses),
-            "cylinder_types": any(c.is_active for c in cylinder_types),
+            "cylinder_types": bool(active_types),
             "prices": bool(await self._prices.list_for_tenant(tenant_id)),
-            "gst": bool(gst),
+            # Each cylinder carries its own rate; the agency-wide one is the
+            # older setting that still covers a cylinder without its own.
+            "gst": bool(gst)
+            or (bool(active_types) and all(c.gst_rate_percent is not None for c in active_types)),
             # Customers need to know how to pay: a UPI ID or a bank account is enough.
             "payments": payment_profile.has_upi or payment_profile.has_bank_details,
             "staff": sum(1 for u in staff if u.is_active) > 1,

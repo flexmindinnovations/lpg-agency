@@ -3,6 +3,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ConfirmationService, type Confirmation } from 'primeng/api';
 import { of } from 'rxjs';
 import { AdminBranchService, NotifyService } from '@lpg/shared/data-access';
+import { StatusChipCell, type RowAction } from '@lpg/shared/ui';
 import { BranchesPage } from './branches-page';
 
 const ACTIVE = { id: 'b1', name: 'Kukatpally', region: null, is_active: true };
@@ -52,6 +53,24 @@ describe('BranchesPage', () => {
     page['toggleActive'](INACTIVE as never);
 
     expect(confirmations).toHaveLength(0);
+    expect(branchService['setActive']).toHaveBeenCalledWith('b2', true);
+  });
+
+  it('shows the status as a chip and offers one button that matches it', () => {
+    const page = render();
+    const columns = page['columns'];
+    const status = columns.find((c) => c.field === 'is_active');
+    const [toggle] = columns.find((c) => c.header === 'Actions')?.cellRendererParams?.[
+      'actions'
+    ] as RowAction<typeof ACTIVE>[];
+    const words = (row: typeof ACTIVE) =>
+      typeof toggle.text === 'function' ? toggle.text(row) : toggle.text;
+
+    expect(status?.cellRenderer).toBe(StatusChipCell);
+    expect(words(ACTIVE)).toBe('Deactivate');
+    expect(words(INACTIVE)).toBe('Activate');
+    expect(toggle.label(ACTIVE)).toBe('Deactivate Kukatpally');
+    toggle.onAction(INACTIVE);
     expect(branchService['setActive']).toHaveBeenCalledWith('b2', true);
   });
 

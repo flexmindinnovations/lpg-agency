@@ -215,6 +215,13 @@ Business rules — GST rates, cylinder holding limits, cancellation policies, re
 - BPCL's list was not checked, and private-brand sizes are not offered. Adding a size is a code change.
 - **Impact:** See ADR-079.
 
+### D-44 — Collecting Empties From Earlier Deliveries
+**Decision (owner, 2026-11-27):** While delivering, the driver can collect empties from earlier orders. The most is what the customer held before this delivery. Example: 10 cylinders delivered over earlier orders, none returned — up to 10 can be collected.
+- Today's full cylinders are not counted.
+- The limit is per cylinder size, and a size that is not on today's order can be collected.
+- A first-time customer has nothing to return.
+- **Impact:** See BR-35 and `planning/features/70-cards-empties-map-row-actions/`.
+
 ## Cross-Reference Summary
 
 | Original Question | Decision ID | Status |

@@ -22,8 +22,8 @@ class PyJwtSigner:
     def __init__(self, settings: Settings) -> None:
         if settings.jwt_private_key is None or settings.jwt_public_key is None:
             msg = (
-                "jwt_private_key/jwt_public_key are not configured — see "
-                "ADR-035 and .env.dev.example for the expected setup."
+                "jwt_private_key/jwt_public_key are not configured — run "
+                "scripts/generate_jwt_keys.py (see ADR-035)."
             )
             raise RuntimeError(msg)
         self._private_key = settings.jwt_private_key.get_secret_value()

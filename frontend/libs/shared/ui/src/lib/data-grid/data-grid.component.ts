@@ -20,9 +20,10 @@ import type {
 } from 'ag-grid-community';
 import { ButtonDirective } from 'primeng/button';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
+import { RowActionCell, type RowAction } from '../row-action-cell/row-action-cell';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
 
-/** Below this grid width, `priority: 'low'` columns are hidden (tablet/phone). */
+/** Below this grid width, every `priority: 'low'` column is hidden (tablet/phone). */
 const NARROW_GRID_PX = 720;
 
 // AG Grid 33+ uses a modular architecture — features (row selection, column
@@ -95,6 +96,30 @@ export interface DataGridColumn<TRow = unknown> {
    * elsewhere," so it takes priority rather than stacking both.
    */
   readonly onLinkClick?: (row: TRow) => void;
+}
+
+/** Room for the "Actions" heading. */
+const ACTIONS_MIN_PX = 104;
+/** One icon button and the gap after it. */
+const ROW_ACTION_PX = 32;
+const CELL_PADDING_PX = 32;
+
+/**
+ * The one way a table offers actions on its rows: a column headed "Actions"
+ * with an icon button and tooltip for each. Only as wide as it needs to be,
+ * not sortable, and left out of CSV downloads.
+ */
+export function rowActionsColumn<TRow>(actions: readonly RowAction<TRow>[]): DataGridColumn<TRow> {
+  const width = Math.max(ACTIONS_MIN_PX, actions.length * ROW_ACTION_PX + CELL_PADDING_PX);
+  return {
+    field: 'actions',
+    header: 'Actions',
+    sortable: false,
+    width,
+    minWidth: width,
+    cellRenderer: RowActionCell,
+    cellRendererParams: { actions },
+  };
 }
 
 /**
@@ -242,22 +267,28 @@ function escapeHtml(text: string): string {
   `,
   styles: [
     `
-      /* The table's surface is painted once, here; AG Grid's own layers (wrapper,
-         viewports, rows) are transparent, so the app background shows through it
-         like every other surface. Only the header is opaque, because rows scroll
-         under it. */
+      /* The table's surface is painted once, here, and looks like a card's; AG
+         Grid's own layers (wrapper, viewports, rows) are transparent. Only the
+         header is opaque, because rows scroll under it. A table inside a card
+         gets --data-grid-surface: transparent, so the card is not painted
+         twice. */
       :host {
         display: flex;
         flex-direction: column;
-        background: var(--surface-pane);
+        background: var(--data-grid-surface, var(--component-card-background));
         flex: 1;
         min-block-size: var(--component-data-grid-min-block-size, clamp(12rem, 45dvh, 32rem));
         block-size: 100%;
         border-radius: var(--component-data-grid-border-radius, var(--radius-md, 8px));
         overflow: hidden;
+        /* Set by a section card, so the table reaches its edges. */
+        margin-inline: var(--data-grid-bleed, 0);
+        margin-block-end: var(--data-grid-end-bleed, 0);
       }
       :host(.lpg-data-grid--bordered) {
         border: var(--component-data-grid-border);
+        border-inline: var(--data-grid-side-border, var(--component-data-grid-border));
+        border-block-end: var(--data-grid-end-border, var(--component-data-grid-border));
       }
       /* autoHeight grids size to their content — let the host do the same. */
       :host(.lpg-data-grid--auto) {
@@ -364,6 +395,9 @@ function escapeHtml(text: string): string {
         --ag-selected-row-background-color: var(--color-highlight-background);
         --ag-range-selection-border-color: var(--color-action-primary);
         --ag-borders: none;
+        /* The host draws the table's one border (and a section card turns its
+           sides off). AG Grid's own frame sits inside it and ignores both. */
+        --ag-wrapper-border: none;
         --ag-header-column-separator-display: none;
         --ag-row-border-width: 1px;
         --ag-row-border-color: var(--color-border-default);
@@ -379,6 +413,18 @@ function escapeHtml(text: string): string {
         color: var(--color-highlight-color) !important;
         --lpg-link-color: var(--color-highlight-color);
         --lpg-link-hover-color: var(--color-highlight-color);
+      }
+
+      /* In a card, the first column starts where the card's heading does. */
+      ::ng-deep .lpg-data-grid .ag-cell.ag-column-first,
+      ::ng-deep .lpg-data-grid .ag-header-cell.ag-column-first {
+        padding-inline-start: var(--data-grid-edge-padding, var(--ag-cell-horizontal-padding));
+      }
+
+      /* The last column's resize grip sits on the table's edge, where it reads
+         as a stub of a right border. Dragging there still resizes. */
+      ::ng-deep .lpg-data-grid .ag-header-cell.ag-column-last .ag-header-cell-resize::after {
+        display: none;
       }
 
       /* Extra end padding on the last column. Its cells otherwise sit 12px
@@ -662,13 +708,26 @@ export class DataGridComponent<TRow = unknown> {
     }
   }
 
-  /** Hide `priority: 'low'` columns while the grid is narrow. */
+  /** Drops `priority: 'low'` columns that do not fit, so the table does not run
+   * past its edge: all of them on a narrow grid, otherwise from the last one
+   * back until the rest fit. */
   protected onGridSizeChanged(event: GridSizeChangedEvent<TRow>): void {
-    const low = this.columns()
-      .filter((c) => c.priority === 'low')
-      .map((c) => c.field);
+    const columns = this.columns();
+    const low = columns.filter((c) => c.priority === 'low');
     if (low.length === 0) return;
-    event.api.setColumnsVisible(low, event.clientWidth >= NARROW_GRID_PX);
+    const room = event.clientWidth;
+    const narrowest = (column: DataGridColumn<TRow>): number =>
+      column.width ?? column.minWidth ?? defaultMinWidth(column);
+    let needed = columns.reduce((total, column) => total + narrowest(column), 0);
+    const hidden: string[] = [];
+    for (const column of [...low].reverse()) {
+      if (room >= NARROW_GRID_PX && needed <= room) break;
+      hidden.unshift(column.field);
+      needed -= narrowest(column);
+    }
+    const shown = low.map((c) => c.field).filter((field) => !hidden.includes(field));
+    if (shown.length > 0) event.api.setColumnsVisible(shown, true);
+    if (hidden.length > 0) event.api.setColumnsVisible(hidden, false);
   }
 
   /**
@@ -678,8 +737,20 @@ export class DataGridComponent<TRow = unknown> {
    * strings). AG Grid Community's own exporter — no extra dependency.
    */
   exportCsv(fileName: string): void {
+    const buttonColumns = new Set(
+      this.columns()
+        .filter((column) => column.cellRenderer === RowActionCell)
+        .map((column) => column.field),
+    );
     this.gridApi?.exportDataAsCsv({
       fileName: fileName.endsWith('.csv') ? fileName : `${fileName}.csv`,
+      // A column of buttons holds no data.
+      columnKeys: buttonColumns.size
+        ? this.gridApi
+            .getAllDisplayedColumns()
+            .map((column) => column.getColId())
+            .filter((id) => !buttonColumns.has(id))
+        : undefined,
       processCellCallback: (params) => {
         const formatter = this.columns().find(
           (column) => column.field === params.column.getColId(),

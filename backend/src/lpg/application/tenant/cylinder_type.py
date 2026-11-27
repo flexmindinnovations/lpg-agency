@@ -125,6 +125,15 @@ class UpdateCylinderTypeUseCase:
         return cylinder_type
 
 
+def _blocking_delete(used_in: Sequence[str]) -> tuple[str, ...]:
+    """A price is added with every new cylinder. It is the type's own setting,
+    not something that happened, so it must not stop a mistake being deleted.
+    The delete is soft, so the price rows stay valid. A price still fixes the
+    size, or it would move to a different cylinder.
+    """
+    return tuple(label for label in used_in if label != "prices")
+
+
 @dataclass(frozen=True, slots=True)
 class GetCylinderTypeUsageQuery:
     cylinder_type_id: uuid.UUID
@@ -133,6 +142,7 @@ class GetCylinderTypeUsageQuery:
 @dataclass(frozen=True, slots=True)
 class CylinderTypeUsage:
     used_in: tuple[str, ...]
+    delete_blocked_by: tuple[str, ...]
     allowed_size_codes: tuple[str, ...]
 
 
@@ -145,6 +155,7 @@ class GetCylinderTypeUsageUseCase:
         used_in = tuple(await self._repository.used_in(cylinder_type.id))
         return CylinderTypeUsage(
             used_in=used_in,
+            delete_blocked_by=_blocking_delete(used_in),
             allowed_size_codes=tuple(
                 size.code
                 for size in CYLINDER_SIZES
@@ -159,8 +170,9 @@ class DeleteCylinderTypeCommand(Command):
 
 
 class DeleteCylinderTypeUseCase:
-    """Only a type nothing refers to can be deleted: orders, stock, prices
-    and invoices must keep resolving the type they were recorded with.
+    """Only a type nothing has happened to can be deleted: orders, stock and
+    invoices must keep resolving the type they were recorded with. A price
+    does not count (see `_blocking_delete`).
     """
 
     def __init__(self, repository: CylinderTypeRepository, unit_of_work: UnitOfWork) -> None:
@@ -169,10 +181,10 @@ class DeleteCylinderTypeUseCase:
 
     async def execute(self, command: DeleteCylinderTypeCommand) -> None:
         cylinder_type = await _require_cylinder_type(self._repository, command.cylinder_type_id)
-        used_in = await self._repository.used_in(cylinder_type.id)
-        if used_in:
+        blocked_by = _blocking_delete(await self._repository.used_in(cylinder_type.id))
+        if blocked_by:
             msg = (
-                f"{cylinder_type.name} is used in {_in_words(used_in)}, so it cannot be "
+                f"{cylinder_type.name} is used in {_in_words(blocked_by)}, so it cannot be "
                 "deleted. Deactivate it instead."
             )
             raise ConflictError(msg, cylinder_type_id=str(cylinder_type.id))

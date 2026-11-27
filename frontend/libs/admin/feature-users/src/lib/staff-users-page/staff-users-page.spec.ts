@@ -21,18 +21,15 @@ const user = (id: string, role: string, isActive = true): StaffUserResponse => (
 });
 
 type Row = { id: string; name: string; isSelf: boolean; is_active: boolean };
-type Column = {
-  header: string;
-  valueFormatter: (v: unknown, r: Row) => string;
-  onLinkClick: (r: Row) => void;
+type Action = {
+  text: string;
+  visible: (r: Row) => boolean;
+  label: (r: Row) => string;
+  onAction: (r: Row) => void;
 };
 type Internals = {
   rows: () => Row[];
-  columns: {
-    header: string;
-    valueFormatter?: (v: unknown, r: Row) => string;
-    onLinkClick?: (r: Row) => void;
-  }[];
+  columns: { header: string; cellRendererParams?: { actions?: Action[] } }[];
 };
 
 describe('StaffUsersPage (DA-01)', () => {
@@ -71,10 +68,16 @@ describe('StaffUsersPage (DA-01)', () => {
     page = fixture.componentInstance as unknown as Internals;
   });
 
-  const action = (): Column => {
-    const column = page.columns.find((c) => c.header === 'Action');
-    if (!column) throw new Error('no Action column');
-    return column;
+  const actions = (): Action[] => {
+    const column = page.columns.find((c) => c.header === 'Actions');
+    if (!column?.cellRendererParams?.actions) throw new Error('no Actions column');
+    return column.cellRendererParams.actions;
+  };
+  const offered = (r: Row) => actions().filter((a) => a.visible(r));
+  const press = (r: Row, text: string) => {
+    const button = offered(r).find((a) => a.text === text);
+    if (!button) throw new Error(`no ${text} button`);
+    button.onAction(r);
   };
   const row = (id: string): Row => {
     const found = page.rows().find((r) => r.id === id);
@@ -85,14 +88,12 @@ describe('StaffUsersPage (DA-01)', () => {
   it('shows names, marks your own row and offers no action on it', () => {
     expect(row('u2').name).toBe('Ravi Kumar');
     expect(row('me').isSelf).toBe(true);
-    expect(action().valueFormatter(null, row('me'))).toBe('');
-    action().onLinkClick(row('me'));
-    expect(confirm).not.toHaveBeenCalled();
-    expect(deactivateStaffUser).not.toHaveBeenCalled();
+    expect(offered(row('me'))).toEqual([]);
   });
 
   it('asks before deactivating and only deactivates on accept', () => {
-    action().onLinkClick(row('u2'));
+    expect(offered(row('u2')).map((a) => a.label(row('u2')))).toEqual(['Deactivate Ravi Kumar']);
+    press(row('u2'), 'Deactivate');
     expect(confirm).toHaveBeenCalledTimes(1);
     expect(deactivateStaffUser).not.toHaveBeenCalled();
     (confirm.mock.calls[0][0] as Confirmation).accept?.();
@@ -100,8 +101,8 @@ describe('StaffUsersPage (DA-01)', () => {
   });
 
   it('reactivates a deactivated user', () => {
-    expect(action().valueFormatter(null, row('u3'))).toBe('Reactivate');
-    action().onLinkClick(row('u3'));
+    expect(offered(row('u3')).map((a) => a.text)).toEqual(['Reactivate']);
+    press(row('u3'), 'Reactivate');
     expect(reactivateStaffUser).toHaveBeenCalledWith('u3');
   });
 });

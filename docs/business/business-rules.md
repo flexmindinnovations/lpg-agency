@@ -18,6 +18,8 @@ These are the invariant rules the system must enforce. Rules marked **[Explicit]
 
 **BR-06 [Inferred]** — Every cylinder ledger transaction must be immutable/append-only (never destructively edited) to preserve audit integrity; corrections should be made via offsetting/reversal entries, not edits.
 
+**BR-35 [Confirmed — D-44]** — At a delivery, the empties collected of each cylinder size may be at most what the customer was holding **before** that delivery, as the Cylinder Ledger records it (delivered less returned). The cylinders being delivered are full and do not count. A size that is not on the order may be collected too. A customer holding cylinders from before this software shows 0 until the office corrects the balance on the ledger.
+
 ## 2. Order Management Rules
 
 **BR-07 [Explicit]** — Orders progress through defined states: New/Pending → Assigned → Delivered, with a Cancelled branch (per blueprint's dashboard order categories).

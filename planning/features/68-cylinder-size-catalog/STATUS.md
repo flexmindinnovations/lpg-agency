@@ -1,6 +1,6 @@
 # 68 — Status
 
-**2026-11-26 — Built and checked. In a pull request; not merged or deployed.**
+**2026-11-26 — Built and checked. Merged in PR #218 and deployed 2026-11-27.**
 
 ## Checks
 
